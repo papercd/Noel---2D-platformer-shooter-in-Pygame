@@ -16,9 +16,9 @@ class Editor:
     def __init__(self):
         pygame.init() 
         pygame.display.set_caption('editor')
-        self.screen = pygame.display.set_mode((1740,960))
+        self.screen = pygame.display.set_mode((1040,760))
         self.clock = pygame.Clock()
-        self.display = pygame.Surface((870,480))
+        self.display = pygame.Surface((520,380))
 
         #so coming back to here, we will define an assets dictionary that contains all of the assets
         #(sprites) that we are going to use to create our game. 
@@ -44,6 +44,7 @@ class Editor:
             'building_decor' : load_tile_images('tiles/building_decor',background='transparent'), 
             'lights' : load_tile_images('tiles/light',background='transparent'), 
             'stairs' : load_tile_images('tiles/building_stairs',background='transparent'), 
+            'live_grass': load_tile_images('grass',background='black'),
 
 
                 
