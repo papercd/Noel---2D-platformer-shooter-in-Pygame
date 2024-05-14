@@ -2,6 +2,7 @@
 import pygame
 import random
 import math
+import time
 import sys 
 from scripts.tilemap import Tilemap
 from scripts.utils import load_image,load_images,load_tile_images,Animation, load_sounds
@@ -13,7 +14,7 @@ from scripts.weapons import Weapon,Wheelbot_weapon, AK_47,Flamethrower
 from scripts.background import Background
 from scripts.Pygame_Lights import LIGHT,global_light,pixel_shader
 from scripts.indicator import indicator
-
+from scripts.grass import *
 # ----------------------------------- quadtree imports 
 from scripts.quadtree import * 
 from scripts.range import * 
@@ -55,6 +56,7 @@ class myGame:
         self.assets = {
             
             'grass' : load_tile_images('tiles/grass',background='transparent'),
+            'live_grass': load_tile_images('grass',background='black'),
             #'large_decor' : load_tile_images('tiles/large_decor'),
             #'stone' : load_tile_images('tiles/stone',background='transparent'),
             'box' : load_tile_images('tiles/box',background='transparent'),
@@ -255,7 +257,7 @@ class myGame:
         
         self.frame_count = 0
         self.reset = True 
-        self.dt = 0
+        
 
         # ------------------- ak bullet loading and equip
         ak_47 = self.weapons['ak'].copy()
@@ -266,13 +268,32 @@ class myGame:
 
         # ----------------------
 
-        #self.player.equip_weapon(ak_47)
-        self.player.equip_weapon(self.weapons['flamethrower'])
+        self.player.equip_weapon(ak_47)
+        #self.player.equip_weapon(self.weapons['flamethrower'])
 
         
         
+        #extract grasstiles and place them down using the grassManager.
+        self.gm = GrassManager('data/images/grass',tile_size=16,stiffness=600,max_unique = 5,place_range=[0,0])
+        self.grass_locations = []
 
         
+        for grass in self.Tilemap.extract([('live_grass','0;0'),('live_grass','1;0'),('live_grass','2;0'),('live_grass','3;0'),('live_grass','4;0'),('live_grass','5;0')]):
+            
+            self.grass_locations.append((grass.pos[0]//self.Tilemap.tile_size , grass.pos[1]//self.Tilemap.tile_size   ))
+
+        for loc in self.grass_locations:
+            self.gm.place_tile(loc,12,[0,1,2,3,4])
+        """
+        for y in range(20):
+            y += 5
+            for x in range(20):
+                x += 5
+                v = random.random()
+                if v > 0.1:
+                    print((x,y))
+                    self.gm.place_tile((x, y), int(v * 12), [0, 1, 2, 3, 4])
+        """
         #spawner order: 0 : player, 1: canine: 2: wheel bot 
         
         for spawner in self.Tilemap.extract([('spawners','0;0'),('spawners','1;0'),('spawners','2;0'),('spawners','3;0')]):   
@@ -293,7 +314,9 @@ class myGame:
             elif spawner.variant == '3;0':
                 self.existing_enemies.append(Sabre(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(30,27)))
        
-       
+        self.dt = 0
+        self.start = time.time()
+        self.rot_func_t = 0
 
     def run(self):
         """
@@ -305,7 +328,8 @@ class myGame:
         while True: 
             
 
-
+            self.dt = time.time() - self.start
+            self.start = time.time()
 
             self.screen_shake = max(0,self.screen_shake -1)
          
@@ -323,6 +347,10 @@ class myGame:
             self.scroll[1] += (self.player.rect().centery - self.display.get_height() /2 - self.scroll[1])/20
             render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
             
+
+
+
+
 
             #----------------------------quadtree stuff 
             boundary = Rectangle(Vector2(render_scroll[0]- self.qtree_x_slack,render_scroll[1]- self.qtree_y_slack),Vector2(self.display.get_width() +self.qtree_x_slack*2,self.display.get_height() +self.qtree_y_slack*2))
@@ -354,6 +382,14 @@ class myGame:
 
 
             self.Tilemap.render(self.display,render_scroll)
+
+            #------------------------grass renderer stuff
+
+            rot_function = lambda x, y: int(math.sin(self.rot_func_t / 60 + x / 100) * 7)
+
+            self.gm.update_render(self.display,self.dt,offset=render_scroll,rot_function= rot_function)
+
+            #----------------------------------
 
             #Global lighting ----------------
             lights_display = pygame.Surface(self.display.get_size()) 
@@ -520,6 +556,7 @@ class myGame:
                 light[0].main([],lights_display,light[1][0], light[1][1],render_scroll)
             
             """
+            
             self.display.blit(lights_display,( 0, 0),special_flags= pygame.BLEND_RGB_MULT)
 
            
@@ -659,15 +696,14 @@ class myGame:
             #----------------------------------
             
             self.display_2.blit(self.display,(0,0))
-        
-            
+            self.rot_func_t +=self.dt * 100
             
             screenshake_offset = (random.random()* self.screen_shake - self.screen_shake /2, random.random()* self.screen_shake - self.screen_shake /2)
 
             self.screen.blit(pygame.transform.scale(self.display_2,self.screen.get_size()),screenshake_offset)
             pygame.display.update()
 
-            self.dt = self.clock.tick(60) / 1000
+            #self.dt = self.clock.tick(60) / 1000
             
 
 myGame().run()
