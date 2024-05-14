@@ -4,7 +4,7 @@ import random
 import pygame
 import heapq
 
-
+TILE_RENDERING_EXCEPTIONS = {'live_grass'}
 PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','stairs'}
 AUTOTILE_TYPES = {'grass','stone','building_0','building_1','building_2','building_3','building_4'}
 SMOOTH_TRANS_TILES = {'building_0'}
@@ -639,14 +639,14 @@ class Tilemap:
         
         for tile in self.decorations: 
             
-            variant_sub = tile.variant.split(';')
-            if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
-            #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
-                
-                surf.blit(self.game.assets[tile.type][int(variant_sub[0])][int(variant_sub[1])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
-            else: 
-                
-                surf.blit(self.game.assets[tile.type][int(variant_sub[0])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
+                variant_sub = tile.variant.split(';')
+                if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
+                #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
+                    
+                    surf.blit(self.game.assets[tile.type][int(variant_sub[0])][int(variant_sub[1])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
+                else: 
+                    
+                    surf.blit(self.game.assets[tile.type][int(variant_sub[0])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
         
 
         
