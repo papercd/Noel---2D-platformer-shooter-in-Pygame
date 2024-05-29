@@ -208,6 +208,63 @@ class Flame_particle:
                     else:
                         self.rise *= 0.7
                         self.rise_angle += 180  
+                else: 
+                    #collision with stairs 
+                    incid_angle = math.degrees(math.atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
+
+                    if rect_tile[1].variant.split(';')[0] == '0' :
+                        #left stairs
+                        #this part where check rects are created is not dynamic, so if tilesize changes this part needs to be changed manually. maybe figure out an algorithmic 
+                        #way to create rects for stairs. 
+                        check_rects = [pygame.Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
+                                       pygame.Rect(rect_tile[0].left + 12,rect_tile[0].top,4,12),
+                                       pygame.Rect(rect_tile[0].left + 6,rect_tile[0].top + 6,6,6)
+                                       ]
+                        for check_rect in check_rects:
+                            side_point,collided = self.collide_with_rect(check_rect)
+                            if collided: 
+                                if side_point == "Top" or side_point == "Bottom":
+                                    self.rise *= 0.7
+                                    self.rise_angle = incid_angle
+                                elif side_point == 'Left' or side_point == 'Right':
+                                    self.rise *= 0.7
+                                    self.rise_angle = -180 + incid_angle
+                                elif side_point == 'Center':
+                                    self.rise *= 0.3
+                                else:
+                                    self.rise *= 0.7
+                                    self.rise_angle += 180  
+                                
+                                break 
+
+                        
+                        
+                    elif rect_tile[1].variant.split(';')[0] == '1' :
+                        #right stairs 
+                        check_rects = [pygame.Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
+                                       pygame.Rect(rect_tile[0].left,rect_tile[0].top,4,12),
+                                       pygame.Rect(rect_tile[0].left + 4,rect_tile[0].top + 6,6,6)
+                                       ]
+                        for check_rect in check_rects:
+                            side_point,collided = self.collide_with_rect(check_rect)
+                            if collided: 
+                                if side_point == "Top" or side_point == "Bottom":
+                                    self.rise *= 0.7
+                                    self.rise_angle = incid_angle
+                                elif side_point == 'Left' or side_point == 'Right':
+                                    self.rise *= 0.7
+                                    self.rise_angle = -180 + incid_angle
+                                elif side_point == 'Center':
+                                    self.rise *= 0.3
+                                else:
+                                    self.rise *= 0.7
+                                    self.rise_angle += 180  
+                                
+                                break 
+
+                        
+
+                     
                          
 
         """

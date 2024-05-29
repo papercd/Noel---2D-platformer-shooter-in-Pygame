@@ -1349,16 +1349,23 @@ class Bullet(PhysicsEntity):
         
         bullet_mask = pygame.mask.from_surface(self.sprite)
         tile_mask = pygame.mask.Mask((rect_tile.width,rect_tile.height))
-        bullet_mask.fill()
+        #bullet_mask.fill()
         tile_mask.fill()
         offset = (ent_rect[0] - rect_tile[0],ent_rect[1] - rect_tile[1])
         
+        #I guess create the decal object here, when the mask collision is done. 
 
-        if tile_mask.overlap_area(bullet_mask,offset)>11:
-
+        if tile_mask.overlap_area(bullet_mask,offset)>2:
             collided_tile = tilemap.return_tile(rect_tile)
-            if collided_tile.type == 'box':
-    
+
+            if collided_tile.type != 'box':
+                decal_mask  = tile_mask.overlap_mask(bullet_mask,offset)
+                decal_surf = decal_mask.to_surface(unsetcolor=(135,135,135,0))
+                decal_surf.set_colorkey((0,0,0))
+                
+                collided_tile.decals.append([decal_surf,0])
+                
+            else:
                 del tilemap.tilemap[str(collided_tile.pos[0]) + ';' + str(collided_tile.pos[1])]
                 destroy_box_smoke = Particle(self.game,'box_smoke',(rect_tile.centerx,rect_tile.centery),'tile',velocity=[0,0],frame = 10)  
                 self.game.particles.append(destroy_box_smoke)
@@ -1387,6 +1394,10 @@ class Bullet(PhysicsEntity):
         self.center = [self.pos[0]+self.sprite.get_width()/3, self.pos[1] + self.sprite.get_height()/2]
         
         entity_rect = self.rect()
+
+        #when a bullet collides with a physics block, it leaves decals - based on their masks overlapping with the tiles. 
+        #add a black smudge effect to the tiles.
+
         for rect_tile in tile_map.physics_rects_around(self.pos,self.size):
             if entity_rect.colliderect(rect_tile[0]):
                 if rect_tile[1].type == 'stairs' and  rect_tile[1].variant.split(';')[0] in ['0','1']:
