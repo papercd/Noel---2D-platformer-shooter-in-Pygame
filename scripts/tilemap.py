@@ -4,7 +4,6 @@ import random
 import pygame
 import heapq
 
-TILE_RENDERING_EXCEPTIONS = {'live_grass'}
 PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','stairs'}
 AUTOTILE_TYPES = {'grass','stone','building_0','building_1','building_2','building_3','building_4'}
 SMOOTH_TRANS_TILES = {'building_0'}
@@ -80,11 +79,11 @@ class Tilemap:
         self.tile_size = tile_size
         self.game = game
         
-        self.enemies = []
-        self.bullets = []
+        #self.enemies = []
+        #self.bullets = []
 
         self.tilemap = {}
-        
+        self.grass = {}
        
         self.offgrid_layers = offgrid_layers
         self.offgrid_tiles = [{} for i in range(0,offgrid_layers)]
@@ -92,7 +91,6 @@ class Tilemap:
        
         
         self.decorations = []
-        
         self.path_graph = {}
 
 
@@ -107,6 +105,11 @@ class Tilemap:
         for tile in self.decorations:
             seriable_decor.append({'type': tile.type,'variant' : tile.variant, 'pos' : tile.pos})
 
+        seriable_grass = {}
+        for key in self.grass: 
+            grass = self.grass[key]
+            seriable_grass[str(grass.pos[0]) +';' + str(grass.pos[1])] = {'type': grass.type,'variant' : grass.variant, 'pos' : grass.pos}
+
         
         seriable_offgrid = [{} for i in range(0,self.offgrid_layers)] 
         
@@ -115,17 +118,19 @@ class Tilemap:
                 tile = dict[key] 
                 seriable_offgrid[i][str(tile.pos[0]) + ';' + str(tile.pos[1])] = {'type': tile.type , 'variant': tile.variant, 'pos' : tile.pos}
 
-        return seriable_tilemap,seriable_offgrid,seriable_decor
+        return seriable_tilemap,seriable_offgrid,seriable_decor,seriable_grass
 
 
     def save(self,path):
         f = open(path,'w')
-        tilemap,offgrid, decor = self.json_seriable()
+        tilemap,offgrid, decor, grass = self.json_seriable()
         data = {
             'tilemap': tilemap,
             'tile_size': self.tile_size,
             **{'offgrid_' + str(i): v for i, v in enumerate(offgrid)},
-            'decor': decor
+            'decor': decor,
+            'grass': grass
+            
         }
 
         json.dump(data,f)
@@ -147,6 +152,9 @@ class Tilemap:
             self.decorations.append(Tile(tile_value["type"],tile_value["variant"],tile_value["pos"]))
 
         
+        for grass_key in tilemap_data['grass']:
+            self.grass[grass_key] = Tile(tilemap_data['grass'][grass_key]["type"],tilemap_data['grass'][grass_key]["variant"],tilemap_data['grass'][grass_key]["pos"] )
+       
         """        for tile_value in tilemap_data['offgrid']:
             self.offgrid_tiles.append(Tile(tile_value["type"],tile_value["variant"],tile_value["pos"]))
        
@@ -415,10 +423,25 @@ class Tilemap:
                 matches.append(tile)
                 if not keep: 
                     self.decorations.remove(tile)
-        
+
+
+        grass_copy = self.grass.copy()
+        print(grass_copy)
+        for loc in grass_copy: 
+            grass = grass_copy[loc]
+            print(grass)
+            if (grass.type,grass.variant) in id_pairs:
+                matches.append(grass)
+                matches[-1].pos = matches[-1].pos.copy()
+                """
+                matches[-1].pos[0] *= self.tile_size
+                matches[-1].pos[1] *= self.tile_size
+                """
+                if not keep: 
+                    del self.grass[loc]
 
         copy_tilemap = self.tilemap.copy()
-        for loc in copy_tilemap: 
+        for loc in self.tilemap.copy(): 
             tile = copy_tilemap[loc]
             if (tile.type,tile.variant) in id_pairs:
                 matches.append(tile)

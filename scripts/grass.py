@@ -144,6 +144,8 @@ class GrassManager:
         # ignore if a tile was already placed in this location
         if tuple(location) not in self.grass_tiles:
             self.grass_tiles[tuple(location)] = GrassTile(self.tile_size, (location[0] * self.tile_size, location[1] * self.tile_size), density, grass_options, self.ga, self)
+            return True 
+        return False 
 
     # apply a force to the grass that causes the grass to bend away
     def apply_force(self, location, radius, dropoff):
