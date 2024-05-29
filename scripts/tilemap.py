@@ -612,7 +612,8 @@ class Tilemap:
                             else: 
                                 tile.variant = str(variant_sub_0) +';0'  
    
-
+    #the only thing that needs updating for tiles are the decals for now, So there is no separate update function for now. 
+    #if the tiles can be destroyed, I guess that is when I will add an update function.
 
     def render(self, surf, offset = (0,0)):
         
@@ -637,6 +638,7 @@ class Tilemap:
                         #render the mask 
                         #surf.blit(self.game.assets['masks'][int(variant_sub[0])], (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
             
+        #tiles rendering, render the decals here as well. 
 
         for x_cor in range(offset[0] // self.tile_size, (offset[0] + surf.get_width()) // self.tile_size +1):
             for y_cor in range(offset[1] // self.tile_size, (offset[1] + surf.get_height()) // self.tile_size +1): 
@@ -656,7 +658,16 @@ class Tilemap:
                     #you also gotta blit an alpha surface depending on their exposure ( how many neighbors they have. )
                     #render the mask 
                     #surf.blit(self.game.assets['masks'][int(variant_sub[0])], (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
-        
+                    for decal in tile.decals.copy():
+                        #so decals need to be surface objects. 
+                        
+                        surf.blit(decal[0],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                        decal[1] += 1
+                        if decal[1] >= 40:
+                            tile.decals.remove(decal)
+
+                        
+                         
 
         #decorations rendering 
         
@@ -681,6 +692,7 @@ class Tile:
         self.variant = variant
         #self.tile_rel_pos = tile_rel_pos
         self.pos = pos 
+        self.decals = []
    
     def drop_item(self):
         if self.type == 'box':
