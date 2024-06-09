@@ -11,11 +11,12 @@ WEAPONS_WITH_KNOCKBACK = {'rifle'}
 WEAPONS_THAT_CAN_RAPID_FIRE = {'rifle'}
 
 class Weapon:
-    def __init__(self,game,type,sprite,fire_rate,power,img_pivot):  
+    def __init__(self,game,type,sprite,fire_rate,power,weapon_img,img_pivot):  
         self.game = game
         self.type = type 
         self.sprite = sprite 
         self.img_pivot = img_pivot
+        self.weapon_img = weapon_img
         self.flipped = False 
         self.rapid_firing = False 
         self.power=power
@@ -107,7 +108,7 @@ class Weapon:
     def update(self,cursor_pos):
         self.mpos = cursor_pos
 
-    def render(self,surf,offset = (0,0)):
+    def render(self,surf,offset = (0,0),set_angle = None):
         #save surf to use when passing it to bullet 
         self.surf = surf 
 
@@ -196,7 +197,7 @@ class Weapon:
 
         weapon_display = pygame.Surface((self.sprite.get_width(),self.sprite.get_height()),pygame.SRCALPHA)
         weapon_display.blit(self.sprite,(0,0))
-        rotated_image,rect = self.rotate(weapon_display,angle,self.pivot,self.render_offset)
+        rotated_image,rect = self.rotate(weapon_display,angle if set_angle == None else set_angle,self.pivot,self.render_offset)
 
         #the gun's opening position  
         #self.opening_pos[0] = self.pivot[0] + math.cos(math.radians(-self.angle_opening)) * sprite_width
@@ -224,11 +225,11 @@ class Weapon:
          
 
 class AK_47(Weapon):
-    def __init__(self,game,sprite): 
-        super().__init__(game,'rifle',sprite,5,15,(2,2))
+    def __init__(self,game,sprite,weapon_img): 
+        super().__init__(game,'rifle',sprite,5,15,weapon_img,(2,2))
 
     def copy(self):
-        return AK_47(self.game,self.sprite)
+        return AK_47(self.game,self.sprite,self.weapon_img)
 
     def shoot(self,j= 0,d_mouse_pos = [0,0]):
         shot = super().shoot()
@@ -238,10 +239,13 @@ class AK_47(Weapon):
             self.game.temp_lights.append([LIGHT(50,pixel_shader(50,(248,229,153),1,True,180+self.angle_opening,360)),3,self.opening_pos])
 
 class Flamethrower(Weapon):
-    def __init__(self,game,sprite):
-        super().__init__(game,'flamethrower',sprite,1,5,(2,2))
+    def __init__(self,game,sprite,weapon_img):
+        super().__init__(game,'flamethrower',sprite,1,5,weapon_img,(2,2))
         self.rapid_firing = True
     
+    def copy(self):
+        return Flamethrower(self.game,self.sprite,self.weapon_img)
+
     def toggle_rapid_fire(self):
         self.rapid_firing = not self.rapid_firing 
         
@@ -364,8 +368,8 @@ class Wheelbot_weapon(Weapon):
                 self.game.non_animated_particles.append(shot_muzzle_particle)
             """
         
-            
-    def render(self,surf,offset = (0,0)):
+             
+    def render(self,surf,offset = (0,0),set_angle = None):
         #save surf to use when passing it to bullet 
         self.surf = surf 
 

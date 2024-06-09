@@ -14,7 +14,9 @@ from scripts.weapons import Weapon,Wheelbot_weapon, AK_47,Flamethrower
 from scripts.background import Background
 from scripts.Pygame_Lights import LIGHT,global_light,pixel_shader
 from scripts.indicator import indicator
+from scripts.HUD import HUD 
 from scripts.grass import *
+
 # ----------------------------------- quadtree imports 
 from scripts.quadtree import * 
 from scripts.range import * 
@@ -52,6 +54,7 @@ class myGame:
         }
        
     
+        #make a more efficient way to load assets maybe?
 
         self.assets = {
             
@@ -177,8 +180,8 @@ class myGame:
 
         self.weapons = {
             'laser_weapon': Wheelbot_weapon(self,Animation(load_images('entities/enemy/Wheel_bot/charge_weapon',background='transparent'),img_dur=5,loop=True)),
-            'ak' : AK_47(self,load_image('weapons/ak_holding.png',background='transparent')),
-            'flamethrower' : Flamethrower(self,load_image('weapons/flamethrower_holding.png',background='transparent')),
+            'ak' : AK_47(self,load_image('weapons/ak_holding.png',background='transparent'),load_image('weapons/ak_47_img.png',background='transparent')),
+            'flamethrower' : Flamethrower(self,load_image('weapons/flamethrower_holding.png',background='transparent'),load_image('weapons/flamethrower_img.png',background='transparent')),
         }
 
         
@@ -192,41 +195,28 @@ class myGame:
             'building' : Background(self,load_images('backgrounds/building',background='transparent')),
         }
         
+
         self.bullets_on_screen = []
         self.enemy_bullets = []
-
         self.particles = []
         self.physical_particles = []
         self.non_animated_particles = []
         self.leaf_spawners = []
         self.existing_enemies = []
-
-        
         self.sparks = []
-
-        #self.gray_clouds = Clouds(self.assets['gray1_clouds'],count = 8,direction='right')
-        #self.opp_gray_clouds = Clouds(self.assets['gray2_clouds'],count = 6, direction= 'left')
 
         self.Tilemap = Tilemap(self,tile_size=16,offgrid_layers=2)
         self.Tilemap.load('map.json')
 
-    
-        #light testing with a module I found on github 
-        #self.player_light = LIGHT(200,pixel_shader(200,(255,255,255),1,False)) 
-
-        
 
         self.lights = {}
         self.temp_lights = []
-
         self.shadow_objects = [] 
 
         
         for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
             self.lights[(light.pos[0]*self.Tilemap.tile_size + 8,light.pos[1]*self.Tilemap.tile_size)] =LIGHT(370,pixel_shader(370,(255,255,255),1.5,True, 270, 90)) 
             
-            #self.lights.append((LIGHT(370,pixel_shader(370,(130,130,255),1,True, 270, 90)), (light.pos[0] + 8,light.pos[1]))) 
-      
             
         for key in self.Tilemap.tilemap:
             split_key = key.split(";")
@@ -269,31 +259,26 @@ class myGame:
         # ----------------------
 
         self.player.equip_weapon(ak_47)
-        #self.player.equip_weapon(self.weapons['flamethrower'])
+        
+        self.player.equip_weapon(self.weapons['flamethrower'].copy())
 
+        self.HUD = HUD(self.player,self.assets['health_UI'],self.display.get_size())
         
         
         #extract grasstiles and place them down using the grassManager.
-        self.gm = GrassManager('data/images/grass',tile_size=16,stiffness=600,max_unique = 5,place_range=[0,0])
+        self.gm = GrassManager('data/images/grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
         self.grass_locations = []
 
         
         for grass in self.Tilemap.extract([('live_grass','0;0'),('live_grass','1;0'),('live_grass','2;0'),('live_grass','3;0'),('live_grass','4;0'),('live_grass','5;0')]):
-            
-            self.grass_locations.append((grass.pos[0]//self.Tilemap.tile_size , grass.pos[1]//self.Tilemap.tile_size   ))
+            print("check")
+            self.grass_locations.append((grass.pos[0], grass.pos[1]))
 
         for loc in self.grass_locations:
-            self.gm.place_tile(loc,12,[0,1,2,3,4])
-        """
-        for y in range(20):
-            y += 5
-            for x in range(20):
-                x += 5
-                v = random.random()
-                if v > 0.1:
-                    print((x,y))
-                    self.gm.place_tile((x, y), int(v * 12), [0, 1, 2, 3, 4])
-        """
+            self.gm.place_tile(loc,14,[0,1,2,3,4])
+    
+
+    
         #spawner order: 0 : player, 1: canine: 2: wheel bot 
         
         for spawner in self.Tilemap.extract([('spawners','0;0'),('spawners','1;0'),('spawners','2;0'),('spawners','3;0')]):   
@@ -319,11 +304,7 @@ class myGame:
         self.rot_func_t = 0
 
     def run(self):
-        """
-        pygame.mixer.music.load('data/music.wav')
-        pygame.mixer.music.set_volume(0.2)
-        pygame.mixer.music.play(-1)
-        """
+        
 
         while True: 
             
@@ -333,7 +314,7 @@ class myGame:
 
             self.screen_shake = max(0,self.screen_shake -1)
          
-            
+            #frame counter for acceleration and dash timings 
                  
             self.timer += self.time_increment
             if self.timer > 20:
@@ -374,24 +355,15 @@ class myGame:
             self.bsurf.fill((0,0,0,0))
             self.backgrounds['building'].render(self.display,render_scroll)
            
-            #self.gray_clouds.update()
-            #self.gray_clouds.render(self.display,render_scroll)
-
-            #self.opp_gray_clouds.update()
-            #self.opp_gray_clouds.render(self.display,render_scroll)
+         
 
 
             self.Tilemap.render(self.display,render_scroll)
 
-            #------------------------grass renderer stuff
-
-            rot_function = lambda x, y: int(math.sin(self.rot_func_t / 60 + x / 100) * 7)
-
-            self.gm.update_render(self.display,self.dt,offset=render_scroll,rot_function= rot_function)
-
-            #----------------------------------
+            
 
             #Global lighting ----------------
+            
             lights_display = pygame.Surface(self.display.get_size()) 
             lights_display.blit(global_light(self.display.get_size(),100), (0,0))
             # ----------------
@@ -457,12 +429,7 @@ class myGame:
                                     
                                  
                     
-            """
-            for bullet in bullets_to_remove:
-                if bullet in self.bullets_on_screen:
-                    self.bullets_on_screen.remove(bullet)
-                    """
-            
+     
             for bullet in self.enemy_bullets.copy():
                 kill = bullet.update_pos(self.Tilemap)
                 bullet.render(self.display,offset=render_scroll)
@@ -532,9 +499,17 @@ class myGame:
             
             self.player.render(self.display,render_scroll)
 
+            #------------------------grass renderer stuff
+
+            rot_function = lambda x, y: int(math.sin(self.rot_func_t / 60 + x / 100) * 7)
+
+            self.gm.update_render(self.display,self.dt,offset=render_scroll,rot_function= rot_function)
+
+            #----------------------------------
+
+
            #lighting ------------------
 
-            #self.player_light.main([],lights_display,self.player.pos[0]+8 ,self.player.pos[1]+8,render_scroll)
             
             for key in self.lights: 
                 if  (key[0] >= render_scroll[0] - 200 and key[0] <= self.display.get_width() + render_scroll[0] + 200)  and (key[1] >= render_scroll[1] - 200 and key[1] <= self.display.get_height() + render_scroll[1]+ 200 ):
@@ -548,14 +523,7 @@ class myGame:
                     light[0].main([],lights_display,light[2][0],light[2][1],render_scroll) 
                 else: 
                     self.temp_lights.remove(light)
-                
 
-            """
-            for light in self.lights:
-                
-                light[0].main([],lights_display,light[1][0], light[1][1],render_scroll)
-            
-            """
             
             self.display.blit(lights_display,( 0, 0),special_flags= pygame.BLEND_RGB_MULT)
 
@@ -597,12 +565,19 @@ class myGame:
             
                         
             for event in pygame.event.get():
+
+
                 #We need to define when the close button is pressed on the window. 
-                        
+                
                 if event.type == pygame.QUIT: 
                     #then pygame is closed, and the system is closed. 
                     pygame.quit() 
                     sys.exit() 
+
+                if event.type == pygame.MOUSEWHEEL:
+                    
+                    self.player.change_weapon(event.y)
+                    
                 
                 #define when the right or left arrow keys are pressed, the corresponding player's movement variable varlues are changed. 
                 if event.type == pygame.KEYDOWN: 
@@ -672,31 +647,11 @@ class myGame:
                     
                 else:
                     self.player_cur_vel = min(0,self.player_cur_vel + self.accel_decel_rate)
-                
-                    
-            #___________________________
 
+            self.HUD.render(self.display,offset=(0,0))
 
-            #health and stamina bar rendering--------------
-            self.display.blit(self.player.health_UI,(self.player.health_bar.x-2,self.player.health_bar.y-2)) 
-            self.player.health_bar.render(self.display,(0,0))
-
-            self.display.blit(self.player.stamina_UI,(self.player.stamina_bar.x-2,self.player.stamina_bar.y-2)) 
-            self.player.stamina_bar.render(self.display,(0,0))
-
-
-            #render the health bar indicator 
-            health_ind = indicator(int(self.player.health_bar.cur_resource),int(self.player.health_bar.max_resource))
-            health_ind.render(self.player.health_bar.x + 84,self.player.health_bar.y-1,self.display)
-            
-            #render the stamina bar indicator 
-            stamina_ind = indicator(int(self.player.stamina_bar.cur_resource),int(self.player.stamina_bar.max_resource))
-            stamina_ind.render(self.player.stamina_bar.x+34,self.player.stamina_bar.y-1,self.display)
-
-            #----------------------------------
-            
             self.display_2.blit(self.display,(0,0))
-            self.rot_func_t +=self.dt * 100
+            self.rot_func_t += self.dt * 100
             
             screenshake_offset = (random.random()* self.screen_shake - self.screen_shake /2, random.random()* self.screen_shake - self.screen_shake /2)
 
@@ -704,6 +659,6 @@ class myGame:
             pygame.display.update()
 
             #self.dt = self.clock.tick(60) / 1000
-            
+            self.clock.tick(60)
 
 myGame().run()

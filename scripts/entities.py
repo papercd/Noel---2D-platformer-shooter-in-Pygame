@@ -920,23 +920,24 @@ class Canine(Enemy):
         
 class PlayerEntity(PhysicsEntity):
     def __init__(self,game,pos,size):
-        #attributes required to implement weapon equipment 
+        #attributes required to implement weapon 
         self.equipped = False 
         self.cur_weapon = None 
-        self.hit_mask = None
+        self.cur_weapon_index = None
         self.weapon_inven = []
+        self.weapon_inven_size = 5 # maximum size of carry 
+        
+        self.change_weapon_inc = False
+        self.changing_done = 0 
+        self.change_scroll = 0
+
+        self.hit_mask = None
 
         super().__init__(game,'player',pos,size)
 
         self.recov_rate = 0.6
         self.stamina = 100
         self.health = 200
-
-        self.health_bar = HealthBar(32,300,200,4,self.health)
-        self.stamina_bar =  StaminaBar(32,310,98,4,self.stamina)
-
-        self.health_UI = self.game.assets['health_UI']
-        self.stamina_UI = self.game.assets['stamina_UI']
 
         self.jump_count = 2
         self.wall_slide = False
@@ -1010,6 +1011,9 @@ class PlayerEntity(PhysicsEntity):
         self.stamina = min(100, self.stamina + self.recov_rate)
         self.air_time +=1
         
+        self.changing_done += self.change_weapon_inc
+        if self.changing_done == 5:
+            self.change_weapon(self.change_scroll)
         
 
         if self.velocity[1] >=2:
@@ -1101,8 +1105,6 @@ class PlayerEntity(PhysicsEntity):
             self.cur_weapon.update(self.d_cursor_pos)
         
         #update the health and stamina bars 
-        self.health_bar.update(self.health)
-        self.stamina_bar.update(self.stamina)
         
     def accel(self):
         #check the stamina and return the speed. 
@@ -1152,7 +1154,17 @@ class PlayerEntity(PhysicsEntity):
         """
 
         if self.equipped: 
-            self.cur_weapon.render(surf,offset)
+            
+            if self.changing_done == 0:
+                self.cur_weapon.render(surf,offset,set_angle = None)
+            else: 
+                if self.flip: 
+                    angles = [angle for angle in range(-180,-91,10)]
+                else: 
+                    angles = [angle for angle in range(0,-81,-10)]
+                arm_pos_angle = angles[self.changing_done]
+                self.cur_weapon.render(surf,offset,set_angle = arm_pos_angle) 
+            
     
     def dash(self):
         if not self.fatigued: 
@@ -1232,11 +1244,30 @@ class PlayerEntity(PhysicsEntity):
                     self.velocity[1] = -2.2
 
     
+    def change_weapon(self,scroll):
+        if self.cur_weapon:
+            self.change_scroll = scroll
+            self.change_weapon_inc = True 
+            if self.changing_done == 5:
+                self.cur_weapon_index = self.weapon_inven.index(self.cur_weapon)
+                self.cur_weapon_index = max(0,self.cur_weapon_index - 1) if scroll == -1 else min(len(self.weapon_inven)-1,self.cur_weapon_index+1)
+                self.cur_weapon = self.weapon_inven[self.cur_weapon_index]
+                self.weapon_inven[self.cur_weapon_index].equip(self) 
+                self.changing_done = 0 
+                self.change_scroll = 0
+                self.change_weapon_inc = False 
+
     def equip_weapon(self,weapon):
-        self.weapon_inven.append(weapon)
-        self.cur_weapon = self.weapon_inven[-1]
-        self.equipped = True 
-        self.weapon_inven[-1].equip(self)
+        if len(self.weapon_inven) < self.weapon_inven_size:
+            
+            self.weapon_inven.insert(0 if self.cur_weapon == None else self.weapon_inven.index(self.cur_weapon),weapon)
+            
+
+            self.cur_weapon = self.weapon_inven[0 if self.cur_weapon == None else self.weapon_inven.index(self.cur_weapon)-1]
+            self.cur_weapon_index = self.weapon_inven.index(self.cur_weapon) 
+            self.equipped = True 
+            self.weapon_inven[self.cur_weapon_index].equip(self)
+        
 
     def shoot_weapon(self,frame):
         #testing bullet firing
@@ -1345,7 +1376,7 @@ class Bullet(PhysicsEntity):
         offsets = [(-1,0), (0,0), (1,0)]
         for i in range(random.randint(6,11)):
             offset = random.choice(offsets)
-            self.game.non_animated_particles.append(bullet_collide_particle(random.choice([(1,1),(2,1),(1,2)]),end_point,(180-self.angle) + random.randint(-88,88),3+random.random(),color,tilemap))
+            self.game.non_animated_particles.append(bullet_collide_particle(random.choice([(1,1),(2,1),(1,2),(3,1),(1,3),(2,2)]),end_point,(180-self.angle) + random.randint(-88,88),3+random.random(),color,tilemap))
         
         bullet_mask = pygame.mask.from_surface(self.sprite)
         tile_mask = pygame.mask.Mask((rect_tile.width,rect_tile.height))

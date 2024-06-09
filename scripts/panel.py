@@ -2,18 +2,23 @@ import pygame
 
 from scripts.alphabet import alphabets 
 from scripts.numbers import numbers 
+from scripts.utils import load_image
 
 
 class inven_panel: 
-    def __init__(self,topleft,size,weapons):
+    def __init__(self,topleft,player_ent):
         self.topleft = topleft
-        self.size = size 
-        self.weapons = weapons 
-        self.cur_weapon = self.weapons[-1] if self.weapons else None  
-        self.ammo_indicator = numbers(0)
+
+
+        self.player = player_ent 
+
+        self.TL_cur_weapon_frame = load_image("indicator/cur_weapon_indicator.png")
+        self.ammo_indicator = None 
 
     def render(self,surf,offset = (0,0)):
-        pass 
+        
+        surf.blit(self.TL_cur_weapon_frame,(self.topleft[0] - offset[0] -1,self.topleft[1] - offset[1] -3 ))
+        surf.blit(self.player.cur_weapon.weapon_img, (self.topleft[0] - offset[0] ,self.topleft[1] - offset[1]))
 
 class tile_panel:
 
