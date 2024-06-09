@@ -1012,7 +1012,7 @@ class PlayerEntity(PhysicsEntity):
         self.air_time +=1
         
         self.changing_done += self.change_weapon_inc
-        if self.changing_done == 7:
+        if self.changing_done == 6:
             self.change_weapon(self.change_scroll)
         
 
@@ -1159,11 +1159,11 @@ class PlayerEntity(PhysicsEntity):
                 self.cur_weapon.render(surf,offset,set_angle = None)
             else: 
                 if self.cur_weapon.flipped: 
-                    angles = [angle for angle in range(0,-81,-10)]
+                    angles = [angle for angle in range(0,-121,-20)]
                     
                     
                 else: 
-                    angles = [angle for angle in range(90,-1,-10)]                    
+                    angles = [angle for angle in range(120,-1,-20)]                    
                 arm_pos_angle = angles[self.changing_done]
                 self.cur_weapon.render(surf,offset,set_angle = arm_pos_angle) 
             
@@ -1252,7 +1252,7 @@ class PlayerEntity(PhysicsEntity):
             if 0 <= self.cur_weapon_index + scroll <= len(self.weapon_inven) -1 :
                 self.change_scroll = scroll
                 self.change_weapon_inc = True 
-                if self.changing_done == 7:
+                if self.changing_done == 6:
                     self.cur_weapon_index = self.weapon_inven.index(self.cur_weapon)
                     self.cur_weapon_index = max(0,self.cur_weapon_index - 1) if scroll == -1 else min(len(self.weapon_inven)-1,self.cur_weapon_index+1)
                     self.cur_weapon = self.weapon_inven[self.cur_weapon_index]

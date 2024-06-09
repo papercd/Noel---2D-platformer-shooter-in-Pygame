@@ -2,7 +2,7 @@ import pygame
 
 from scripts.alphabet import alphabets 
 from scripts.numbers import numbers 
-from scripts.utils import load_image
+from scripts.utils import load_images
 
 
 class inven_panel: 
@@ -12,7 +12,8 @@ class inven_panel:
 
         self.player = player_ent 
 
-        self.TL_cur_weapon_frame = load_image("indicator/cur_weapon_indicator.png")
+        self.TL_cur_weapon_frame = load_images("indicator/cur_weapon_indicator")
+
         self.ammo_indicator = None 
 
         self.display_weapons = []
@@ -30,10 +31,13 @@ class inven_panel:
             if 0<= weapon_ind <=len(self.player.weapon_inven) -1:
                 org_image_size = self.player.weapon_inven[weapon_ind].weapon_img.get_size()
                 shrunk_img = pygame.transform.scale(self.player.weapon_inven[weapon_ind].weapon_img,(org_image_size[0]*shrink_factor,org_image_size[1]*shrink_factor))
-                shrunk_img.set_alpha(255-abs(i)*100)
-                surf.blit(shrunk_img,(self.topleft[0] - offset[0] + org_image_size[0] * (1-shrink_factor) ,self.topleft[1] - offset[1]+ org_image_size[1] * (1-shrink_factor) + i*14 ))
+                shrunk_img.set_alpha(255-abs(i)*120)
+                surf.blit(shrunk_img,(self.topleft[0] - offset[0] + org_image_size[0] * (1-shrink_factor) ,self.topleft[1] - offset[1]+ org_image_size[1] * (1-shrink_factor) + i*14 *((7-self.player.changing_done)/7)))
         surf.blit(self.player.cur_weapon.weapon_img, (self.topleft[0] - offset[0] ,self.topleft[1] - offset[1]))
-        surf.blit(self.TL_cur_weapon_frame,(self.topleft[0] - offset[0] -1,self.topleft[1] - offset[1] -3 ))
+
+        #when 
+        change_offset = [(0,0),(-1,-1),(-2,-2)]
+        surf.blit(self.TL_cur_weapon_frame[self.player.changing_done//3],(self.topleft[0] - offset[0] + change_offset[self.player.changing_done//3][0]-1,self.topleft[1] - offset[1]+change_offset[self.player.changing_done//3][1] -3 ))
 
 class tile_panel:
 
