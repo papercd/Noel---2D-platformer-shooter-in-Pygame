@@ -1012,7 +1012,7 @@ class PlayerEntity(PhysicsEntity):
         self.air_time +=1
         
         self.changing_done += self.change_weapon_inc
-        if self.changing_done == 5:
+        if self.changing_done == 7:
             self.change_weapon(self.change_scroll)
         
 
@@ -1158,10 +1158,12 @@ class PlayerEntity(PhysicsEntity):
             if self.changing_done == 0:
                 self.cur_weapon.render(surf,offset,set_angle = None)
             else: 
-                if self.flip: 
-                    angles = [angle for angle in range(-180,-91,10)]
-                else: 
+                if self.cur_weapon.flipped: 
                     angles = [angle for angle in range(0,-81,-10)]
+                    
+                    
+                else: 
+                    angles = [angle for angle in range(90,-1,-10)]                    
                 arm_pos_angle = angles[self.changing_done]
                 self.cur_weapon.render(surf,offset,set_angle = arm_pos_angle) 
             
@@ -1246,16 +1248,18 @@ class PlayerEntity(PhysicsEntity):
     
     def change_weapon(self,scroll):
         if self.cur_weapon:
-            self.change_scroll = scroll
-            self.change_weapon_inc = True 
-            if self.changing_done == 5:
-                self.cur_weapon_index = self.weapon_inven.index(self.cur_weapon)
-                self.cur_weapon_index = max(0,self.cur_weapon_index - 1) if scroll == -1 else min(len(self.weapon_inven)-1,self.cur_weapon_index+1)
-                self.cur_weapon = self.weapon_inven[self.cur_weapon_index]
-                self.weapon_inven[self.cur_weapon_index].equip(self) 
-                self.changing_done = 0 
-                self.change_scroll = 0
-                self.change_weapon_inc = False 
+            #first check if scrolling in that direction is valid. 
+            if 0 <= self.cur_weapon_index + scroll <= len(self.weapon_inven) -1 :
+                self.change_scroll = scroll
+                self.change_weapon_inc = True 
+                if self.changing_done == 7:
+                    self.cur_weapon_index = self.weapon_inven.index(self.cur_weapon)
+                    self.cur_weapon_index = max(0,self.cur_weapon_index - 1) if scroll == -1 else min(len(self.weapon_inven)-1,self.cur_weapon_index+1)
+                    self.cur_weapon = self.weapon_inven[self.cur_weapon_index]
+                    self.weapon_inven[self.cur_weapon_index].equip(self) 
+                    self.changing_done = 0 
+                    self.change_scroll = 0
+                    self.change_weapon_inc = False 
 
     def equip_weapon(self,weapon):
         if len(self.weapon_inven) < self.weapon_inven_size:
