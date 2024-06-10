@@ -8,6 +8,8 @@ from scripts.indicator import indicator
 from scripts.health import HealthBar,StaminaBar 
 from pygame.transform import scale 
 from scripts.panel import inven_panel
+from scripts.inventory import * 
+
 
 class HUD: 
     def __init__(self,player_entity,bar_UI,display_size):
@@ -35,10 +37,20 @@ class HUD:
 
 
        #create the inven panel 
-
        self.inven_panel = inven_panel((self.display_size[0]//12 + self.health_bar.w  + 16, self.display_size[1] - self.bar_height * 6),self.player_entity)
 
+       #create the inventories
+       self.inven_list = [
+           Inventory("ARMS", 1, 5, 50, 100, 1, 1, bin_active=True),
+           Inventory("Small", 1, 3, 700, 400, 1, 99)
+       ]
+       
+       
 
+
+    def render_inven(self,cursor,surf,offset= [0,0]):
+        self.inven_list[0].update(surf,0,self.inven_list,cursor,"") 
+        
 
 
     def render(self,surf,offset = [0,0]):
@@ -64,7 +76,7 @@ class HUD:
         stamina_ind = indicator(int(self.stamina_bar.cur_resource),int(self.stamina_bar.max_resource))
         stamina_ind.render(self.stamina_bar.x+self.stamina_bar.w//2,self.stamina_bar.y-1,surf)
         """
-        #render the weapon_inventory 
+        #render the weapon panel 
         self.inven_panel.render(surf,offset)
 
 

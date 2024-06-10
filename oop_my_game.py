@@ -17,6 +17,7 @@ from scripts.indicator import indicator
 from scripts.HUD import HUD 
 from scripts.grass import *
 
+
 # ----------------------------------- quadtree imports 
 from scripts.quadtree import * 
 from scripts.range import * 
@@ -256,15 +257,20 @@ class myGame:
             test_shell = Bullet(self,[0,0],test_shell_image.get_size(),test_shell_image,'rifle_small').copy()
             ak_47.load(test_shell)
 
-        # ----------------------
-
         self.player.equip_weapon(ak_47)
 
+        # ----------------------
+
+
+         # ------------------- flamethrower fuel loading and equip
         Flamethrower_ = self.weapons['flamethrower'].copy()
         for i in range(0,1005):
             Flamethrower_.magazine.append(0)
         self.player.equip_weapon(Flamethrower_)
 
+         # ----------------------
+
+        self.inven_on = False 
         self.HUD = HUD(self.player,self.assets['health_UI'],self.display.get_size())
         
         
@@ -385,6 +391,10 @@ class myGame:
             
            
             keys = pygame.key.get_pressed()
+
+
+
+
             if keys[pygame.K_LSHIFT]:
                 self.player.running = True 
             else: 
@@ -548,7 +558,8 @@ class myGame:
              
 
             #code for the cursor 
-            self.cursor.update()
+
+            self.cursor.update(keys)
             self.cursor.render(self.display)
             
             display_mask = pygame.mask.from_surface(self.display)
@@ -584,6 +595,9 @@ class myGame:
                 
                 #define when the right or left arrow keys are pressed, the corresponding player's movement variable varlues are changed. 
                 if event.type == pygame.KEYDOWN: 
+                    if event.key == pygame.K_e:
+                        self.inven_on = not self.inven_on
+
                     if event.key == pygame.K_a: 
                         if self.player.flip: 
                             if self.timer >=0 and self.timer < 20:
@@ -651,6 +665,8 @@ class myGame:
                 else:
                     self.player_cur_vel = min(0,self.player_cur_vel + self.accel_decel_rate)
 
+            if self.inven_on:
+                self.HUD.render_inven(self.cursor,self.display,(0,0))
             self.HUD.render(self.display,offset=(0,0))
 
             self.display_2.blit(self.display,(0,0))
