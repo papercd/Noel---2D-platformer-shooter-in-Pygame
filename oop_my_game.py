@@ -258,14 +258,12 @@ class myGame:
 
         # ----------------------
 
+        flamethrower = self.weapons['flamethrower'].copy()
+        for i in range(0,1005):
+            flamethrower.magazine.append(0)
+
+        self.player.equip_weapon(flamethrower)
         self.player.equip_weapon(ak_47)
-        
-        self.player.equip_weapon(self.weapons['ak'].copy())
-
-        self.player.equip_weapon(self.weapons['ak'].copy())
-
-
-        self.player.equip_weapon(self.weapons['flamethrower'].copy())
 
         self.HUD = HUD(self.player,self.assets['health_UI'],self.display.get_size())
         

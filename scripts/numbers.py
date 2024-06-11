@@ -22,10 +22,11 @@ class numbers:
             number.append(DEFAULT_NUMBERS[0])
             return number
         else: 
-            while self.number > 0 :
-                digit = self.number % 10
+            dummy_number = self.number
+            while dummy_number > 0 :
+                digit = dummy_number % 10
                 number.append(DEFAULT_NUMBERS[digit])
-                self.number = self.number // 10
+                dummy_number = dummy_number // 10
                 self.length+=4
             return number 
     

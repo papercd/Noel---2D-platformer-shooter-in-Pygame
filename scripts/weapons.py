@@ -251,28 +251,29 @@ class Flamethrower(Weapon):
         
 
     def shoot(self,j= 0,d_mouse_pos = [0,0]):
-        # -------------   predetermined particle parameters 
-        size = 6
-        density = 4
-        rise = 2.7
-        spread = 1.2
-        wind = 0
-        #---------------
-        ox,oy = self.mpos[0],self.mpos[1]
-        mx,my = d_mouse_pos[0],d_mouse_pos[1]
+        if self.magazine:
+            # -------------   predetermined particle parameters 
+            size = 6
+            density = 4
+            rise = 2.7
+            spread = 1.2
+            wind = 0
+            #---------------
+            ox,oy = self.mpos[0],self.mpos[1]
+            mx,my = d_mouse_pos[0],d_mouse_pos[1]
 
-        dist = math.sqrt((mx-ox)**2+(my-oy)**2)
-        #a = math.atan2(my-oy, mx-ox)
-        for d in range(0, int(dist), 10):
-            #_x = mx+math.cos(a)*d
-            #_y = my+math.sin(a)*d
-            
-            for _ in range(round(density)): 
-                self.game.physical_particles.append(Flame_particle(self.opening_pos[0], self.opening_pos[1],density,rise,self.angle_opening,spread,wind,self.power))
-        else:
-            for _ in range(round(density)): 
-                self.game.physical_particles.append(Flame_particle(self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power))
-        
+            dist = math.sqrt((mx-ox)**2+(my-oy)**2)
+            #a = math.atan2(my-oy, mx-ox)
+            for d in range(0, int(dist), 10):
+                #_x = mx+math.cos(a)*d
+                #_y = my+math.sin(a)*d
+                
+                for _ in range(round(density)): 
+                    self.game.physical_particles.append(Flame_particle(self.opening_pos[0], self.opening_pos[1],density,rise,self.angle_opening,spread,wind,self.power))
+            else:
+                for _ in range(round(density)): 
+                    self.game.physical_particles.append(Flame_particle(self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power))
+            self.magazine.pop()
 
     
 class Wheelbot_weapon(Weapon):

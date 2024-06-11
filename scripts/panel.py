@@ -14,9 +14,9 @@ class inven_panel:
 
         self.TL_cur_weapon_frame = load_images("indicator/cur_weapon_indicator")
 
-        self.ammo_indicator = None 
+        self.ammo_indicator = numbers(0)
 
-        self.display_weapons = []
+   
     
 
     def render(self,surf,offset = (0,0)):
@@ -35,9 +35,17 @@ class inven_panel:
                 surf.blit(shrunk_img,(self.topleft[0] - offset[0] + org_image_size[0] * (1-shrink_factor) ,self.topleft[1] - offset[1]+ org_image_size[1] * (1-shrink_factor) + i*14 *((7-self.player.changing_done)/7)))
         surf.blit(self.player.cur_weapon.weapon_img, (self.topleft[0] - offset[0] ,self.topleft[1] - offset[1]))
 
-        #when 
+        
         change_offset = [(0,0),(-1,-1),(-2,-2)]
         surf.blit(self.TL_cur_weapon_frame[self.player.changing_done//3],(self.topleft[0] - offset[0] + change_offset[self.player.changing_done//3][0]-1,self.topleft[1] - offset[1]+change_offset[self.player.changing_done//3][1] -3 ))
+
+        new_mag = len(self.player.cur_weapon.magazine)
+        
+        shot = self.ammo_indicator.number != new_mag
+        
+        self.ammo_indicator.change_number(new_mag)
+        self.ammo_indicator.render(self.topleft[0] - offset[0],self.topleft[1] - offset[1] - (2 if shot else 0),surf)
+        
 
 class tile_panel:
 
