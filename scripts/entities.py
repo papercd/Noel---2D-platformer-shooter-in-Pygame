@@ -1284,6 +1284,7 @@ class PlayerEntity(PhysicsEntity):
                     self.cur_weapon.load(test_shell)
                     """
                     self.cur_weapon.shoot(self.time,self.d_cursor_pos) 
+                   
                     #self.game.Tilemap.bullets.append(shot_bullet)
                     #self.game.bullets_on_screen.append(shot_bullet)
                     #rotate the images in the animation 
@@ -1303,7 +1304,7 @@ class PlayerEntity(PhysicsEntity):
 
             #add bullet drop particles and smoke particles 
                 
-            
+           
             
                     
                     
