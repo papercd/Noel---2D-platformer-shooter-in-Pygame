@@ -41,7 +41,7 @@ class HUD:
 
        #create the inventories
        self.inven_list = [
-           Inventory("ARMS", 1, 5, 50, 100, 1, 1, bin_active=True),
+           Inventory("ARMS", 1, 5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -22 , 1, 1, bin_active=False),
            Inventory("Small", 1, 3, 700, 400, 1, 99)
        ]
        
@@ -49,11 +49,13 @@ class HUD:
 
 
     def render_inven(self,cursor,surf,offset= [0,0]):
-        self.inven_list[0].update(surf,0,self.inven_list,cursor,"") 
+        pass 
+    
+        #self.inven_list[0].update(surf,0,self.inven_list,cursor,"") 
         
 
 
-    def render(self,surf,offset = [0,0]):
+    def render(self,surf,cursor,offset = [0,0]):
         #render character face 
 
 
@@ -78,6 +80,9 @@ class HUD:
         """
         #render the weapon panel 
         self.inven_panel.render(surf,offset)
+
+        #render the items
+        self.inven_list[0].update(surf,0,self.inven_list,cursor,"")
 
 
 

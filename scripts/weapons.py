@@ -274,6 +274,7 @@ class Flamethrower(Weapon):
                 for _ in range(round(density)): 
                     self.game.physical_particles.append(Flame_particle(self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power))
             self.magazine.pop()
+            
         
 
     

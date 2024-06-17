@@ -1,5 +1,6 @@
 
 import pygame
+
 import random
 import math
 import time
@@ -26,6 +27,7 @@ from scripts.range import *
 class myGame:
     def __init__(self):
         pygame.init() 
+        pygame.mixer.pre_init(44100, -16, 2, 512)
         pygame.display.set_caption('Noel.')
         
         self.screen_shake = 0 
@@ -41,7 +43,7 @@ class myGame:
         self.qtree_y_slack = 300
 
         """
-        self.sfx = {g
+        self.sfx = {
             'jump': pygame.mixer.Sound(),
             'dash': pygame.mixer.Sound(),
             'run' : pygame.mixer.Sound(),
@@ -280,7 +282,6 @@ class myGame:
 
         
         for grass in self.Tilemap.extract([('live_grass','0;0'),('live_grass','1;0'),('live_grass','2;0'),('live_grass','3;0'),('live_grass','4;0'),('live_grass','5;0')]):
-            print("check")
             self.grass_locations.append((grass.pos[0], grass.pos[1]))
 
         for loc in self.grass_locations:
@@ -311,13 +312,14 @@ class myGame:
         self.dt = 0
         self.start = time.time()
         self.rot_func_t = 0
+        self.main_offset = None 
 
     def run(self):
         
 
         while True: 
-            
 
+            self.prev_cursor_pos = self.cursor.pos
             self.dt = time.time() - self.start
             self.start = time.time()
 
@@ -545,7 +547,20 @@ class myGame:
             
             #rapid fire and single fire toggle 
             if pygame.mouse.get_pressed()[0]:
-                if self.player.weapon_toggle_state():
+                if self.inven_on and (self.HUD.inven_list[0].position[0] <= self.cursor.pos[0] <= self.HUD.inven_list[0].position[0] + self.HUD.inven_list[0].box_size[0]*2) and (self.HUD.inven_list[0].position[1] <= self.cursor.pos[1] <= self.HUD.inven_list[0].position[1] + self.HUD.inven_list[0].box_size[1]//4):
+                    """
+                    if self.main_offset == None : 
+                        self.main_offset = (self.cursor.pos[0] - self.HUD.inven_list[0].position[0],self.cursor.pos[1] - self.HUD.inven_list[0].position[1])
+                    
+                    self.HUD.inven_list[0].position[0] = self.cursor.pos[0] - self.main_offset[0]
+                    self.HUD.inven_list[0].position[1] = self.cursor.pos[1] - self.main_offset[1]
+                    
+                    """
+
+                    #self.HUD.inven_list[0].position[0] -= offset[0]
+                    #self.HUD.inven_list[0].position[1] -= offset[1]
+                
+                elif self.player.weapon_toggle_state():
                     #then you shoot. 
                     self.player.shoot_weapon(self.frame_count)
                 else:
@@ -553,14 +568,15 @@ class myGame:
                     if self.reset == True: 
                         self.player.shoot_weapon(self.frame_count)
                         self.reset = False 
+                
             elif pygame.mouse.get_pressed()[0] == False:
+                #self.main_offset = None 
                 self.reset = True 
              
 
-            #code for the cursor 
 
-            self.cursor.update(keys)
-            self.cursor.render(self.display)
+
+            
             
             display_mask = pygame.mask.from_surface(self.display)
             display_sillhouette = display_mask.to_surface(setcolor=(0,0,0,180),unsetcolor=(0,0,0,0))
@@ -595,7 +611,7 @@ class myGame:
                 
                 #define when the right or left arrow keys are pressed, the corresponding player's movement variable varlues are changed. 
                 if event.type == pygame.KEYDOWN: 
-                    if event.key == pygame.K_e:
+                    if event.key == pygame.K_i:
                         self.inven_on = not self.inven_on
 
                     if event.key == pygame.K_a: 
@@ -664,10 +680,15 @@ class myGame:
                     
                 else:
                     self.player_cur_vel = min(0,self.player_cur_vel + self.accel_decel_rate)
-
+            
+            """
             if self.inven_on:
                 self.HUD.render_inven(self.cursor,self.display,(0,0))
-            self.HUD.render(self.display,offset=(0,0))
+            """
+            self.HUD.render(self.display,self.cursor,offset=(0,0))
+
+            self.cursor.update(keys)
+            self.cursor.render(self.display)
 
             self.display_2.blit(self.display,(0,0))
             self.rot_func_t += self.dt * 100

@@ -390,7 +390,7 @@ class Wheel_bot(Enemy):
        
 
         self.hit_mask = None
-        self.health_bar = HealthBar(self.pos[0]+3,self.pos[1]-5,16,2,self.hp)
+        self.health_bar = HealthBar(self.pos[0]+3,self.pos[1]-5,16,2,self.hp,True)
 
         
 
@@ -1233,6 +1233,7 @@ class PlayerEntity(PhysicsEntity):
             self.velocity[1] = -4.2  
             air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
             self.game.particles.append(air)
+            
     
 
     def jump_cut(self):
