@@ -1159,8 +1159,7 @@ class PlayerEntity(PhysicsEntity):
                 self.cur_weapon.render(surf,offset,set_angle = None)
             else: 
                 if self.cur_weapon.flipped: 
-                    angles = [angle for angle in range(0,-121,-20)]
-                    
+                    angles = [angle for angle in range(0,-121,-20)]  
                     
                 else: 
                     angles = [angle for angle in range(120,-1,-20)]                    
@@ -1322,6 +1321,7 @@ class PlayerEntity(PhysicsEntity):
         self.health -= hit_damage
         self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
         
+
 
 
 class Grenade(PhysicsEntity):
@@ -1662,4 +1662,6 @@ class Wheelbot_bullet(tile_ign_Bullet):
        
             
         #here you are going to use the render function from the physics entity class. 
-      
+
+
+

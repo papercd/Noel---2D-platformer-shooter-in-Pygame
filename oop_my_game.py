@@ -30,8 +30,9 @@ class myGame:
         pygame.mixer.pre_init(44100, -16, 2, 512)
         pygame.display.set_caption('Noel.')
         
+        
         self.screen_shake = 0 
-        self.screen = pygame.display.set_mode((1040,652))
+        self.screen = pygame.display.set_mode((1040,652),pygame.RESIZABLE)
         self.clock = pygame.Clock()
         self.display = pygame.Surface((self.screen.get_width()//2,self.screen.get_height()//2),pygame.SRCALPHA)
         self.bsurf = pygame.Surface((self.screen.get_width()//2,self.screen.get_height()//2),pygame.SRCALPHA)
@@ -243,7 +244,7 @@ class myGame:
         self.time_increment = False
 
         #cursor object 
-        pygame.mouse.set_visible(True)
+        pygame.mouse.set_visible(False)
         self.cursor = Cursor(self,(50,50),(4,4),'default')
 
         #weapon equip
@@ -285,7 +286,7 @@ class myGame:
             self.grass_locations.append((grass.pos[0], grass.pos[1]))
 
         for loc in self.grass_locations:
-            self.gm.place_tile(loc,14,[0,1,2,3,4])
+            self.gm.place_tile(loc,14,[0,3,4])
     
 
     
@@ -595,7 +596,8 @@ class myGame:
             
                         
             for event in pygame.event.get():
-
+                if event.type == pygame.VIDEORESIZE:
+                    self.screen = pygame.display.set_mode((event.w,event.h),pygame.RESIZABLE) 
 
                 #We need to define when the close button is pressed on the window. 
                 
@@ -681,10 +683,10 @@ class myGame:
                 else:
                     self.player_cur_vel = min(0,self.player_cur_vel + self.accel_decel_rate)
             
-            """
+            
             if self.inven_on:
                 self.HUD.render_inven(self.cursor,self.display,(0,0))
-            """
+            
             self.HUD.render(self.display,self.cursor,offset=(0,0))
 
             self.cursor.update(keys)
