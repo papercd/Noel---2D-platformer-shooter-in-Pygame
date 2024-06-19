@@ -319,18 +319,20 @@ class Cell():
         match selected:
             case 1:
                 image = pygame.transform.scale(
-                    CELL_SELECTED, (20 * scale, 20 * scale))
+                    CELL_SELECTED, (20 * scale +2, 20 * scale+2))
             case 0:
                 image = pygame.transform.scale(CELL, (20 * scale, 20 * scale))
         return image
 
     def update(self, x, y,surf, scale, stack_limit, inventory_id, inventory_list, cursor) -> None:
-        position = (x, y)
+        position =[x, y]
 
         cell_box = pygame.Rect(
             *position, 20 * scale, 20 * scale)
 
         if cursor.box.colliderect(cell_box):
+            position[0] -= 1
+            position[1] -= 1
             image = self.draw(scale, 1)
         else:
             image = self.draw(scale, 0)
