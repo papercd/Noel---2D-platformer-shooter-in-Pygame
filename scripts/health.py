@@ -22,11 +22,12 @@ class Bar():
 
 class HealthBar(Bar):
     
-    def __init__(self,x,y,w,h,max_hp):
+    def __init__(self,x,y,w,h,max_hp,last_shake=False):
         super().__init__(x,y,w,h,max_hp)
         self.mid_cur = self.cur_resource
         self.last_cur = self.cur_resource
         self.shake = 0 
+        self.last_shake = last_shake
     
 
     #here you are going to have three separate bars, one that decreases immediately, and two others that decreases slower than the previous one, and blit them onto one another, and make them a different color. 
@@ -66,7 +67,7 @@ class HealthBar(Bar):
         
             
 
-        pygame.draw.rect(surf,(0,0,0,0),(self.x-offset[0] ,self.y-offset[1],self.w,self.h))
+        pygame.draw.rect(surf,(0,0,0,0),(self.x-offset[0] - (shake_offset[0] if self.last_shake else 0) ,self.y-offset[1]- (shake_offset[1] if self.last_shake else 0),self.w,self.h))
 
         pygame.draw.rect(surf,(173,106,29,255),(self.x-offset[0]- shake_offset[0],self.y-offset[1]- shake_offset[1],self.w*ratio_last,self.h))
         pygame.draw.rect(surf,(225,69,29,255),(self.x-offset[0]- shake_offset[0],self.y-offset[1]- shake_offset[1],self.w*ratio_mid,self.h))

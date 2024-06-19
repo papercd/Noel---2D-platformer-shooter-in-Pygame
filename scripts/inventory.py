@@ -5,9 +5,18 @@ from scripts.utils import load_images,load_image
 import os 
 
 CELL = load_image("ui/inventory/tile.png",background="transparent")
-CELL_SELECTED = load_image("ui/inventory/tile_selected.jpg",background="transparent")
+CELL_SELECTED = load_image("ui/inventory/tile_selected.png",background="transparent")
 BIN_CELL = load_image("ui/inventory/tile_bin.jpg",background="transparent")
 BIN_CELL_SELECTED = load_image("ui/inventory/tile_bin_selected.jpg",background="transparent")
+
+CURSOR_ICONS = {
+    "cursor": load_image("ui/inventory/cursor.png",background='transparent'),
+    "grab": load_image("ui/inventory/cursor_grab.png",background='transparent'),
+    "magnet": load_image("ui/inventory/cursor_magnet.png",background='transparent'),
+    "move": load_image("ui/inventory/cursor_move.png",background='transparent'),
+    "text": load_image("ui/inventory/cursor_text.png",background='transparent'),           # Added cursor text icon
+}
+
 
 ITEM_TEXTURES = {
     "grass": load_image("items/grass.png",background = "transparent"),
@@ -477,6 +486,7 @@ class Inventory():
         self.capacity = rows * columns
         self.item_count = 0
         self.bin = bin_active
+        self.box_size = (self.columns * 20 * self.scale + 4 * self.scale, self.rows * 20 * self.scale + 18 * self.scale + (20 * self.scale if self.bin else 0))
         if self.capacity >= 6 and self.columns >= 3 and sorting_active:
             self.buttons = [
                 self.Inventory_Sorting_Button(x, self) for x in list(INVENTORY_SORTING_BUTTONS.keys()) if x != "select"
@@ -556,21 +566,24 @@ class Inventory():
 
     def update(self, surf,inventory_id, inventory_list, cursor, text) -> None:
         self.item_count = self.get_item_count()
+        """
         pygame.draw.rect(
-            surf, (31, 31, 31), (*self.position, self.columns * 20 * self.scale + 4 * self.scale, self.rows * 20 * self.scale + 18 * self.scale + (20 * self.scale if self.bin else 0)))
-
+            surf, (31, 31, 31), (*self.position,self.box_size[0],self.box_size[1]),border_radius= 2)
+        """
+        """
         inventory_title = FONT["24"].render(
             self.name, 1, (255, 255, 255))
         surf.blit(inventory_title,
                  (self.position[0] + 4 * self.scale, self.position[1] + 4 * self.scale))
-
+        """
+        
         for i, b in enumerate(self.buttons):
             b.update(self.position[0] + 20 * self.columns *
                      self.scale - 9 * self.scale - i * 12 * self.scale, self.position[1] + 4 * self.scale, self.scale, cursor)
 
         for i, row in enumerate(self.cells):
             for j, cell in enumerate(row):
-                cell.update(self.position[0] + (j * 20 * self.scale) + 2 * self.scale,
+                cell.update(self.position[0] + (j * 28 * self.scale) + 2 * self.scale,
                             self.position[1] + (i * 20 * self.scale) + 16 * self.scale,surf, self.scale, self.stack_limit, inventory_id, inventory_list, cursor)
         bin_cell = Bin()
         if self.bin:
