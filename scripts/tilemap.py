@@ -561,7 +561,7 @@ class Tilemap:
             tile_img = self.game.assets[tile.type][int(variant_sub[0])][int(variant_sub[1])]
         else: 
              tile_img = self.game.assets[tile.type][int(variant_sub[0])]
-        return tile_img.get_at((self.tile_size/2,self.tile_size/2))
+        return tile_img.get_at((self.tile_size//2,self.tile_size//2))
     
 
     def autotile(self,random_ = False):
