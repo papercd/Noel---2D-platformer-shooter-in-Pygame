@@ -471,7 +471,7 @@ class Inventory():
         self.rows = rows
         self.columns = columns
         self.cells = [[Cell() for i in range(columns)] for j in range(rows)]
-        self.position = (x, y)
+        self.position = [x, y]
         self.scale = scale
         self.stack_limit = stack_limit
         self.capacity = rows * columns

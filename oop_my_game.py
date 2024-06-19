@@ -267,13 +267,6 @@ class myGame:
         # ----------------------
 
 
-         # ------------------- flamethrower fuel loading and equip
-        Flamethrower_ = self.weapons['flamethrower'].copy()
-        for i in range(0,1005):
-            Flamethrower_.magazine.append(0)
-        self.player.equip_weapon(Flamethrower_)
-
-         # ----------------------
 
         self.inven_on = False 
         self.HUD = HUD(self.player,self.assets['health_UI'],self.display.get_size())

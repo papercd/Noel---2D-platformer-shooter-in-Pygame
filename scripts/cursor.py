@@ -46,17 +46,17 @@ class Cursor:
 
         if self.magnet:
             self.image = pygame.transform.scale(
-                CURSOR_ICONS["magnet"], (9 * 3, 10 * 3))
+                CURSOR_ICONS["magnet"], (9 * 1, 10 * 1))
         elif self.move:
             self.image = pygame.transform.scale(
-                CURSOR_ICONS["move"], (9 * 3, 10 * 3))
+                CURSOR_ICONS["move"], (9 * 1, 10 * 1))
         elif self.item is not None:
             self.image = pygame.transform.scale(
-                CURSOR_ICONS["grab"], (9 * 3, 10 * 3))
+                CURSOR_ICONS["grab"], (9 * 1, 10 * 1))
         
         else:
             self.image = pygame.transform.scale(
-                CURSOR_ICONS["cursor"], (9 * 3, 10 * 3))
+                CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))
 
 
 
