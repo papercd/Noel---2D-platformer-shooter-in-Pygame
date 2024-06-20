@@ -7,6 +7,7 @@ from scripts.panel import tile_panel
 from scripts.Pygame_Lights import LIGHT
 from scripts.numbers import numbers
 from scripts.alphabet import alphabets
+from scripts.grass import * 
 
 RENDER_SCALE = 2.0
 
@@ -17,7 +18,7 @@ class Editor:
         pygame.init() 
         pygame.display.set_caption('editor')
         self.screen = pygame.display.set_mode((1040,760))
-        self.clock = pygame.Clock()
+        self.clock = pygame.time.Clock()
         self.display = pygame.Surface((520,380))
 
         #so coming back to here, we will define an assets dictionary that contains all of the assets
@@ -66,6 +67,12 @@ class Editor:
         except FileNotFoundError:
             pass
         
+        self.gm = GrassManager('data/images/grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
+
+        #place down grass tiles 
+        for key in self.Tilemap.grass: 
+            grass_tile = self.Tilemap.grass[key]
+            self.gm.place_tile(grass_tile.pos,12,[0,1,2,3,4])
         self.scroll = [0,0]
 
         #different variables that we can vary to choose different tiles to set down. 
@@ -107,7 +114,9 @@ class Editor:
         #tile panel attribute 
         self.main_tile_panel =  tile_panel((0,0),100,self.assets)
 
-
+        #grass manager object for grass rendering when placing down grass tiles '
+        
+        self.dt = 0
     
     def run(self):
         while True: 
@@ -127,6 +136,8 @@ class Editor:
 
             #render the tilemap on the editor window 
             self.Tilemap.render(self.display, offset = render_scroll)
+
+            self.gm.update_render(self.display,self.dt,offset=render_scroll)
 
             #Design a tile panel. The tile panel will look like the following: 
             #It will be on the left side of the screen, and it will be SCROLLABLE. This is to fit all the tiles I add to the assets library. Maybe add a sorting system?
@@ -320,34 +331,74 @@ class Editor:
                                 del self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][click_loc]
                     else: 
                         #decorations 
+
+
                         if self.selected:
+
                             self.display.blit(selected_tile_, fin_tile_pos)
-                            
+
+                            #you have to add a check for grass tile placement here. 
+                            """
+                            if self.main_tile_panel.cur_category[0].text == 'live_grass' :
+                                #if you have a live_grass tile panel selected, 
+                                if self.clicking and (mpos[0] >= self.main_tile_panel.x_range):
+                                    
+                                    dup = False 
+                                    for tile in self.Tilemap.decorations: 
+                                        if  tile.pos == (fin_tile_pos[0] + self.scroll[0],fin_tile_pos[1] + self.scroll[1]) and tile.type == cur_tile_panel[3] and tile.variant == str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]):
+
+                                            dup = True 
+                                            break
+                                    if not dup: 
+                                        self.gm.place_tile(((fin_tile_pos[0] + self.scroll[0] )//self.Tilemap.tile_size,(fin_tile_pos[1] + self.scroll[1] )//self.Tilemap.tile_size),12,[0,1,2,3,4])
+                                        self.Tilemap.decorations.append(Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]), (fin_tile_pos[0] + self.scroll[0], fin_tile_pos[1] + self.scroll[1])))
+                                 
+                            else: 
+                            """
                             if self.clicking and (mpos[0] >= self.main_tile_panel.x_range):
-                                dup = False 
-                                #checking for duplicate placements crude method 
-                                for tile in self.Tilemap.decorations: 
-                                    """
-                                    print((tile.pos,(fin_tile_pos[0] + self.scroll[0],fin_tile_pos[1] + self.scroll[1])))
+                                if self.main_tile_panel.cur_category[0].text == 'live_grass' :
+                                    check_loc =(int((fin_tile_pos[0] + self.scroll[0] )//self.Tilemap.tile_size),int((fin_tile_pos[1] + self.scroll[1] )//self.Tilemap.tile_size))
+                                    #if ((fin_tile_pos[0] + self.scroll[0] )//self.Tilemap.tile_size,(fin_tile_pos[1] + self.scroll[1] )//self.Tilemap.tile_size) not in self.gm.grass_tiles:
+                                    placed = self.gm.place_tile(check_loc,12,[0,1,2,3,4])
+                                    #print(check_loc)
+                                    if placed: 
+                                        self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])] =   Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),check_loc)
+                                        print(self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].type,self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].pos,self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].variant)
 
-                                    print((tile.type,cur_tile_panel[3]))
+                                else: 
+                                    dup = False 
+                                    #checking for duplicate placements crude method 
+                                    for tile in self.Tilemap.decorations: 
+                                        """
+                                        print((tile.pos,(fin_tile_pos[0] + self.scroll[0],fin_tile_pos[1] + self.scroll[1])))
 
-                                    print((tile.variant, str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1])))
-                                    """
-                                    if  tile.pos == (fin_tile_pos[0] + self.scroll[0],fin_tile_pos[1] + self.scroll[1]) and tile.type == cur_tile_panel[3] and tile.variant == str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]):
+                                        print((tile.type,cur_tile_panel[3]))
 
-                                        dup = True 
-                                        break
+                                        print((tile.variant, str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1])))
+                                        """
+                                        if  tile.pos == (fin_tile_pos[0] + self.scroll[0],fin_tile_pos[1] + self.scroll[1]) and tile.type == cur_tile_panel[3] and tile.variant == str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]):
 
-                                if not dup: 
-                                    self.Tilemap.decorations.append(Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]), (fin_tile_pos[0] + self.scroll[0], fin_tile_pos[1] + self.scroll[1])))
-                            
-                                         
+                                            dup = True 
+                                            break
+
+                                    if not dup: 
+                                    
+                                        self.Tilemap.decorations.append(Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]), (fin_tile_pos[0] + self.scroll[0], fin_tile_pos[1] + self.scroll[1])))
+                                
+                                            
                                     
                                  
 
 
                         if self.right_clicking: 
+                            #you have to add a check for grass tile placement here. 
+                            check_loc =(int((fin_tile_pos[0] + self.scroll[0] )//self.Tilemap.tile_size),int((fin_tile_pos[1] + self.scroll[1] )//self.Tilemap.tile_size))
+
+                            if check_loc in self.gm.grass_tiles:
+                                del self.Tilemap.grass[str(check_loc[0]) + ';' + str(check_loc[1]) ]
+                                del self.gm.grass_tiles[check_loc]
+
+
                             for tile in self.Tilemap.decorations.copy():
                             #parse variant attribute from tile object to get subscript 
                                 variant_sub = tile.variant.split(';')
@@ -511,8 +562,7 @@ class Editor:
             self.offgrid_layer_num.change_number(self.cur_offgrid_layer)
             self.offgrid_layer_num.render(self.display.get_width() -  self.offgrid_layer_num.length * 4 ,10,self.display)
 
-
-
+    
             for event in pygame.event.get():
                 #We need to define when the close button is pressed on the window. 
                 if event.type == pygame.QUIT: 
