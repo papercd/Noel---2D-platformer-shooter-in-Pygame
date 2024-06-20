@@ -318,8 +318,11 @@ class Cell():
     def draw(self, scale, selected):
         match selected:
             case 1:
+                image = CELL_SELECTED
+                """
                 image = pygame.transform.scale(
                     CELL_SELECTED, (20 * scale +2, 20 * scale+2))
+                """
             case 0:
                 image = pygame.transform.scale(CELL, (20 * scale, 20 * scale))
         return image

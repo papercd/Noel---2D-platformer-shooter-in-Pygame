@@ -24,6 +24,12 @@ from scripts.quadtree import *
 from scripts.range import * 
 
 
+#----------------------------------------- imports to integrate shaders 
+from array import array
+from collections import deque 
+import moderngl 
+
+
 class myGame:
     def __init__(self):
         pygame.init() 
@@ -33,7 +39,7 @@ class myGame:
         
         self.screen_shake = 0 
         self.screen = pygame.display.set_mode((1040,652),pygame.RESIZABLE)
-        self.clock = pygame.Clock()
+        self.clock = pygame.time.Clock()
         self.display = pygame.Surface((self.screen.get_width()//2,self.screen.get_height()//2),pygame.SRCALPHA)
         self.bsurf = pygame.Surface((self.screen.get_width()//2,self.screen.get_height()//2),pygame.SRCALPHA)
 
