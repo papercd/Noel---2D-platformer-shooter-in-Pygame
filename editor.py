@@ -85,7 +85,7 @@ class Editor:
 
         self.selection_box_button = False 
         self.selection_box = None 
-        self.selection_box_start_pos = [0,0] 
+        self.selection_box_start_pos = [0,0]  
         self.selection_box_dim = [0,0]
         self.selection_box_time = 0
         self.delete_selection_box_content = False 
