@@ -1022,6 +1022,11 @@ class PlayerEntity(PhysicsEntity):
        
         self.cut_movement_input = False 
 
+
+        #add particle spew effect, similar to how you've done it for the bullets when it collides with tiles. 
+        #the number of particles that are created should depend on the impact force, which can be a function of y_inertia you've 
+        #defined already. 
+
         if self.collisions['down']:
             if self.y_inertia > 12 and self.y_inertia <35:
                 land_smoke = Particle(self.game,'land',(self.pos[0] +8,self.pos[1]+14),'player')
@@ -1322,20 +1327,31 @@ class PlayerEntity(PhysicsEntity):
         self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
         
 
+class Item(PhysicsEntity):
+    def __init__(self, game,size,sprite):
+        super().__init__(game, 'item', [0,0], size)
+        self.sprite = sprite 
+
+    """ what would you need for an item class to have? """
 
 
-class Grenade(PhysicsEntity):
-    def __init__(self,game,pos,size,sprite,type):
-        super().__init__(game,'grenade',pos,size)
-        
+    def copy(self):
+        return Item(self.game,self.size,self.sprite)
+
+
+class Grenade(Item):
+    def __init__(self, game, size, sprite):
+        super().__init__(game, size, sprite)
+
 
     def update(self):
+        pass
+
+
+    def render(self,surf,offset = [0,0]):
         pass 
 
-    def render(self,surf,offset= (0,0)):
-        pass 
 
-    
 class Bullet(PhysicsEntity): 
     def __init__(self,game,pos,size,sprite,type):
         super().__init__(game,'bullet',pos,size)
@@ -1358,13 +1374,13 @@ class Bullet(PhysicsEntity):
         
         return pygame.Rect(self.pos[0],self.pos[1],self.sprite.get_width(),self.sprite.get_height())
 
-    def collision_handler(self,tilemap,rect_tile,ent_rect):
+    def collision_handler(self,tilemap,rect_tile,ent_rect,dir,axis):
         if isinstance(rect_tile,pygame.Rect):
             rect_tile = rect_tile
         else: 
             rect_tile = rect_tile[0]
 
-        color = tilemap.return_color(rect_tile)
+        
 
         og_end_point_vec = pygame.math.Vector2((6,0))
         og_end_point_vec.rotate(self.angle)
@@ -1372,17 +1388,18 @@ class Bullet(PhysicsEntity):
         
         
         end_point = [self.center[0]+og_end_point_vec[0] - (self.sprite.get_width()/2 if self.velocity[0] >=0 else 0),self.center[1] + og_end_point_vec[1]] 
-
-        collide_particle = Particle(self.game,'bullet_collide/rifle',end_point,'player')
-        rotated_collide_particle_images = [pygame.transform.rotate(image,180+self.angle) for image in collide_particle.animation.copy().images]
-        collide_particle.animation.images = rotated_collide_particle_images
-
-        self.game.particles.append(collide_particle)
         
+        entry_pos = ( rect_tile.left if dir else rect_tile.right ,end_point[1]) if axis else (end_point[0],rect_tile.top if dir else rect_tile.bottom )
+        color = tilemap.return_color(rect_tile)
+        
+        #you need to tweak the particle spawning positions depending on the side where the bullet has hit, and make the spawning position more 
+        #precise. 
+
+
         offsets = [(-1,0), (0,0), (1,0)]
         for i in range(random.randint(6,11)):
             offset = random.choice(offsets)
-            self.game.non_animated_particles.append(bullet_collide_particle(random.choice([(1,1),(2,1),(1,2),(3,1),(1,3),(2,2)]),end_point,(180-self.angle) + random.randint(-88,88),3+random.random(),color,tilemap))
+            self.game.non_animated_particles.append(bullet_collide_particle(random.choice([(1,1),(2,1),(1,2),(3,1),(1,3),(2,2)]), entry_pos,(180-self.angle) + random.randint(-88,88),3+random.random(),color,tilemap))
         
         bullet_mask = pygame.mask.from_surface(self.sprite)
         tile_mask = pygame.mask.Mask((rect_tile.width,rect_tile.height))
@@ -1394,6 +1411,12 @@ class Bullet(PhysicsEntity):
 
         if tile_mask.overlap_area(bullet_mask,offset)>2:
             collided_tile = tilemap.return_tile(rect_tile)
+            
+            collide_particle = Particle(self.game,'bullet_collide/rifle',end_point,'player')
+            rotated_collide_particle_images = [pygame.transform.rotate(image,180+self.angle) for image in collide_particle.animation.copy().images]
+            collide_particle.animation.images = rotated_collide_particle_images
+
+            self.game.particles.append(collide_particle)
 
             if collided_tile.type != 'box':
                 decal_mask  = tile_mask.overlap_mask(bullet_mask,offset)
@@ -1426,7 +1449,6 @@ class Bullet(PhysicsEntity):
         #make collision detection more precise. 
         
         self.pos[0] += self.velocity[0] 
-        self.pos[1] += self.velocity[1] 
         
         self.center = [self.pos[0]+self.sprite.get_width()/3, self.pos[1] + self.sprite.get_height()/2]
         
@@ -1450,7 +1472,7 @@ class Bullet(PhysicsEntity):
                                        ]
                         for check_rect in check_rects:
                             if entity_rect.colliderect(check_rect):
-                                kill = self.collision_handler(tile_map,check_rect,entity_rect)
+                                kill = self.collision_handler(tile_map,check_rect,entity_rect,self.velocity[0] > 0, True)
                     else: 
                         check_rects = [pygame.Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
                                        pygame.Rect(rect_tile[0].left,rect_tile[0].top,4,12),
@@ -1458,9 +1480,9 @@ class Bullet(PhysicsEntity):
                                        ]
                         for check_rect in check_rects:
                             if entity_rect.colliderect(check_rect):
-                                kill = self.collision_handler(tile_map,check_rect,entity_rect)
+                                kill = self.collision_handler(tile_map,check_rect,entity_rect,self.velocity[0] > 0, True)
                 else: 
-                    kill = self.collision_handler(tile_map,rect_tile,entity_rect)
+                    kill = self.collision_handler(tile_map,rect_tile,entity_rect,self.velocity[0] > 0, True)
 
                     """
                     color = tile_map.return_color(rect_tile[0])
@@ -1506,6 +1528,49 @@ class Bullet(PhysicsEntity):
                         del self 
                         return True
                     """
+        if kill:
+            
+            del self 
+            return True 
+        
+        self.pos[1] += self.velocity[1] 
+
+
+        self.center = [self.pos[0]+self.sprite.get_width()/3, self.pos[1] + self.sprite.get_height()/2]
+        
+        entity_rect = self.rect()
+
+        #when a bullet collides with a physics block, it leaves decals - based on their masks overlapping with the tiles. 
+        #add a black smudge effect to the tiles.
+
+        for rect_tile in tile_map.physics_rects_around(self.pos,self.size):
+            if entity_rect.colliderect(rect_tile[0]):
+                if rect_tile[1].type == 'stairs' and  rect_tile[1].variant.split(';')[0] in ['0','1']:
+                    #you check for separate collisions 
+                    #make separate rects for ramps 
+                    if rect_tile[1].variant.split(';')[0] == '0':
+                        #left stairs
+                        #this part where check rects are created is not dynamic, so if tilesize changes this part needs to be changed manually. maybe figure out a mathematical 
+                        #way to create rects. 
+                        check_rects = [pygame.Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
+                                       pygame.Rect(rect_tile[0].left + 12,rect_tile[0].top,4,12),
+                                       pygame.Rect(rect_tile[0].left + 6,rect_tile[0].top + 6,6,6)
+                                       ]
+                        for check_rect in check_rects:
+                            if entity_rect.colliderect(check_rect):
+                                kill = self.collision_handler(tile_map,check_rect,entity_rect,self.velocity[1] > 0 ,False)
+                    else: 
+                        check_rects = [pygame.Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
+                                       pygame.Rect(rect_tile[0].left,rect_tile[0].top,4,12),
+                                       pygame.Rect(rect_tile[0].left + 4,rect_tile[0].top + 6,6,6)
+                                       ]
+                        for check_rect in check_rects:
+                            if entity_rect.colliderect(check_rect):
+                                kill = self.collision_handler(tile_map,check_rect,entity_rect,self.velocity[1] > 0 ,False)
+                else: 
+                    kill = self.collision_handler(tile_map,rect_tile,entity_rect,self.velocity[1] > 0 ,False)
+
+
         if kill:
             
             del self 

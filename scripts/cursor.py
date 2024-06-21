@@ -8,6 +8,8 @@ CURSOR_ICONS = {
     "magnet": load_image("ui/inventory/cursor_magnet.png",background='transparent'),
     "move": load_image("ui/inventory/cursor_move.png",background='transparent'),
     "text": load_image("ui/inventory/cursor_text.png",background='transparent'),           # Added cursor text icon
+
+    "rifle_crosshair": load_image("cursor/default_cursor.png",background= 'black'),
 }
 
 class Cursor:
@@ -44,7 +46,10 @@ class Cursor:
             self.context.update(*self.pos, 3)
             self.context = None
 
-        if self.magnet:
+        if self.game.player.equipped: 
+            if self.game.player.cur_weapon.type =='rifle':
+                self.image = CURSOR_ICONS["rifle_crosshair"]
+        elif self.magnet:
             self.image = pygame.transform.scale(
                 CURSOR_ICONS["magnet"], (9 * 1, 10 * 1))
         elif self.move:

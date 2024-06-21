@@ -13,7 +13,7 @@ def load_image(path,background = 'black'):
      
     
     if background == 'black':
-        sprite = pygame.image.load(BASE_PATH + path).convert()
+        sprite = pygame.image.load(BASE_PATH + path)
         sprite.set_colorkey((0,0,0))
     elif background == 'transparent': 
         sprite= pygame.image.load(BASE_PATH + path)
