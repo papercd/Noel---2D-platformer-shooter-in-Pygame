@@ -45,6 +45,7 @@ class HUD:
            Inventory("items", 2,5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -68, 1, 1, bin_active= False,sorting_active=False) ,
        ]
        
+    
        
 
 

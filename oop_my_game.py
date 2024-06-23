@@ -18,6 +18,8 @@ from scripts.indicator import indicator
 from scripts.HUD import HUD 
 from scripts.grass import *
 
+from scripts.inventory import Item,ITEMS
+
 
 # ----------------------------------- quadtree imports 
 from scripts.quadtree import * 
@@ -277,7 +279,7 @@ class myGame:
 
 
 
-        self.inven_on = False 
+        self.inven_on = True 
         self.HUD = HUD(self.player,self.assets['health_UI'],self.display.get_size())
         
         
@@ -606,6 +608,8 @@ class myGame:
                 
                 #define when the right or left arrow keys are pressed, the corresponding player's movement variable varlues are changed. 
                 if event.type == pygame.KEYDOWN: 
+                    if event.key == pygame.K_c:
+                        self.HUD.Items_list[0].add_item(  Item(random.choice(list(ITEMS.keys())), 1))
                     if event.key == pygame.K_i:
                         self.inven_on = not self.inven_on
 
@@ -682,8 +686,8 @@ class myGame:
             
             self.HUD.render(self.display,self.cursor,offset=(0,0))
 
-            self.cursor.update(keys)
-            self.cursor.render(self.display)
+            self.cursor.update(keys,self.display)
+            #self.cursor.render(self.display)
 
             self.display_2.blit(self.display,(0,0))
             self.rot_func_t += self.dt * 100

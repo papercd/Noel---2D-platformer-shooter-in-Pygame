@@ -350,9 +350,10 @@ class Cell():
                 p.update(x, y, scale)
                 if p.life < 1:
                     self.particles.remove(p)
-        if expanded: 
+
+        if not expanded or (expanded and opacity == 255) : 
             if self.item is not None:
-                self.item.draw(*position, scale)
+                self.item.draw(*position,surf, scale)
                 if not cursor.box.colliderect(cell_box):
                     return
                 if cursor.cooldown != 0:
