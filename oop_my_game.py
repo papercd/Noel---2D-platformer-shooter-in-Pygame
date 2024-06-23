@@ -552,20 +552,9 @@ class myGame:
             
             #rapid fire and single fire toggle 
             if pygame.mouse.get_pressed()[0]:
-                if self.inven_on and (self.HUD.inven_list[0].position[0] <= self.cursor.pos[0] <= self.HUD.inven_list[0].position[0] + self.HUD.inven_list[0].box_size[0]*2) and (self.HUD.inven_list[0].position[1] <= self.cursor.pos[1] <= self.HUD.inven_list[0].position[1] + self.HUD.inven_list[0].box_size[1]//4):
-                    """
-                    if self.main_offset == None : 
-                        self.main_offset = (self.cursor.pos[0] - self.HUD.inven_list[0].position[0],self.cursor.pos[1] - self.HUD.inven_list[0].position[1])
-                    
-                    self.HUD.inven_list[0].position[0] = self.cursor.pos[0] - self.main_offset[0]
-                    self.HUD.inven_list[0].position[1] = self.cursor.pos[1] - self.main_offset[1]
-                    
-                    """
-
-                    #self.HUD.inven_list[0].position[0] -= offset[0]
-                    #self.HUD.inven_list[0].position[1] -= offset[1]
                 
-                elif self.player.weapon_toggle_state():
+                
+                if self.player.weapon_toggle_state():
                     #then you shoot. 
                     self.player.shoot_weapon(self.frame_count)
                 else:
@@ -688,8 +677,8 @@ class myGame:
                     self.player_cur_vel = min(0,self.player_cur_vel + self.accel_decel_rate)
             
             
-            if self.inven_on:
-                self.HUD.render_inven(self.cursor,self.display,(0,0))
+            
+            self.HUD.render_expanded(self.cursor,self.display,(0,0),closing = self.inven_on)
             
             self.HUD.render(self.display,self.cursor,offset=(0,0))
 

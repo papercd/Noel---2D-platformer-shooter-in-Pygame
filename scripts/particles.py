@@ -92,7 +92,7 @@ class non_animated_particle():
 
 
 class bullet_collide_particle:
-    def __init__(self,size, pos, angle, speed,color,tilemap,life = 60):
+    def __init__(self,size, pos, angle, speed,color,tilemap,life = 60,gravity_factor = 1):
         self.pos = list(pos)
         self.angle = angle
         self.speed = speed
@@ -102,6 +102,8 @@ class bullet_collide_particle:
         self.velocity = [0,0]
         self.life = life
         self.size = size 
+        
+        self.gravity_factor= gravity_factor
         self.create_surf()
     
     def create_surf(self):
@@ -113,7 +115,7 @@ class bullet_collide_particle:
 
     def update(self,dt):
         self.time +=1
-        self.velocity[1] = min(5,self.velocity[1] +0.20)
+        self.velocity[1] = min(5,self.velocity[1] +0.20 / self.gravity_factor)
 
         for rect_tile in self.tilemap.physics_rects_around(self.pos,(1,1)):
             if self.rect.colliderect(rect_tile[0]):

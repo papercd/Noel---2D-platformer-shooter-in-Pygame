@@ -553,17 +553,24 @@ class Tilemap:
                 return None 
 
     
-    def return_color(self,rect):
-        tile = self.return_tile(rect)
+    def return_color(self,rect, side = None):
+        
+        sample_loc = {'left': (0,7),'right': (7,7), 'top': (7,0), 'bottom': (7,15), None: (7,7) } 
+
+        if isinstance(rect, pygame.Rect):
+            tile = self.return_tile(rect)
+            
+        else: 
+            tile = self.return_tile(None,pos=rect)
+        
         variant_sub = tile.variant.split(';')
         if  isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
         #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
             tile_img = self.game.assets[tile.type][int(variant_sub[0])][int(variant_sub[1])]
         else: 
-             tile_img = self.game.assets[tile.type][int(variant_sub[0])]
+            tile_img = self.game.assets[tile.type][int(variant_sub[0])]
 
-        return tile_img.get_at((8,8))
-    
+        return tile_img.get_at(sample_loc[side] )
 
     def autotile(self,random_ = False):
         dicts = [self.tilemap]
