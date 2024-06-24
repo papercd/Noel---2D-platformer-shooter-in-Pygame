@@ -550,8 +550,8 @@ class myGame:
             self.display.blit(lights_display,( 0, 0),special_flags= pygame.BLEND_RGB_MULT)
 
            
+            
 
-           
             #rapid fire and single fire toggle 
             if pygame.mouse.get_pressed()[0]:
                 if not self.cursor.interacting:

@@ -9,7 +9,11 @@ CELL = load_image("ui/inventory/tile.png",background="transparent")
 CELL_SELECTED = load_image("ui/inventory/tile_selected.png",background="transparent")
 BIN_CELL = load_image("ui/inventory/tile_bin.jpg",background="transparent")
 BIN_CELL_SELECTED = load_image("ui/inventory/tile_bin_selected.jpg",background="transparent")
-BOUNDING_BOX = load_image("ui/inventory/expanded_inven_bounding_box.png",background="transparent")
+Bounding_boxes = {
+    "item" : load_image("ui/inventory/expanded_inven_bounding_box.png",background="transparent"),
+    "weapon" : load_image("ui/inventory/expanded_weapon_bounding_box.png",background="transparent"),
+
+}
 
 CURSOR_ICONS = {
     "cursor": load_image("ui/inventory/cursor.png",background='transparent'),
@@ -313,8 +317,9 @@ class Weapon(Item):
 
 class Cell():
 
-    def __init__(self, item=None) -> None:
+    def __init__(self,type = None, item=None) -> None:
         self.item = item
+        self.type = type
         self.particles = []
 
     def draw(self, scale, selected):
@@ -362,8 +367,12 @@ class Cell():
                 
                 if cursor.cooldown != 0:
                     return
+                
+                
 
                 if cursor.magnet and cursor.item.name == self.item.name and self.item.stackable:
+                    if not (cursor.item.type == self.type ):
+                        return
                     amount = stack_limit - cursor.item.amount
                     if self.item.amount + cursor.item.amount <= stack_limit:
                         cursor.item.amount += self.item.amount
@@ -383,6 +392,7 @@ class Cell():
                         for i in range(len(inventory_list)):
                             index = index + \
                                 1 if index < len(inventory_list) - 1 else 0
+                            if self.item.type != inventory_list[index][1].name: index = index +1 if index < len(inventory_list) -1 else 0
                             if index == inventory_id:
                                 break
                             if inventory_list[index][1].capacity != inventory_list[index][1].item_count:
@@ -409,17 +419,23 @@ class Cell():
                     if cursor.cooldown != 0:
                         return
                     if cursor.pressed[0] and cursor.item.name == self.item.name and self.item.amount + cursor.item.amount <= stack_limit and self.item.stackable:
+                        if not (cursor.item.type == self.type ):
+                            return
                         self.item.amount += cursor.item.amount
                         cursor.item = None
                         self.particles.append(Dust())
                         cursor.set_cooldown()
                     elif cursor.pressed[0] and cursor.item.name == self.item.name and self.item.stackable:
+                        if not (cursor.item.type == self.type ):
+                            return
                         amount = stack_limit - self.item.amount
                         self.item.amount += amount
                         cursor.item.amount -= amount
                         self.particles.append(Dust())
                         cursor.set_cooldown()
                     elif cursor.pressed[0]:
+                        if not (cursor.item.type == self.type ):
+                            return
                         temp = cursor.item.copy()
                         cursor.item = self.item
                         self.item = temp
@@ -428,11 +444,15 @@ class Cell():
             elif cursor.item is not None and cursor.box.colliderect(cell_box) and cursor.cooldown == 0:
                 
                 if cursor.pressed[0]:
+                    if not (cursor.item.type == self.type ):
+                            return
                     self.item = cursor.item
                     cursor.item = None
                     self.particles.append(Dust())
                     cursor.set_cooldown()
                 elif cursor.pressed[2] and cursor.item.stackable:
+                    if not (cursor.item.type == self.type ):
+                            return
                     if cursor.item.amount > 1:
                         half = cursor.item.amount // 2
                         self.item = cursor.item.copy()
@@ -494,10 +514,10 @@ class Inventory():
         self.name = name
         self.name_obj = alphabets(self.name)
 
-        self.done_open = 4
+        self.done_open = 0
         self.rows = rows
         self.columns = columns
-        self.cells = [[Cell() for i in range(columns)] for j in range(rows)]
+        self.cells = [[Cell(self.name) for i in range(columns)] for j in range(rows)]
         self.position = [x, y]
         self.scale = scale
         self.stack_limit = stack_limit
@@ -607,13 +627,16 @@ class Inventory():
             cur_opacity =  255* (self.done_open/4 )# a function of the current state, which is self.done_open
                                                    # the bounding box of the inventory is going to be blitted with an opacity that is a function of the self.done_open value. 
 
-            offset = (surf.get_height() -102- self.position[1])  * (self.done_open/4)
+            offset = 10  * (self.done_open/4)
 
-            image = BOUNDING_BOX
+
+
+
+            image = Bounding_boxes[self.name]
             image.set_alpha(cur_opacity)
 
         
-            surf.blit(image,(self.position[0]-1,self.position[1]- offset-10+ 13*self.scale))
+            surf.blit(image,(self.position[0]-1,self.position[1] -10+ offset+13*self.scale))
 
             """
             pygame.draw.rect(
@@ -675,6 +698,7 @@ class Inventory_Engine():
        
         interacting = False
         for i, inventory in enumerate(self.inventory_list):
+            
             check = inventory[1].update(surf,i, self.inventory_list, cursor, text,inventory[0],closing)
             interacting = check or interacting 
 

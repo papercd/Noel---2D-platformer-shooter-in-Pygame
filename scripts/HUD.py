@@ -41,10 +41,13 @@ class HUD:
 
        #create the inventories
        self.Items_list = [
-           (False,Inventory("Items_selected", 1, 5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -22 , 1, 1, bin_active=False)),
-           (True,Inventory("items", 2,5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -68, 1, 1, bin_active= False,sorting_active=False)),
+           (False,Inventory("item", 1, 5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -22 , 1, 16, bin_active=False)),
+           (True,Inventory("item", 2,5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -68, 1, 16, bin_active= False,sorting_active=False)),
+           (True,Inventory("weapon",1,5,self.health_bar_render_position[0] +120  , self.inven_panel.topleft[1] - 46,1,1,bin_active=False,sorting_active=False))
        ]
        
+      
+    
        self.items_engine = Inventory_Engine(self.Items_list)
     
        
@@ -82,11 +85,12 @@ class HUD:
         stamina_ind.render(self.stamina_bar.x+self.stamina_bar.w//2,self.stamina_bar.y-1,surf)
         """
         #render the weapon panel 
-        self.inven_panel.render(surf,offset)
+        self.inven_panel.render(surf,offset,expanded = closing)
 
         #render the items
         self.items_engine.update(surf,cursor,closing,"")
 
+  
 
         # self.Items_list[0].update(surf,0,self.Items_list,cursor,"")
 

@@ -74,8 +74,8 @@ class Cursor:
                     CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))    
         else: 
             if self.game.player.equipped:
-                if self.game.player.cur_weapon.type =='rifle':
-                    self.image = CURSOR_ICONS["rifle_crosshair"]
+                
+                self.image = CURSOR_ICONS["rifle_crosshair"]
         surf.blit(self.image,(self.pos[0] - self.aim_offset[0],self.pos[1] - self.aim_offset[1]))
 
 
