@@ -41,13 +41,14 @@ class HUD:
 
        #create the inventories
        self.Items_list = [
-           Inventory("Items_selected", 1, 5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -22 , 1, 1, bin_active=False),
-           Inventory("items", 2,5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -68, 1, 1, bin_active= False,sorting_active=False) ,
+           (False,Inventory("Items_selected", 1, 5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -22 , 1, 1, bin_active=False)),
+           (True,Inventory("items", 2,5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -68, 1, 1, bin_active= False,sorting_active=False)),
        ]
        
+       self.items_engine = Inventory_Engine(self.Items_list)
     
        
-
+    """
 
     def render_expanded(self,cursor,surf,offset= [0,0], closing = True): 
         self.Items_list[1].update(surf,1,self.Items_list,cursor,"", expanded = True , closing = closing)
@@ -55,9 +56,9 @@ class HUD:
     
         #self.inven_list[0].update(surf,0,self.inven_list,cursor,"") 
         
+    """
 
-
-    def render(self,surf,cursor,offset = [0,0]):
+    def render(self,surf,cursor,offset = [0,0],closing = True):
         #render character face 
 
 
@@ -84,7 +85,10 @@ class HUD:
         self.inven_panel.render(surf,offset)
 
         #render the items
-        self.Items_list[0].update(surf,0,self.Items_list,cursor,"")
+        self.items_engine.update(surf,cursor,closing,"")
+
+
+        # self.Items_list[0].update(surf,0,self.Items_list,cursor,"")
 
 
 #cur opacity, cur position, done-ness 

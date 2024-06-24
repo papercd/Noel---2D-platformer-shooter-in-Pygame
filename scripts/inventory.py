@@ -332,10 +332,11 @@ class Cell():
     def update(self, x, y,surf, scale, stack_limit, inventory_id, inventory_list, cursor,expanded,opacity) -> None:
         position =[x, y]
 
+
         cell_box = pygame.Rect(
             *position, 20 * scale, 20 * scale)
 
-        if cursor.box.colliderect(cell_box):
+        if cursor.box.colliderect(cell_box): 
             position[0] -= 1
             position[1] -= 1
             image = self.draw(scale, 1)
@@ -352,10 +353,13 @@ class Cell():
                     self.particles.remove(p)
 
         if not expanded or (expanded and opacity == 255) : 
+            
             if self.item is not None:
+                
                 self.item.draw(*position,surf, scale)
                 if not cursor.box.colliderect(cell_box):
                     return
+                
                 if cursor.cooldown != 0:
                     return
 
@@ -381,11 +385,11 @@ class Cell():
                                 1 if index < len(inventory_list) - 1 else 0
                             if index == inventory_id:
                                 break
-                            if inventory_list[index].capacity != inventory_list[index].item_count:
+                            if inventory_list[index][1].capacity != inventory_list[index][1].item_count:
                                 break
                         temp = self.item.copy()
                         self.item = None
-                        inventory_list[index].add_item(temp)
+                        inventory_list[index][1].add_item(temp)
                         self.particles.append(Dust())
                         cursor.set_cooldown()
 
@@ -422,6 +426,7 @@ class Cell():
                         self.particles.append(Dust())
                         cursor.set_cooldown()
             elif cursor.item is not None and cursor.box.colliderect(cell_box) and cursor.cooldown == 0:
+                
                 if cursor.pressed[0]:
                     self.item = cursor.item
                     cursor.item = None
@@ -439,6 +444,7 @@ class Cell():
 
                     self.particles.append(Dust())
                     cursor.set_cooldown()
+
 
 
 class Bin(Cell):
@@ -498,7 +504,12 @@ class Inventory():
         self.capacity = rows * columns
         self.item_count = 0
         self.bin = bin_active
-        self.box_size = (self.columns * 20 * self.scale + 4 * self.scale, self.rows * 20 * self.scale + 18 * self.scale + (20 * self.scale if self.bin else 0))
+        self.box_size = (self.columns * 28 * self.scale + 2 * self.scale, self.rows * 22 * self.scale + 2 * self.scale )
+
+        self.rect = pygame.Rect(self.position[0] ,self.position[1] + 16* self.scale,*self.box_size)
+
+
+
         if self.capacity >= 6 and self.columns >= 3 and sorting_active:
             self.buttons = [
                 self.Inventory_Sorting_Button(x, self) for x in list(INVENTORY_SORTING_BUTTONS.keys()) if x != "select"
@@ -577,14 +588,20 @@ class Inventory():
                 return 2
 
     def update(self, surf,inventory_id, inventory_list, cursor, text, expanded = False, closing = False) -> None:
+        
+        
+        
+         
+        interacting = self.rect.colliderect(cursor.box) 
+        
         self.item_count = self.get_item_count()
-
         cur_opacity = 255
 
         if expanded: 
             if closing:
+                interacting = False
                 self.done_open = max(0,self.done_open-1) 
-            else: 
+            else:
                 self.done_open = min(4,self.done_open +1)
         
             cur_opacity =  255* (self.done_open/4 )# a function of the current state, which is self.done_open
@@ -614,11 +631,16 @@ class Inventory():
                      self.scale - 9 * self.scale - i * 12 * self.scale, self.position[1] + 4 * self.scale,surf, self.scale, cursor)
         """
 
+
+
         for i, row in enumerate(self.cells):
             for j, cell in enumerate(row):
                 cell.update(self.position[0] + (j * 28 * self.scale) + 2 * self.scale,
                             self.position[1] + (i * 22 * self.scale) + 16 * self.scale,surf, self.scale, self.stack_limit, inventory_id, inventory_list, cursor,expanded,cur_opacity)
-                
+
+            
+             
+                            
         """
         bin_cell = Bin()
         if self.bin:
@@ -640,15 +662,25 @@ class Inventory():
                         shade.fill((0, 0, 0))
                         surf.blit(shade,
                                  (self.position[0] + (j * 20 * self.scale) + 2 * self.scale + 2 * self.scale, self.position[1] + (i * 20 * self.scale) + 16 * self.scale + 2 * self.scale))
+        
+        return interacting
+
 
 
 class Inventory_Engine():
     def __init__(self, inventory_list) -> None:
         self.inventory_list = inventory_list
 
-    def update(self, cursor, text) -> None:
+    def update(self,surf, cursor, closing, text) -> None:
+       
+        interacting = False
         for i, inventory in enumerate(self.inventory_list):
-            inventory.update(i, self.inventory_list, cursor, text)
+            check = inventory[1].update(surf,i, self.inventory_list, cursor, text,inventory[0],closing)
+            interacting = check or interacting 
+
+        cursor.interacting =  interacting
+
+       
 
 # Search bar class *Xini
 

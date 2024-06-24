@@ -12,6 +12,19 @@ from scripts.spark import Spark
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
 
 
+#a body class to implement a more accurate body with better physics that require rotation, 
+#utilizing the pymunk module. 
+
+class Accurate_Rect_Body():
+    def __init__(self) -> None:
+        pass
+
+    def update(self):
+        pass 
+
+    def render(self,surf,offset= [0,0]):
+        pass 
+
 class PhysicsEntity:
    
     def __init__(self,game,e_type,pos,size):
