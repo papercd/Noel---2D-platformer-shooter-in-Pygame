@@ -2,12 +2,18 @@ from pygame.locals import *
 import pygame
 import random 
 from scripts.utils import load_images,load_image
+from scripts.alphabet import alphabets
 import os 
 
 CELL = load_image("ui/inventory/tile.png",background="transparent")
 CELL_SELECTED = load_image("ui/inventory/tile_selected.png",background="transparent")
 BIN_CELL = load_image("ui/inventory/tile_bin.jpg",background="transparent")
 BIN_CELL_SELECTED = load_image("ui/inventory/tile_bin_selected.jpg",background="transparent")
+Bounding_boxes = {
+    "item" : load_image("ui/inventory/expanded_inven_bounding_box.png",background="transparent"),
+    "weapon" : load_image("ui/inventory/expanded_weapon_bounding_box.png",background="transparent"),
+
+}
 
 CURSOR_ICONS = {
     "cursor": load_image("ui/inventory/cursor.png",background='transparent'),
@@ -311,8 +317,9 @@ class Weapon(Item):
 
 class Cell():
 
-    def __init__(self, item=None) -> None:
+    def __init__(self,type = None, item=None) -> None:
         self.item = item
+        self.type = type
         self.particles = []
 
     def draw(self, scale, selected):
@@ -327,19 +334,21 @@ class Cell():
                 image = pygame.transform.scale(CELL, (20 * scale, 20 * scale))
         return image
 
-    def update(self, x, y,surf, scale, stack_limit, inventory_id, inventory_list, cursor) -> None:
+    def update(self, x, y,surf, scale, stack_limit, inventory_id, inventory_list, cursor,expanded,opacity) -> None:
         position =[x, y]
+
 
         cell_box = pygame.Rect(
             *position, 20 * scale, 20 * scale)
 
-        if cursor.box.colliderect(cell_box):
+        if cursor.box.colliderect(cell_box): 
             position[0] -= 1
             position[1] -= 1
             image = self.draw(scale, 1)
         else:
             image = self.draw(scale, 0)
 
+        image.set_alpha(opacity)
         surf.blit(image, position)
 
         if len(self.particles) > 0:
@@ -348,93 +357,114 @@ class Cell():
                 if p.life < 1:
                     self.particles.remove(p)
 
-        if self.item is not None:
-            self.item.draw(*position, scale)
-            if not cursor.box.colliderect(cell_box):
-                return
-            if cursor.cooldown != 0:
-                return
-
-            if cursor.magnet and cursor.item.name == self.item.name and self.item.stackable:
-                amount = stack_limit - cursor.item.amount
-                if self.item.amount + cursor.item.amount <= stack_limit:
-                    cursor.item.amount += self.item.amount
-                    self.item = None
-                else:
-                    cursor.item.amount += amount
-                    self.item.amount -= amount
-
-                self.particles.append(Dust())
-                cursor.set_cooldown()
-
-            if cursor.item is None:
-                cursor.context = Cursor_Context_Box(
-                    self.item.get_name(), self.item.get_description(), 0 if True else 1)
-                if cursor.pressed[0] and cursor.move:
-                    index = inventory_id
-                    for i in range(len(inventory_list)):
-                        index = index + \
-                            1 if index < len(inventory_list) - 1 else 0
-                        if index == inventory_id:
-                            break
-                        if inventory_list[index].capacity != inventory_list[index].item_count:
-                            break
-                    temp = self.item.copy()
-                    self.item = None
-                    inventory_list[index].add_item(temp)
-                    self.particles.append(Dust())
-                    cursor.set_cooldown()
-
-                elif cursor.pressed[0]:
-                    cursor.item = self.item
-                    self.item = None
-                    self.particles.append(Dust())
-                    cursor.set_cooldown()
-                elif cursor.pressed[2] and self.item.amount > 1:
-                    half = self.item.amount // 2
-                    cursor.item = self.item.copy()
-                    cursor.item.amount = half
-                    self.item.amount -= half
-                    self.particles.append(Dust())
-                    cursor.set_cooldown()
-            else:
+        if not expanded or (expanded and opacity == 255) : 
+            
+            if self.item is not None:
+                
+                self.item.draw(*position,surf, scale)
+                if not cursor.box.colliderect(cell_box):
+                    return
+                
                 if cursor.cooldown != 0:
                     return
-                if cursor.pressed[0] and cursor.item.name == self.item.name and self.item.amount + cursor.item.amount <= stack_limit and self.item.stackable:
-                    self.item.amount += cursor.item.amount
-                    cursor.item = None
+                
+                
+
+                if cursor.magnet and cursor.item.name == self.item.name and self.item.stackable:
+                    if not (cursor.item.type == self.type ):
+                        return
+                    amount = stack_limit - cursor.item.amount
+                    if self.item.amount + cursor.item.amount <= stack_limit:
+                        cursor.item.amount += self.item.amount
+                        self.item = None
+                    else:
+                        cursor.item.amount += amount
+                        self.item.amount -= amount
+
                     self.particles.append(Dust())
                     cursor.set_cooldown()
-                elif cursor.pressed[0] and cursor.item.name == self.item.name and self.item.stackable:
-                    amount = stack_limit - self.item.amount
-                    self.item.amount += amount
-                    cursor.item.amount -= amount
-                    self.particles.append(Dust())
-                    cursor.set_cooldown()
-                elif cursor.pressed[0]:
-                    temp = cursor.item.copy()
-                    cursor.item = self.item
-                    self.item = temp
-                    self.particles.append(Dust())
-                    cursor.set_cooldown()
-        elif cursor.item is not None and cursor.box.colliderect(cell_box) and cursor.cooldown == 0:
-            if cursor.pressed[0]:
-                self.item = cursor.item
-                cursor.item = None
-                self.particles.append(Dust())
-                cursor.set_cooldown()
-            elif cursor.pressed[2] and cursor.item.stackable:
-                if cursor.item.amount > 1:
-                    half = cursor.item.amount // 2
-                    self.item = cursor.item.copy()
-                    self.item.amount = half
-                    cursor.item.amount -= half
+
+                if cursor.item is None:
+                    cursor.context = Cursor_Context_Box(
+                        self.item.get_name(), self.item.get_description(), 0 if True else 1)
+                    if cursor.pressed[0] and cursor.move:
+                        index = inventory_id
+                        for i in range(len(inventory_list)):
+                            index = index + \
+                                1 if index < len(inventory_list) - 1 else 0
+                            if self.item.type != inventory_list[index][1].name: index = index +1 if index < len(inventory_list) -1 else 0
+                            if index == inventory_id:
+                                break
+                            if inventory_list[index][1].capacity != inventory_list[index][1].item_count:
+                                break
+                        temp = self.item.copy()
+                        self.item = None
+                        inventory_list[index][1].add_item(temp)
+                        self.particles.append(Dust())
+                        cursor.set_cooldown()
+
+                    elif cursor.pressed[0]:
+                        cursor.item = self.item
+                        self.item = None
+                        self.particles.append(Dust())
+                        cursor.set_cooldown()
+                    elif cursor.pressed[2] and self.item.amount > 1:
+                        half = self.item.amount // 2
+                        cursor.item = self.item.copy()
+                        cursor.item.amount = half
+                        self.item.amount -= half
+                        self.particles.append(Dust())
+                        cursor.set_cooldown()
                 else:
+                    if cursor.cooldown != 0:
+                        return
+                    if cursor.pressed[0] and cursor.item.name == self.item.name and self.item.amount + cursor.item.amount <= stack_limit and self.item.stackable:
+                        if not (cursor.item.type == self.type ):
+                            return
+                        self.item.amount += cursor.item.amount
+                        cursor.item = None
+                        self.particles.append(Dust())
+                        cursor.set_cooldown()
+                    elif cursor.pressed[0] and cursor.item.name == self.item.name and self.item.stackable:
+                        if not (cursor.item.type == self.type ):
+                            return
+                        amount = stack_limit - self.item.amount
+                        self.item.amount += amount
+                        cursor.item.amount -= amount
+                        self.particles.append(Dust())
+                        cursor.set_cooldown()
+                    elif cursor.pressed[0]:
+                        if not (cursor.item.type == self.type ):
+                            return
+                        temp = cursor.item.copy()
+                        cursor.item = self.item
+                        self.item = temp
+                        self.particles.append(Dust())
+                        cursor.set_cooldown()
+            elif cursor.item is not None and cursor.box.colliderect(cell_box) and cursor.cooldown == 0:
+                
+                if cursor.pressed[0]:
+                    if not (cursor.item.type == self.type ):
+                            return
                     self.item = cursor.item
                     cursor.item = None
+                    self.particles.append(Dust())
+                    cursor.set_cooldown()
+                elif cursor.pressed[2] and cursor.item.stackable:
+                    if not (cursor.item.type == self.type ):
+                            return
+                    if cursor.item.amount > 1:
+                        half = cursor.item.amount // 2
+                        self.item = cursor.item.copy()
+                        self.item.amount = half
+                        cursor.item.amount -= half
+                    else:
+                        self.item = cursor.item
+                        cursor.item = None
 
-                self.particles.append(Dust())
-                cursor.set_cooldown()
+                    self.particles.append(Dust())
+                    cursor.set_cooldown()
+
 
 
 class Bin(Cell):
@@ -482,16 +512,24 @@ class Inventory():
 
     def __init__(self, name, rows, columns, x, y, scale=3, stack_limit=99, sorting_active=True, bin_active=False) -> None:
         self.name = name
+        self.name_obj = alphabets(self.name)
+
+        self.done_open = 0
         self.rows = rows
         self.columns = columns
-        self.cells = [[Cell() for i in range(columns)] for j in range(rows)]
+        self.cells = [[Cell(self.name) for i in range(columns)] for j in range(rows)]
         self.position = [x, y]
         self.scale = scale
         self.stack_limit = stack_limit
         self.capacity = rows * columns
         self.item_count = 0
         self.bin = bin_active
-        self.box_size = (self.columns * 20 * self.scale + 4 * self.scale, self.rows * 20 * self.scale + 18 * self.scale + (20 * self.scale if self.bin else 0))
+        self.box_size = (self.columns * 28 * self.scale + 2 * self.scale, self.rows * 22 * self.scale + 2 * self.scale )
+
+        self.rect = pygame.Rect(self.position[0] ,self.position[1] + 16* self.scale,*self.box_size)
+
+
+
         if self.capacity >= 6 and self.columns >= 3 and sorting_active:
             self.buttons = [
                 self.Inventory_Sorting_Button(x, self) for x in list(INVENTORY_SORTING_BUTTONS.keys()) if x != "select"
@@ -569,31 +607,69 @@ class Inventory():
             case "item":
                 return 2
 
-    def update(self, surf,inventory_id, inventory_list, cursor, text) -> None:
+    def update(self, surf,inventory_id, inventory_list, cursor, text, expanded = False, closing = False) -> None:
+        
+        
+        
+         
+        interacting = self.rect.colliderect(cursor.box) 
+        
         self.item_count = self.get_item_count()
-        """
-        pygame.draw.rect(
-            surf, (31, 31, 31), (*self.position,self.box_size[0],self.box_size[1]),border_radius= 2)
-        """
+        cur_opacity = 255
+
+        if expanded: 
+            if closing:
+                interacting = False
+                self.done_open = max(0,self.done_open-1) 
+            else:
+                self.done_open = min(4,self.done_open +1)
+        
+            cur_opacity =  255* (self.done_open/4 )# a function of the current state, which is self.done_open
+                                                   # the bounding box of the inventory is going to be blitted with an opacity that is a function of the self.done_open value. 
+
+            offset = 10  * (self.done_open/4)
+
+
+
+
+            image = Bounding_boxes[self.name]
+            image.set_alpha(cur_opacity)
+
+        
+            surf.blit(image,(self.position[0]-1,self.position[1] -10+ offset+13*self.scale))
+
+            """
+            pygame.draw.rect(
+                surf, (31, 31, 31,cur_opacity), (*self.position,self.box_size[0],self.box_size[1]),border_radius= 2)
+            """
         """
         inventory_title = FONT["24"].render(
             self.name, 1, (255, 255, 255))
         surf.blit(inventory_title,
                  (self.position[0] + 4 * self.scale, self.position[1] + 4 * self.scale))
         """
-        
+        """
         for i, b in enumerate(self.buttons):
             b.update(self.position[0] + 20 * self.columns *
-                     self.scale - 9 * self.scale - i * 12 * self.scale, self.position[1] + 4 * self.scale, self.scale, cursor)
+                     self.scale - 9 * self.scale - i * 12 * self.scale, self.position[1] + 4 * self.scale,surf, self.scale, cursor)
+        """
+
+
 
         for i, row in enumerate(self.cells):
             for j, cell in enumerate(row):
                 cell.update(self.position[0] + (j * 28 * self.scale) + 2 * self.scale,
-                            self.position[1] + (i * 20 * self.scale) + 16 * self.scale,surf, self.scale, self.stack_limit, inventory_id, inventory_list, cursor)
+                            self.position[1] + (i * 22 * self.scale) + 16 * self.scale,surf, self.scale, self.stack_limit, inventory_id, inventory_list, cursor,expanded,cur_opacity)
+
+            
+             
+                            
+        """
         bin_cell = Bin()
         if self.bin:
             bin_cell.update(self.position[0] + ((len(self.cells[0]) - 1) * 20 * self.scale) + 2 * self.scale,
                             self.position[1] + (len(self.cells) * 20 * self.scale) + 16 * self.scale, surf,self.scale, self.stack_limit, inventory_id, inventory_list, cursor)
+                        """
 
         # search shading and highlighting red (graphics not fully implemented but just the POC here)
         if text != "":
@@ -609,15 +685,26 @@ class Inventory():
                         shade.fill((0, 0, 0))
                         surf.blit(shade,
                                  (self.position[0] + (j * 20 * self.scale) + 2 * self.scale + 2 * self.scale, self.position[1] + (i * 20 * self.scale) + 16 * self.scale + 2 * self.scale))
+        
+        return interacting
+
 
 
 class Inventory_Engine():
     def __init__(self, inventory_list) -> None:
         self.inventory_list = inventory_list
 
-    def update(self, cursor, text) -> None:
+    def update(self,surf, cursor, closing, text) -> None:
+       
+        interacting = False
         for i, inventory in enumerate(self.inventory_list):
-            inventory.update(i, self.inventory_list, cursor, text)
+            
+            check = inventory[1].update(surf,i, self.inventory_list, cursor, text,inventory[0],closing)
+            interacting = check or interacting 
+
+        cursor.interacting =  interacting
+
+       
 
 # Search bar class *Xini
 

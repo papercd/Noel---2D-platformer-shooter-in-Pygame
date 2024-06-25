@@ -12,6 +12,19 @@ from scripts.spark import Spark
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
 
 
+#a body class to implement a more accurate body with better physics that require rotation, 
+#utilizing the pymunk module. 
+
+class Accurate_Rect_Body():
+    def __init__(self) -> None:
+        pass
+
+    def update(self):
+        pass 
+
+    def render(self,surf,offset= [0,0]):
+        pass 
+
 class PhysicsEntity:
    
     def __init__(self,game,e_type,pos,size):
@@ -57,6 +70,12 @@ class PhysicsEntity:
     
     def update_pos(self, tile_map, movement = (0,0)):
         
+        if movement[0] > 0:
+            self.flip = False
+        if movement[0] < 0 :
+            self.flip = True 
+
+        self.animation.update()
         
         self.collisions = {'up' :False,'down' : False, 'left': False, 'right': False }
         
@@ -89,7 +108,7 @@ class PhysicsEntity:
                         self.collisions['left'] = True
                         entity_rect.left = rect_tile[0].right 
                     self.pos[0] = entity_rect.x 
-        
+                
 
        
 
@@ -181,19 +200,14 @@ class PhysicsEntity:
                          
                         self.collisions['down'] = True
                     """
-                    pass 
+                
 
                     
                         
 
                     
                     
-        if movement[0] > 0:
-            self.flip = False
-        if movement[0] < 0 :
-            self.flip = True 
-
-        self.animation.update()
+       
 
         
 
@@ -927,6 +941,7 @@ class PlayerEntity(PhysicsEntity):
         self.weapon_inven = []
         self.weapon_inven_size = 5 # maximum size of carry 
         
+
         self.change_weapon_inc = False
         self.changing_done = 0 
         self.change_scroll = 0
@@ -945,7 +960,7 @@ class PlayerEntity(PhysicsEntity):
         self.on_wall = self.collisions['left'] or self.collisions['right']
         self.air_time = 0
       
-        self.is_shooting = False
+        
 
         #attributes required to implement double tap 
       
@@ -1011,6 +1026,7 @@ class PlayerEntity(PhysicsEntity):
         self.stamina = min(100, self.stamina + self.recov_rate)
         self.air_time +=1
         
+        
         self.changing_done += self.change_weapon_inc
         if self.changing_done == 6:
             self.change_weapon(self.change_scroll)
@@ -1028,17 +1044,38 @@ class PlayerEntity(PhysicsEntity):
         #defined already. 
 
         if self.collisions['down']:
+            if self.y_inertia > 6:
+                self.set_state('land')
+            entry_pos = (self.rect().centerx,self.rect().bottom)
+            for offset in (0,-tile_map.tile_size,tile_map.tile_size):
+                if tile_map.solid_check((entry_pos[0]+offset,entry_pos[1])):
+                    color = tile_map.return_color((entry_pos[0]+offset,entry_pos[1]),side ='top')
+                    break
+
+
+
+            offsets = [(-2,0),(-1,0), (0,0), (1,0),(2,0)]                
+            for i in range(min(8,self.y_inertia//2)):
+                offset = random.choice(offsets)
+                self.game.non_animated_particles.append(bullet_collide_particle(random.choice([(1,1),(2,1),(1,2),(3,1),(1,3),(2,2)]), (entry_pos[0] - offset[0],entry_pos[1] ) ,-90 + random.randint(-88,88),2.4+random.random(),color,tile_map,gravity_factor= 1.4 * min(8,self.y_inertia//2)/5))
+        
+
+
             if self.y_inertia > 12 and self.y_inertia <35:
                 land_smoke = Particle(self.game,'land',(self.pos[0] +8,self.pos[1]+14),'player')
                 self.game.particles.append(land_smoke)
                 self.game.screen_shake = max(5,self.game.screen_shake)
                 self.hard_land_recovery_time = 7
-                self.set_state('land')
+                #self.set_state('land')
+                
+
+                
+                
                 
             elif self.y_inertia >= 35:
                 land_smoke = Particle(self.game,'big_land',(self.pos[0] +7,self.pos[1]+7),'player')
                 self.game.particles.append(land_smoke)
-                self.set_state('land')
+                #self.set_state('land')
                 self.game.screen_shake = max(16,self.game.screen_shake)
                 self.animation.img_dur = 5
                 self.hard_land_recovery_time = 20
@@ -1132,11 +1169,14 @@ class PlayerEntity(PhysicsEntity):
     
     def render(self,surf,offset):
         
+        knockback = (0,0) if not self.equipped else (self.cur_weapon.knockback[0]/5,self.cur_weapon.knockback[1]/9)
 
-        super().render(surf,offset)
+        super().render(surf,(offset[0] - knockback[0],offset[1] - knockback[1]))
+
+
         if self.hit_mask:
             for offset_ in [(-1,0),(1,0),(0,-1),(0,1)]:
-                surf.blit(self.hit_mask.to_surface(unsetcolor=(0,0,0,0),setcolor=(255,255,255,255)),(self.pos[0] - offset[0]+offset_[0],self.pos[1]-offset[1]+offset_[1]))
+                surf.blit(self.hit_mask.to_surface(unsetcolor=(0,0,0,0),setcolor=(255,255,255,255)),(self.pos[0] - offset[0]+offset_[0] - knockback[0],self.pos[1]-offset[1]+offset_[1]- knockback[1]))
             self.hit_mask = None
 
         """
@@ -1303,7 +1343,7 @@ class PlayerEntity(PhysicsEntity):
                 """
           
                 self.cur_weapon.shoot(self.time,self.d_cursor_pos) 
-                
+               
                 #self.game.Tilemap.bullets.append(shot_bullet)
                 #self.game.bullets_on_screen.append(shot_bullet)
 
@@ -1352,6 +1392,8 @@ class Grenade(Item):
         pass 
 
 
+
+
 class Bullet(PhysicsEntity): 
     def __init__(self,game,pos,size,sprite,type):
         super().__init__(game,'bullet',pos,size)
@@ -1390,7 +1432,11 @@ class Bullet(PhysicsEntity):
         end_point = [self.center[0]+og_end_point_vec[0] - (self.sprite.get_width()/2 if self.velocity[0] >=0 else 0),self.center[1] + og_end_point_vec[1]] 
         
         entry_pos = ( rect_tile.left if dir else rect_tile.right ,end_point[1]) if axis else (end_point[0],rect_tile.top if dir else rect_tile.bottom )
-        color = tilemap.return_color(rect_tile)
+
+        sample_side = {(True,True) : 'left',(False,True) : 'right',(True,False) : 'top',(False,False) : 'bottom'}
+
+
+        color = tilemap.return_color(rect_tile,sample_side[(dir,axis)])
         
         #you need to tweak the particle spawning positions depending on the side where the bullet has hit, and make the spawning position more 
         #precise. 
@@ -1449,9 +1495,7 @@ class Bullet(PhysicsEntity):
         #make collision detection more precise. 
         
         self.pos[0] += self.velocity[0] 
-        
         self.center = [self.pos[0]+self.sprite.get_width()/3, self.pos[1] + self.sprite.get_height()/2]
-        
         entity_rect = self.rect()
 
         #when a bullet collides with a physics block, it leaves decals - based on their masks overlapping with the tiles. 
@@ -1610,9 +1654,6 @@ class Bullet(PhysicsEntity):
         bullet_glow_mask = pygame.mask.from_surface(self.sprite)
         #surf.blit(bullet_glow_mask.to_surface(unsetcolor=(0,0,0,0),setcolor=(255,255,255,255)),(self.pos[0] - offset[0],self.pos[1]-offset[1]))
         surf.blit(self.sprite, (self.pos[0]-offset[0],self.pos[1]-offset[1]),special_flags = pygame.BLEND_RGB_ADD)
-        
-
-       
 
     def copy(self):
         return Bullet(self.game,self.pos,self.size,self.sprite,self.bullet_type)

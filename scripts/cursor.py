@@ -22,6 +22,7 @@ class Cursor:
 
 
         #attributes to use with new inventory module 
+        self.interacting = False 
         self.item  = None
         self.box = pygame.Rect(*self.pos,1,1)
         self.cooldown = 0
@@ -31,39 +32,52 @@ class Cursor:
         self.context = None 
 
 
-    def update(self,keys):
+
+
+    def set_cooldown(self) -> None:
+        self.cooldown = 10
+
+    def update(self,keys,surf):
         self.pos = pygame.mouse.get_pos()
         self.pos = ((self.pos[0]/2),(self.pos[1]/2))
 
         self.box = pygame.Rect(*self.pos, 1, 1)
         self.pressed = pygame.mouse.get_pressed()
 
+
+        if self.item is not None:
+            self.item.draw(*self.pos,surf, 1)
+        if self.cooldown > 0:
+            self.cooldown -= 1
+
                   # Colliding with search box changes cursor to text
         self.magnet = keys[K_LSHIFT] and self.item is not None
         self.move = keys[K_LSHIFT] and not self.magnet
 
         if self.context is not None:
-            self.context.update(*self.pos, 3)
+            self.context.update(*self.pos,surf,1)
             self.context = None
 
-        if self.game.player.equipped: 
-            if self.game.player.cur_weapon.type =='rifle':
-                self.image = CURSOR_ICONS["rifle_crosshair"]
-        elif self.magnet:
-            self.image = pygame.transform.scale(
+        if self.interacting: 
+            if self.magnet:
+                self.image = pygame.transform.scale(
                 CURSOR_ICONS["magnet"], (9 * 1, 10 * 1))
-        elif self.move:
-            self.image = pygame.transform.scale(
-                CURSOR_ICONS["move"], (9 * 1, 10 * 1))
-        elif self.item is not None:
-            self.image = pygame.transform.scale(
-                CURSOR_ICONS["grab"], (9 * 1, 10 * 1))
-        
-        else:
-            self.image = pygame.transform.scale(
-                CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))
-
-
-
-    def render(self,surf):
+            elif self.move:
+                self.image = pygame.transform.scale(
+                    CURSOR_ICONS["move"], (9 * 1, 10 * 1))
+            elif self.item is not None:
+                self.image = pygame.transform.scale(
+                    CURSOR_ICONS["grab"], (9 * 1, 10 * 1))
+            
+            else:
+                self.image = pygame.transform.scale(
+                    CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))    
+        else: 
+            if self.game.player.equipped:
+                
+                self.image = CURSOR_ICONS["rifle_crosshair"]
         surf.blit(self.image,(self.pos[0] - self.aim_offset[0],self.pos[1] - self.aim_offset[1]))
+
+
+
+    

@@ -18,6 +18,8 @@ from scripts.indicator import indicator
 from scripts.HUD import HUD 
 from scripts.grass import *
 
+from scripts.inventory import Item,ITEMS
+
 
 # ----------------------------------- quadtree imports 
 from scripts.quadtree import * 
@@ -277,7 +279,7 @@ class myGame:
 
 
 
-        self.inven_on = False 
+        self.inven_on = True
         self.HUD = HUD(self.player,self.assets['health_UI'],self.display.get_size())
         
         
@@ -548,31 +550,20 @@ class myGame:
             self.display.blit(lights_display,( 0, 0),special_flags= pygame.BLEND_RGB_MULT)
 
            
-
             
+
             #rapid fire and single fire toggle 
             if pygame.mouse.get_pressed()[0]:
-                if self.inven_on and (self.HUD.inven_list[0].position[0] <= self.cursor.pos[0] <= self.HUD.inven_list[0].position[0] + self.HUD.inven_list[0].box_size[0]*2) and (self.HUD.inven_list[0].position[1] <= self.cursor.pos[1] <= self.HUD.inven_list[0].position[1] + self.HUD.inven_list[0].box_size[1]//4):
-                    """
-                    if self.main_offset == None : 
-                        self.main_offset = (self.cursor.pos[0] - self.HUD.inven_list[0].position[0],self.cursor.pos[1] - self.HUD.inven_list[0].position[1])
+                if not self.cursor.interacting:
                     
-                    self.HUD.inven_list[0].position[0] = self.cursor.pos[0] - self.main_offset[0]
-                    self.HUD.inven_list[0].position[1] = self.cursor.pos[1] - self.main_offset[1]
-                    
-                    """
-
-                    #self.HUD.inven_list[0].position[0] -= offset[0]
-                    #self.HUD.inven_list[0].position[1] -= offset[1]
-                
-                elif self.player.weapon_toggle_state():
-                    #then you shoot. 
-                    self.player.shoot_weapon(self.frame_count)
-                else:
-                    #you shoot, once. 
-                    if self.reset == True: 
+                    if self.player.weapon_toggle_state():
+                        #then you shoot. 
                         self.player.shoot_weapon(self.frame_count)
-                        self.reset = False 
+                    else:
+                        #you shoot, once. 
+                        if self.reset == True: 
+                            self.player.shoot_weapon(self.frame_count)
+                            self.reset = False 
                 
             elif pygame.mouse.get_pressed()[0] == False:
                 #self.main_offset = None 
@@ -617,7 +608,9 @@ class myGame:
                 
                 #define when the right or left arrow keys are pressed, the corresponding player's movement variable varlues are changed. 
                 if event.type == pygame.KEYDOWN: 
-                    if event.key == pygame.K_i:
+                    if event.key == pygame.K_c:
+                        self.HUD.Items_list[0][1].add_item(  Item(random.choice(list(ITEMS.keys())), 1))
+                    if event.key == pygame.K_e:
                         self.inven_on = not self.inven_on
 
                     if event.key == pygame.K_a: 
@@ -688,13 +681,13 @@ class myGame:
                     self.player_cur_vel = min(0,self.player_cur_vel + self.accel_decel_rate)
             
             
-            if self.inven_on:
-                self.HUD.render_inven(self.cursor,self.display,(0,0))
-            
-            self.HUD.render(self.display,self.cursor,offset=(0,0))
+            """
+            self.HUD.render_expanded(self.cursor,self.display,(0,0),closing = not self.inven_on)
+            """
+            self.HUD.render(self.display,self.cursor,offset=(0,0),closing = self.inven_on)
 
-            self.cursor.update(keys)
-            self.cursor.render(self.display)
+            self.cursor.update(keys,self.display)
+            #self.cursor.render(self.display)
 
             self.display_2.blit(self.display,(0,0))
             self.rot_func_t += self.dt * 100
