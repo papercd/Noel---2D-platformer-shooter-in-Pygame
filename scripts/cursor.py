@@ -29,7 +29,9 @@ class Cursor:
         self.pressed = None
         self.magnet = False
         self.move = False
-        self.context = None 
+        self.context = None
+        self.image = pygame.transform.scale(
+                    CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))    
 
 
 
@@ -74,8 +76,11 @@ class Cursor:
                     CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))    
         else: 
             if self.game.player.equipped:
-                
                 self.image = CURSOR_ICONS["rifle_crosshair"]
+            else: 
+                self.image = pygame.transform.scale(
+                    CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))   
+
         surf.blit(self.image,(self.pos[0] - self.aim_offset[0],self.pos[1] - self.aim_offset[1]))
 
 

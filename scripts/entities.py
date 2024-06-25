@@ -1465,11 +1465,14 @@ class Bullet(PhysicsEntity):
             self.game.particles.append(collide_particle)
 
             if collided_tile.type != 'box':
+                pass
+                """
                 decal_mask  = tile_mask.overlap_mask(bullet_mask,offset)
                 decal_surf = decal_mask.to_surface(unsetcolor=(135,135,135,0))
                 decal_surf.set_colorkey((0,0,0))
                 
                 collided_tile.decals.append([decal_surf,0])
+                """
                 
             else:
                 del tilemap.tilemap[str(collided_tile.pos[0]) + ';' + str(collided_tile.pos[1])]

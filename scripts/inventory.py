@@ -5,6 +5,9 @@ from scripts.utils import load_images,load_image
 from scripts.alphabet import alphabets
 import os 
 
+WEAPON_CELL = load_image("ui/inventory/weapon_tile.png",background="transparent")  
+WEAPON_CELL_SELECTED = load_image("ui/inventory/weapon_tile_selected.png",background="transparent") 
+
 CELL = load_image("ui/inventory/tile.png",background="transparent")
 CELL_SELECTED = load_image("ui/inventory/tile_selected.png",background="transparent")
 BIN_CELL = load_image("ui/inventory/tile_bin.jpg",background="transparent")
@@ -324,6 +327,10 @@ class Cell():
 
     def draw(self, scale, selected):
         match selected:
+            case 3: 
+                image = WEAPON_CELL_SELECTED
+            case 2: 
+                image = WEAPON_CELL
             case 1:
                 image = CELL_SELECTED
                 """
@@ -332,6 +339,7 @@ class Cell():
                 """
             case 0:
                 image = pygame.transform.scale(CELL, (20 * scale, 20 * scale))
+        
         return image
 
     def update(self, x, y,surf, scale, stack_limit, inventory_id, inventory_list, cursor,expanded,opacity) -> None:
@@ -339,14 +347,17 @@ class Cell():
 
 
         cell_box = pygame.Rect(
-            *position, 20 * scale, 20 * scale)
+            *position, 20 * scale, 20 * scale) if self.type == "item" else pygame.Rect(*position, 38 * scale, 18 * scale)
 
         if cursor.box.colliderect(cell_box): 
             position[0] -= 1
             position[1] -= 1
-            image = self.draw(scale, 1)
+            if self.type== "weapon": image = self.draw(scale,3)
+            else: image = self.draw(scale, 1)
         else:
-            image = self.draw(scale, 0)
+            if self.type == "weapon" : image = self.draw(scale,2)
+
+            else: image = self.draw(scale, 0)
 
         image.set_alpha(opacity)
         surf.blit(image, position)
@@ -392,7 +403,7 @@ class Cell():
                         for i in range(len(inventory_list)):
                             index = index + \
                                 1 if index < len(inventory_list) - 1 else 0
-                            if self.item.type != inventory_list[index][1].name: index = index +1 if index < len(inventory_list) -1 else 0
+                            while self.item.type != inventory_list[index][1].name: index = index +1 if index < len(inventory_list) -1 else 0
                             if index == inventory_id:
                                 break
                             if inventory_list[index][1].capacity != inventory_list[index][1].item_count:
@@ -510,10 +521,14 @@ class Inventory():
                         case "type":
                             self.parent.sort_item_type()
 
-    def __init__(self, name, rows, columns, x, y, scale=3, stack_limit=99, sorting_active=True, bin_active=False) -> None:
+    def __init__(self, name, rows, columns, x, y, scale=3, stack_limit=99, sorting_active=True, bin_active=False ,player = None) -> None:
+
+        
+
         self.name = name
         self.name_obj = alphabets(self.name)
 
+        self.player = player 
         self.done_open = 0
         self.rows = rows
         self.columns = columns
@@ -524,9 +539,10 @@ class Inventory():
         self.capacity = rows * columns
         self.item_count = 0
         self.bin = bin_active
-        self.box_size = (self.columns * 28 * self.scale + 2 * self.scale, self.rows * 22 * self.scale + 2 * self.scale )
+        self.box_size = (self.columns * 28 * self.scale + 2 * self.scale, self.rows * 22 * self.scale + 2 * self.scale ) if self.name == 'item' else \
+                        (self.columns * 41* self.scale + 2 * self.scale, self.rows * 14 * self.scale + 2 * self.scale)
 
-        self.rect = pygame.Rect(self.position[0] ,self.position[1] + 16* self.scale,*self.box_size)
+        self.rect = pygame.Rect(self.position[0] ,self.position[1] + 16* self.scale,*self.box_size) 
 
 
 
@@ -536,6 +552,12 @@ class Inventory():
             ]
         else:
             self.buttons = []
+
+
+    def update_player_weapons(self):
+        filtered = [cell[0].item for cell in self.cells if cell[0].item is not None]
+        self.player.weapon_inven = filtered 
+
 
     def add_item(self, item) -> None:
 
@@ -652,14 +674,14 @@ class Inventory():
         for i, b in enumerate(self.buttons):
             b.update(self.position[0] + 20 * self.columns *
                      self.scale - 9 * self.scale - i * 12 * self.scale, self.position[1] + 4 * self.scale,surf, self.scale, cursor)
+        
         """
-
 
 
         for i, row in enumerate(self.cells):
             for j, cell in enumerate(row):
-                cell.update(self.position[0] + (j * 28 * self.scale) + 2 * self.scale,
-                            self.position[1] + (i * 22 * self.scale) + 16 * self.scale,surf, self.scale, self.stack_limit, inventory_id, inventory_list, cursor,expanded,cur_opacity)
+                cell.update(self.position[0] + (j * (28 if self.name == "item" else 42) * self.scale) + 2 * self.scale,
+                            self.position[1] + (i * (22 if self.name == "item" else 18) * self.scale) + 16 * self.scale,surf, self.scale, self.stack_limit, inventory_id, inventory_list, cursor,expanded,cur_opacity)
 
             
              
@@ -685,6 +707,8 @@ class Inventory():
                         shade.fill((0, 0, 0))
                         surf.blit(shade,
                                  (self.position[0] + (j * 20 * self.scale) + 2 * self.scale + 2 * self.scale, self.position[1] + (i * 20 * self.scale) + 16 * self.scale + 2 * self.scale))
+                        
+        #if the inventory is a weapon inventory, 
         
         return interacting
 
@@ -703,6 +727,8 @@ class Inventory_Engine():
             interacting = check or interacting 
 
         cursor.interacting =  interacting
+
+
 
        
 
