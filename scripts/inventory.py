@@ -402,6 +402,7 @@ class Cell():
                     if cursor.pressed[0] and cursor.move:
                         index = inventory_id
                         for i in range(len(inventory_list)):
+                            
                             index = index + \
                                 1 if index < len(inventory_list) - 1 else 0
                             while self.item.type != inventory_list[index][1].name: index = index +1 if index < len(inventory_list) -1 else 0
@@ -409,11 +410,21 @@ class Cell():
                                 break
                             if inventory_list[index][1].capacity != inventory_list[index][1].item_count:
                                 break
-                        temp = self.item.copy()
+                            else:
+                                for row in inventory_list[index][1].cells:
+                                    for cell in row: 
+                                        if cell.item.name == self.item.name and cell.item.stackable:
+                                            if cell.item.amount + self.item.amount <= inventory_list[index][1].stack_limit:
+                                                break
+                           
+                                                            
+                                
+                        temp = self.item
                         self.item = None
 
                         if self.type == 'weapon':
                             player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
+                            player.equip()
                         
                        
                         inventory_list[index][1].add_item(temp)
@@ -428,6 +439,7 @@ class Cell():
                         self.item = None
                         if self.type == 'weapon':
                             player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
+                            player.equip()
                         self.particles.append(Dust())
                         cursor.set_cooldown()
                     elif cursor.pressed[2] and self.item.amount > 1:
@@ -455,20 +467,26 @@ class Cell():
                         cursor.item.amount -= amount
                         self.particles.append(Dust())
                         cursor.set_cooldown()
+
                     elif cursor.pressed[0]:
                         if not (cursor.item.type == self.type ):
                             return
                         temp = cursor.item.copy()
+
+                        
                         cursor.item = self.item
 
 
                         self.item = temp
                         if self.type == 'weapon':
+                            self.item.sprite = pygame.transform.flip(self.item.sprite,True,False)
                             corres_node = player.weapon_inven.find_node(self.ind)
                             corres_node.weapon = temp
+                            player.equip()
 
                         self.particles.append(Dust())
                         cursor.set_cooldown()
+
             elif cursor.item is not None and cursor.box.colliderect(cell_box) and cursor.cooldown == 0:
                 
                 if cursor.pressed[0]:
@@ -478,6 +496,7 @@ class Cell():
 
                     if self.type == 'weapon':
                         player.weapon_inven.add_weapon(self.ind,cursor.item)
+                        player.equip()
 
                     cursor.item = None
                     self.particles.append(Dust())
@@ -557,7 +576,7 @@ class Inventory():
         self.position = [x, y]
         self.scale = scale
         self.stack_limit = stack_limit
-        self.capacity = rows * columns
+        self.capacity = rows * columns 
         self.item_count = 0
         self.bin = bin_active
         self.box_size = (self.columns * 28 * self.scale + 2 * self.scale, self.rows * 22 * self.scale + 2 * self.scale ) if self.name == 'item' else \
@@ -588,6 +607,7 @@ class Inventory():
                     cell.item = item
                     if cell.type == 'weapon':
                         self.player.weapon_inven.add_weapon(cell.ind,cell.item)
+                        self.player.equip()
 
                     return
                 elif item.stackable and cell.item.name == item.name:

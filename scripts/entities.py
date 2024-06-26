@@ -10,7 +10,6 @@ from scripts.tilemap import Node,Tile
 from scripts.weapons import Wheelbot_weapon
 from scripts.spark import Spark 
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
-
 from scripts.weapon_list import DoublyLinkedList
 
 
@@ -940,9 +939,11 @@ class PlayerEntity(PhysicsEntity):
         self.equipped = False 
         self.cur_weapon = None 
         self.cur_weapon_index = None
-        self.weapon_inven = DoublyLinkedList()
 
         self.weapon_inven_size = 5 # maximum size of carry 
+
+        self.weapon_inven = DoublyLinkedList()
+       
         
 
         self.change_weapon_inc = False
@@ -1295,6 +1296,21 @@ class PlayerEntity(PhysicsEntity):
 
     
     def change_weapon(self,scroll):
+        if self.weapon_inven.head and ((self.weapon_inven.head.next and scroll ==1) or (self.weapon_inven.head.prev and scroll == -1)): 
+            self.change_scroll =scroll
+            self.change_weapon_inc= True 
+            if self.changing_done == 6:
+                if self.change_scroll == 1:
+                    self.weapon_inven.head = self.weapon_inven.head.next
+                else:
+                    self.weapon_inven.head = self.weapon_inven.head.prev 
+                self.equip()
+                self.changing_done = 0
+                self.change_scroll = 0 
+                self.change_weapon_inc = False
+            
+            
+        """
         if self.cur_weapon:
             #first check if scrolling in that direction is valid. 
             if 0 <= self.cur_weapon_index + scroll <= len(self.weapon_inven) -1 :
@@ -1308,8 +1324,17 @@ class PlayerEntity(PhysicsEntity):
                     self.changing_done = 0 
                     self.change_scroll = 0
                     self.change_weapon_inc = False 
+        """
 
-    def equip_weapon(self,weapon):
+    def equip(self):
+        if self.weapon_inven.head:
+            self.cur_weapon = self.weapon_inven.head.weapon
+            self.equipped = True 
+            self.cur_weapon.equip(self)
+        else: 
+            self.cur_weapon = None
+            self.equipped = False
+        """
         if len(self.weapon_inven) < self.weapon_inven_size:
             
             self.weapon_inven.insert(0 if self.cur_weapon == None else self.weapon_inven.index(self.cur_weapon),weapon)
@@ -1319,6 +1344,7 @@ class PlayerEntity(PhysicsEntity):
             self.cur_weapon_index = self.weapon_inven.index(self.cur_weapon) 
             self.equipped = True 
             self.weapon_inven[self.cur_weapon_index].equip(self)
+        """
         
 
     def shoot_weapon(self,frame):
@@ -1690,7 +1716,9 @@ class tile_ign_Bullet(Bullet):
             return True 
        
         
-        
+class Dropped_item(PhysicsEntity):
+    def __init__(self, game, e_type, pos, size):
+        super().__init__(game, e_type, pos, size)        
        
 class Wheelbot_bullet(tile_ign_Bullet):
     def __init__(self,game,animation,pos,size,type):
