@@ -26,7 +26,7 @@ class myGame:
         
         self.screen_shake = 0 
         self.screen = pygame.display.set_mode((1040,652))
-        self.clock = pygame.Clock()
+        self.clock = pygame.time.Clock()
         self.display = pygame.Surface((self.screen.get_width()//2,self.screen.get_height()//2),pygame.SRCALPHA)
         self.bsurf = pygame.Surface((self.screen.get_width()//2,self.screen.get_height()//2),pygame.SRCALPHA)
 
