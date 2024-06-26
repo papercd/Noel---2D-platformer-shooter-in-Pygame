@@ -169,7 +169,7 @@ class myGame:
             'Wheel_bot/dormant': Animation(load_images('entities/enemy/Wheel_bot/dormant',background='transparent'),img_dur=2,loop=True),
             'Wheel_bot/alert': Animation(load_images('entities/enemy/Wheel_bot/alert',background='transparent'),img_dur=4,loop=False),
             'Wheel_bot/wake': Animation(load_images('entities/enemy/Wheel_bot/wake',background='transparent'),img_dur=5,loop=False),
-            'Wheel_bot/new_charge': Animation(load_images('entities/enemy/Wheel_bot/new_charge',background='transparent'),img_dur=3,loop=True),
+            'Wheel_bot/new_charge': Animation(load_images('entities/enemy/Wheel_bot/new_charge',background='transparent'),img_dur=3,loop=True), 
             'Wheel_bot/shoot': Animation(load_images('entities/enemy/Wheel_bot/shoot',background='transparent'),img_dur=4,loop=False),
             'Wheel_bot/hit': Animation(load_images('entities/enemy/Wheel_bot/hit',background='transparent'),img_dur=4,loop=False),
             'Wheel_bot/death': Animation(load_images('entities/enemy/Wheel_bot/death',background='transparent'),img_dur=4,loop=False),
@@ -191,9 +191,9 @@ class myGame:
 
 
         self.weapons = {
-            'laser_weapon': Wheelbot_weapon(self,Animation(load_images('entities/enemy/Wheel_bot/charge_weapon',background='transparent'),img_dur=5,loop=True)),
-            'ak' : AK_47(self,load_image('weapons/ak_holding.png',background='transparent'),load_image('weapons/ak_47_img.png',background='transparent')),
-            'flamethrower' : Flamethrower(self,load_image('weapons/flamethrower_holding.png',background='transparent'),load_image('weapons/flamethrower_img.png',background='transparent')),
+            'laser_weapon': Wheelbot_weapon(self,Animation(load_images('entities/enemy/Wheel_bot/charge_weapon',background='transparent'),img_dur=5,loop=True),"A Laser weapon."),
+            'ak' : AK_47(self,load_image('weapons/ak_holding.png',background='transparent'),load_image('weapons/ak_47_img.png',background='transparent'),"The staple AK-47."),
+            'flamethrower' : Flamethrower(self,load_image('weapons/flamethrower_holding.png',background='transparent'),load_image('weapons/flamethrower_img.png',background='transparent'),"Splits powerful flames."),
         }
 
         
@@ -262,6 +262,7 @@ class myGame:
         
 
         # ------------------- ak bullet loading and equip
+        """
         ak_47 = self.weapons['ak'].copy()
         for i in range(0,1005):
             test_shell_image = self.bullets['rifle_small'].copy()
@@ -274,7 +275,7 @@ class myGame:
 
         self.player.equip_weapon(flamethrower)
         self.player.equip_weapon(ak_47)
-
+        """
         # ----------------------
 
 
@@ -325,7 +326,7 @@ class myGame:
         
 
         while True: 
-
+            
             self.prev_cursor_pos = self.cursor.pos
             self.dt = time.time() - self.start
             self.start = time.time()
@@ -608,6 +609,11 @@ class myGame:
                 
                 #define when the right or left arrow keys are pressed, the corresponding player's movement variable varlues are changed. 
                 if event.type == pygame.KEYDOWN: 
+                    if event.key == pygame.K_t:
+                        self.HUD.Items_list[2][1].add_item(self.weapons['ak'])
+                    if event.key == pygame.K_y:
+                        self.HUD.Items_list[2][1].add_item(self.weapons['flamethrower'])
+
                     if event.key == pygame.K_c:
                         self.HUD.Items_list[0][1].add_item(  Item(random.choice(list(ITEMS.keys())), 1))
                     if event.key == pygame.K_e:

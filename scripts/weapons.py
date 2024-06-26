@@ -11,7 +11,7 @@ WEAPONS_WITH_KNOCKBACK = {'rifle'}
 WEAPONS_THAT_CAN_RAPID_FIRE = {'rifle'}
 
 class Weapon:
-    def __init__(self,game,type,sprite,fire_rate,power,weapon_img,img_pivot):  
+    def __init__(self,game,type,sprite,fire_rate,power,weapon_img,img_pivot,description):  
         self.game = game
         self.type = type 
         self.sprite = sprite 
@@ -24,8 +24,30 @@ class Weapon:
         self.fire_rate = fire_rate
         self.magazine = []
        
+        
         self.opening_pos = [0,0]
+
+        #testing 
+        self.amount = 1
+        self.name = self.type
+        self.stackable = False
+        self.description = description
     
+
+
+
+    def draw(self,x,y,surf,scale):
+        offset = (17- self.weapon_img.get_width()//2, 7 - self.weapon_img.get_height()//2 )
+        #image = pygame.transform.scale(self.weapon_img,(16 * scale,16*scale))
+        surf.blit(self.weapon_img,(x+offset[0],y+offset[1]))
+
+    def get_description(self):
+        return self.description
+
+
+    def get_name(self):
+        return self.type
+
     def toggle_rapid_fire(self):
         if self.type in WEAPONS_THAT_CAN_RAPID_FIRE:
             self.rapid_firing = not self.rapid_firing
@@ -103,7 +125,7 @@ class Weapon:
 
         
     def copy(self):
-        return Weapon(self.game,self.type,self.sprite,self.fire_rate,self.power,self.img_pivot)
+        return Weapon(self.game,self.type,self.sprite,self.fire_rate,self.power,self.img_pivot,self.description)
         
     def update(self,cursor_pos):
         self.mpos = cursor_pos
@@ -225,11 +247,11 @@ class Weapon:
          
 
 class AK_47(Weapon):
-    def __init__(self,game,sprite,weapon_img): 
-        super().__init__(game,'rifle',sprite,5,15,weapon_img,(2,2))
+    def __init__(self,game,sprite,weapon_img,description): 
+        super().__init__(game,'weapon',sprite,5,15,weapon_img,(2,2),description)
 
     def copy(self):
-        return AK_47(self.game,self.sprite,self.weapon_img)
+        return AK_47(self.game,self.sprite,self.weapon_img,self.description)
 
     def shoot(self,j= 0,d_mouse_pos = [0,0]):
         shot = super().shoot()
@@ -239,12 +261,12 @@ class AK_47(Weapon):
             self.game.temp_lights.append([LIGHT(50,pixel_shader(50,(248,229,153),1,True,180+self.angle_opening,360)),3,self.opening_pos])
 
 class Flamethrower(Weapon):
-    def __init__(self,game,sprite,weapon_img):
-        super().__init__(game,'flamethrower',sprite,1,5,weapon_img,(2,2))
+    def __init__(self,game,sprite,weapon_img,description):
+        super().__init__(game,'weapon',sprite,1,5,weapon_img,(2,2),description)
         self.rapid_firing = True
     
     def copy(self):
-        return Flamethrower(self.game,self.sprite,self.weapon_img)
+        return Flamethrower(self.game,self.sprite,self.weapon_img,self.description)
 
     def toggle_rapid_fire(self):
         self.rapid_firing = not self.rapid_firing 
@@ -281,9 +303,9 @@ class Flamethrower(Weapon):
 
     
 class Wheelbot_weapon(Weapon):
-    def __init__(self,game,animation):
+    def __init__(self,game,animation,description):
         self.game = game 
-        self.type = 'laser_weapon'
+        self.type = 'weapon'
         self.animation = animation 
         self.img_pivot = [(2,8),(3,8)]
         self.flipped = False 
@@ -295,9 +317,10 @@ class Wheelbot_weapon(Weapon):
         self.magazine = []
         self.player_pos = [0,0]
         self.pivot =[]
+        self.description = description
     
     def copy(self):
-        return Wheelbot_weapon(self.game,self.animation.copy()) 
+        return Wheelbot_weapon(self.game,self.animation.copy(),self.description) 
         
     def update(self,player_pos):
         self.animation.update()
@@ -335,7 +358,7 @@ class Wheelbot_weapon(Weapon):
         #add the shooting particles first 
             pos = self.opening_pos.copy()
             
-            shot_particle = Particle(self.game,'smoke' +'/'+self.type,pos,self.holder.type)
+            shot_particle = Particle(self.game,'smoke' +'/'+ 'laser_weapon',pos,self.holder.type)
             """
             shot_particle_og_width = shot_particle.animation.img().get_width() 
            
@@ -345,7 +368,7 @@ class Wheelbot_weapon(Weapon):
             rotated_shot_particle_images =  [pygame.transform.flip(img,True,False) for img in [pygame.transform.rotate(image,self.angle_opening) for image in shot_particle.animation.copy().images]] if self.holder.flip else [pygame.transform.flip(pygame.transform.rotate(image,self.angle_opening+180),True,False) for image in shot_particle.animation.copy().images]
             shot_particle.animation.images = rotated_shot_particle_images
 
-            shot_muzzle = Particle(self.game,'shot_muzzle' + '/' + self.type,pos,self.holder.type)
+            shot_muzzle = Particle(self.game,'shot_muzzle' + '/' + 'laser_weapon',pos,self.holder.type)
             shot_muzzle_og_width = shot_muzzle.animation.img().get_width()
             
             shot_muzzle.pos[0] += 0.4*(shot_muzzle_og_width * math.cos(math.radians(self.angle_opening)) if bullet.velocity[0] >= 0 else -shot_muzzle_og_width * math.cos(math.radians(self.angle_opening)))

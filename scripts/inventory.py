@@ -5,6 +5,9 @@ from scripts.utils import load_images,load_image
 from scripts.alphabet import alphabets
 import os 
 
+WEAPON_CELL = load_image("ui/inventory/weapon_tile.png",background="transparent")  
+WEAPON_CELL_SELECTED = load_image("ui/inventory/weapon_tile_selected.png",background="transparent") 
+
 CELL = load_image("ui/inventory/tile.png",background="transparent")
 CELL_SELECTED = load_image("ui/inventory/tile_selected.png",background="transparent")
 BIN_CELL = load_image("ui/inventory/tile_bin.jpg",background="transparent")
@@ -317,13 +320,18 @@ class Weapon(Item):
 
 class Cell():
 
-    def __init__(self,type = None, item=None) -> None:
+    def __init__(self,ind,type = None, item=None) -> None:
+        self.ind = ind
         self.item = item
         self.type = type
         self.particles = []
 
     def draw(self, scale, selected):
         match selected:
+            case 3: 
+                image = WEAPON_CELL_SELECTED
+            case 2: 
+                image = WEAPON_CELL
             case 1:
                 image = CELL_SELECTED
                 """
@@ -332,21 +340,25 @@ class Cell():
                 """
             case 0:
                 image = pygame.transform.scale(CELL, (20 * scale, 20 * scale))
+        
         return image
 
-    def update(self, x, y,surf, scale, stack_limit, inventory_id, inventory_list, cursor,expanded,opacity) -> None:
+    def update(self, x, y,surf, scale, stack_limit, inventory_id, inventory_list, cursor,expanded,opacity,player) -> None:
         position =[x, y]
 
 
         cell_box = pygame.Rect(
-            *position, 20 * scale, 20 * scale)
+            *position, 20 * scale, 20 * scale) if self.type == "item" else pygame.Rect(*position, 38 * scale, 18 * scale)
 
         if cursor.box.colliderect(cell_box): 
             position[0] -= 1
             position[1] -= 1
-            image = self.draw(scale, 1)
+            if self.type== "weapon": image = self.draw(scale,3)
+            else: image = self.draw(scale, 1)
         else:
-            image = self.draw(scale, 0)
+            if self.type == "weapon" : image = self.draw(scale,2)
+
+            else: image = self.draw(scale, 0)
 
         image.set_alpha(opacity)
         surf.blit(image, position)
@@ -392,20 +404,30 @@ class Cell():
                         for i in range(len(inventory_list)):
                             index = index + \
                                 1 if index < len(inventory_list) - 1 else 0
-                            if self.item.type != inventory_list[index][1].name: index = index +1 if index < len(inventory_list) -1 else 0
+                            while self.item.type != inventory_list[index][1].name: index = index +1 if index < len(inventory_list) -1 else 0
                             if index == inventory_id:
                                 break
                             if inventory_list[index][1].capacity != inventory_list[index][1].item_count:
                                 break
                         temp = self.item.copy()
                         self.item = None
+
+                        if self.type == 'weapon':
+                            player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
+                        
+                       
                         inventory_list[index][1].add_item(temp)
+                       
+
+
                         self.particles.append(Dust())
                         cursor.set_cooldown()
 
                     elif cursor.pressed[0]:
                         cursor.item = self.item
                         self.item = None
+                        if self.type == 'weapon':
+                            player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
                         self.particles.append(Dust())
                         cursor.set_cooldown()
                     elif cursor.pressed[2] and self.item.amount > 1:
@@ -438,7 +460,13 @@ class Cell():
                             return
                         temp = cursor.item.copy()
                         cursor.item = self.item
+
+
                         self.item = temp
+                        if self.type == 'weapon':
+                            corres_node = player.weapon_inven.find_node(self.ind)
+                            corres_node.weapon = temp
+
                         self.particles.append(Dust())
                         cursor.set_cooldown()
             elif cursor.item is not None and cursor.box.colliderect(cell_box) and cursor.cooldown == 0:
@@ -447,6 +475,10 @@ class Cell():
                     if not (cursor.item.type == self.type ):
                             return
                     self.item = cursor.item
+
+                    if self.type == 'weapon':
+                        player.weapon_inven.add_weapon(self.ind,cursor.item)
+
                     cursor.item = None
                     self.particles.append(Dust())
                     cursor.set_cooldown()
@@ -510,23 +542,28 @@ class Inventory():
                         case "type":
                             self.parent.sort_item_type()
 
-    def __init__(self, name, rows, columns, x, y, scale=3, stack_limit=99, sorting_active=True, bin_active=False) -> None:
+    def __init__(self, name, rows, columns, x, y, scale=3, stack_limit=99, sorting_active=True, bin_active=False ,player = None) -> None:
+
+        
+
         self.name = name
         self.name_obj = alphabets(self.name)
 
+        self.player = player 
         self.done_open = 0
         self.rows = rows
         self.columns = columns
-        self.cells = [[Cell(self.name) for i in range(columns)] for j in range(rows)]
+        self.cells = [[Cell(i,self.name) for i in range(columns)] for j in range(rows)]
         self.position = [x, y]
         self.scale = scale
         self.stack_limit = stack_limit
         self.capacity = rows * columns
         self.item_count = 0
         self.bin = bin_active
-        self.box_size = (self.columns * 28 * self.scale + 2 * self.scale, self.rows * 22 * self.scale + 2 * self.scale )
+        self.box_size = (self.columns * 28 * self.scale + 2 * self.scale, self.rows * 22 * self.scale + 2 * self.scale ) if self.name == 'item' else \
+                        (self.columns * 41* self.scale + 2 * self.scale, self.rows * 14 * self.scale + 2 * self.scale)
 
-        self.rect = pygame.Rect(self.position[0] ,self.position[1] + 16* self.scale,*self.box_size)
+        self.rect = pygame.Rect(self.position[0] ,self.position[1] + 16* self.scale,*self.box_size) 
 
 
 
@@ -537,12 +574,21 @@ class Inventory():
         else:
             self.buttons = []
 
+
+    def update_player_weapons(self):
+        filtered = [cell[0].item for cell in self.cells if cell[0].item is not None]
+        self.player.weapon_inven = filtered 
+
+
     def add_item(self, item) -> None:
 
         for row in self.cells:
             for cell in row:
                 if cell.item is None:
                     cell.item = item
+                    if cell.type == 'weapon':
+                        self.player.weapon_inven.add_weapon(cell.ind,cell.item)
+
                     return
                 elif item.stackable and cell.item.name == item.name:
                     if cell.item.amount + item.amount <= self.stack_limit:
@@ -652,14 +698,14 @@ class Inventory():
         for i, b in enumerate(self.buttons):
             b.update(self.position[0] + 20 * self.columns *
                      self.scale - 9 * self.scale - i * 12 * self.scale, self.position[1] + 4 * self.scale,surf, self.scale, cursor)
+        
         """
-
 
 
         for i, row in enumerate(self.cells):
             for j, cell in enumerate(row):
-                cell.update(self.position[0] + (j * 28 * self.scale) + 2 * self.scale,
-                            self.position[1] + (i * 22 * self.scale) + 16 * self.scale,surf, self.scale, self.stack_limit, inventory_id, inventory_list, cursor,expanded,cur_opacity)
+                cell.update(self.position[0] + (j * (28 if self.name == "item" else 42) * self.scale) + 2 * self.scale,
+                            self.position[1] + (i * (22 if self.name == "item" else 18) * self.scale) + 16 * self.scale,surf, self.scale, self.stack_limit, inventory_id, inventory_list, cursor,expanded,cur_opacity,self.player)
 
             
              
@@ -685,6 +731,8 @@ class Inventory():
                         shade.fill((0, 0, 0))
                         surf.blit(shade,
                                  (self.position[0] + (j * 20 * self.scale) + 2 * self.scale + 2 * self.scale, self.position[1] + (i * 20 * self.scale) + 16 * self.scale + 2 * self.scale))
+                        
+        #if the inventory is a weapon inventory, 
         
         return interacting
 
@@ -703,6 +751,8 @@ class Inventory_Engine():
             interacting = check or interacting 
 
         cursor.interacting =  interacting
+
+
 
        
 

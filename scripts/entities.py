@@ -11,6 +11,8 @@ from scripts.weapons import Wheelbot_weapon
 from scripts.spark import Spark 
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
 
+from scripts.weapon_list import DoublyLinkedList
+
 
 #a body class to implement a more accurate body with better physics that require rotation, 
 #utilizing the pymunk module. 
@@ -938,7 +940,8 @@ class PlayerEntity(PhysicsEntity):
         self.equipped = False 
         self.cur_weapon = None 
         self.cur_weapon_index = None
-        self.weapon_inven = []
+        self.weapon_inven = DoublyLinkedList()
+
         self.weapon_inven_size = 5 # maximum size of carry 
         
 
@@ -1465,11 +1468,14 @@ class Bullet(PhysicsEntity):
             self.game.particles.append(collide_particle)
 
             if collided_tile.type != 'box':
+                pass
+                """
                 decal_mask  = tile_mask.overlap_mask(bullet_mask,offset)
                 decal_surf = decal_mask.to_surface(unsetcolor=(135,135,135,0))
                 decal_surf.set_colorkey((0,0,0))
                 
                 collided_tile.decals.append([decal_surf,0])
+                """
                 
             else:
                 del tilemap.tilemap[str(collided_tile.pos[0]) + ';' + str(collided_tile.pos[1])]
