@@ -32,17 +32,28 @@ uniform float iTime;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
+    // Normalized coordinates
     vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.x + 0.5;
-    float radius = length(uv - 0.5) + 0.1 - iTime / 20.0;
+    
+    // Calculate radius and angle
+    float radius = length(uv - 0.5) + 0.1 - iTime / 0.5;
     float angle = atan(uv.y - 0.5, uv.x - 0.5);
+    
+    // Calculate the distortion effect
     float distortion = smoothstep(0.1, 0.2, radius) * smoothstep(0.3, 0.2, radius) * smoothstep(0.0, 1.0, radius);
-    vec4 light = vec4(1.0, 0.8, 0.7, 1.0) * smoothstep(0.5, 0.0, radius) * 1.75 - iTime / 20.0;
+    
+    // Calculate the light intensity and make it dissipate over time
+    float lightIntensity = max(1.75 - iTime / 0.2, 0.0); // Adjust the denominator to control the dissipation rate
+    vec4 light = vec4(1.0, 0.8, 0.7, 1.0) * smoothstep(0.5, 0.0, radius) * lightIntensity;
 
-    uv += distortion * vec2(cos(angle), sin(angle));
+    // Apply distortion
+    uv += distortion * vec2(cos(angle), sin(angle)) * max(1.0 - iTime / 5.0, 0.0); // Adjust the denominator to control the dissipation rate
 
+    // Sample the texture
     vec4 col = texture(iChannel0, uv);
     col += light;
 
+    // Output the final color
     fragColor = vec4(col);
 }
 
@@ -50,6 +61,7 @@ void main()
 {
     mainImage(fragColor, texCoord * iResolution);
 }
+
 """
 
 # Compile Shaders and Create Shader Program

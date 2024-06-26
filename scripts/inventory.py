@@ -320,7 +320,8 @@ class Weapon(Item):
 
 class Cell():
 
-    def __init__(self,type = None, item=None) -> None:
+    def __init__(self,ind,type = None, item=None) -> None:
+        self.ind = ind
         self.item = item
         self.type = type
         self.particles = []
@@ -342,7 +343,7 @@ class Cell():
         
         return image
 
-    def update(self, x, y,surf, scale, stack_limit, inventory_id, inventory_list, cursor,expanded,opacity) -> None:
+    def update(self, x, y,surf, scale, stack_limit, inventory_id, inventory_list, cursor,expanded,opacity,player) -> None:
         position =[x, y]
 
 
@@ -410,13 +411,23 @@ class Cell():
                                 break
                         temp = self.item.copy()
                         self.item = None
+
+                        if self.type == 'weapon':
+                            player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
+                        
+                       
                         inventory_list[index][1].add_item(temp)
+                       
+
+
                         self.particles.append(Dust())
                         cursor.set_cooldown()
 
                     elif cursor.pressed[0]:
                         cursor.item = self.item
                         self.item = None
+                        if self.type == 'weapon':
+                            player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
                         self.particles.append(Dust())
                         cursor.set_cooldown()
                     elif cursor.pressed[2] and self.item.amount > 1:
@@ -449,7 +460,13 @@ class Cell():
                             return
                         temp = cursor.item.copy()
                         cursor.item = self.item
+
+
                         self.item = temp
+                        if self.type == 'weapon':
+                            corres_node = player.weapon_inven.find_node(self.ind)
+                            corres_node.weapon = temp
+
                         self.particles.append(Dust())
                         cursor.set_cooldown()
             elif cursor.item is not None and cursor.box.colliderect(cell_box) and cursor.cooldown == 0:
@@ -458,6 +475,10 @@ class Cell():
                     if not (cursor.item.type == self.type ):
                             return
                     self.item = cursor.item
+
+                    if self.type == 'weapon':
+                        player.weapon_inven.add_weapon(self.ind,cursor.item)
+
                     cursor.item = None
                     self.particles.append(Dust())
                     cursor.set_cooldown()
@@ -532,7 +553,7 @@ class Inventory():
         self.done_open = 0
         self.rows = rows
         self.columns = columns
-        self.cells = [[Cell(self.name) for i in range(columns)] for j in range(rows)]
+        self.cells = [[Cell(i,self.name) for i in range(columns)] for j in range(rows)]
         self.position = [x, y]
         self.scale = scale
         self.stack_limit = stack_limit
@@ -565,6 +586,9 @@ class Inventory():
             for cell in row:
                 if cell.item is None:
                     cell.item = item
+                    if cell.type == 'weapon':
+                        self.player.weapon_inven.add_weapon(cell.ind,cell.item)
+
                     return
                 elif item.stackable and cell.item.name == item.name:
                     if cell.item.amount + item.amount <= self.stack_limit:
@@ -681,7 +705,7 @@ class Inventory():
         for i, row in enumerate(self.cells):
             for j, cell in enumerate(row):
                 cell.update(self.position[0] + (j * (28 if self.name == "item" else 42) * self.scale) + 2 * self.scale,
-                            self.position[1] + (i * (22 if self.name == "item" else 18) * self.scale) + 16 * self.scale,surf, self.scale, self.stack_limit, inventory_id, inventory_list, cursor,expanded,cur_opacity)
+                            self.position[1] + (i * (22 if self.name == "item" else 18) * self.scale) + 16 * self.scale,surf, self.scale, self.stack_limit, inventory_id, inventory_list, cursor,expanded,cur_opacity,self.player)
 
             
              

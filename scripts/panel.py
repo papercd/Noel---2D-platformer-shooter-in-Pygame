@@ -28,6 +28,13 @@ class inven_panel:
             self.done_expanding = max(0,self.done_expanding-1)
         else: 
             self.done_expanding = min(4,self.done_expanding+1)
+
+        
+        if self.player.weapon_inven.head: 
+            surf.blit(self.player.weapon_inven.head.weapon.weapon_img,(self.topleft[0] - offset[0] ,self.topleft[1] - offset[1]))
+
+        """
+
         if self.player.cur_weapon:
             for i in [2,1,-1]:
                 shrink_factor = abs(0-i)
@@ -46,7 +53,7 @@ class inven_panel:
 
             self.ammo_indicator.change_number(new_mag_count)
             self.ammo_indicator.render(self.topleft[0] - offset[0] ,self.topleft[1] - offset[1] - (2 if shot else 0),surf)
-        
+        """
         change_offset = [(0,0),(-1,-1),(-2,-2)]
         surf.blit(self.TL_cur_weapon_frame[self.player.changing_done//3],(self.topleft[0] - offset[0] + change_offset[self.player.changing_done//3][0]-1,self.topleft[1] - offset[1]+change_offset[self.player.changing_done//3][1] -3 ))
 

@@ -11,6 +11,8 @@ from scripts.weapons import Wheelbot_weapon
 from scripts.spark import Spark 
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
 
+from scripts.weapon_list import DoublyLinkedList
+
 
 #a body class to implement a more accurate body with better physics that require rotation, 
 #utilizing the pymunk module. 
@@ -938,7 +940,8 @@ class PlayerEntity(PhysicsEntity):
         self.equipped = False 
         self.cur_weapon = None 
         self.cur_weapon_index = None
-        self.weapon_inven = []
+        self.weapon_inven = DoublyLinkedList()
+
         self.weapon_inven_size = 5 # maximum size of carry 
         
 
