@@ -17,7 +17,7 @@ class Editor:
     def __init__(self):
         pygame.init() 
         pygame.display.set_caption('editor')
-        self.screen = pygame.display.set_mode((1040,760))
+        self.screen = pygame.display.set_mode((1040,760),pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
         self.display = pygame.Surface((520,380))
 
@@ -564,6 +564,10 @@ class Editor:
 
     
             for event in pygame.event.get():
+
+                if event.type == pygame.VIDEORESIZE:
+                    self.screen = pygame.display.set_mode((event.w,event.h),pygame.RESIZABLE) 
+
                 #We need to define when the close button is pressed on the window. 
                 if event.type == pygame.QUIT: 
                     #then pygame is closed, and the system is closed. 
