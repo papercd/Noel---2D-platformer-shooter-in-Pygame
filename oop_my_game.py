@@ -192,8 +192,8 @@ class myGame:
 
         self.weapons = {
             'laser_weapon': Wheelbot_weapon(self,Animation(load_images('entities/enemy/Wheel_bot/charge_weapon',background='transparent'),img_dur=5,loop=True),"A Laser weapon."),
-            'ak' : AK_47(self,load_image('weapons/ak_holding.png',background='transparent'),load_image('weapons/ak_47_img.png',background='transparent'),"The staple AK-47."),
-            'flamethrower' : Flamethrower(self,load_image('weapons/flamethrower_holding.png',background='transparent'),load_image('weapons/flamethrower_img.png',background='transparent'),"Splits powerful flames."),
+            'ak' : AK_47(self,load_image('weapons/ak_holding.png',background='transparent'),load_image('weapons/ak_47_img.png',background='transparent'),load_image('weapons/shrunk/ak_47.png',background='transparent'),"The staple AK-47."),
+            'flamethrower' : Flamethrower(self,load_image('weapons/flamethrower_holding.png',background='transparent'),load_image('weapons/flamethrower_img.png',background='transparent'),load_image('weapons/shrunk/flamethrower_img.png',background='transparent'),"Splits powerful flames."),
         }
 
         
@@ -609,6 +609,10 @@ class myGame:
                 
                 #define when the right or left arrow keys are pressed, the corresponding player's movement variable varlues are changed. 
                 if event.type == pygame.KEYDOWN: 
+
+                    if event.key == pygame.K_f:
+                        if self.player.weapon_inven.head:
+                            print(self.player.weapon_inven.head.prev if  self.player.weapon_inven.head.prev  else None, self.player.weapon_inven.head.cell_ind, self.player.weapon_inven.head.weapon,self.player.weapon_inven.head.next if  self.player.weapon_inven.head.next else None)
                     if event.key == pygame.K_t:
                         self.HUD.Items_list[2][1].add_item(self.weapons['ak'])
                     if event.key == pygame.K_y:

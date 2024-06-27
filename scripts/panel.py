@@ -30,8 +30,27 @@ class inven_panel:
             self.done_expanding = min(4,self.done_expanding+1)
 
         
-        if self.player.weapon_inven.head: 
-            surf.blit(self.player.weapon_inven.head.weapon.weapon_img,(self.topleft[0] - offset[0] ,self.topleft[1] - offset[1]))
+        if self.player.cur_weapon_node: 
+            if self.player.cur_weapon_node.prev: 
+
+                org_image_size = self.player.cur_weapon_node.prev.weapon.weapon_img.get_size()
+                display_img = self.player.cur_weapon_node.prev.weapon.shrunk_weapon_img
+                display_img.set_alpha(135* (self.done_expanding/4))
+                display_offset = (org_image_size[0]/2 - display_img.get_width()/2,-14* ((6-self.player.changing_done)/6) +org_image_size[1]/2 - display_img.get_height()/2  )
+                surf.blit(display_img,(self.topleft[0] - offset[0] + display_offset[0],self.topleft[1] - offset[1] + display_offset[1]))
+
+            surf.blit(self.player.cur_weapon_node.weapon.weapon_img,(self.topleft[0] - offset[0] ,self.topleft[1] - offset[1]))
+
+            if self.player.cur_weapon_node.next:
+                org_image_size = self.player.cur_weapon_node.next.weapon.weapon_img.get_size()
+                display_img = self.player.cur_weapon_node.next.weapon.shrunk_weapon_img
+                display_img.set_alpha(135* (self.done_expanding/4))
+                display_offset = (org_image_size[0]/2 - display_img.get_width()/2,14* ((6-self.player.changing_done)/6) +org_image_size[1]/2 - display_img.get_height()/2  )
+                surf.blit(display_img,(self.topleft[0] - offset[0] + display_offset[0],self.topleft[1] - offset[1] + display_offset[1]))
+
+
+        
+
 
         """
 

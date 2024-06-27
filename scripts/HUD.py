@@ -37,7 +37,7 @@ class HUD:
 
 
        #create the inven panel 
-       self.inven_panel = inven_panel((self.display_size[0]//12 + self.health_bar.w  + 16, self.display_size[1] - self.bar_height * 6),self.player_entity)
+       self.inven_panel = inven_panel((self.display_size[0]//12 + self.health_bar.w  + 16, self.display_size[1] - self.bar_height * 6 -3),self.player_entity)
 
        #create the inventories
        self.Items_list = [

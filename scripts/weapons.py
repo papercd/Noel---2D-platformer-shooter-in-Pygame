@@ -11,19 +11,24 @@ WEAPONS_WITH_KNOCKBACK = {'rifle'}
 WEAPONS_THAT_CAN_RAPID_FIRE = {'rifle'}
 
 class Weapon:
-    def __init__(self,game,type,sprite,fire_rate,power,weapon_img,img_pivot,description):  
+    def __init__(self,game,type,sprite,fire_rate,power,weapon_img,shrunk_weapon_img,img_pivot,description):  
         self.game = game
         self.type = type 
+
         self.sprite = sprite 
         self.img_pivot = img_pivot
         self.weapon_img = weapon_img
+        self.shrunk_weapon_img = shrunk_weapon_img
+
+
+
         self.flipped = False 
         self.rapid_firing = False 
         self.power=power
         self.knockback = [0,0]
         self.fire_rate = fire_rate
         self.magazine = []
-       
+        
         
         self.opening_pos = [0,0]
 
@@ -125,7 +130,7 @@ class Weapon:
 
         
     def copy(self):
-        return Weapon(self.game,self.type,self.sprite,self.fire_rate,self.power,self.img_pivot,self.description)
+        return Weapon(self.game,self.type,self.sprite,self.fire_rate,self.power,self.weapon_img,self.shrunk_weapon_img,self.img_pivot,self.description)
         
     def update(self,cursor_pos):
         self.mpos = cursor_pos
@@ -247,11 +252,11 @@ class Weapon:
          
 
 class AK_47(Weapon):
-    def __init__(self,game,sprite,weapon_img,description): 
-        super().__init__(game,'weapon',sprite,5,15,weapon_img,(2,2),description)
+    def __init__(self,game,sprite,weapon_img,shrunk_weapon_img,description): 
+        super().__init__(game,'weapon',sprite,5,15,weapon_img,shrunk_weapon_img,(2,2),description)
 
     def copy(self):
-        return AK_47(self.game,self.sprite,self.weapon_img,self.description)
+        return AK_47(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
 
     def shoot(self,j= 0,d_mouse_pos = [0,0]):
         shot = super().shoot()
@@ -261,12 +266,12 @@ class AK_47(Weapon):
             self.game.temp_lights.append([LIGHT(50,pixel_shader(50,(248,229,153),1,True,180+self.angle_opening,360)),3,self.opening_pos])
 
 class Flamethrower(Weapon):
-    def __init__(self,game,sprite,weapon_img,description):
-        super().__init__(game,'weapon',sprite,1,5,weapon_img,(2,2),description)
+    def __init__(self,game,sprite,weapon_img,shrunk_weapon_img,description):
+        super().__init__(game,'weapon',sprite,1,5,weapon_img,shrunk_weapon_img,(2,2),description)
         self.rapid_firing = True
     
     def copy(self):
-        return Flamethrower(self.game,self.sprite,self.weapon_img,self.description)
+        return Flamethrower(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
 
     def toggle_rapid_fire(self):
         self.rapid_firing = not self.rapid_firing 

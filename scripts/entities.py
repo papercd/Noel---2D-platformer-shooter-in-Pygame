@@ -391,249 +391,177 @@ class Sabre(Enemy):
         super().render(surf,offset=offset)
         
 
-
-
 class Wheel_bot(Enemy):
-    def __init__(self,game,pos,size):
-        super().__init__(game,pos,size,'Wheel_bot',200)
+    def __init__(self, game, pos, size):
+        super().__init__(game, pos, size, 'Wheel_bot', 200)
         self.weapon = self.game.weapons['laser_weapon'].copy()
         self.weapon.equip(self)
-        self.wake = False 
+        self.wake = False
         self.charge_time = 0
-        self.shooting = False 
-        self.hurt = False 
-       
-
+        self.shooting = False
+        self.hurt = False
         self.hit_mask = None
-        self.health_bar = HealthBar(self.pos[0]+3,self.pos[1]-5,16,2,self.hp,True)
-
-        
+        self.health_bar = HealthBar(self.pos[0] + 3, self.pos[1] - 5, 16, 2, self.hp, True)
 
     def collision_rect(self):
-        return pygame.Rect(self.pos[0]+3,self.pos[1]+1,14,20)
+        return pygame.Rect(self.pos[0] + 3, self.pos[1] + 1, 14, 20)
 
-    def update(self,tilemap,player_pos,dt,movement = (0,0)):
-        
-        #print(self.on_ramp)
-        """
-        if self.aggro_timer >= 1200 and math.dist(self.pos,player_pos) > 12*tilemap.tile_size:
-            self.aggro_timer = 0
-            self.aggro = False 
-            self.first_hit = False 
-            self.alertted = False
-        """
+    def update(self, tilemap, player_pos, dt, movement=(0, 0)):
+        if math.dist(self.pos, player_pos) > 20 * tilemap.tile_size:
+            self.aggro_timer = self.aggro = self.charge_time = 0
+            self.first_hit = self.shooting = False
 
-        if  math.dist(self.pos,player_pos) > 20*tilemap.tile_size:
-            #self.alertted = False 
-            self.aggro_timer = 0 
-            self.aggro = False 
-            self.charge_time = 0
-            self.first_hit = False 
-            self.shooting = False  
-            
-
-
-        
-        if self.hp >0 and self.wake:
-            if self.walking : 
-                if self.aggro: 
+        if self.hp > 0 and self.wake:
+            if self.walking:
+                if self.aggro:
                     self.aggro_timer += self.aggro
-                    #then you are going to charge up an attack, and shoot. 
-                    #the attack is going to be a lazer. that expands then shrinks. 
-                    #I need to change the charging animation so that the gun that the bots hold will change angle depending on where you are. 
-                    #it is the same mechanism as the player's gun rotation 
-                    
-                   
-                   
-                   
-                     
-                else: 
-                    if self.on_ramp != 0 :
-                        #if the wheelbot in on a ramp, just move. 
-                        movement = (movement[0] - 1.5 if self.flip else movement[0] + 1.5, movement[1])
-                       
-                    else: 
-
-                        if tilemap.solid_check((self.pos[0]+ (-8 if self.flip else 8+self.size[0]),self.pos[1]+8)):
-                            if tilemap.solid_check((self.pos[0] + (-8 if self.flip else 8+self.size[0]),self.pos[1]+8-tilemap.tile_size)):
-                                if tilemap.solid_check((self.pos[0]+ (-8 if self.flip else 8+self.size[0] ),self.pos[1]+8-tilemap.tile_size*2)):
-                                    self.flip = not self.flip 
-                                else: 
-                                    print("first")
-                                    self.velocity[1] = -5
-                                    movement = (movement[0] - 1.5 if self.flip else movement[0] + 1.5, movement[1])
-                            else: 
-                                
-                                tile = tilemap.return_tile(None,(self.pos[0]+ (-8 if self.flip else 8+self.size[0]),self.pos[1]+8))
-                                if tile == None or (tile != None and tile.type == 'stairs'):
-                                    movement = (movement[0] - 1.5 if self.flip else movement[0] + 1.5, movement[1])
-                                else: 
-                                    self.velocity[1] = -3.3
-                                    movement = (movement[0] - 1.5 if self.flip else movement[0] + 1.5, movement[1])
-                                
-                                
-                        else:
-                            if tilemap.solid_check((self.pos[0]+ (-8 if self.flip else 8+self.size[0]),self.pos[1]+8-tilemap.tile_size)):
-                                if not tilemap.solid_check((self.pos[0]+ (-8 if self.flip else 8+self.size[0]),self.pos[1]+8-tilemap.tile_size*2)):
-                                    print("third")
-                                    self.velocity[1] = -5
-                                    movement = (movement[0] - 1.5 if self.flip else 1.5, movement[1])
-                                else: 
-                                    self.flip = not self.flip 
-                                    movement = (movement[0] - 1.5 if self.flip else 1.5, movement[1])
-                            else: 
-                                #fix this to optimize 
-                                
-                                if not tilemap.solid_check((self.pos[0]+ (-8 if self.flip else 8+self.size[0]),self.pos[1]+8+tilemap.tile_size)):
-                                    if not tilemap.solid_check((self.pos[0]+ (-8 if self.flip else 8+self.size[0]),self.pos[1]+8+tilemap.tile_size*2)):
-                                        if not tilemap.solid_check((self.pos[0]+ (-8 if self.flip else 8+self.size[0]),self.pos[1]+8+tilemap.tile_size*3)):
-                                            if not tilemap.solid_check((self.pos[0]+ (-8 if self.flip else 8+self.size[0]),self.pos[1]+8+tilemap.tile_size*4)):
-                                                if not tilemap.solid_check((self.pos[0]+ (-8 if self.flip else 8+self.size[0]),self.pos[1]+8+tilemap.tile_size*5)):
-                                                    self.flip = not self.flip 
-                                                else: 
-                                                    movement = (movement[0] - 1.5 if self.flip else 1.5, movement[1])
-                                            else: 
-                                                movement = (movement[0] - 1.5 if self.flip else 1.5, movement[1])
-                                        else: 
-                                            movement = (movement[0] - 1.5 if self.flip else 1.5, movement[1])
-                                    else: 
-                                        movement = (movement[0] - 1.5 if self.flip else 1.5, movement[1])
-                                else: 
-                                    movement = (movement[0] - 1.5 if self.flip else 1.5, movement[1])
-                                
-                                
+                else:
+                    movement = self._handle_movement(tilemap, movement)
                     self.walking = max(0, self.walking - 1)
-                
             elif random.random() < 0.01:
-                #things to do when you aren't walking 
-                
-                self.walking = random.randint(30,120) 
-                #if the wheel bot woke up, then you move around.
+                self.walking = random.randint(30, 120)
         else:
-            #if the wheel bot is dormant, it stays in the dormant state and does not move. 
-            pass 
-        
-        
-        self.health_bar.x = self.pos[0] + 1
-        self.health_bar.y = self.pos[1] -6
-        self.health_bar.update(self.hp)
+            pass
 
-        
-        super().update_pos(tilemap,movement=movement)
-        
-      
+        self._update_health_bar()
+        super().update_pos(tilemap, movement=movement)
 
         if self.hp <= 0:
-            self.set_state('death')
-            
-            if self.animation.done: 
-                del self 
-                return True 
-        else: 
-            if not self.wake: 
-                #if you are dormant 
-                if math.dist(self.pos,player_pos) < 4*tilemap.tile_size or self.first_hit:
-                    self.set_state('wake')
-                    if self.animation.done == True: 
-                        self.wake = True 
-                else: 
-                    self.set_state('dormant')
-                return False 
-            else: 
-                if math.dist(self.pos,player_pos) < 12*tilemap.tile_size or self.first_hit:
-                    self.aggro = True 
-                if self.hurt:
-                    self.shooting = False
-                    self.charge_time +=0.1
-                    self.set_state('hit')
-                    
-                    self.weapon.update(player_pos) 
-                    if self.animation.done == True: 
-                        self.hurt = False
-                        self.alertted = True 
-                else: 
+            self._handle_death()
+        else:
+            self._handle_awake_state(tilemap, movement,player_pos)
 
-                    if not self.aggro: 
-                        self.charge_time = 0
-                        if self.collisions['down']:
-                            self.air_time = 0
-                            
-                        if movement[0] != 0:
-                            self.set_state('move')    
-                        else: 
-                            self.set_state('idle') 
-                    else: 
-                        dir = player_pos[0] - self.pos[0]
-                        if dir >= 0:
-                            self.flip = False
-                        else: 
-                            self.flip = True  
-                        
-                        if not self.alertted:
-                            self.set_state('alert')
-                            if self.animation.done == True: 
-                                self.charge_time = 0
-                                self.alertted = True 
-                        else:
-                            self.weapon.update(player_pos) 
-                            if not self.shooting:
-                                if self.charge_time < 100: 
-                                    self.charge_time += 1
-                                    self.set_state('new_charge')
-                                    
-                                else: 
-                                    self.shooting = True 
-                                    self.charge_time = 0
-                            else: 
-                                self.set_state('shoot')
-                                if self.animation.frame/self.animation.img_dur == 0 :
-                                    
-                                    #shoot the gun at the beginning of the shooting animation 
-                                    
-                                    self.weapon.load(Wheelbot_bullet(self.game,self.game.bullets['laser_weapon'].copy(),[0,0],self.game.bullets['laser_weapon'].images[0].get_size(),'laser_weapon'))
-                                    self.weapon.shoot() 
-                                if self.animation.done == True: 
-                                    self.shooting= False 
-                        
-                    
-                    return False 
-    
-    def hit(self,hit_damage):
-        if self.hp > 0 :
+    def _handle_movement(self, tilemap, movement):
+        flip_offset = -8 if self.flip else 8 + self.size[0]
+        solid_check_1 = tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8))
+        solid_check_2 = tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - tilemap.tile_size))
+
+        if solid_check_1:
+            if solid_check_2:
+                if tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
+                    self.flip = not self.flip
+                else:
+                    self.velocity[1] = -5
+            else:
+                tile = tilemap.return_tile(None, (self.pos[0] + flip_offset, self.pos[1] + 8))
+                if tile is None or tile.type == 'stairs':
+                    movement = (movement[0] + (-1.5 if self.flip else 1.5), movement[1])
+                else:
+                    self.velocity[1] = -3.3
+        else:
+            if solid_check_2:
+                if not tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
+                    self.velocity[1] = -5
+                else:
+                    self.flip = not self.flip
+            else:
+                movement = self._handle_fall(tilemap, movement, flip_offset)
+
+        return movement
+
+    def _handle_fall(self, tilemap, movement, flip_offset):
+        for i in range(1, 6):
+            if tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 + i * tilemap.tile_size)):
+                movement = (movement[0] + (-1.5 if self.flip else 1.5), movement[1])
+                break
+        else:
+            self.flip = not self.flip
+        return movement
+
+    def _update_health_bar(self):
+        self.health_bar.x = self.pos[0] + 1
+        self.health_bar.y = self.pos[1] - 6
+        self.health_bar.update(self.hp)
+
+    def _handle_death(self):
+        self.set_state('death')
+        if self.animation.done:
+            del self
+
+    def _handle_awake_state(self, tilemap,movement, player_pos):
+        distance = math.dist(self.pos, player_pos)
+        if not self.wake:
+            if distance < 4 * tilemap.tile_size or self.first_hit:
+                self.set_state('wake')
+                if self.animation.done:
+                    self.wake = True
+            else:
+                self.set_state('dormant')
+        else:
+            self._handle_aggro_state(distance, tilemap, movement, player_pos)
+
+    def _handle_aggro_state(self, distance, tilemap,movement, player_pos):
+        if distance < 12 * tilemap.tile_size or self.first_hit:
+            self.aggro = True
+        if self.hurt:
+            self._handle_hurt_state(player_pos)
+        else:
+            self._handle_combat_state(movement, player_pos)
+
+    def _handle_hurt_state(self, player_pos):
+        self.shooting = False
+        self.charge_time += 0.1
+        self.set_state('hit')
+        self.weapon.update(player_pos)
+        if self.animation.done:
+            self.hurt = False
+            self.alertted = True
+
+    def _handle_combat_state(self, movement, player_pos):
+        if not self.aggro:
+            self.charge_time = 0
+            if self.collisions['down']:
+                self.air_time = 0
+            if movement[0] != 0:
+                self.set_state('move')
+            else:
+                self.set_state('idle')
+        else:
+            self._handle_attack_state(player_pos)
+
+    def _handle_attack_state(self, player_pos):
+        self.flip = player_pos[0] < self.pos[0]
+        if not self.alertted:
+            self.set_state('alert')
+            if self.animation.done:
+                self.charge_time = 0
+                self.alertted = True
+        else:
+            self.weapon.update(player_pos)
+            if not self.shooting:
+                if self.charge_time < 100:
+                    self.charge_time += 1
+                    self.set_state('new_charge')
+                else:
+                    self.shooting = True
+                    self.charge_time = 0
+            else:
+                self._handle_shooting()
+
+    def _handle_shooting(self):
+        self.set_state('shoot')
+        if self.animation.frame / self.animation.img_dur == 0:
+            self.weapon.load(Wheelbot_bullet(self.game, self.game.bullets['laser_weapon'].copy(), [0, 0], self.game.bullets['laser_weapon'].images[0].get_size(), 'laser_weapon'))
+            self.weapon.shoot()
+        if self.animation.done:
+            self.shooting = False
+
+    def hit(self, hit_damage):
+        if self.hp > 0:
             self.hp -= hit_damage
-            self.first_hit = True 
-            self.hurt = True 
-            self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
+            self.first_hit = True
+            self.hurt = True
+            self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(), True, False))
 
-
-
-    def render(self,surf,offset):
+    def render(self, surf, offset):
         if self.alertted:
-            self.health_bar.render(surf,offset)
-        """
-        self.outline = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
-        for offset_ in [(-1,0),(1,0),(0,-1),(0,1)]:
-            surf.blit(self.outline.to_surface(unsetcolor=(255,255,255,0),setcolor=(0,0,0,255)),(self.pos[0] - offset[0]+offset_[0],self.pos[1]-offset[1]+offset_[1]))
-        super().render(surf,offset=offset)
+            self.health_bar.render(surf, offset)
 
-        if self.hit_mask:
-            for offset_ in [(-1,0),(1,0),(0,-1),(0,1)]:
-                surf.blit(self.hit_mask.to_surface(unsetcolor=(0,0,0,0),setcolor=(255,255,255,255)),(self.pos[0] - offset[0]+offset_[0],self.pos[1]-offset[1]+offset_[1]))
-            self.hit_mask = None
-        """
+        super().render(surf, (offset[0] - self.weapon.knockback[0] / 4, offset[1] - self.weapon.knockback[1] / 4))
 
+        if self.state in {'new_charge', 'shoot', 'hit'}:
+            self.weapon.render(surf, offset)
 
-        super().render(surf,(offset[0] - self.weapon.knockback[0]/4, offset[1] - self.weapon.knockback[1]/4))
-
-        if self.state == 'new_charge' or self.state == 'shoot' or self.state == 'hit':
-            """
-            lights_display = pygame.Surface(surf.get_size())
-            self.light.main([],lights_display,self.pos[0]+ self.size[0]//2, self.pos[1]+self.size[1]//2,offset)
-            surf.blit(lights_display,(0,0),special_flags = pygame.BLEND_RGB_MULT)
-            """
-            self.weapon.render(surf,offset)
-
-        #render the outline as well. 
 
         
         
@@ -937,10 +865,8 @@ class PlayerEntity(PhysicsEntity):
     def __init__(self,game,pos,size):
         #attributes required to implement weapon 
         self.equipped = False 
-        self.cur_weapon = None 
-        self.cur_weapon_index = None
 
-        self.weapon_inven_size = 5 # maximum size of carry 
+        self.cur_weapon_node = None 
 
         self.weapon_inven = DoublyLinkedList()
        
@@ -1148,7 +1074,7 @@ class PlayerEntity(PhysicsEntity):
         
 
         if self.equipped:
-            self.cur_weapon.update(self.d_cursor_pos)
+            self.cur_weapon_node.weapon.update(self.d_cursor_pos)
         
         #update the health and stamina bars 
         
@@ -1173,7 +1099,7 @@ class PlayerEntity(PhysicsEntity):
     
     def render(self,surf,offset):
         
-        knockback = (0,0) if not self.equipped else (self.cur_weapon.knockback[0]/5,self.cur_weapon.knockback[1]/9)
+        knockback = (0,0) if not self.equipped else (self.cur_weapon_node.weapon.knockback[0]/5,self.cur_weapon_node.weapon.knockback[1]/9)
 
         super().render(surf,(offset[0] - knockback[0],offset[1] - knockback[1]))
 
@@ -1205,15 +1131,15 @@ class PlayerEntity(PhysicsEntity):
         if self.equipped: 
             
             if self.changing_done == 0:
-                self.cur_weapon.render(surf,offset,set_angle = None)
+                self.cur_weapon_node.weapon.render(surf,offset,set_angle = None)
             else: 
-                if self.cur_weapon.flipped: 
+                if self.cur_weapon_node.weapon.flipped: 
                     angles = [angle for angle in range(0,-121,-20)]  
                     
                 else: 
                     angles = [angle for angle in range(120,-1,-20)]                    
                 arm_pos_angle = angles[self.changing_done]
-                self.cur_weapon.render(surf,offset,set_angle = arm_pos_angle) 
+                self.cur_weapon_node.weapon.render(surf,offset,set_angle = arm_pos_angle) 
             
     
     def dash(self):
@@ -1296,19 +1222,23 @@ class PlayerEntity(PhysicsEntity):
 
     
     def change_weapon(self,scroll):
-        if self.weapon_inven.head and ((self.weapon_inven.head.next and scroll ==1) or (self.weapon_inven.head.prev and scroll == -1)): 
-            self.change_scroll =scroll
-            self.change_weapon_inc= True 
-            if self.changing_done == 6:
-                if self.change_scroll == 1:
-                    self.weapon_inven.head = self.weapon_inven.head.next
-                else:
-                    self.weapon_inven.head = self.weapon_inven.head.prev 
-                self.equip()
-                self.changing_done = 0
-                self.change_scroll = 0 
-                self.change_weapon_inc = False
-            
+        if self.cur_weapon_node: 
+            if (self.cur_weapon_node.next and scroll ==1) or (self.cur_weapon_node.prev and scroll ==-1):
+                self.change_scroll = scroll
+                self.change_weapon_inc = True 
+                if self.changing_done == 6:
+                    if scroll ==1:
+                        self.cur_weapon_node = self.cur_weapon_node.next 
+                        self.cur_weapon_node.weapon.equip(self)
+                    else: 
+                        self.cur_weapon_node = self.cur_weapon_node.prev
+                        self.cur_weapon_node.weapon.equip(self)
+                         
+                    self.changing_done = 0
+                    self.change_scroll = 0 
+                    self.change_weapon_inc = False
+             
+
             
         """
         if self.cur_weapon:
@@ -1327,13 +1257,14 @@ class PlayerEntity(PhysicsEntity):
         """
 
     def equip(self):
+        
+        
+        
         if self.weapon_inven.head:
-            self.cur_weapon = self.weapon_inven.head.weapon
+            self.cur_weapon_node = self.weapon_inven.head
+            self.cur_weapon_node.weapon.equip(self)
             self.equipped = True 
-            self.cur_weapon.equip(self)
-        else: 
-            self.cur_weapon = None
-            self.equipped = False
+            
         """
         if len(self.weapon_inven) < self.weapon_inven_size:
             
@@ -1350,14 +1281,14 @@ class PlayerEntity(PhysicsEntity):
     def shoot_weapon(self,frame):
         #testing bullet firing
         if self.equipped: 
-            if self.cur_weapon.rapid_firing:
-                if frame % self.cur_weapon.fire_rate == 0:
+            if self.cur_weapon_node.weapon.rapid_firing:
+                if frame % self.cur_weapon_node.weapon.fire_rate == 0:
                     """
                     test_shell_image = self.game.bullets['rifle_small'].copy()
                     test_shell = Bullet(self.game,self.cur_weapon.opening_pos,test_shell_image.get_size(),test_shell_image,'rifle_small').copy()
                     self.cur_weapon.load(test_shell)
                     """
-                    self.cur_weapon.shoot(self.time,self.d_cursor_pos) 
+                    self.cur_weapon_node.weapon.shoot(self.time,self.d_cursor_pos) 
                    
                     #self.game.Tilemap.bullets.append(shot_bullet)
                     #self.game.bullets_on_screen.append(shot_bullet)
@@ -1371,7 +1302,7 @@ class PlayerEntity(PhysicsEntity):
                 self.cur_weapon.load(test_shell)
                 """
           
-                self.cur_weapon.shoot(self.time,self.d_cursor_pos) 
+                self.cur_weapon_node.weapon.shoot(self.time,self.d_cursor_pos) 
                
                 #self.game.Tilemap.bullets.append(shot_bullet)
                 #self.game.bullets_on_screen.append(shot_bullet)
@@ -1384,12 +1315,12 @@ class PlayerEntity(PhysicsEntity):
                     
     def toggle_rapid_fire(self):
         if self.equipped:
-            self.cur_weapon.toggle_rapid_fire()
+            self.cur_weapon_node.weapon.toggle_rapid_fire()
 
 
     def weapon_toggle_state(self):
         if self.equipped:
-            return self.cur_weapon.rapid_firing 
+            return self.cur_weapon_node.weapon.rapid_firing 
     
     def hit(self,hit_damage):
         self.health -= hit_damage
