@@ -1,2 +1,2 @@
 
-                    if kill:
+            split_key = key.split(";")

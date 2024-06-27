@@ -143,7 +143,7 @@ class myGame:
             
             'particle/shot_muzzle/laser_weapon' : Animation(load_images('particles/shot_muzzle/laser_weapon',background='transparent'),img_dur=3,loop =False),
 
-            'particle/smoke/rifle' : Animation(load_images('particles/shoot/rifle',background='transparent'),img_dur=3,loop=False),
+            'particle/smoke/ak_47' : Animation(load_images('particles/shoot/rifle',background='transparent'),img_dur=3,loop=False),
 
             'particle/smoke/rifle_small' : Animation(load_images('particles/bullet_collide_smoke/rifle/small',background='black'),img_dur=2,loop=False),
 
@@ -263,19 +263,27 @@ class myGame:
 
         # ------------------- ak bullet loading and equip
         """
-        ak_47 = self.weapons['ak'].copy()
+        self.ak_47 = self.weapons['ak'].copy()
         for i in range(0,1005):
             test_shell_image = self.bullets['rifle_small'].copy()
-            test_shell = Bullet(self,[0,0],test_shell_image.get_size(),test_shell_image,'rifle_small').copy()
-            ak_47.load(test_shell)
-
-        flamethrower = self.weapons['flamethrower'].copy()
+            test_shell = Bullet(self,[0,0],test_shell_image.get_size(),test_shell_image,'rifle_small')
+            self.ak_47.load(test_shell)
+        
+        self.ak_47_2 = self.weapons['ak'].copy()
         for i in range(0,1005):
-            flamethrower.magazine.append(0)
-
-        self.player.equip_weapon(flamethrower)
-        self.player.equip_weapon(ak_47)
+            test_shell_image = self.bullets['rifle_small'].copy()
+            test_shell = Bullet(self,[0,0],test_shell_image.get_size(),test_shell_image,'rifle_small')
+            self.ak_47_2.load(test_shell)
         """
+        """
+        self.flamethrower = self.weapons['flamethrower'].copy()
+        for i in range(0,1005):
+            self.flamethrower.magazine.append(0)
+        """
+
+        #self.player.equip_weapon(flamethrower)
+        #self.player.equip_weapon(ak_47)
+        
         # ----------------------
 
 
@@ -469,7 +477,7 @@ class myGame:
                     if particle.type =='leaf':
                         particle.pos[0] += math.sin(particle.animation.frame * 0.035) * 0.3
                     if particle.source =='player' and particle.type[0:5] == 'smoke':
-                        particle.pos = self.player.cur_weapon.opening_pos
+                        particle.pos = self.player.cur_weapon_node.weapon.opening_pos
                     if kill: 
                         self.particles.remove(particle)
             
@@ -610,13 +618,6 @@ class myGame:
                 #define when the right or left arrow keys are pressed, the corresponding player's movement variable varlues are changed. 
                 if event.type == pygame.KEYDOWN: 
 
-                    if event.key == pygame.K_f:
-                        if self.player.weapon_inven.head:
-                            print(self.player.weapon_inven.head.prev if  self.player.weapon_inven.head.prev  else None, self.player.weapon_inven.head.cell_ind, self.player.weapon_inven.head.weapon,self.player.weapon_inven.head.next if  self.player.weapon_inven.head.next else None)
-                    if event.key == pygame.K_t:
-                        self.HUD.Items_list[2][1].add_item(self.weapons['ak'])
-                    if event.key == pygame.K_y:
-                        self.HUD.Items_list[2][1].add_item(self.weapons['flamethrower'])
 
                     if event.key == pygame.K_c:
                         self.HUD.Items_list[0][1].add_item(  Item(random.choice(list(ITEMS.keys())), 1))

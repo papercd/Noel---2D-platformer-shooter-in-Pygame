@@ -425,11 +425,12 @@ class Wheel_bot(Enemy):
 
         self._update_health_bar()
         super().update_pos(tilemap, movement=movement)
-
+        kill= False
         if self.hp <= 0:
-            self._handle_death()
+            kill = self._handle_death()
         else:
             self._handle_awake_state(tilemap, movement,player_pos)
+        if kill: return True 
 
     def _handle_movement(self, tilemap, movement):
         flip_offset = -8 if self.flip else 8 + self.size[0]
@@ -477,6 +478,7 @@ class Wheel_bot(Enemy):
         self.set_state('death')
         if self.animation.done:
             del self
+            return True
 
     def _handle_awake_state(self, tilemap,movement, player_pos):
         distance = math.dist(self.pos, player_pos)
@@ -857,10 +859,8 @@ class Canine(Enemy):
         self.hp -= hit_damage
         self.first_hit = True 
         self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
-        
-    
-        
-        
+
+
 class PlayerEntity(PhysicsEntity):
     def __init__(self,game,pos,size):
         #attributes required to implement weapon 
@@ -916,6 +916,7 @@ class PlayerEntity(PhysicsEntity):
             self.animation = self.game.assets[self.type + '/' + ('holding_gun/' if self.equipped else '') + self.state].copy() 
 
     def update_pos(self, tile_map,cursor_pos,frame_count,movement=(0, 0)):
+        
         #print(self.velocity[0])
         self.time = frame_count
         self.d_cursor_pos = cursor_pos
@@ -1261,9 +1262,11 @@ class PlayerEntity(PhysicsEntity):
         
         
         if self.weapon_inven.head:
+            self.equipped = True 
+            self.animation = self.game.assets[self.type + '/holding_gun/' + self.state].copy() 
             self.cur_weapon_node = self.weapon_inven.head
             self.cur_weapon_node.weapon.equip(self)
-            self.equipped = True 
+            
             
         """
         if len(self.weapon_inven) < self.weapon_inven_size:
@@ -1367,8 +1370,6 @@ class Bullet(PhysicsEntity):
         self.test_tile = None
         self.light = LIGHT(20,pixel_shader(20,(255,255,255),1,False))
         
-        
-  
     def set_state(self, action):
         self.state = action
 

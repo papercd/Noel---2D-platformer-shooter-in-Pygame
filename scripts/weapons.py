@@ -8,14 +8,16 @@ from scripts.Pygame_Lights import LIGHT ,pixel_shader
 
 
 WEAPONS_WITH_KNOCKBACK = {'rifle'}
-WEAPONS_THAT_CAN_RAPID_FIRE = {'rifle'}
+WEAPONS_THAT_CAN_RAPID_FIRE = {'rifle','weapon'}
 
 class Weapon:
-    def __init__(self,game,type,sprite,fire_rate,power,weapon_img,shrunk_weapon_img,img_pivot,description):  
+    def __init__(self,game,type,name,sprite,fire_rate,power,weapon_img,shrunk_weapon_img,img_pivot,description):  
         self.game = game
         self.type = type 
 
         self.sprite = sprite 
+        self.sprite_buffer = sprite
+
         self.img_pivot = img_pivot
         self.weapon_img = weapon_img
         self.shrunk_weapon_img = shrunk_weapon_img
@@ -34,7 +36,7 @@ class Weapon:
 
         #testing 
         self.amount = 1
-        self.name = self.type
+        self.name = name
         self.stackable = False
         self.description = description
     
@@ -51,7 +53,7 @@ class Weapon:
 
 
     def get_name(self):
-        return self.type
+        return self.name
 
     def toggle_rapid_fire(self):
         if self.type in WEAPONS_THAT_CAN_RAPID_FIRE:
@@ -106,7 +108,7 @@ class Weapon:
                 self.knockback = [-bullet.velocity[0]/2,-bullet.velocity[1]/2]
                 
                 #append the shooting particles here instead of doing it in the entity class 
-                shot_particle = Particle(self.game,'smoke'+'/'+self.type,self.opening_pos.copy(),self.holder.type,velocity=[0,0],frame=0)
+                shot_particle = Particle(self.game,'smoke'+'/'+self.name,self.opening_pos.copy(),self.holder.type,velocity=[0,0],frame=0)
                 rotated_shot_particle_images = [pygame.transform.rotate(image,bullet.angle) for image in shot_particle.animation.copy().images]
                 shot_particle.animation.images = rotated_shot_particle_images
 
@@ -130,13 +132,16 @@ class Weapon:
 
         
     def copy(self):
-        return Weapon(self.game,self.type,self.sprite,self.fire_rate,self.power,self.weapon_img,self.shrunk_weapon_img,self.img_pivot,self.description)
+        new_weapon = Weapon(self.game,self.type,self.name,self.sprite,self.fire_rate,self.power,self.weapon_img,self.shrunk_weapon_img,self.img_pivot,self.description)
+        new_weapon.magazine = self.magazine.copy()
+        return new_weapon
         
     def update(self,cursor_pos):
         self.mpos = cursor_pos
 
     def render(self,surf,offset = (0,0),set_angle = None):
         #save surf to use when passing it to bullet 
+        
         self.surf = surf 
 
         #you need to define the anchor point positions for every state of the player. 
@@ -169,14 +174,14 @@ class Weapon:
         #get the angle, the pivot, and offset
         if self.flipped: 
             self.pivot = [self.holder.pos[0]+self.right_anchor[0]-offset[0]-1,self.holder.pos[1]+self.right_anchor[1] -offset[1]]
-            self.render_offset = pygame.math.Vector2(-self.sprite.get_rect().centerx + self.img_pivot[0],self.sprite.get_rect().centery - self.img_pivot[1] )       
+            self.render_offset = pygame.math.Vector2(-self.sprite_buffer.get_rect().centerx + self.img_pivot[0],self.sprite_buffer.get_rect().centery - self.img_pivot[1] )       
         else: 
             self.pivot = [self.holder.pos[0]+self.left_anchor[0]-offset[0]+1,self.holder.pos[1]+self.left_anchor[1] -offset[1]]
-            self.render_offset = pygame.math.Vector2(self.sprite.get_rect().centerx - self.img_pivot[0], self.sprite.get_rect().centery - self.img_pivot[1])
+            self.render_offset = pygame.math.Vector2(self.sprite_buffer.get_rect().centerx - self.img_pivot[0], self.sprite_buffer.get_rect().centery - self.img_pivot[1])
 
         dx,dy = self.mpos[0] - self.pivot[0], self.mpos[1]- self.pivot[1]
         angle = math.degrees(math.atan2(-dy,dx)) 
-        sprite_width = self.sprite.get_width()
+        sprite_width = self.sprite_buffer.get_width()
         
         #separate angle varialble for the gun's opening - to apply angle cap and to pass onto firing bullet 
         self.angle_opening = angle 
@@ -188,7 +193,7 @@ class Weapon:
         if (angle > 90 and angle <= 180) or (angle < -90 and angle >= -180):
             if rotate_cap_right:
                 if self.flipped:
-                    self.sprite = pygame.transform.flip(self.sprite,True,False)
+                    self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
                     self.flipped = False
                     blitz = True 
                 if (angle > 90 and angle <= 180):
@@ -198,7 +203,7 @@ class Weapon:
                 self.angle_opening = -angle 
             else: 
                 if self.flipped != True: 
-                    self.sprite = pygame.transform.flip(self.sprite,True,False)
+                    self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
                     self.flipped = True 
                     blitz = True 
                 angle += 180    
@@ -206,7 +211,7 @@ class Weapon:
         else: 
             if rotate_cap_left:
                 if self.flipped == False: 
-                    self.sprite = pygame.transform.flip(self.sprite,True,False)
+                    self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
                     self.flipped = True
                     blitz = True 
                 if (angle >0 and angle <= 90) : 
@@ -216,14 +221,14 @@ class Weapon:
                 self.angle_opening = 180-angle 
             else: 
                 if self.flipped != False: 
-                    self.sprite = self.sprite = pygame.transform.flip(self.sprite,True,False)
+                    self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
                     self.flipped = False  
                     blitz = True 
                 angle = -angle
 
-
-        weapon_display = pygame.Surface((self.sprite.get_width(),self.sprite.get_height()),pygame.SRCALPHA)
-        weapon_display.blit(self.sprite,(0,0))
+        #if self.flipped: sprite_buffer = pygame.transform.flip(sprite_buffer,True,False)
+        weapon_display = pygame.Surface((self.sprite_buffer.get_width(),self.sprite_buffer.get_height()),pygame.SRCALPHA)
+        weapon_display.blit(self.sprite_buffer,(0,0))
         rotated_image,rect = self.rotate(weapon_display,angle if set_angle == None else set_angle,self.pivot,self.render_offset)
 
         #the gun's opening position  
@@ -233,16 +238,16 @@ class Weapon:
         self.opening_pos[0] = self.pivot[0] + offset[0]+ math.cos(math.radians(-self.angle_opening)) * sprite_width
         self.opening_pos[1] = self.pivot[1] + offset[1]+ math.sin(math.radians(-self.angle_opening)) * sprite_width
         
-        if self.type in WEAPONS_WITH_KNOCKBACK:
-            if self.knockback[0] < 0: 
-                self.knockback[0] = min(self.knockback[0] + 1.45, 0)
-            if self.knockback[0] > 0 :
-                self.knockback[0] = max(self.knockback[0] -1.45, 0)
+        #if self.type in WEAPONS_WITH_KNOCKBACK:
+        if self.knockback[0] < 0: 
+            self.knockback[0] = min(self.knockback[0] + 1.45, 0)
+        if self.knockback[0] > 0 :
+            self.knockback[0] = max(self.knockback[0] -1.45, 0)
 
-            if self.knockback[1] < 0: 
-                self.knockback[1] = min(self.knockback[1] + 1.45, 0)
-            if self.knockback[1] > 0 :
-                self.knockback[1] = max(self.knockback[1] -1.45, 0)
+        if self.knockback[1] < 0: 
+            self.knockback[1] = min(self.knockback[1] + 1.45, 0)
+        if self.knockback[1] > 0 :
+            self.knockback[1] = max(self.knockback[1] -1.45, 0)
 
         #testSurf = pygame.Surface((2,2))
 
@@ -253,10 +258,12 @@ class Weapon:
 
 class AK_47(Weapon):
     def __init__(self,game,sprite,weapon_img,shrunk_weapon_img,description): 
-        super().__init__(game,'weapon',sprite,5,15,weapon_img,shrunk_weapon_img,(2,2),description)
+        super().__init__(game,'weapon','ak_47',sprite,5,15,weapon_img,shrunk_weapon_img,(2,2),description)
 
     def copy(self):
-        return AK_47(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
+        new_ak = AK_47(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
+        new_ak.magazine = self.magazine.copy()
+        return new_ak
 
     def shoot(self,j= 0,d_mouse_pos = [0,0]):
         shot = super().shoot()
@@ -267,12 +274,14 @@ class AK_47(Weapon):
 
 class Flamethrower(Weapon):
     def __init__(self,game,sprite,weapon_img,shrunk_weapon_img,description):
-        super().__init__(game,'weapon',sprite,1,5,weapon_img,shrunk_weapon_img,(2,2),description)
+        super().__init__(game,'weapon', 'flamethrower' ,sprite,1,5,weapon_img,shrunk_weapon_img,(2,2),description)
         self.rapid_firing = True
     
     def copy(self):
-        return Flamethrower(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
-
+        new_flamethrower =  Flamethrower(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
+        new_flamethrower.magazine = self.magazine.copy()
+        return new_flamethrower
+    
     def toggle_rapid_fire(self):
         self.rapid_firing = not self.rapid_firing 
         

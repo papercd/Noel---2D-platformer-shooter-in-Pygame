@@ -423,6 +423,7 @@ class Cell():
                         self.item = None
 
                         if self.type == 'weapon':
+                            
                             player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
                             player.equip()
                         
@@ -438,6 +439,7 @@ class Cell():
                         cursor.item = self.item
                         self.item = None
                         if self.type == 'weapon':
+                            
                             player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
                             player.equip()
                         self.particles.append(Dust())
@@ -475,11 +477,14 @@ class Cell():
 
                         
                         cursor.item = self.item
-
-
+                        
+                       
                         self.item = temp
+
                         if self.type == 'weapon':
-                            self.item.sprite = pygame.transform.flip(self.item.sprite,True,False)
+                            
+                            
+                            #temp.sprite = pygame.transform.flip(temp.sprite,True,False)
                             corres_node = player.weapon_inven.find_node(self.ind)
                             corres_node.weapon = temp
                             player.equip()
@@ -495,6 +500,7 @@ class Cell():
                     self.item = cursor.item
 
                     if self.type == 'weapon':
+                       
                         player.weapon_inven.add_weapon(self.ind,cursor.item)
                         player.equip()
 
@@ -606,6 +612,7 @@ class Inventory():
                 if cell.item is None:
                     cell.item = item
                     if cell.type == 'weapon':
+                        print("check5")
                         self.player.weapon_inven.add_weapon(cell.ind,cell.item)
                         self.player.equip()
 

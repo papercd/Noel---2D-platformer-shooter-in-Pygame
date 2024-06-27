@@ -40,6 +40,10 @@ class inven_panel:
                 surf.blit(display_img,(self.topleft[0] - offset[0] + display_offset[0],self.topleft[1] - offset[1] + display_offset[1]))
 
             surf.blit(self.player.cur_weapon_node.weapon.weapon_img,(self.topleft[0] - offset[0] ,self.topleft[1] - offset[1]))
+            new_mag_count = len(self.player.cur_weapon_node.weapon.magazine)
+            shot = new_mag_count != self.ammo_indicator
+            self.ammo_indicator.change_number(new_mag_count)
+            self.ammo_indicator.render(self.topleft[0] - offset[0] ,self.topleft[1] - offset[1] - (2 if shot else 0),surf)
 
             if self.player.cur_weapon_node.next:
                 org_image_size = self.player.cur_weapon_node.next.weapon.weapon_img.get_size()
