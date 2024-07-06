@@ -31,7 +31,7 @@ class myGame:
 
         self.screen_size = (1440,900)
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.screen_size,lightmap_res=(int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5)))
-        self.lights_engine.set_ambient(255,255,255,255)
+        self.lights_engine.set_ambient(155,155,155,155)
 
         #self.screen = pygame.display.set_mode(self.screen_size,pygame.RESIZABLE)
         

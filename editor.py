@@ -23,13 +23,17 @@ class Editor:
     def __init__(self):
         pygame.init() 
         pygame.display.set_caption('editor')
+
         
         self.RENDER_SCALE = 2.5
+        self.DEFAULT_LIGHT_RADIUS = 890
+
 
         self.screen_res = (1440,900)
 
+
         self.lights_engine = LightingEngine(screen_res= self.screen_res,native_res= self.screen_res,lightmap_res= (int(self.screen_res[0] / LIGHTMAP_SCALE) , int(self.screen_res[1] / LIGHTMAP_SCALE) ))
-        self.lights_engine.set_ambient(255,255,255,255)
+        self.lights_engine.set_ambient(225,225,225,225)
 
         
         
@@ -92,7 +96,7 @@ class Editor:
         
 
         for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
-            light = PointLight(position=(self.RENDER_SCALE*(light.pos[0]*self.Tilemap.tile_size + 8), (light.pos[1]*self.Tilemap.tile_size)*self.RENDER_SCALE), power=1., radius=890)
+            light = PointLight(position=(self.RENDER_SCALE*(light.pos[0]*self.Tilemap.tile_size + 8), (light.pos[1]*self.Tilemap.tile_size)*self.RENDER_SCALE), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
             light.set_color(255, 255, 255, 200)
             self.lights_engine.lights.append(light)
 
@@ -180,7 +184,7 @@ class Editor:
             center_ind = pygame.Surface((1,1))
             center_ind.fill((222,13,255))
             self.background_surf.blit(center_ind,(435-render_scroll[0],240-render_scroll[1]))
-            self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
+            self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll,self.RENDER_SCALE)
         
             #render the autotile random factor panel
             """
@@ -396,7 +400,7 @@ class Editor:
                                     #print(check_loc)
                                     if placed: 
                                         self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])] =   Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),check_loc)
-                                        print(self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].type,self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].pos,self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].variant)
+                                        #print(self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].type,self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].pos,self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].variant)
 
                                 else: 
                                     dup = False 
@@ -596,7 +600,6 @@ class Editor:
             self.offgrid_layer_num.change_number(self.cur_offgrid_layer)
             self.offgrid_layer_num.render(self.foreground_surf.get_width() -  self.offgrid_layer_num.length * 4 ,10,self.foreground_surf)
 
-            
     
             for event in pygame.event.get():
 
@@ -608,8 +611,9 @@ class Editor:
                     self.screen_res = (event.w, event.h)
                     
                     self.lights_engine = LightingEngine(screen_res= self.screen_res,native_res= self.screen_res,lightmap_res= (int(self.screen_res[0] / LIGHTMAP_SCALE) , int(self.screen_res[1] / LIGHTMAP_SCALE) ))
-                    self.lights_engine.set_ambient(255,255,255,255)
+                    self.lights_engine.set_ambient(225,225,225,225)
                     self.RENDER_SCALE = 2.5
+                    self.DEFAULT_LIGHT_RADIUS = 890
 
                     pygame.display.set_caption('editor')
                     
@@ -620,13 +624,16 @@ class Editor:
                     #print(self.background_surf.get_width())
                     self.main_tile_panel =  tile_panel((0,0),self.foreground_surf.get_width() // 5 ,self.assets)
                     #print("check")
-
+                    
+                    
                     self.lights_engine.lights.clear()
                    
                     for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
-                        light = PointLight(position=(self.RENDER_SCALE*(light.pos[0]*self.Tilemap.tile_size + 8), (light.pos[1]*self.Tilemap.tile_size)*self.RENDER_SCALE), power=1., radius=890)
+                        light = PointLight(position=(self.RENDER_SCALE*(light.pos[0]*self.Tilemap.tile_size + 8), (light.pos[1]*self.Tilemap.tile_size)*self.RENDER_SCALE), power=1., radius=self.DEFAULT_LIGHT_RADIUS)
                         light.set_color(255, 255, 255, 200)
                         self.lights_engine.lights.append(light)
+                    
+                    
 
                     #self.screen = pygame.display.set_mode((event.w,event.h),pygame.RESIZABLE) 
 
@@ -693,7 +700,11 @@ class Editor:
                             self.lights_engine._release_frame_buffers()
                             self.lights_engine._create_frame_buffers()
                             
-                            self.RENDER_SCALE = min(5,self.RENDER_SCALE * 1.2)
+                            
+                            self.RENDER_SCALE = min(5.184,self.RENDER_SCALE * 1.2)
+                            self.DEFAULT_LIGHT_RADIUS = min(1845.504, self.DEFAULT_LIGHT_RADIUS *1.2)
+
+
                             self.background_surf = pygame.Surface((int(self.screen_res[0]/self.RENDER_SCALE),int(self.screen_res[1]/self.RENDER_SCALE)),pygame.SRCALPHA)
                             self.foreground_surf = pygame.Surface((int(self.screen_res[0]/self.RENDER_SCALE),int(self.screen_res[1]/self.RENDER_SCALE)),pygame.SRCALPHA)
 
@@ -705,25 +716,30 @@ class Editor:
                             self.lights_engine.lights.clear()
                    
                             for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
-                                light = PointLight(position=(int(self.RENDER_SCALE*(light.pos[0]*self.Tilemap.tile_size + 8)), int(self.RENDER_SCALE*(light.pos[1]*self.Tilemap.tile_size))), power=1., radius=890)
+                                light = PointLight(position=(int((self.RENDER_SCALE)*(light.pos[0]*self.Tilemap.tile_size + 8)), int((self.RENDER_SCALE)*(light.pos[1]*self.Tilemap.tile_size))), power=1., radius=self.DEFAULT_LIGHT_RADIUS)
                                 light.set_color(255, 255, 255, 200)
                                 self.lights_engine.lights.append(light)
+
                         if event.key == pygame.K_MINUS:
                             self.lights_engine._release_frame_buffers()
                             self.lights_engine._create_frame_buffers()
                             
 
-                            self.RENDER_SCALE = max(1,self.RENDER_SCALE / 1.2)
+                            self.RENDER_SCALE = max(1.206,self.RENDER_SCALE / 1.2)
+                            self.DEFAULT_LIGHT_RADIUS = max(429.2, self.DEFAULT_LIGHT_RADIUS / 1.2)
+
                             self.background_surf = pygame.Surface((int(self.screen_res[0]/self.RENDER_SCALE),int(self.screen_res[1]/self.RENDER_SCALE)),pygame.SRCALPHA)
                             
                             self.foreground_surf = pygame.Surface((int(self.screen_res[0]/self.RENDER_SCALE),int(self.screen_res[1]/self.RENDER_SCALE)),pygame.SRCALPHA)
 
                             #print(self.background_surf.get_width())
                             self.main_tile_panel =  tile_panel((0,0),self.foreground_surf.get_width() // 5 ,self.assets)
+
+
                             self.lights_engine.lights.clear()
                    
                             for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
-                                light = PointLight(position=(self.RENDER_SCALE*(light.pos[0]*self.Tilemap.tile_size + 8), (light.pos[1]*self.Tilemap.tile_size)*self.RENDER_SCALE), power=1., radius=890)
+                                light = PointLight(position=(self.RENDER_SCALE*(light.pos[0]*self.Tilemap.tile_size + 8), (light.pos[1]*self.Tilemap.tile_size)*self.RENDER_SCALE), power=1., radius=self.DEFAULT_LIGHT_RADIUS)
                                 light.set_color(255, 255, 255, 200)
                                 self.lights_engine.lights.append(light)
            

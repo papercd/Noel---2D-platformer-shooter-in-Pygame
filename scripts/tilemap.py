@@ -111,7 +111,7 @@ class Tilemap:
         return shadow_objs
             
       
-    def update_shadow_objs(self,surf,offset = (0,0)):
+    def update_shadow_objs(self,surf,offset = (0,0),render_scale = 2.5):
         hulls = []
         for x_cor in range(offset[0] // self.tile_size - 10, (offset[0] + surf.get_width()) // self.tile_size +10):
             for y_cor in range(offset[1] // self.tile_size -10, (offset[1] + surf.get_height()) // self.tile_size +10): 
@@ -120,10 +120,10 @@ class Tilemap:
                     tile = self.tilemap[coor]
                     if tile.type != "spawners" and tile.type != "lights":
                            
-                        vertices = [(tile.pos[0] * 2.5 * self.tile_size,tile.pos[1] * 2.5 * self.tile_size) , 
-                                    ((tile.pos[0]+1) *2.5*self.tile_size,tile.pos[1] *2.5*self.tile_size ) , 
-                                    ((tile.pos[0]+1) *2.5*self.tile_size,(tile.pos[1]+1) *2.5*self.tile_size ) ,
-                                    ((tile.pos[0]) *2.5*self.tile_size,tile.pos[1] *2.5*self.tile_size ) ,
+                        vertices = [(tile.pos[0] * render_scale * self.tile_size,tile.pos[1] * render_scale * self.tile_size) , 
+                                    ((tile.pos[0]+1) *render_scale*self.tile_size,tile.pos[1] *render_scale*self.tile_size ) , 
+                                    ((tile.pos[0]+1) *render_scale*self.tile_size,(tile.pos[1]+1) *render_scale*self.tile_size ) ,
+                                    ((tile.pos[0]) *render_scale*self.tile_size,tile.pos[1] *render_scale*self.tile_size ) ,
                                     ]
                         hulls.append(Hull(vertices))
 
@@ -468,7 +468,7 @@ class Tilemap:
                     
                     matches.append(tile)
                     
-                    matches[-1].pos = matches[-1].pos.copy()
+                    matches[-1].pos = list(matches[-1].pos).copy()
                     """
                     matches[-1].pos[0] *= self.tile_size
                     matches[-1].pos[1] *= self.tile_size
@@ -480,6 +480,7 @@ class Tilemap:
 
         
         for tile in self.decorations.copy():
+            print(tile.pos)
             if (tile.type,tile.variant) in id_pairs: 
                 matches.append(tile)
                 if not keep: 
@@ -493,7 +494,7 @@ class Tilemap:
             print(grass)
             if (grass.type,grass.variant) in id_pairs:
                 matches.append(grass)
-                matches[-1].pos = matches[-1].pos.copy()
+                matches[-1].pos = list(matches[-1].pos).copy()
                 """
                 matches[-1].pos[0] *= self.tile_size
                 matches[-1].pos[1] *= self.tile_size
@@ -506,7 +507,7 @@ class Tilemap:
             tile = copy_tilemap[loc]
             if (tile.type,tile.variant) in id_pairs:
                 matches.append(tile)
-                matches[-1].pos = matches[-1].pos.copy()
+                matches[-1].pos = list(matches[-1].pos).copy()
                 """
                 matches[-1].pos[0] *= self.tile_size
                 matches[-1].pos[1] *= self.tile_size
