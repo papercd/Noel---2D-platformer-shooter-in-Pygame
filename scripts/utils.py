@@ -1,6 +1,6 @@
 import os 
 import pygame 
-from PIL import Image, ImageFilter
+#from PIL import Image, ImageFilter
 
 #so in here we are going to define a function that creates pygame image objects
 #and returns them, so that we can simplify our code when creating our assets 
@@ -15,6 +15,7 @@ def load_image(path,background = 'black'):
     if background == 'black':
         sprite = pygame.image.load(BASE_PATH + path)
         sprite.set_colorkey((0,0,0))
+       
     elif background == 'transparent': 
         sprite= pygame.image.load(BASE_PATH + path)
     return sprite 
@@ -22,11 +23,21 @@ def load_image(path,background = 'black'):
 
 #now the this load_images function will get all the sprites within one directory and turn them into a list.
 
-def load_assets(path):
-    for dir in sorted(os.listdir(BASE_PATH+ path)):
-        print(dir)
-    
+def load_tile_assets(paths, background=None):
+    return {path: load_tile_images(f'tiles/{path}', background=background) for path in paths}
 
+def load_image_assets(paths):
+    return {key: load_image(path, background=bg) for key, (path, bg) in paths.items()}
+
+def load_image_assets_multiple(paths):
+    return {key: load_images(path, background=bg) for key, (path, bg) in paths.items()}
+
+
+def load_animation_assets(animations):
+    return {
+        key: Animation(load_images(path, background=bg), img_dur=dur, loop=loop, halt=halt)
+        for key, (path, bg, dur, loop, halt) in animations.items()
+    }
 
 def load_images(path,background = 'black'):
     sprites = []
@@ -87,7 +98,7 @@ class Animation:
 
 
 
-
+"""
 
 #                 Pygame VFX                #
 #             MIT - Kadir Aksoy             #
@@ -109,3 +120,4 @@ def blur(canvas, pos, size, radius=10, alpha=255, resolution=40):
     b.set_alpha(alpha)
     b = pygame.transform.rotozoom(b, 0, (100.0 / resolution) * 1)
     canvas.blit(b, pos)
+"""

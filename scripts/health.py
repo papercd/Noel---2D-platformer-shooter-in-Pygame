@@ -67,7 +67,7 @@ class HealthBar(Bar):
         
             
 
-        pygame.draw.rect(surf,(0,0,0,0),(self.x-offset[0] - (shake_offset[0] if self.last_shake else 0) ,self.y-offset[1]- (shake_offset[1] if self.last_shake else 0),self.w,self.h))
+        pygame.draw.rect(surf,(0,0,0,255),(self.x-offset[0] - (shake_offset[0] if self.last_shake else 0) ,self.y-offset[1]- (shake_offset[1] if self.last_shake else 0),self.w,self.h))
 
         pygame.draw.rect(surf,(173,106,29,255),(self.x-offset[0]- shake_offset[0],self.y-offset[1]- shake_offset[1],self.w*ratio_last,self.h))
         pygame.draw.rect(surf,(225,69,29,255),(self.x-offset[0]- shake_offset[0],self.y-offset[1]- shake_offset[1],self.w*ratio_mid,self.h))
@@ -89,5 +89,5 @@ class StaminaBar(Bar):
     def render(self,surf,offset = (0,0)):
         #calculate health ratio 
         ratio = self.cur_resource/ self.max_resource
-        pygame.draw.rect(surf,(0,0,0,0),(self.x-offset[0],self.y-offset[1],self.w,self.h))
+        pygame.draw.rect(surf,(0,0,0,255),(self.x-offset[0],self.y-offset[1],self.w,self.h))
         pygame.draw.rect(surf,(61,44,116,255),(self.x-offset[0],self.y-offset[1],self.w*ratio,self.h))

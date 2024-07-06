@@ -30,10 +30,10 @@ class numbers:
                 self.length+=4
             return number 
     
-    def render(self,x,y,surf):
+    def render(self,x,y,surf,offset = (0,0)):
         count = 0
         for digit in self.display_number:
-            surf.blit(digit,(x - count*4,y))
+            surf.blit(digit,(x - count*4 - offset[0],y- offset[1]))
             count += 1
 
         

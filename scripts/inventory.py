@@ -2,7 +2,7 @@ from pygame.locals import *
 import pygame
 import random 
 from scripts.utils import load_images,load_image
-from scripts.alphabet import alphabets
+from scripts.alphabet import alphabets,new_alphabets
 import os 
 
 WEAPON_CELL = load_image("ui/inventory/weapon_tile.png",background="transparent")  
@@ -545,6 +545,7 @@ class Inventory():
             self.name = name
             self.image = INVENTORY_SORTING_BUTTONS[name]
             self.parent = inv
+            
 
         def update(self, x, y, surf,scale, cursor) -> None:
             image = pygame.transform.scale(
@@ -572,7 +573,7 @@ class Inventory():
         
 
         self.name = name
-        self.name_obj = alphabets(self.name)
+        self.inven_name_display = new_alphabets(self.name +'s')
 
         self.player = player 
         self.done_open = 0
@@ -711,6 +712,10 @@ class Inventory():
         
             surf.blit(image,(self.position[0]-1,self.position[1] -10+ offset+13*self.scale))
 
+            #render name display 
+            self.inven_name_display.render(surf,self.position[0]-1,self.position[1] +3,opacity=cur_opacity)
+
+            """+ offset+13*self.scale """
             """
             pygame.draw.rect(
                 surf, (31, 31, 31,cur_opacity), (*self.position,self.box_size[0],self.box_size[1]),border_radius= 2)
