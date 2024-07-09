@@ -3,15 +3,17 @@ from enum import Enum
 import numpy as np
 import moderngl
 import pygame
+import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 
+from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
 from my_pygame_light2d.hull import Hull
 from my_pygame_light2d.color import normalize_color_arguments, denormalize_color
 from my_pygame_light2d.double_buff import DoubleBuff
+from my_pygame_light2d.util import create_rotated_rect,to_dest_coords
 
-
-class Layer(Enum):
+class Layer_(Enum):
     BACKGROUND = 1,
     FOREGROUND = 2,
 
@@ -200,15 +202,15 @@ class LightingEngine:
         self._ssbo_ind = self.ctx.buffer(reserve=20*256)
         self._ssbo_ind.bind_to_uniform_block(2)
 
-    def set_filter(self, layer: Layer, filter) -> None:
+    def set_filter(self, Layer_: Layer_, filter) -> None:
         """
-        Set the filter for a specific layer's texture.
+        Set the filter for a specific Layer_'s texture.
 
         Args:
-            layer (Layer): The layer to apply the filter to.
+            Layer_ (Layer_): The Layer_ to apply the filter to.
             filter (tuple[Constant, Constant]): The filter to apply to the texture, can be `NEAREST` or `LINEAR`.
         """
-        self._get_tex(layer).filter = filter
+        self._get_tex(Layer_).filter = filter
 
     def set_aomap_filter(self, filter) -> None:
         """
@@ -240,13 +242,13 @@ class LightingEngine:
         """
         return denormalize_color(self._ambient)
 
-    def blit_texture(self, tex: moderngl.Texture, layer: Layer, dest: pygame.Rect, source: pygame.Rect):
+    def blit_texture(self, tex: moderngl.Texture, Layer_: Layer_, dest: pygame.Rect, source: pygame.Rect):
         """
-        Blit a texture onto a specified layer's framebuffer.
+        Blit a texture onto a specified Layer_'s framebuffer.
 
         Args:
             tex (moderngl.Texture): Texture to blit.
-            layer (Layer): Layer to blit the texture onto.
+            Layer_ (Layer_): Layer_ to blit the texture onto.
             dest (pygame.Rect): Destination rectangle.
             source (pygame.Rect): Source rectangle from the texture.
         """
@@ -254,26 +256,26 @@ class LightingEngine:
         # Create a framebuffer with the texture
         fb = self.ctx.framebuffer([tex])
 
-        # Select destination framebuffer correcponding to layer
-        fbo = self._get_fbo(layer)
+        # Select destination framebuffer correcponding to Layer_
+        fbo = self._get_fbo(Layer_)
 
         # Blit texture onto destination
         glBlitNamedFramebuffer(fb.glo, fbo.glo, source.x, source.y, source.w, source.h,
                                dest.x, dest.y, dest.w, dest.h, GL_COLOR_BUFFER_BIT, GL_NEAREST)
 
-    def render_texture(self, tex: moderngl.Texture, layer: Layer, dest: pygame.Rect, source: pygame.Rect):
+    def render_texture(self, tex: moderngl.Texture, Layer_: Layer_, dest: pygame.Rect, source: pygame.Rect):
         """
-        Render a texture onto a specified layer's framebuffer using the draw shader.
+        Render a texture onto a specified Layer_'s framebuffer using the draw shader.
 
         Args:
             tex (moderngl.Texture): Texture to render.
-            layer (Layer): Layer to render the texture onto.
+            Layer_ (Layer_): Layer_ to render the texture onto.
             dest (pygame.Rect): Destination rectangle.
             source (pygame.Rect): Source rectangle from the texture.
         """
 
-        # Render texture onto layer with the draw shader
-        fbo = self._get_fbo(layer)
+        # Render texture onto Layer_ with the draw shader
+        fbo = self._get_fbo(Layer_)
         self._render_tex_to_fbo(tex, fbo, dest, source)
 
     def surface_to_texture(self, sfc: pygame.Surface) -> moderngl.Texture:
@@ -371,17 +373,17 @@ class LightingEngine:
     def _point_to_uv(self, p: tuple[float, float]):
         return [p[0]/self._native_res[0], 1 - (p[1]/self._native_res[1])]
 
-    def _get_fbo(self, layer: Layer):
-        if layer == Layer.BACKGROUND:
+    def _get_fbo(self, Layer_: Layer_):
+        if Layer_ == Layer_.BACKGROUND:
             return self._fbo_bg
-        elif layer == Layer.FOREGROUND:
+        elif Layer_ == Layer_.FOREGROUND:
             return self._fbo_fg
         return None
 
-    def _get_tex(self, layer: Layer):
-        if layer == Layer.BACKGROUND:
+    def _get_tex(self, Layer_: Layer_):
+        if Layer_ == Layer_.BACKGROUND:
             return self._tex_bg
-        elif layer == Layer.FOREGROUND:
+        elif Layer_ == Layer_.FOREGROUND:
             return self._tex_fg
         return None
 
@@ -453,8 +455,6 @@ class LightingEngine:
     def _render_to_buf_lt(self,offset = (0,0)):
         # Disable alpha blending to render lights
         self.ctx.disable(moderngl.BLEND)
-        
-      
 
         for light in self.lights.copy():
             # Skip light if disabled
@@ -476,10 +476,12 @@ class LightingEngine:
 
             if light.illuminator: 
 
-                light.position = (int(light.illuminator.center[0]*2.5) , int(light.illuminator.center[1] *2.5))    
+                light.position = (int(light.illuminator.center[0]) , int(light.illuminator.center[1]))    
                 #print(light.position)
             elif light.life > 0: 
-                light.position = (int(light.position[0]*2.5) , int(light.position[1] *2.5))
+                if light.maxlife-1 == light.life: 
+                    light.position = (int(light.position[0]) , int(light.position[1]))
+                
              
 
 
@@ -528,3 +530,144 @@ class LightingEngine:
         self.ctx.screen.use()
         self._tex_fg.use()
         self._vao_draw.render()
+
+
+    def make_shader(self, vertex_src: str, fragment_src: str) -> Shader:
+        """
+        Creates a shader program using the provided vertex and fragment shader source code.
+
+        Parameters:
+        - vertex_src (str): A string containing the source code for the vertex shader.
+        - fragment_src (str): A string containing the source code for the fragment shader.
+
+        Returns:
+        - A Shader object representing the compiled shader program.
+
+        Note: If you want to load the shader source code from a file path, consider using the
+        'load_shader_from_path' method instead.
+        """
+        prog = self.ctx.program(vertex_shader=vertex_src,
+                                fragment_shader=fragment_src)
+        shader = Shader(prog)
+        return shader
+
+    def load_shader_from_path(self, vertex_path: str, fragment_path: str) -> Shader:
+        """
+        Loads shader source code from specified file paths and creates a shader program.
+
+        Parameters:
+        - vertex_path (str): File path to the vertex shader source code.
+        - fragment_path (str): File path to the fragment shader source code.
+
+        Returns:
+        - A Shader object representing the compiled shader program.
+        """
+        with open(vertex_path) as f:
+            vertex_src = f.read()
+        with open(fragment_path) as f:
+            fragment_src = f.read()
+
+        return self.make_shader(vertex_src, fragment_src)
+
+
+    def render_texture_with_trans(self,
+               tex: moderngl.Texture,
+               layer: Layer_,
+               position: tuple[float, float] = (0, 0),
+               scale: tuple[float, float] | float = (1.0, 1.0),
+               angle: float = 0.0,
+               flip: tuple[bool, bool] | bool = (False, False),
+               section: pygame.Rect | None = None,
+               shader: Shader = None) -> None:
+        """
+        Render a texture onto a layer with optional transformations.
+
+        Parameters:
+        - tex (Texture): The texture to render.
+        - layer (Layer): The layer to render onto.
+        - position (tuple[float, float]): The position (x, y) where the texture will be rendered. Default is (0, 0).
+        - scale (tuple[float, float] | float): The scaling factor for the texture. Can be a tuple (x, y) or a scalar. Default is (1.0, 1.0).
+        - angle (float): The rotation angle in degrees. Default is 0.0.
+        - flip (tuple[bool, bool] | bool): Whether to flip the texture. Can be a tuple (flip x axis, flip y axis) or a boolean (flip x axis). Default is (False, False).
+        - section (pygame.Rect | None): The section of the texture to render. If None, the entire texture is rendered. Default is None.
+        - shader (Shader): The shader program to use for rendering. If None, a default shader is used. Default is None.
+
+        Returns:
+        None
+
+        Note:
+        - If scale is a scalar, it will be applied uniformly to both x and y.
+        - If flip is a boolean, it will only affect the x axis.
+        - If section is None, the entire texture is used.
+        - If section is larger than the texture, the texture is repeated to fill the section.
+        - If shader is None, a default shader (_prog_draw) is used.
+        """
+
+        # Create section rect if none
+        if section == None:
+            section = pygame.Rect(0, 0, tex.width, tex.height)
+
+        # Default to draw shader program if none
+        if shader == None:
+            shader = Shader(self._prog_draw)
+
+        # If the scale is not a tuple but a scalar, convert it into a tuple
+        if isinstance(scale, numbers.Number):
+            scale = (scale, scale)
+
+        # If flip is not a tuple but a boolean, convert it into a tuple
+        if isinstance(flip, bool):
+            flip = (flip, False)
+
+        # Get the vertex coordinates of a rectangle that has been rotated,
+        # scaled, and translated, in world coordinates
+        points = create_rotated_rect(position, section.width,
+                                     section.height, scale, angle, flip)
+
+        # Convert to destination coordinates
+        dest_width, dest_height = tex.width,tex.height
+
+        points = [to_dest_coords(p, dest_width, dest_height) for p in points]
+
+        # Mesh for destination rect on screen
+        p1, p2, p3, p4 = points
+        vertex_coords = np.array([p3, p4, p2,
+                                  p2, p4, p1], dtype=np.float32)
+
+        # Calculate the texture coordinates
+        x = section.x / tex.width
+        y = section.y / tex.height
+        w = section.width / tex.width
+        h = section.height / tex.height
+
+        # Mesh for the section within the texture
+        tex_coords = np.array([(x, y + h), (x + w, y + h), (x, y),
+                               (x, y), (x + w, y + h), (x + w, y)], dtype=np.float32)
+
+        # Create VBO and VAO
+        buffer_data = np.hstack([vertex_coords, tex_coords])
+
+        vbo = self.ctx.buffer(buffer_data)
+        vao = self.ctx.vertex_array(shader.program, [
+            (vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
+        ])
+
+        # Use textures
+        tex.use()
+        shader.bind_sampler2D_uniforms()
+
+
+        fbo = self._get_fbo(layer)
+
+        # Set layer as target
+        fbo.use()
+
+        # Render
+        vao.render()
+
+        # Clear the sampler2D locations
+        shader.clear_sampler2D_uniforms()
+
+        # Free vertex data
+        vbo.release()
+        vao.release()

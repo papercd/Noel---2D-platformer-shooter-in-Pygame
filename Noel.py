@@ -15,7 +15,7 @@ from assets import GameAssets
 #----------------------------------------- imports to integrate shaders 
 
 
-from my_pygame_light2d.engine import LightingEngine, Layer
+from my_pygame_light2d.engine import LightingEngine, Layer_
 from my_pygame_light2d.light import PointLight
 from my_pygame_light2d.hull import Hull
 
@@ -30,8 +30,10 @@ class myGame:
         self.clock = pygame.time.Clock()
 
         self.screen_size = (1440,900)
-        self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.screen_size,lightmap_res=(int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5)))
-        self.lights_engine.set_ambient(155,155,155,155)
+        self.native_res = (int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5))
+
+        self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
+        self.lights_engine.set_ambient(185,185,185,185)
 
         #self.screen = pygame.display.set_mode(self.screen_size,pygame.RESIZABLE)
         
@@ -47,9 +49,11 @@ class myGame:
         self.background_surf = pygame.Surface((int(self.screen_size[0]//2.5),int(self.screen_size[1]/2.5)),pygame.SRCALPHA)
         self.foreground_surf = pygame.Surface((int(self.screen_size[0]//2.5),int(self.screen_size[1]//2.5)),pygame.SRCALPHA)
 
+        self.test_shader = self.lights_engine.load_shader_from_path('vertex.glsl','fog_fragment.glsl')
+        self.pixel_exp_shader = self.lights_engine.load_shader_from_path('vertex.glsl','exp_fragment.glsl')
 
         
-        self.NODE_CAPACITY = 2
+        self.NODE_CAPACITY = 4
         self.qtree_x_slack = 300
         self.qtree_y_slack = 300
 
@@ -120,7 +124,7 @@ class myGame:
         """"""
         
         for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
-            light = PointLight(position=(2.5*(light.pos[0]*self.Tilemap.tile_size + 8), (light.pos[1]*self.Tilemap.tile_size)*2.5), power=1., radius=890)
+            light = PointLight(position=((light.pos[0]*self.Tilemap.tile_size + 8), (light.pos[1]*self.Tilemap.tile_size)), power=1., radius=356)
             light.set_color(255, 255, 255, 200)
             self.lights_engine.lights.append(light)
             #self.lights_engine.lights.append([(light.pos[0]*self.Tilemap.tile_size + 8,light.pos[1]*self.Tilemap.tile_size)] =LIGHT(200,pixel_shader(200,(255,255,255),1.0,True, 270, 90)) 
@@ -159,9 +163,9 @@ class myGame:
                 self.shadow_objects.append(pygame.Rect(int(split_key[0]) * self.Tilemap.tile_size,int(split_key[1]) * self.Tilemap.tile_size,16,16))
         """
 
-        self.PLAYER_DEFAULT_SPEED = 2
+        self.PLAYER_DEFAULT_SPEED = 2.2
         self.player_cur_vel = 0
-        self.accel_decel_rate = 0.34
+        self.accel_decel_rate = 0.7
         self.accelerated_movement = 0
 
         self.player = PlayerEntity(self,(50,50),(14,16))
@@ -252,9 +256,10 @@ class myGame:
 
         self.dt = 0
         self.start = time.time()
+        self.running_time = time.time()
         self.rot_func_t = 0
         self.main_offset = None 
-
+        
 
         
 
@@ -512,9 +517,6 @@ class myGame:
            
             
 
-            
-
-
 
             
             """
@@ -601,6 +603,7 @@ class myGame:
                         self.inven_on = not self.inven_on
 
                     if event.key == pygame.K_a: 
+                        """
                         if self.player.flip: 
                             if self.timer >=0 and self.timer < 20:
                                 if self.boost_ready:
@@ -613,10 +616,11 @@ class myGame:
                         self.timer = 0
                         self.time_increment = True
 
-                        
+                        """
                         self.player_movement[0] = True
 
                     if event.key == pygame.K_d: 
+                        """
                         if not self.player.flip:
                             if self.timer >=0 and self.timer < 20:
                                 if self.boost_ready: 
@@ -628,6 +632,8 @@ class myGame:
                             self.boost_ready = True 
                         self.timer = 0
                         self.time_increment = True 
+
+                        """
                         self.player_movement[1] = True
                         
                     if event.key == pygame.K_w:
@@ -655,26 +661,36 @@ class myGame:
 
             #self.display_2.blit(self.display,(0,0))
 
-
+            screenshake_offset = (random.random()* self.screen_shake - self.screen_shake /2, random.random()* self.screen_shake - self.screen_shake /2)
 
             tex = self.lights_engine.surface_to_texture(self.background_surf)
-            self.lights_engine.render_texture(
-                tex, Layer.BACKGROUND,
-                pygame.Rect(0,0,tex.width *2.5,tex.height*2.5),
-                pygame.Rect(0,0,tex.width,tex.height)
+           
+
+            
+            self.test_shader['iTime'] = self.running_time -time.time()
+            self.lights_engine.render_texture_with_trans(
+                tex, Layer_.BACKGROUND,
+                position= (-screenshake_offset[0],-screenshake_offset[1])
+                
             )
+            """
+            self.lights_engine.render_texture(
+                tex, Layer_.BACKGROUND,
+                pygame.Rect(-screenshake_offset[0] ,-screenshake_offset[1],tex.width ,tex.height),
+                pygame.Rect(0,0,tex.width,tex.height)
+            )"""
             tex.release()
 
             tex = self.lights_engine.surface_to_texture(self.foreground_surf)
             self.lights_engine.render_texture(
-                tex, Layer.FOREGROUND,
-                pygame.Rect(0,0,tex.width *2.5,tex.height*2.5),
+                tex, Layer_.FOREGROUND,
+                pygame.Rect(0,0,tex.width ,tex.height),
                 pygame.Rect(0,0,tex.width,tex.height)
             )
             tex.release()
-
-            self.lights_engine.render((int(render_scroll[0] *2.5),int(render_scroll[1] * 2.5)))
-            #screenshake_offset = (random.random()* self.screen_shake - self.screen_shake /2, random.random()* self.screen_shake - self.screen_shake /2)
+            
+            self.lights_engine.render((int((render_scroll[0] -screenshake_offset[0])),int((render_scroll[1]-screenshake_offset[1]))))
+            
             #self.screen.blit(pygame.transform.scale(self.display_2,self.screen.get_size()),screenshake_offset)
 
 

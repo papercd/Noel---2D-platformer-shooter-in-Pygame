@@ -261,26 +261,27 @@ class AK_47(Weapon):
             self.game.temp_lights.append([LIGHT(60,pixel_shader(60,(248,229,153),1,True,self.angle_opening,360)),3,self.opening_pos])
             self.game.temp_lights.append([LIGHT(50,pixel_shader(50,(248,229,153),1,True,180+self.angle_opening,360)),3,self.opening_pos])
             """
-            light =  PointLight(self.opening_pos,power = 1.0,radius = 20,life = 5)
+            
+            light =  PointLight(self.opening_pos,power = 1.0,radius = 8,life = 2)
             light.set_color(253,108,50)
             light.cast_shadows = False
             self.game.lights_engine.lights.append(light)
-
-            light = PointLight(self.opening_pos,power = 0.7 ,radius = 60,life = 5)
+            
+            light = PointLight(self.opening_pos,power = 0.7 ,radius = 24,life = 2)
             light.set_color(248,129,153)
             light.cast_shadows = False
             self.game.lights_engine.lights.append(light)
 
-            light = PointLight(self.opening_pos,power = 0.6,radius = 100,life = 5)
+            light = PointLight(self.opening_pos,power = 0.6,radius = 40,life = 2)
             light.set_color(248,129,153)
             light.cast_shadows = False
             self.game.lights_engine.lights.append(light)
 
 
-            light = PointLight(self.opening_pos,power = 1.0,radius = 50, illuminator= bullet, life = bullet.frames_flown)
+            light = PointLight(self.opening_pos,power = 1.0,radius = 20, illuminator= bullet, life = bullet.frames_flown)
             light.cast_shadows = False
             self.game.lights_engine.lights.append(light)
-
+            
             shot_particle = Particle(self.game,'smoke'+'/'+self.name,self.opening_pos.copy(),self.holder.type,velocity=[0,0],frame=0)
             rotated_shot_particle_images = [pygame.transform.rotate(image,bullet.angle) for image in shot_particle.animation.copy().images]
             shot_particle.animation.images = rotated_shot_particle_images
@@ -333,7 +334,7 @@ class Flamethrower(Weapon):
                     for _ in range(round(density)): 
                         flame_particle= Flame_particle(self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power)
                       
-                        light = PointLight((self.opening_pos[0], self.opening_pos[1]),power = 0.12,radius = 105,illuminator=flame_particle,life = flame_particle.maxlife)
+                        light = PointLight((self.opening_pos[0], self.opening_pos[1]),power = 0.12,radius = 42,illuminator=flame_particle,life = flame_particle.maxlife)
                         light.set_color(255,35,19)
                         light.cast_shadows = False
                         self.game.lights_engine.lights.append(light)
@@ -343,7 +344,7 @@ class Flamethrower(Weapon):
                     for _ in range(round(density)): 
                         flame_particle= Flame_particle(self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power)
 
-                        light = PointLight((self.opening_pos[0], self.opening_pos[1]),power = 0.12,radius = 105,illuminator=flame_particle,life = flame_particle.maxlife)
+                        light = PointLight((self.opening_pos[0], self.opening_pos[1]),power = 0.11,radius = 42,illuminator=flame_particle,life = flame_particle.maxlife)
                         light.set_color(255,35,19)
                         light.cast_shadows = False
 
@@ -435,7 +436,7 @@ class Wheelbot_weapon(Weapon):
             self.game.particles.append(shot_muzzle)
             self.game.particles.append(shot_particle)
 
-            light = PointLight(bullet.pos,power = 1.0,radius = 65,illuminator=bullet,life = 300)
+            light = PointLight(bullet.pos,power = 1.0,radius = 52,illuminator=bullet,life = 300)
             light.set_color(268,45,84)
             light.cast_shadows = False
             self.game.lights_engine.lights.append(light)

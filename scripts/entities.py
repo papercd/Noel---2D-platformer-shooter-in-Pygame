@@ -64,7 +64,7 @@ class PhysicsEntity:
 
         self.animation.update()
         self.collisions = {'up': False, 'down': False, 'left': False, 'right': False}
-        self.velocity[1] = min(5, self.velocity[1] + 0.24)
+        self.velocity[1] = min(5, self.velocity[1] + 0.26)
 
         if self.velocity[0] < 0:
             self.velocity[0] = min(self.velocity[0] + 0.21, 0)
@@ -1103,7 +1103,7 @@ class PlayerEntity(PhysicsEntity):
                 self.velocity[0] = -4.2
             #self.accel_up() 
             
-            self.velocity[1] =-4.2
+            self.velocity[1] =-4.4
             
 
             air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
@@ -1114,7 +1114,7 @@ class PlayerEntity(PhysicsEntity):
                 self.jump_count -=2
                 #self.accel_up() 
 
-                self.velocity[1] = -4.2
+                self.velocity[1] = -4.4
                 
                 air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
                 self.game.particles.append(air)
@@ -1122,12 +1122,12 @@ class PlayerEntity(PhysicsEntity):
                 self.jump_count -=1
                 #self.accel_up() 
 
-                self.velocity[1] = -4.2    
+                self.velocity[1] = -4.4    
             
         elif self.jump_count ==1: 
             self.jump_count -=1
             #self.accel_up() 
-            self.velocity[1] = -4.2  
+            self.velocity[1] = -4.4  
             air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
             self.game.particles.append(air)
             
@@ -1139,7 +1139,7 @@ class PlayerEntity(PhysicsEntity):
         if self.velocity[1] < 0: 
             if self.velocity[1] > -4.2:
                 if self.air_time >0 and self.air_time <= 8:
-                    self.velocity[1] = -1.5
+                    self.velocity[1] = -1.2
                 if self.air_time >8 and self.air_time <=11 :
                     self.velocity[1] = -2.2
 
@@ -1249,7 +1249,7 @@ class PlayerEntity(PhysicsEntity):
     
     def hit(self,hit_damage):
         self.health -= hit_damage
-        self.game.screen_shake = max(hit_damage/1.4,self.game.screen_shake)
+        self.game.screen_shake = max(hit_damage/2.2,self.game.screen_shake)
         self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
         
 

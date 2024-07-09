@@ -22,6 +22,7 @@ class PointLight:
             radius (float, optional): Radius of the light source in native coordinates. Default is 10.0.
             enabled (bool, optional): Whether the light source is enabled. Default is True.
         """
+        self.maxlife = life 
         self.life = life
         self.illuminator = illuminator
         self.position = list(position)

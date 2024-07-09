@@ -79,7 +79,8 @@ class tile_panel:
         self.category_gui_scroll = 0
         self.tile_panel_scroll = 0
         
-        self.indicator_labels = (alphabets('stick_grid'),alphabets('on_grid'),alphabets('auto_random'),alphabets('selec_box'),alphabets('box_del_option'),alphabets('flipped'))
+        self.indicator_labels = (alphabets('stick_grid'),alphabets('on_grid'),alphabets('auto_random'),
+                                 alphabets('selec_box'),alphabets('box_del_option'),alphabets('flipped'),alphabets('mark'))
 
         self.indicators = [False,False,False,False,2,False]
         
@@ -382,9 +383,9 @@ class tile_panel:
         return self.selected_tile_panel 
         
 
-    def update_indicator_panels(self,auto_random,stick_grid,selection_box_selec,on_grid,sel_box_del_option,flip_tile):
+    def update_indicator_panels(self,auto_random,stick_grid,selection_box_selec,on_grid,sel_box_del_option,flip_tile,mark):
 
-        self.indicators = [stick_grid,on_grid,auto_random,selection_box_selec,sel_box_del_option,flip_tile]
+        self.indicators = [stick_grid,on_grid,auto_random,selection_box_selec,sel_box_del_option,flip_tile,mark]
         
 
 

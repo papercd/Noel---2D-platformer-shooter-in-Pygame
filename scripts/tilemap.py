@@ -11,7 +11,8 @@ SMOOTH_TRANS_TILES = {'building_0'}
 BULLET_TILE_OFFSET = [(1,0),(1,-1),(0,-1),(-1,-1),(-1,0),(-1,1),(0,1),(1,1)]
 SURROUNDING_TILE_OFFSET = [(1,0),(1,-1),(0,-1),(0,0),(-1,-1),(-1,0),(-1,1),(0,1),(1,1)]
 
-
+STEPS_EVEN = [(1,1),(-1,1),(-1,-1),(1,-1)]
+STEPS_ODD = [(0,1),(-1,0),(0,-1),(1,0)]
 #variant rules that we expect to see depending on what side of the tile is empty. 
 
 AUTOTILE_MAP ={
@@ -94,6 +95,13 @@ class Tilemap:
         self.decorations = []
         self.path_graph = {}
 
+    
+    def mark_all(self,mark):
+        for tile_loc in self.tilemap:
+            tile = self.tilemap[tile_loc]
+            if tile.type in PHYSICS_APPLIED_TILE_TYPES:
+                tile.dirty = mark
+
 
     def create_shadow_objs(self):
         shadow_objs = []
@@ -111,22 +119,29 @@ class Tilemap:
         return shadow_objs
             
       
-    def update_shadow_objs(self,surf,offset = (0,0),render_scale = 2.5):
+    def update_shadow_objs(self,surf,offset = (0,0)):
         hulls = []
+        
         for x_cor in range(offset[0] // self.tile_size - 10, (offset[0] + surf.get_width()) // self.tile_size +10):
             for y_cor in range(offset[1] // self.tile_size -10, (offset[1] + surf.get_height()) // self.tile_size +10): 
                 coor = str(x_cor) + ';' + str(y_cor)
                 if coor in self.tilemap:
                     tile = self.tilemap[coor]
                     if tile.type != "spawners" and tile.type != "lights":
-                           
-                        vertices = [(tile.pos[0] * render_scale * self.tile_size,tile.pos[1] * render_scale * self.tile_size) , 
-                                    ((tile.pos[0]+1) *render_scale*self.tile_size,tile.pos[1] *render_scale*self.tile_size ) , 
-                                    ((tile.pos[0]+1) *render_scale*self.tile_size,(tile.pos[1]+1) *render_scale*self.tile_size ) ,
-                                    ((tile.pos[0]) *render_scale*self.tile_size,tile.pos[1] *render_scale*self.tile_size ) ,
-                                    ]
-                        hulls.append(Hull(vertices))
+                        if tile.type.split('_')[1] == 'stairs':
+                            pass 
+                        else:
+                            variant_num = int(tile.variant.split(';')[0]) 
+                            if variant_num ==  8: continue
+                            else: 
+                                step = STEPS_EVEN[ variant_num // 2] if variant_num %2 == 0 else STEPS_ODD[variant_num//2]
 
+                            vertices = [(tile.pos[0] *   self.tile_size + step[0]* 4  ,tile.pos[1]   * self.tile_size+step[1]* 4 ) , 
+                                        ((tile.pos[0]+1) *self.tile_size+step[0]* 4 ,tile.pos[1] *self.tile_size+step[1]* 4  ) , 
+                                        ((tile.pos[0]+1)*self.tile_size+step[0]* 4 ,(tile.pos[1]+1) *self.tile_size+step[1]* 4  ) ,
+                                        ((tile.pos[0]) *self.tile_size+step[0]* 4 ,tile.pos[1] *self.tile_size+step[1]* 4  ) ,
+                                        ]
+                            hulls.append(Hull(vertices))
 
 
         return hulls
@@ -136,7 +151,12 @@ class Tilemap:
         seriable_tilemap = {}
         for key in self.tilemap: 
             tile = self.tilemap[key]
-            seriable_tilemap[str(tile.pos[0]) +';' + str(tile.pos[1])] = {'type': tile.type,'variant' : tile.variant, 'pos' : tile.pos}
+            if isinstance(tile,Light): 
+                print("checking")
+                seriable_tilemap[str(tile.pos[0]) +';' + str(tile.pos[1])] = {'type': tile.type,'variant' : tile.variant, 'pos' : tile.pos,'radius': tile.radius,\
+                                                                                                     'power': tile.power, 'colorValue:':tile.color_value}
+            else: seriable_tilemap[str(tile.pos[0]) +';' + str(tile.pos[1])] = {'type': tile.type,'variant' : tile.variant, 'pos' : tile.pos}
+
         
    
         seriable_decor = []
@@ -153,8 +173,10 @@ class Tilemap:
         
         for i,dict in  enumerate(self.offgrid_tiles):
             for key in dict: 
-                tile = dict[key] 
-                seriable_offgrid[i][str(tile.pos[0]) + ';' + str(tile.pos[1])] = {'type': tile.type , 'variant': tile.variant, 'pos' : tile.pos}
+                tile = dict[key]
+                if isinstance(tile,Light): seriable_offgrid[i][str(tile.pos[0]) + ';' + str(tile.pos[1])] = {'type': tile.type,'variant' : tile.variant, 'pos' : tile.pos,'radius': tile.radius,\
+                                                                                                     'power': tile.power, 'colorValue:':tile.color_value}
+                else: seriable_offgrid[i][str(tile.pos[0]) + ';' + str(tile.pos[1])] = {'type': tile.type , 'variant': tile.variant, 'pos' : tile.pos}
 
         return seriable_tilemap,seriable_offgrid,seriable_decor,seriable_grass
 
@@ -202,7 +224,11 @@ class Tilemap:
                     shadow_objects = (pygame.Rect(int(split_key[0]) * self.tile_size, int(split_key[1]) * self.tile_size,self.tile_size,self.tile_size))
                     """
             #print(shadow_objects)
-            self.tilemap[tile_key] = Tile(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],tilemap_data['tilemap'][tile_key]["pos"])
+            if len(tilemap_data['tilemap'][tile_key]) == 3 :
+                self.tilemap[tile_key] = Tile(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],tilemap_data['tilemap'][tile_key]["pos"])
+            else: self.tilemap[tile_key] = Light(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],\
+                                                 tilemap_data['tilemap'][tile_key]["pos"],radius =tilemap_data['tilemap'][tile_key]["radius"], power = tilemap_data['tilemap'][tile_key]["power"],\
+                                                     color_value= tilemap_data['tilemap'][tile_key]["colorValue"] )
        
         for i in range(0,self.offgrid_layers):
             for tile_key in tilemap_data['offgrid_'+ str(i)]:
@@ -457,7 +483,7 @@ class Tilemap:
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
-    def extract(self,id_pairs,keep = False):
+    def extract(self,id_pairs, keep = False):
         matches = []
         
         for i,dict in enumerate(self.offgrid_tiles.copy()):
@@ -465,7 +491,7 @@ class Tilemap:
                 tile = dict[loc]
                 
                 if (tile.type,tile.variant) in id_pairs: 
-                    
+                   
                     matches.append(tile)
                     
                     matches[-1].pos = list(matches[-1].pos).copy()
@@ -480,18 +506,16 @@ class Tilemap:
 
         
         for tile in self.decorations.copy():
-            print(tile.pos)
-            if (tile.type,tile.variant) in id_pairs: 
+            if (tile.type,tile.variant) in id_pairs:  
+           
                 matches.append(tile)
                 if not keep: 
                     self.decorations.remove(tile)
 
 
         grass_copy = self.grass.copy()
-        print(grass_copy)
         for loc in grass_copy: 
             grass = grass_copy[loc]
-            print(grass)
             if (grass.type,grass.variant) in id_pairs:
                 matches.append(grass)
                 matches[-1].pos = list(matches[-1].pos).copy()
@@ -506,6 +530,7 @@ class Tilemap:
         for loc in self.tilemap.copy(): 
             tile = copy_tilemap[loc]
             if (tile.type,tile.variant) in id_pairs:
+             
                 matches.append(tile)
                 matches[-1].pos = list(matches[-1].pos).copy()
                 """
@@ -640,15 +665,19 @@ class Tilemap:
         
         for autotile_dict in dicts:
             for loc, tile in autotile_dict.items():
-                neighbors = {
+                
+                if tile.type in AUTOTILE_TYPES and not tile.dirty:
+
+                    neighbors = {
                     side for side in [(1, 0), (-1, 0), (0, -1), (0, 1)]
                     if (check_loc := f"{tile.pos[0] + side[0]};{tile.pos[1] + side[1]}") in autotile_dict
                     and (autotile_dict[check_loc].type == tile.type or tile.type in SMOOTH_TRANS_TILES)
-                }
+                    }
 
-                neighbors = tuple(sorted(neighbors))
+                    neighbors = tuple(sorted(neighbors))
 
-                if tile.type in AUTOTILE_TYPES:
+
+
                     if tile.type.startswith('building'):
                         building_type = tile.type.split('_')[1]
                         auto_map = BUILDING_AUTOTILE[building_type]
@@ -674,7 +703,7 @@ class Tilemap:
     #the only thing that needs updating for tiles are the decals for now, So there is no separate update function for now. 
     #if the tiles can be destroyed, I guess that is when I will add an update function.
 
-    def render(self, surf, offset = (0,0)):
+    def render(self, surf, offset = (0,0),editor = False):
         
         for x_cor in range(offset[0] // self.tile_size, (offset[0] + surf.get_width()) // self.tile_size +1):
             for y_cor in range(offset[1] // self.tile_size, (offset[1] + surf.get_height()) // self.tile_size +1): 
@@ -713,7 +742,10 @@ class Tilemap:
                         surf.blit(self.game.assets[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
                     else: 
                         surf.blit(self.game.assets[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
-                   
+
+                    if editor and tile.type in PHYSICS_APPLIED_TILE_TYPES and tile.dirty: 
+                        pygame.draw.rect(surf,(255,12,12), (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1],self.tile_size,self.tile_size),width = 1)
+
                     #you also gotta blit an alpha surface depending on their exposure ( how many neighbors they have. )
                     #render the mask 
                     #surf.blit(self.game.assets['masks'][int(variant_sub[0])], (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
@@ -745,18 +777,26 @@ class Tilemap:
         
         
 class Tile: 
-    def __init__(self,type,variant,pos,shadow_obj = None):
+    def __init__(self,type,variant,pos,dirty = False):
         
         self.type = type 
         self.variant = variant
-        #self.tile_rel_pos = tile_rel_pos
         self.pos = pos 
-        self.shadow_obj = shadow_obj
+        self.dirty = dirty
         self.decals = []
+        
    
     def drop_item(self):
         if self.type == 'box':
             print('item_dropped')
+
+
+class Light(Tile):
+    def __init__(self, type, variant, pos, dirty=False, radius = 356,power = 1.0,color_value = (255,255,255,255)):
+        super().__init__(type, variant, pos, dirty)
+        self.radius = radius
+        self.power = power
+        self.color_value = color_value 
 
 class Slab(Tile):
     def __init__(self,type,variant,pos):
