@@ -1,15 +1,21 @@
 
 import pygame
 import sys 
-from scripts.tilemap import Tilemap,Tile
-from scripts.utils import load_images,load_tile_images,load_assets
+from scripts.tilemap import Tilemap,Tile,Light
+from scripts.utils import load_images,load_tile_images
 from scripts.panel import tile_panel 
 from scripts.Pygame_Lights import LIGHT
 from scripts.numbers import numbers
 from scripts.alphabet import alphabets
 from scripts.grass import * 
+from scripts.background import Background
 
-RENDER_SCALE = 2.0
+from my_pygame_light2d.engine import LightingEngine, Layer_
+from my_pygame_light2d.light import PointLight
+from my_pygame_light2d.hull import Hull
+
+
+LIGHTMAP_SCALE = 2.5
 
 #now we need to add in the we have the player, now we need to add in the tiles. Now this is where things get a lot more difficult to follow. 
 
@@ -17,9 +23,29 @@ class Editor:
     def __init__(self):
         pygame.init() 
         pygame.display.set_caption('editor')
-        self.screen = pygame.display.set_mode((1040,760),pygame.RESIZABLE)
+
+        
+        self.RENDER_SCALE = 2.5
+        self.DEFAULT_LIGHT_RADIUS = 356
+
+
+        self.screen_res = [1640,1000]
+        self.native_res = [int(self.screen_res[0] / self.RENDER_SCALE) ,int(self.screen_res[1] / self.RENDER_SCALE)]
+
+
+        self.lights_engine = LightingEngine(screen_res= self.screen_res,native_res= self.native_res,lightmap_res= self.native_res )
+        self.lights_engine.set_ambient(125,125,125,125)
+
+        
+        
+
+        self.background_surf = pygame.Surface((int(self.screen_res[0]/self.RENDER_SCALE),int(self.screen_res[1]/self.RENDER_SCALE)),pygame.SRCALPHA)
+        self.foreground_surf = pygame.Surface((int(self.screen_res[0]/self.RENDER_SCALE),int(self.screen_res[1]/self.RENDER_SCALE)),pygame.SRCALPHA)
+
+
+        #self.screen = pygame.display.set_mode((1440,900),pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
-        self.display = pygame.Surface((520,380))
+        
 
         #so coming back to here, we will define an assets dictionary that contains all of the assets
         #(sprites) that we are going to use to create our game. 
@@ -27,14 +53,13 @@ class Editor:
         #Now that we have our load_image function defined, let's load the background into our assets 
         #and have that blitted onto our screen rather than just a gray screen. 
 
-        self.assets_ =  load_assets('tiles')
 
         self.assets = {
            
             
             'box' : load_tile_images('tiles/box'),
             #'stone' : load_tile_images('tiles/stone'),
-            'grass' : load_tile_images('tiles/grass'),
+            'grass' : load_tile_images('tiles/grass'), 
             'building_0' : load_tile_images('tiles/building_0',background='transparent'),
             'building_1' : load_tile_images('tiles/building_1',background='transparent'),
             'building_2' : load_tile_images('tiles/building_2',background='transparent'),
@@ -43,22 +68,26 @@ class Editor:
             'building_5' : load_tile_images('tiles/building_5',background='transparent'), 
             'building_back' : load_tile_images('tiles/building_back',background='transparent'), 
             'building_decor' : load_tile_images('tiles/building_decor',background='transparent'), 
-            'lights' : load_tile_images('tiles/light',background='transparent'), 
-            'stairs' : load_tile_images('tiles/building_stairs',background='transparent'), 
-            'live_grass': load_tile_images('grass',background='black'),
+            'lights' : load_tile_images('tiles/lights',background='transparent'), 
+            'building_stairs' : load_tile_images('tiles/building_stairs',background='transparent'), 
+            'live_grass': load_tile_images('tiles/live_grass',background='black'),
 
-
-                
             #'large_decor' : load_tile_images('tiles/large_decor'),
             'spawners' : load_tile_images('tiles/spawners',background='transparent'),
         } 
 
-       
+        self.backgrounds = {
+            'start' : Background(self,load_images('backgrounds/start',background='transparent')),
+            'building' : Background(self,load_images('backgrounds/building',background='transparent')),
+        }
 
         self.movement = [False,False,False,False]
 
         self.Tilemap = Tilemap(self,tile_size=16,offgrid_layers=2)
+        
+
         self.cur_offgrid_layer = 0
+
         self.offgrid_layer_ind = alphabets('cur_off_layer')
         self.offgrid_layer_num = numbers(self.cur_offgrid_layer)
 
@@ -67,7 +96,19 @@ class Editor:
         except FileNotFoundError:
             pass
         
-        self.gm = GrassManager('data/images/grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
+
+        for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')], keep=True):
+            if isinstance(light.pos[0],int):
+                
+                light = PointLight(position=((light.pos[0]*self.Tilemap.tile_size + 7), (light.pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+            else: 
+                light = PointLight(position=((light.pos[0] + 8), (light.pos[1] +2)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+            light.set_color(255, 255, 255, 200)
+
+            
+            self.lights_engine.lights.append(light)
+
+        self.gm = GrassManager('data/images/tiles/live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
 
         #place down grass tiles 
         for key in self.Tilemap.grass: 
@@ -90,6 +131,8 @@ class Editor:
 
         self.flip_tile = False 
 
+
+         
         self.selection_box_button = False 
         self.selection_box = None 
         self.selection_box_start_pos = [0,0]  
@@ -97,7 +140,9 @@ class Editor:
         self.selection_box_time = 0
         self.delete_selection_box_content = False 
         self.selection_box_del_option = 2
-    
+        self.mark = False
+        self.apply_mark = False
+
         self.clicking = False 
         self.right_clicking = False 
         #self.offgrid_click_redun = None 
@@ -112,16 +157,19 @@ class Editor:
         self.auto_random = False 
 
         #tile panel attribute 
-        self.main_tile_panel =  tile_panel((0,0),100,self.assets)
+        self.main_tile_panel =  tile_panel((0,0),self.foreground_surf.get_width() // 5 ,self.assets)
 
         #grass manager object for grass rendering when placing down grass tiles '
         
         self.dt = 0
+
+        
     
     def run(self):
         while True: 
             #click_var = self.clicking
-            self.display.fill((0,0,0))
+            self.background_surf.fill((128,128,128))
+
             #now we want to be able to move around our camera. with the arrow keys. 
 
             SCROLL_SPEED =3
@@ -135,9 +183,10 @@ class Editor:
             render_scroll = (int(self.scroll[0]),int(self.scroll[1]))
 
             #render the tilemap on the editor window 
-            self.Tilemap.render(self.display, offset = render_scroll)
+            self.backgrounds['building'].render(self.background_surf,render_scroll)
+            self.Tilemap.render(self.background_surf, offset = render_scroll,editor= True)
 
-            self.gm.update_render(self.display,self.dt,offset=render_scroll)
+            self.gm.update_render(self.background_surf,self.dt,offset=render_scroll)
 
             #Design a tile panel. The tile panel will look like the following: 
             #It will be on the left side of the screen, and it will be SCROLLABLE. This is to fit all the tiles I add to the assets library. Maybe add a sorting system?
@@ -146,9 +195,9 @@ class Editor:
             #render the center indicator 
             center_ind = pygame.Surface((1,1))
             center_ind.fill((222,13,255))
-            self.display.blit(center_ind,(435-render_scroll[0],240-render_scroll[1]))
-
-
+            self.background_surf.blit(center_ind,(435-render_scroll[0],240-render_scroll[1]))
+            self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
+        
             #render the autotile random factor panel
             """
             if self.auto_random:
@@ -183,7 +232,7 @@ class Editor:
 
             #we need to scale down the mouse position as we scaled up our display on our viewing surface twicefold. 
             mpos = pygame.mouse.get_pos() 
-            mpos = (mpos[0]/ RENDER_SCALE, mpos[1]/RENDER_SCALE)
+            mpos = (mpos[0]/ self.RENDER_SCALE, mpos[1]/self.RENDER_SCALE)
 
             
             
@@ -238,7 +287,7 @@ class Editor:
                     """
                     if self.selected: 
                             
-                        self.display.blit(selected_tile_, fin_tile_pos)
+                        self.background_surf.blit(selected_tile_, fin_tile_pos)
 
                         #now that we have our mouse position, we are going to place the selected tile into our tilemap. 
                         if self.clicking and (mpos[0] >= self.main_tile_panel.x_range): 
@@ -271,24 +320,45 @@ class Editor:
                                             for y in range(y_range):
                                                 
                                                 tile_pos_ = ((new_start_x + x*self.Tilemap.tile_size)//self.Tilemap.tile_size,(new_start_y + y*self.Tilemap.tile_size)//self.Tilemap.tile_size)
-                                                self.Tilemap.tilemap[str(tile_pos_[0])+';'+str(tile_pos_[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_)
+                                                
+                                                if cur_tile_panel[3] == "lights":
+                                                    self.Tilemap.tilemap[str(tile_pos_[0])+';'+str(tile_pos_[1])] = Light(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_) 
 
-                                        
+                                                    light = PointLight(position=((tile_pos[0]*self.Tilemap.tile_size + 7), (tile_pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                                                    light.set_color(255, 255, 255, 200)
+                                                    self.lights_engine.lights.append(light)
+                                                else: self.Tilemap.tilemap[str(tile_pos_[0])+';'+str(tile_pos_[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_) 
+                                            
                             else:
+                               
+                                if str(tile_pos[0])+';'+str(tile_pos[1]) not in self.Tilemap.tilemap and cur_tile_panel[3] == "lights":
+                                    self.Tilemap.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = Light(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
+
+                                    light = PointLight(position=((tile_pos[0]*self.Tilemap.tile_size + 7), (tile_pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                                    light.set_color(255, 255, 255, 200)
+                                    self.lights_engine.lights.append(light)
+                                else: self.Tilemap.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
                                 
-                                self.Tilemap.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
+                                
+                                    
                        
                     #now that is nice and all, but now I need to be able to delete tiles from our tilemap. 
                     if self.right_clicking: 
                         click_loc = str(tile_pos[0]) + ';' + str(tile_pos[1])
                         if click_loc in self.Tilemap.tilemap: 
+                            if self.Tilemap.tilemap[click_loc].type == 'lights': 
+                                for light in self.lights_engine.lights: 
+                                    
+                                    if (int(light.position[0]//(self.Tilemap.tile_size)),int(light.position[1]//(self.Tilemap.tile_size))) == (tile_pos[0] ,tile_pos[1]): 
+                                        self.lights_engine.lights.remove(light)
+                                        
                             del self.Tilemap.tilemap[click_loc]
 
                 else: 
                     #off grid tiles 
                     if self.stick_to_grid:
                         if self.selected:
-                            self.display.blit(selected_tile_, fin_tile_pos)
+                            self.background_surf.blit(selected_tile_, fin_tile_pos)
                         if self.clicking and (mpos[0] >= self.main_tile_panel.x_range): 
                             if self.selection_box:
                                 #if there is a selection box, you are going to check if the click position is within the box. 
@@ -317,17 +387,35 @@ class Editor:
                                             for y in range(y_range):
                                                 
                                                 tile_pos_ = ((new_start_x + x*self.Tilemap.tile_size)//self.Tilemap.tile_size,(new_start_y + y*self.Tilemap.tile_size)//self.Tilemap.tile_size)
-                                                self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][str(tile_pos_[0])+';'+str(tile_pos_[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_)
+                                               
+                                                if cur_tile_panel[3] == "lights":
+                                                    self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][str(tile_pos_[0])+';'+str(tile_pos_[1])] = Light(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_)
+
+                                                    light = PointLight(position=((tile_pos[0]*self.Tilemap.tile_size + 7), (tile_pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                                                    light.set_color(255, 255, 255, 200)
+                                                    self.lights_engine.lights.append(light)
+                                                else: self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][str(tile_pos_[0])+';'+str(tile_pos_[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_)
 
                                         
                             else:
+                                if str(tile_pos[0])+';'+str(tile_pos[1]) not in self.Tilemap.offgrid_tiles[self.cur_offgrid_layer] and cur_tile_panel[3] == "lights":
+                                    self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][str(tile_pos[0])+';'+str(tile_pos[1])] = Light(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
+
+                                    light = PointLight(position=((tile_pos[0]*self.Tilemap.tile_size + 7), (tile_pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                                    light.set_color(255, 255, 255, 200)
+                                    self.lights_engine.lights.append(light)
+                                else: self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][str(tile_pos[0])+';'+str(tile_pos[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
                                 
-                                self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][str(tile_pos[0])+';'+str(tile_pos[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
 
                         if self.right_clicking: 
                             click_loc = str(tile_pos[0]) + ';' + str(tile_pos[1])
 
                             if click_loc in self.Tilemap.offgrid_tiles[self.cur_offgrid_layer]: 
+                                if self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][click_loc].type == 'lights': 
+                                    for light in self.lights_engine.lights: 
+                                        if (int(light.position[0]//(self.Tilemap.tile_size)),int(light.position[1]//(self.Tilemap.tile_size))) == (tile_pos[0] ,tile_pos[1]): 
+                                            self.lights_engine.lights.remove(light)
+                                            break
                                 del self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][click_loc]
                     else: 
                         #decorations 
@@ -335,7 +423,7 @@ class Editor:
 
                         if self.selected:
 
-                            self.display.blit(selected_tile_, fin_tile_pos)
+                            self.background_surf.blit(selected_tile_, fin_tile_pos)
 
                             #you have to add a check for grass tile placement here. 
                             """
@@ -363,7 +451,7 @@ class Editor:
                                     #print(check_loc)
                                     if placed: 
                                         self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])] =   Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),check_loc)
-                                        print(self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].type,self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].pos,self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].variant)
+                                        #print(self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].type,self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].pos,self.Tilemap.grass[str(check_loc[0])+';'+str(check_loc[1])].variant)
 
                                 else: 
                                     dup = False 
@@ -499,6 +587,35 @@ class Editor:
         
                 
             if self.selection_box:
+                
+                if self.apply_mark: 
+                    
+                    x_check = int(self.selection_box_start_pos[0]) % self.Tilemap.tile_size
+                    y_check = int(self.selection_box_start_pos[1]) % self.Tilemap.tile_size
+                    if x_check == 0:
+                        x_shift = 0 
+                    else:
+                        x_shift = self.Tilemap.tile_size - x_check 
+
+                    if y_check == 0:
+                        y_shift = 0 
+                    else:
+                        y_shift = self.Tilemap.tile_size - y_check 
+                    
+                    new_start_x = int(self.selection_box_start_pos[0]) + x_shift
+                    new_start_y = int(self.selection_box_start_pos[1]) + y_shift 
+
+                    x_range = (self.selection_box_start_pos[0] + self.selection_box_dim[0] - new_start_x ) // self.Tilemap.tile_size
+                    y_range = (self.selection_box_start_pos[1] + self.selection_box_dim[1] - new_start_y ) // self.Tilemap.tile_size
+
+                    for x in range(x_range):
+                        for y in range(y_range): 
+                            tile_pos_ = str((new_start_x + x*self.Tilemap.tile_size)//self.Tilemap.tile_size) + ';' + str((new_start_y + y*self.Tilemap.tile_size)//self.Tilemap.tile_size)
+                            if tile_pos_ in self.Tilemap.tilemap:
+                                
+                                self.Tilemap.tilemap[tile_pos_].dirty = self.mark
+                                
+
                 if self.delete_selection_box_content:
                                 
                     x_check = int(self.selection_box_start_pos[0]) % self.Tilemap.tile_size
@@ -536,10 +653,20 @@ class Editor:
 
                             for dicts in delete_target:
                                 if tile_pos_ in dicts: 
+
+                                    check_loc = tile_pos_.split(';')
+                                    
+                                    if dicts[tile_pos_].type == 'lights': 
+                                        for light in self.lights_engine.lights: 
+                                            
+
+                                            if (int(light.position[0]//(self.Tilemap.tile_size)),int(light.position[1]//(self.Tilemap.tile_size))) == (int(check_loc[0]) ,int(check_loc[1])): 
+                                                self.lights_engine.lights.remove(light)
+                                                break
                                     del dicts[tile_pos_]   
 
                 #blit the selection box. 
-                pygame.draw.rect(self.display,(0,100,255),(self.selection_box_start_pos[0]-render_scroll[0],self.selection_box_start_pos[1]-render_scroll[1],self.selection_box_dim[0],self.selection_box_dim[1]),2)
+                pygame.draw.rect(self.background_surf,(0,100,255),(self.selection_box_start_pos[0]-render_scroll[0],self.selection_box_start_pos[1]-render_scroll[1],self.selection_box_dim[0],self.selection_box_dim[1]),2)
             
             #fix this 
             """
@@ -548,25 +675,66 @@ class Editor:
             self.display.blit(selec_back_surf,(5,5))
             self.display.blit(selected_tile_,(5,5))
             """
-
+            
 
             #main tile_panel blit
-            
-            self.main_tile_panel.update_indicator_panels(self.auto_random,self.stick_to_grid,self.selection_box_button,self.on_grid,self.selection_box_del_option,self.flip_tile)
-            self.main_tile_panel.check_mouse_int(mpos)
-            self.main_tile_panel.render(self.display)
 
+            #print(mpos)
+            self.main_tile_panel.update_indicator_panels(self.auto_random,self.stick_to_grid,self.selection_box_button,self.on_grid,self.selection_box_del_option,self.flip_tile,self.mark)
+            self.main_tile_panel.check_mouse_int(mpos)
+            self.main_tile_panel.render(self.foreground_surf)
+            #pygame.draw.rect(self.background_surf,(48,96,130),(0,0,self.background_surf.get_width()//5,self.background_surf.get_height()/5),2)
             #layer indication panel blit 
-            self.offgrid_layer_ind.render(self.display,self.display.get_width() - self.offgrid_layer_ind.length *1.5,10)
+            self.offgrid_layer_ind.render(self.foreground_surf,self.foreground_surf.get_width() - self.offgrid_layer_ind.length *1.5,10)
            
             self.offgrid_layer_num.change_number(self.cur_offgrid_layer)
-            self.offgrid_layer_num.render(self.display.get_width() -  self.offgrid_layer_num.length * 4 ,10,self.display)
+
+            pygame.draw.rect(self.foreground_surf,(97,97,97),(self.foreground_surf.get_width() -  self.offgrid_layer_num.length * 4 ,10, 5,5) )
+            self.offgrid_layer_num.render(self.foreground_surf.get_width() -  self.offgrid_layer_num.length * 4 ,10,self.foreground_surf)
 
     
             for event in pygame.event.get():
 
                 if event.type == pygame.VIDEORESIZE:
-                    self.screen = pygame.display.set_mode((event.w,event.h),pygame.RESIZABLE) 
+                    self.lights_engine.release_objects() 
+
+                    pygame.quit()
+                    pygame.init()
+
+                    self.RENDER_SCALE = 2.5
+
+                    self.screen_res = (event.w, event.h)
+                    self.native_res = [int(self.screen_res[0] / self.RENDER_SCALE) ,int(self.screen_res[1] / self.RENDER_SCALE)]
+
+                    self.lights_engine = LightingEngine(screen_res= self.screen_res,native_res= self.native_res ,lightmap_res= self.native_res)
+                    self.lights_engine.set_ambient(225,225,225,225)
+                    
+                    
+
+                    pygame.display.set_caption('editor')
+                    
+                    self.background_surf = pygame.Surface((int(self.screen_res[0]/self.RENDER_SCALE),int(self.screen_res[1]/self.RENDER_SCALE)),pygame.SRCALPHA)
+                    self.foreground_surf = pygame.Surface((int(self.screen_res[0]/self.RENDER_SCALE),int(self.screen_res[1]/self.RENDER_SCALE)),pygame.SRCALPHA)
+                    
+
+                    #print(self.background_surf.get_width())
+                    self.main_tile_panel =  tile_panel((0,0),self.foreground_surf.get_width() // 5 ,self.assets)
+                    #print("check")
+                    
+                    
+                    self.lights_engine.lights.clear()
+                   
+                    for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
+                        if isinstance(light.pos[0],int):
+                            light = PointLight(position=((light.pos[0]*self.Tilemap.tile_size + 7), (light.pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                        else: 
+                            light = PointLight(position=((light.pos[0] + 8), (light.pos[1] +2)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                        light.set_color(255, 255, 255, 200)
+                        self.lights_engine.lights.append(light)
+                    
+                    
+
+                    #self.screen = pygame.display.set_mode((event.w,event.h),pygame.RESIZABLE) 
 
                 #We need to define when the close button is pressed on the window. 
                 if event.type == pygame.QUIT: 
@@ -576,7 +744,7 @@ class Editor:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:
                         self.clicking = True
-                        self.main_tile_panel.check_click(mpos,self.display)
+                        self.main_tile_panel.check_click(mpos,self.background_surf)
                     if event.button == 3:
                         self.right_clicking = True  
                     """
@@ -611,18 +779,89 @@ class Editor:
 
                 if event.type == pygame.MOUSEWHEEL:
                     
-                    self.main_tile_panel.check_scroll(event.y,mpos,self.display,self.left_shift_pressed,self.change_variant)
+                    self.main_tile_panel.check_scroll(event.y,mpos,self.background_surf,self.left_shift_pressed,self.change_variant)
                     
                 if event.type == pygame.MOUSEBUTTONUP: 
                     if event.button == 1 :
                         self.clicking = False 
                     if event.button == 3:
                         self.right_clicking = False 
-                            
+                
+
+                #self.background_surf = pygame.Surface((int(self.screen_res[0]/RENDER_SCALE),int(self.screen_res[1]/RENDER_SCALE)),pygame.SRCALPHA)
+                    #print(self.background_surf.get_width())
+                #self.main_tile_panel =  tile_panel((0,0),self.background_surf.get_width() // 5 ,self.assets)
+
                 #define when the right or left arrow keys are pressed, the corresponding player's movement variable varlues are changed. 
                 if event.type == pygame.KEYDOWN: 
+                    if pygame.key.get_mods() & pygame.KMOD_LCTRL:
+                        if event.key == pygame.K_EQUALS: 
+                            self.lights_engine._release_frame_buffers()
+                            
+                            
+                            
+                            self.RENDER_SCALE = min(5.184,self.RENDER_SCALE * 1.2)
+                            #self.DEFAULT_LIGHT_RADIUS = min(738.21, self.DEFAULT_LIGHT_RADIUS *1.2)
+                            
+                            self.lights_engine._native_res = (int(self.screen_res[0] / self.RENDER_SCALE) ,int(self.screen_res[1] / self.RENDER_SCALE)  )
+                            self.lights_engine._create_frame_buffers()
+
+                            self.background_surf = pygame.Surface((int(self.screen_res[0]/self.RENDER_SCALE),int(self.screen_res[1]/self.RENDER_SCALE)),pygame.SRCALPHA)
+                            self.foreground_surf = pygame.Surface((int(self.screen_res[0]/self.RENDER_SCALE),int(self.screen_res[1]/self.RENDER_SCALE)),pygame.SRCALPHA)
+
+                            
+                            
+
+                            #print(self.background_surf.get_width())
+                            self.main_tile_panel =  tile_panel((0,0),self.foreground_surf.get_width() // 5 ,self.assets)
+                            self.lights_engine.lights.clear()
+                   
+                            for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
+                                if isinstance(light.pos[0],int):
+                                    light = PointLight(position=((light.pos[0]*self.Tilemap.tile_size + 7), (light.pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                                else: 
+                                    light = PointLight(position=((light.pos[0] + 8), (light.pos[1] +2)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                                light.set_color(255, 255, 255, 200)
+                                self.lights_engine.lights.append(light)
+
+                        if event.key == pygame.K_MINUS:
+                            self.lights_engine._release_frame_buffers()
+                         
+
+                            self.RENDER_SCALE = max(1.206,self.RENDER_SCALE / 1.2)
+                            #self.DEFAULT_LIGHT_RADIUS = max(171.6, self.DEFAULT_LIGHT_RADIUS / 1.2)
+
+                            self.lights_engine._native_res = (int(self.screen_res[0] / self.RENDER_SCALE) ,int(self.screen_res[1] / self.RENDER_SCALE)  )
+                            self.lights_engine._create_frame_buffers()
+
+                            self.background_surf = pygame.Surface((int(self.screen_res[0]/self.RENDER_SCALE),int(self.screen_res[1]/self.RENDER_SCALE)),pygame.SRCALPHA)
+                            
+                            self.foreground_surf = pygame.Surface((int(self.screen_res[0]/self.RENDER_SCALE),int(self.screen_res[1]/self.RENDER_SCALE)),pygame.SRCALPHA)
+
+                            #print(self.background_surf.get_width())
+                            self.main_tile_panel =  tile_panel((0,0),self.foreground_surf.get_width() // 5 ,self.assets)
+
+
+                            self.lights_engine.lights.clear()
+                   
+                            for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
+                                if isinstance(light.pos[0],int):
+                                    light = PointLight(position=((light.pos[0]*self.Tilemap.tile_size + 7), (light.pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                                else: 
+                                    light = PointLight(position=((light.pos[0] + 8), (light.pos[1] +2)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                                light.set_color(255, 255, 255, 200)
+                                self.lights_engine.lights.append(light)
+           
+                        
+                        
                     if event.key == pygame.K_a: 
                         self.movement[0] = True 
+                    if event.key == pygame.K_BACKSLASH:
+                        self.Tilemap.mark_all(self.mark)
+                    if event.key == pygame.K_u:
+                        self.mark = not self.mark 
+                    if event.key == pygame.K_i:
+                        self.apply_mark = True 
                     if event.key == pygame.K_d: 
                         self.movement[1] = True
                     if event.key == pygame.K_w:
@@ -664,10 +903,12 @@ class Editor:
                     if event.key == pygame.K_LEFTBRACKET:
                         self.cur_offgrid_layer = max(0,self.cur_offgrid_layer-1)
                     if event.key == pygame.K_RIGHTBRACKET:
-                        self.cur_offgrid_layer = min(self.Tilemap.offgrid_layers,self.cur_offgrid_layer+1)
+                        self.cur_offgrid_layer = min(self.Tilemap.offgrid_layers-1,self.cur_offgrid_layer+1)
                     
 
                 if event.type == pygame.KEYUP: 
+                    if event.key == pygame.K_i:
+                        self.apply_mark = False 
                     if event.key == pygame.K_a: 
                         self.movement[0] = False 
                     if event.key == pygame.K_d: 
@@ -687,8 +928,29 @@ class Editor:
                      #   self.selection_box_button = False 
         
             #pygame.display.update() updates the screen, and the clock.tick() adds the sleep in between every frame. 
-            self.screen.blit(pygame.transform.scale(self.display,self.screen.get_size()),(0,0))
-            pygame.display.update()
+            #self.screen.blit(pygame.transform.scale(self.display,self.screen.get_size()),(0,0))
+            
+
+            tex = self.lights_engine.surface_to_texture(self.background_surf)
+            self.lights_engine.render_texture(
+                tex, Layer_.BACKGROUND,
+                pygame.Rect(0,0,tex.width ,tex.height),
+                pygame.Rect(0,0,tex.width,tex.height)
+            )
+            tex.release()
+
+            tex = self.lights_engine.surface_to_texture(self.foreground_surf)
+
+            self.lights_engine.render_texture(
+                tex, Layer_.FOREGROUND,
+                pygame.Rect(0,0,tex.width ,tex.height),
+                pygame.Rect(0,0,tex.width,tex.height)
+            )
+            tex.release()
+
+            self.lights_engine.render((int(render_scroll[0] ),int(render_scroll[1])))
+            pygame.display.flip()
+            #pygame.display.update()
             self.clock.tick(60)
 
 Editor().run()

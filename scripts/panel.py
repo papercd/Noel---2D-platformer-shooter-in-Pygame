@@ -35,50 +35,30 @@ class inven_panel:
 
                 org_image_size = self.player.cur_weapon_node.prev.weapon.weapon_img.get_size()
                 display_img = self.player.cur_weapon_node.prev.weapon.shrunk_weapon_img
-                display_img.set_alpha(135* (self.done_expanding/4))
+                display_img.set_alpha(185* (self.done_expanding/4))
                 display_offset = (org_image_size[0]/2 - display_img.get_width()/2,-14* ((6-self.player.changing_done)/6) +org_image_size[1]/2 - display_img.get_height()/2  )
                 surf.blit(display_img,(self.topleft[0] - offset[0] + display_offset[0],self.topleft[1] - offset[1] + display_offset[1]))
 
             surf.blit(self.player.cur_weapon_node.weapon.weapon_img,(self.topleft[0] - offset[0] ,self.topleft[1] - offset[1]))
+  
+            
             new_mag_count = len(self.player.cur_weapon_node.weapon.magazine)
-            shot = new_mag_count != self.ammo_indicator
+        
+            shot = new_mag_count != self.ammo_indicator.number
             self.ammo_indicator.change_number(new_mag_count)
             self.ammo_indicator.render(self.topleft[0] - offset[0] ,self.topleft[1] - offset[1] - (2 if shot else 0),surf)
 
             if self.player.cur_weapon_node.next:
                 org_image_size = self.player.cur_weapon_node.next.weapon.weapon_img.get_size()
                 display_img = self.player.cur_weapon_node.next.weapon.shrunk_weapon_img
-                display_img.set_alpha(135* (self.done_expanding/4))
+                display_img.set_alpha(185* (self.done_expanding/4))
                 display_offset = (org_image_size[0]/2 - display_img.get_width()/2,14* ((6-self.player.changing_done)/6) +org_image_size[1]/2 - display_img.get_height()/2  )
                 surf.blit(display_img,(self.topleft[0] - offset[0] + display_offset[0],self.topleft[1] - offset[1] + display_offset[1]))
 
 
-        
-
-
-        """
-
-        if self.player.cur_weapon:
-            for i in [2,1,-1]:
-                shrink_factor = abs(0-i)
-                shrink_factor = (2/3)**shrink_factor
-                weapon_ind = self.player.cur_weapon_index +i
-                if 0<= weapon_ind <=len(self.player.weapon_inven) -1:
-                    org_image_size = self.player.weapon_inven[weapon_ind].weapon_img.get_size()
-                    shrunk_img = pygame.transform.scale(self.player.weapon_inven[weapon_ind].weapon_img,(org_image_size[0]*shrink_factor,org_image_size[1]*shrink_factor))
-                    shrunk_img.set_alpha((255-abs(i)*120 )* (self.done_expanding/4))
-                    surf.blit(shrunk_img,(self.topleft[0] - offset[0] + org_image_size[0] * (1-shrink_factor) ,self.topleft[1] - offset[1]+ org_image_size[1] * (1-shrink_factor) + i*14 *((7-self.player.changing_done)/7)))
-            surf.blit(self.player.cur_weapon.weapon_img, (self.topleft[0] - offset[0] ,self.topleft[1] - offset[1]))
-            
-            new_mag_count = len(self.player.cur_weapon.magazine)
-            shot = new_mag_count != self.ammo_indicator.number
-        
-
-            self.ammo_indicator.change_number(new_mag_count)
-            self.ammo_indicator.render(self.topleft[0] - offset[0] ,self.topleft[1] - offset[1] - (2 if shot else 0),surf)
-        """
         change_offset = [(0,0),(-1,-1),(-2,-2)]
         surf.blit(self.TL_cur_weapon_frame[self.player.changing_done//3],(self.topleft[0] - offset[0] + change_offset[self.player.changing_done//3][0]-1,self.topleft[1] - offset[1]+change_offset[self.player.changing_done//3][1] -3 ))
+
 
 class tile_panel:
 
@@ -99,7 +79,8 @@ class tile_panel:
         self.category_gui_scroll = 0
         self.tile_panel_scroll = 0
         
-        self.indicator_labels = (alphabets('stick_grid'),alphabets('on_grid'),alphabets('auto_random'),alphabets('selec_box'),alphabets('box_del_option'),alphabets('flipped'))
+        self.indicator_labels = (alphabets('stick_grid'),alphabets('on_grid'),alphabets('auto_random'),
+                                 alphabets('selec_box'),alphabets('box_del_option'),alphabets('flipped'),alphabets('mark'))
 
         self.indicators = [False,False,False,False,2,False]
         
@@ -402,9 +383,9 @@ class tile_panel:
         return self.selected_tile_panel 
         
 
-    def update_indicator_panels(self,auto_random,stick_grid,selection_box_selec,on_grid,sel_box_del_option,flip_tile):
+    def update_indicator_panels(self,auto_random,stick_grid,selection_box_selec,on_grid,sel_box_del_option,flip_tile,mark):
 
-        self.indicators = [stick_grid,on_grid,auto_random,selection_box_selec,sel_box_del_option,flip_tile]
+        self.indicators = [stick_grid,on_grid,auto_random,selection_box_selec,sel_box_del_option,flip_tile,mark]
         
 
 
@@ -417,7 +398,7 @@ class tile_panel:
             else: 
                 category[1] = False   
         #check tile panel hover
-        pass 
+      
 
     def check_click(self,mpos,surf):
         
@@ -483,6 +464,9 @@ class tile_panel:
 
 
     def render(self,surf):
+        
+        pygame.draw.rect(surf,(97,97,97), (0,0,self.x_range,surf.get_height()))
+
         #render the category GUI first 
         
         for category in self.categories:
@@ -493,7 +477,7 @@ class tile_panel:
                     pygame.draw.rect(surf,(48,130,64),(category[0].length + 6,category[2]+ 2, 5,2))
             
         #render the rect 
-        pygame.draw.rect(surf,(48,96,130),(self.topleft[0],self.topleft[1],self.x_range,surf.get_height()/5),2)
+        pygame.draw.rect(surf,(48,96,130),(0,0,self.x_range,surf.get_height()/5),2)
         
         
         for tile_panel in self.tile_panels:
@@ -513,7 +497,7 @@ class tile_panel:
                     surf.blit(tile_panel[2],(tile_panel[0][0],surf.get_height()/5 + tile_panel[0][1]))
 
         #render the rect 
-        pygame.draw.rect(surf,(48,96,130),(self.topleft[0],surf.get_height()/5,self.x_range,surf.get_height()*3/5),2)
+        pygame.draw.rect(surf,(48,96,130),(0,surf.get_height()/5,self.x_range,surf.get_height()*3/5),2)
         
 
         #now render the indicator panel GUI 
@@ -524,4 +508,4 @@ class tile_panel:
             
     
         #render the rect 
-        pygame.draw.rect(surf,(48,96,130),(self.topleft[0],surf.get_height()*4/5,self.x_range,surf.get_height()/5),2)
+        pygame.draw.rect(surf,(48,96,130),(0,surf.get_height()*4/5,self.x_range,surf.get_height()/5),2)

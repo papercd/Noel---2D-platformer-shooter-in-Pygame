@@ -11,6 +11,7 @@ from scripts.weapons import Wheelbot_weapon
 from scripts.spark import Spark 
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
 from scripts.weapon_list import DoublyLinkedList
+from my_pygame_light2d.light import PointLight
 
 
 #a body class to implement a more accurate body with better physics that require rotation, 
@@ -27,246 +28,164 @@ class Accurate_Rect_Body():
         pass 
 
 class PhysicsEntity:
-   
-    def __init__(self,game,e_type,pos,size):
-        self.game = game 
-        self.type = e_type 
-        self.pos = list(pos)  #this list() ensures that the position variable that you pass to the constructor 
-                              #becomes a list. This gives us flexibility with passing argumments here for example 
-                              #when we pass a tuple, this allows us to actually manage the position variable, as tuples can't be modified after initialization.
-        self.collisions = {'up' :False,'down' : False, 'left': False, 'right': False }
+    def __init__(self, game, e_type, pos, size):
+        self.game = game
+        self.type = e_type
+        self.pos = list(pos)
+        self.collisions = {'up': False, 'down': False, 'left': False, 'right': False}
         self.size = size
-        self.velocity = [0,0]
+        self.velocity = [0, 0]
         self.state = ''
-        self.anim_offset = (-0,-0)
+        self.anim_offset = (0, 0)
         self.flip = False
         self.set_state('idle')
-        self.cut_movement_input = False 
+        self.cut_movement_input = False
         self.on_ramp = 0
-         
-        
 
-
-    def set_state(self,action):
-        if action != self.state: 
-            self.state = action 
-            self.animation = self.game.assets[self.type + '/' + self.state].copy() 
+    def set_state(self, action):
+        if action != self.state:
+            self.state = action
+            self.animation = self.game.assets[self.type + '/' + self.state].copy()
 
     def collide(self, other):
-    # Check for collision between two entities. 
-        """
-        return (self.pos[0] < other.pos[0] + other.size[0] and
-                self.pos[0] + self.size[0] > other.pos[0] and
-                self.pos[1] < other.pos[1] + other.size[1] and
-                self.pos[1] + self.size[1] > other.pos[1])
-        """
         return self.collision_rect().colliderect(other.collision_rect())
 
     def collision_rect(self):
-        return pygame.Rect(self.pos[0],self.pos[1],self.size[0],self.size[1])
+        return pygame.Rect(self.pos[0], self.pos[1], self.size[0], self.size[1])
 
     def rect(self):
-        
-        return pygame.Rect(self.pos[0],self.pos[1],self.size[0],self.size[1])
-    
-    def update_pos(self, tile_map, movement = (0,0)):
-        
+        return pygame.Rect(self.pos[0], self.pos[1], self.size[0], self.size[1])
+
+    def update_pos(self, tile_map, movement=(0, 0)):
         if movement[0] > 0:
             self.flip = False
         if movement[0] < 0 :
             self.flip = True 
 
         self.animation.update()
-        
-        self.collisions = {'up' :False,'down' : False, 'left': False, 'right': False }
-        
-        self.velocity[1] = min(5,self.velocity[1] +0.24)
+        self.collisions = {'up': False, 'down': False, 'left': False, 'right': False}
+        self.velocity[1] = min(5, self.velocity[1] + 0.26)
 
-        #this is decel 
         if self.velocity[0] < 0:
-            self.velocity[0] = min(self.velocity[0]+0.21, 0)  
-        if self.velocity[0] > 0:
-            self.velocity[0] = max(self.velocity[0] -0.21,0)
+            self.velocity[0] = min(self.velocity[0] + 0.21, 0)
+        elif self.velocity[0] > 0:
+            self.velocity[0] = max(self.velocity[0] - 0.21, 0)
 
-         
+        frame_movement = (movement[0] + self.velocity[0], movement[1] + self.velocity[1]) if not self.cut_movement_input else self.velocity
 
-        if self.cut_movement_input:
-            frame_movement = (self.velocity[0],self.velocity[1])
-        else: 
-            frame_movement =  (movement[0] + self.velocity[0], movement[1] + self.velocity[1])
-
-    
         self.pos[0] += frame_movement[0]
-        entity_rect = self.rect() 
-        for rect_tile in tile_map.physics_rects_around(self.pos,self.size):
-            if entity_rect.colliderect(rect_tile[0]):
-                if not rect_tile[1].type == 'stairs':
-                
-                    if frame_movement[0] > 0: 
-                        self.collisions['right'] = True
-                        entity_rect.right = rect_tile[0].left 
-                    if frame_movement[0] < 0: 
-                        self.collisions['left'] = True
-                        entity_rect.left = rect_tile[0].right 
-                    self.pos[0] = entity_rect.x 
-                
-
-       
+        entity_rect = self.rect()
+        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+            tile_type = rect_tile[1].type
+            if entity_rect.colliderect(rect_tile[0]) and tile_type.split('_')[1] != 'stairs':
+                if frame_movement[0] > 0:
+                    self.collisions['right'] = True
+                    entity_rect.right = rect_tile[0].left
+                elif frame_movement[0] < 0:
+                    self.collisions['left'] = True
+                    entity_rect.left = rect_tile[0].right
+                self.pos[0] = entity_rect.x
 
         self.pos[1] += frame_movement[1]
-        entity_rect = self.rect() 
-        for rect_tile in tile_map.physics_rects_around(self.pos,self.size):
+        entity_rect = self.rect()
+        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+            tile_type = rect_tile[1].type
             if entity_rect.colliderect(rect_tile[0]):
-                
-                if not rect_tile[1].type == 'stairs':
-                    
-                    if frame_movement[1] > 0: 
+                if tile_type.split('_')[1] != 'stairs':
+                    if frame_movement[1] > 0:
                         self.collisions['down'] = True
-                        self.on_ramp =0 
-                        entity_rect.bottom = rect_tile[0].top  
-                    if frame_movement[1] < 0:  
+                        self.on_ramp = 0
+                        entity_rect.bottom = rect_tile[0].top
+                    elif frame_movement[1] < 0:
                         self.collisions['up'] = True
                         entity_rect.top = rect_tile[0].bottom
-                    self.velocity[1] = 0 
-                    self.pos[1] = entity_rect.y 
-                else: 
-                    pos_height = 0 
+                    self.velocity[1] = 0
+                    self.pos[1] = entity_rect.y
+                else:
+                    variant = rect_tile[1].variant.split(';')[0]
+                    pos_height = 0
+                    rel_x = rect_tile[0].x - entity_rect.right if variant in ('0', '2') else rect_tile[0].right - entity_rect.left
 
-                    if rect_tile[1].variant.split(';')[0] == '0' :
-                        #if you are on the left ramp 
-                        #then you compare the right edge. 
-                        #and cap this at -16. 
-                        
-                        rel_x = rect_tile[0].x - entity_rect.right
-                        if rel_x >= -16 and rel_x < 0: 
-                            pos_height =  max(0,-rel_x -self.size[0]//4) 
-                        
-                    elif rect_tile[1].variant.split(';')[0] == '2': 
-                        
-                        rel_x = rect_tile[0].x - entity_rect.right
-                        if rel_x < 0: 
-                            pos_height = min(tile_map.tile_size,-rel_x  +(tile_map.tile_size-self.size[0]//4))
-                        
-                    elif rect_tile[1].variant.split(';')[0] == '1':
-                        rel_x = rect_tile[0].right - entity_rect.left
-                        if rel_x > 0 :
-                            pos_height = max(0,rel_x - self.size[0] //4)
-                    elif rect_tile[1].variant.split(';')[0] == '3':
-                        rel_x = rect_tile[0].right - entity_rect.left
-                        if rel_x > 0 and rel_x <= tile_map.tile_size:
-                            pos_height = min(tile_map.tile_size,rel_x + (tile_map.tile_size - self.size[0]//4))
-                    
-                    target_y = rect_tile[0].y + tile_map.tile_size - pos_height
-                    if entity_rect.bottom > target_y: 
-                    
-                        self.on_ramp = 1 if rect_tile[1].variant.split(';')[0] == '0' else -1
-                        entity_rect.bottom = target_y
-                        self.pos[1] = entity_rect.y
-                            
-                        self.collisions['down'] = True
-                    """
-                    rel_x = entity_rect.x + (self.size[0]-tile_map.tile_size) - rect_tile[0].x
-
-                    
-
-                    pos_height= 0
-
-                    if rect_tile[1].variant.split(';')[0] == '0' :
-                        #left stairs 
-
-                        pos_height = min(0,rel_x - 4) + rect_tile[0].width 
-                    elif rect_tile[1].variant.split(';')[0] == '1':
-                        #right stairs 
-                        
-                        pos_height = min(0,12 - rel_x)
-
-                    elif rect_tile[1].variant.split(';')[0] == '2':
-                        pos_height = rel_x + 12 
-                    elif rect_tile[1].variant.split(';')[0] == '3':
-                        
-                        pos_height = max(tile_map.tile_size,28 - rel_x) 
-                    
-                   
-
-                    pos_height = min(pos_height,tile_map.tile_size)
-                    pos_height = max(pos_height,0)
+                    if variant == '0':
+                        if -16 <= rel_x < 0:
+                            pos_height = max(0, -rel_x - self.size[0] // 4)
+                    elif variant == '2':
+                        if rel_x < 0:
+                            pos_height = min(tile_map.tile_size, -rel_x + (tile_map.tile_size - self.size[0] // 4))
+                    elif variant == '1':
+                        if rel_x > 0:
+                            pos_height = max(0, rel_x - self.size[0] // 4)
+                    elif variant == '3':
+                        if 0 < rel_x <= tile_map.tile_size:
+                            pos_height = min(tile_map.tile_size, rel_x + (tile_map.tile_size - self.size[0] // 4))
 
                     target_y = rect_tile[0].y + tile_map.tile_size - pos_height
-
-                    if entity_rect.bottom > target_y: 
-                    
-                        self.on_ramp = 1 if rect_tile[1].variant.split(';')[0] == '0' else -1
+                    if entity_rect.bottom > target_y:
+                        self.on_ramp = 1 if variant == '0' else -1
                         entity_rect.bottom = target_y
                         self.pos[1] = entity_rect.y
-                         
                         self.collisions['down'] = True
-                    """
-                
 
-                    
-                        
-
-                    
-                    
-       
-
-        
-
-       
-
-
-
-    def render(self,surf,offset):
-        surf.blit(pygame.transform.flip(self.animation.img(),self.flip, False),(self.pos[0]-offset[0]+self.anim_offset[0] ,self.pos[1]-offset[1]+self.anim_offset[1]))
-        
+    def render(self, surf, offset):
+        surf.blit(pygame.transform.flip(self.animation.img(), self.flip, False),
+                  (int(self.pos[0] - offset[0] + self.anim_offset[0]), int(self.pos[1] - offset[1] + self.anim_offset[1])))
 
 
 class Enemy(PhysicsEntity):
-
-    def __init__(self,game,pos,size,variant,hp):
-        super().__init__(game,variant,pos,size)
+    def __init__(self, game, pos, size, variant, hp):
+        super().__init__(game, variant, pos, size)
         self.walking = 0
-        self.air_time =0
-        self.aggro = False 
-        self.aggro_timer = 0 
+        self.air_time = 0
+        self.aggro = False
+        self.aggro_timer = 0
         self.hit_mask = None
         self.first_hit = False
-        self.alertted = False 
-        self.hp = hp 
-        self.hit_mask = None 
+        self.alerted = False
+        self.hp = hp
 
-    def set_state(self,action):
-        if action != self.state: 
-            self.state = action 
-            self.animation = self.game.enemies[self.type + '/' + self.state].copy() 
+    def set_state(self, action):
+        if action != self.state:
+            self.state = action
+            self.animation = self.game.enemies[self.type + '/' + self.state].copy()
 
-
-    def render(self,surf,offset= (0,0),shake = 0):
-        #if the position of the thing is within the screen, render it 
+    def render(self, surf, offset=(0, 0), shake=0):
         x_min = offset[0] - self.size[0]
         x_max = offset[0] + surf.get_width() + self.size[0]
+        y_min = offset[1] - self.size[1]
+        y_max = offset[1] + surf.get_height() + self.size[1]
 
-        y_min = offset[1] -self.size[1]
-        y_max = offset[1] +surf.get_height() + self.size[1]
+        if x_min < self.pos[0] < x_max and y_min < self.pos[1] < y_max:
 
-        if (self.pos[0] > x_min and self.pos[0] < x_max) and (self.pos[1] > y_min and self.pos[1] < y_max):
-            self.outline = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
-            for offset_ in [(-1,0),(1,0),(0,-1),(0,1)]:
-                surf.blit(self.outline.to_surface(unsetcolor=(255,255,255,0),setcolor=(0,0,0,255)),(self.pos[0] - offset[0]+offset_[0],self.pos[1]-offset[1]+offset_[1]))
-            super().render(surf,offset=offset)
-            
+            #---------- outlining 
+            current_image = self.animation.img()
+            if self.flip:
+                current_image = pygame.transform.flip(current_image, True, False)
+            self.outline = pygame.mask.from_surface(current_image)
+
+            for offset_ in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                outline_surface = self.outline.to_surface(unsetcolor=(255, 255, 255, 0), setcolor=(0, 0, 0, 255))
+                surf.blit(outline_surface, (int(self.pos[0] - offset[0] + offset_[0]), int(self.pos[1] - offset[1] + offset_[1])))
+            #-----------
+            super().render(surf, offset=offset)
+
             if self.hit_mask:
-                for offset_ in [(-1,0),(1,0),(0,-1),(0,1)]:
-                    surf.blit(self.hit_mask.to_surface(unsetcolor=(0,0,0,0),setcolor=(255,255,255,255)),(self.pos[0] - offset[0]+offset_[0],self.pos[1]-offset[1]+offset_[1]))
+                hit_surface = self.hit_mask.to_surface(unsetcolor=(0, 0, 0, 0), setcolor=(255, 255, 255, 255))
+                for offset_ in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    surf.blit(hit_surface, (int(self.pos[0] - offset[0] + offset_[0]), int(self.pos[1] - offset[1] + offset_[1])))
                 self.hit_mask = None
 
-    def hit(self,hit_damage):
-        if self.hp > 0 :
+    def hit(self, hit_damage):
+        if self.hp > 0:
             self.hp -= hit_damage
-            self.first_hit = True 
-            self.hurt = True 
-            self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
+            self.first_hit = True
+            self.hurt = True
+            current_image = self.animation.img()
+            if self.flip:
+                current_image = pygame.transform.flip(current_image, True, False)
+            self.hit_mask = pygame.mask.from_surface(current_image)
 
+
+"""
 class Sabre(Enemy):
     def __init__(self,game,pos,size):
         super().__init__(game,pos,size,'sabre',230)
@@ -390,6 +309,7 @@ class Sabre(Enemy):
     def render(self,surf,offset):
         super().render(surf,offset=offset)
         
+"""
 
 class Wheel_bot(Enemy):
     def __init__(self, game, pos, size):
@@ -507,7 +427,7 @@ class Wheel_bot(Enemy):
         self.weapon.update(player_pos)
         if self.animation.done:
             self.hurt = False
-            self.alertted = True
+            self.alerted = True
 
     def _handle_combat_state(self, movement, player_pos):
         if not self.aggro:
@@ -523,11 +443,11 @@ class Wheel_bot(Enemy):
 
     def _handle_attack_state(self, player_pos):
         self.flip = player_pos[0] < self.pos[0]
-        if not self.alertted:
+        if not self.alerted:
             self.set_state('alert')
             if self.animation.done:
                 self.charge_time = 0
-                self.alertted = True
+                self.alerted = True
         else:
             self.weapon.update(player_pos)
             if not self.shooting:
@@ -556,7 +476,7 @@ class Wheel_bot(Enemy):
             self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(), True, False))
 
     def render(self, surf, offset):
-        if self.alertted:
+        if self.alerted:
             self.health_bar.render(surf, offset)
 
         super().render(surf, (offset[0] - self.weapon.knockback[0] / 4, offset[1] - self.weapon.knockback[1] / 4))
@@ -567,7 +487,7 @@ class Wheel_bot(Enemy):
 
         
         
-
+"""
 class Canine(Enemy):
     def __init__(self,game,pos,size,color):
         self.color = color 
@@ -685,7 +605,7 @@ class Canine(Enemy):
                     pass 
 
 
-                    """
+                    
                     
                     if dir > 0:
                         current_node = self.path[0]
@@ -706,7 +626,7 @@ class Canine(Enemy):
                             movement = (movement[0] -0.2,movement[1] )
                         if current_node.down and isinstance(current_node.down,Node):
                             movement = (movement[0] -0.2,movement[1] )
-                    """
+                    
         
 
             else: 
@@ -820,14 +740,14 @@ class Canine(Enemy):
         
         #also render the hit mask 
         #pathfinding testing
-        """
+        
         test_surf = pygame.Surface((2,2))
         test_surf.fill((180,0,0,255))
         surf.blit(test_surf,(self.pos[0]+self.size[0] + (-8 if self.flip else 8) -offset[0], self.pos[1]- offset[1]))
-        """
+        
         # (self.pos[0]+self.size[0] + (-8 if self.flip else 8),self.pos[1]//16-tilemap.tile_size)
         
-        """
+        
         if self.path: 
             for key in self.path: 
                 test_surf = pygame.Surface((1,1))
@@ -835,7 +755,7 @@ class Canine(Enemy):
                 node =self.path[key]
                
                 surf.blit(test_surf,(node.pos[0]*16 -offset[0] + 8,node.pos[1]*16 - offset[1]+8))
-        """
+        
         
         if self.path: 
             for node in self.path: 
@@ -860,6 +780,7 @@ class Canine(Enemy):
         self.first_hit = True 
         self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
 
+"""
 
 class PlayerEntity(PhysicsEntity):
     def __init__(self,game,pos,size):
@@ -978,7 +899,8 @@ class PlayerEntity(PhysicsEntity):
             if self.y_inertia > 6:
                 self.set_state('land')
             entry_pos = (self.rect().centerx,self.rect().bottom)
-            for offset in (0,-tile_map.tile_size,tile_map.tile_size):
+            for offset in range(-tile_map.tile_size, tile_map.tile_size, 4):
+            #(0,-tile_map.tile_size,tile_map.tile_size):
                 if tile_map.solid_check((entry_pos[0]+offset,entry_pos[1])):
                     color = tile_map.return_color((entry_pos[0]+offset,entry_pos[1]),side ='top')
                     break
@@ -1181,7 +1103,7 @@ class PlayerEntity(PhysicsEntity):
                 self.velocity[0] = -4.2
             #self.accel_up() 
             
-            self.velocity[1] =-4.2
+            self.velocity[1] =-4.4
             
 
             air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
@@ -1192,7 +1114,7 @@ class PlayerEntity(PhysicsEntity):
                 self.jump_count -=2
                 #self.accel_up() 
 
-                self.velocity[1] = -4.2
+                self.velocity[1] = -4.4
                 
                 air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
                 self.game.particles.append(air)
@@ -1200,12 +1122,12 @@ class PlayerEntity(PhysicsEntity):
                 self.jump_count -=1
                 #self.accel_up() 
 
-                self.velocity[1] = -4.2    
+                self.velocity[1] = -4.4    
             
         elif self.jump_count ==1: 
             self.jump_count -=1
             #self.accel_up() 
-            self.velocity[1] = -4.2  
+            self.velocity[1] = -4.4  
             air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
             self.game.particles.append(air)
             
@@ -1217,7 +1139,7 @@ class PlayerEntity(PhysicsEntity):
         if self.velocity[1] < 0: 
             if self.velocity[1] > -4.2:
                 if self.air_time >0 and self.air_time <= 8:
-                    self.velocity[1] = -1.5
+                    self.velocity[1] = -1.2
                 if self.air_time >8 and self.air_time <=11 :
                     self.velocity[1] = -2.2
 
@@ -1327,6 +1249,7 @@ class PlayerEntity(PhysicsEntity):
     
     def hit(self,hit_damage):
         self.health -= hit_damage
+        self.game.screen_shake = max(hit_damage/2.2,self.game.screen_shake)
         self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
         
 
@@ -1355,272 +1278,130 @@ class Grenade(Item):
         pass 
 
 
-
-
 class Bullet(PhysicsEntity): 
-    def __init__(self,game,pos,size,sprite,type):
-        super().__init__(game,'bullet',pos,size)
+    def __init__(self, game, pos, size, sprite, bullet_type):
+        super().__init__(game, 'bullet', pos, size)
         self.damage = 1
         self.angle = 0
         self.sprite = sprite
-        self.bullet_type = type
-        self.center = [self.sprite.get_width()/2,self.sprite.get_height()/2]
+        self.bullet_type = bullet_type
+        self.center = [sprite.get_width() / 2, sprite.get_height() / 2]
         self.set_state('in_place')
-        self.frames_flown = 0
+        self.frames_flown = 50
         self.test_tile = None
-        self.light = LIGHT(20,pixel_shader(20,(255,255,255),1,False))
+        self.dead = False
+        self.light = LIGHT(20, pixel_shader(20, (255, 255, 255), 1, False))
+        
+        
         
     def set_state(self, action):
         self.state = action
 
+    def copy(self):
+        return Bullet(self.game, self.pos, self.size, self.sprite, self.bullet_type)
+    
+
     def rect(self):
-        
-        return pygame.Rect(self.pos[0],self.pos[1],self.sprite.get_width(),self.sprite.get_height())
+        return pygame.Rect(self.pos[0], self.pos[1], self.sprite.get_width(), self.sprite.get_height())
 
-    def collision_handler(self,tilemap,rect_tile,ent_rect,dir,axis):
-        if isinstance(rect_tile,pygame.Rect):
-            rect_tile = rect_tile
-        else: 
-            rect_tile = rect_tile[0]
+    def collision_handler(self, tilemap, rect_tile, ent_rect, dir, axis):
+        rect_tile = rect_tile if isinstance(rect_tile, pygame.Rect) else rect_tile[0]
 
-        
+        og_end_point_vec = pygame.math.Vector2(6, 0).rotate(self.angle)
+        end_point = [self.center[0] + og_end_point_vec[0] - (self.sprite.get_width() / 2 if self.velocity[0] >= 0 else 0),
+                     self.center[1] + og_end_point_vec[1]]
+        entry_pos = (rect_tile.left if dir else rect_tile.right, end_point[1]) if axis else (end_point[0], rect_tile.top if dir else rect_tile.bottom)
+        sample_side = {(True, True): 'left', (False, True): 'right', (True, False): 'top', (False, False): 'bottom'}
+        color = tilemap.return_color(rect_tile, sample_side[(dir, axis)])
 
-        og_end_point_vec = pygame.math.Vector2((6,0))
-        og_end_point_vec.rotate(self.angle)
-
-        
-        
-        end_point = [self.center[0]+og_end_point_vec[0] - (self.sprite.get_width()/2 if self.velocity[0] >=0 else 0),self.center[1] + og_end_point_vec[1]] 
-        
-        entry_pos = ( rect_tile.left if dir else rect_tile.right ,end_point[1]) if axis else (end_point[0],rect_tile.top if dir else rect_tile.bottom )
-
-        sample_side = {(True,True) : 'left',(False,True) : 'right',(True,False) : 'top',(False,False) : 'bottom'}
-
-
-        color = tilemap.return_color(rect_tile,sample_side[(dir,axis)])
-        
-        #you need to tweak the particle spawning positions depending on the side where the bullet has hit, and make the spawning position more 
-        #precise. 
-
-
-        offsets = [(-1,0), (0,0), (1,0)]
-        for i in range(random.randint(6,11)):
+        offsets = [(-1, 0), (0, 0), (1, 0)]
+        for _ in range(random.randint(6, 11)):
             offset = random.choice(offsets)
-            self.game.non_animated_particles.append(bullet_collide_particle(random.choice([(1,1),(2,1),(1,2),(3,1),(1,3),(2,2)]), entry_pos,(180-self.angle) + random.randint(-88,88),3+random.random(),color,tilemap))
-        
+            self.game.non_animated_particles.append(bullet_collide_particle(random.choice([(1, 1), (2, 1), (1, 2), (3, 1), (1, 3), (2, 2)]),
+                                                                             entry_pos, (180 - self.angle) + random.randint(-88, 88), 3 + random.random(), color, tilemap))
+
         bullet_mask = pygame.mask.from_surface(self.sprite)
-        tile_mask = pygame.mask.Mask((rect_tile.width,rect_tile.height))
-        #bullet_mask.fill()
+        tile_mask = pygame.mask.Mask((rect_tile.width, rect_tile.height))
         tile_mask.fill()
-        offset = (ent_rect[0] - rect_tile[0],ent_rect[1] - rect_tile[1])
-        
-        #I guess create the decal object here, when the mask collision is done. 
+        offset = (ent_rect[0] - rect_tile[0], ent_rect[1] - rect_tile[1])
 
-        if tile_mask.overlap_area(bullet_mask,offset)>2:
+        if tile_mask.overlap_area(bullet_mask, offset) > 2:
             collided_tile = tilemap.return_tile(rect_tile)
-            
-            collide_particle = Particle(self.game,'bullet_collide/rifle',end_point,'player')
-            rotated_collide_particle_images = [pygame.transform.rotate(image,180+self.angle) for image in collide_particle.animation.copy().images]
-            collide_particle.animation.images = rotated_collide_particle_images
-
+            collide_particle = Particle(self.game, 'bullet_collide/rifle', end_point, 'player')
+            collide_particle.animation.images = [pygame.transform.rotate(img, 180 + self.angle) for img in collide_particle.animation.copy().images]
             self.game.particles.append(collide_particle)
 
             if collided_tile.type != 'box':
                 pass
-                """
-                decal_mask  = tile_mask.overlap_mask(bullet_mask,offset)
-                decal_surf = decal_mask.to_surface(unsetcolor=(135,135,135,0))
-                decal_surf.set_colorkey((0,0,0))
-                
-                collided_tile.decals.append([decal_surf,0])
-                """
-                
             else:
-                del tilemap.tilemap[str(collided_tile.pos[0]) + ';' + str(collided_tile.pos[1])]
-                destroy_box_smoke = Particle(self.game,'box_smoke',(rect_tile.centerx,rect_tile.centery),'tile',velocity=[0,0],frame = 10)  
+                tilemap.tilemap.pop(f'{collided_tile.pos[0]};{collided_tile.pos[1]}')
+                destroy_box_smoke = Particle(self.game, 'box_smoke', rect_tile.center, 'tile', velocity=[0, 0], frame=10)
                 self.game.particles.append(destroy_box_smoke)
                 collided_tile.drop_item()
-                
-            
+            return True
+        return False
+
+    def update_pos(self, tile_map, offset=(0, 0)):
+        self.collisions = {'up': False, 'down': False, 'left': False, 'right': False}
+        self.frames_flown -= 1
+        
+        if self.frames_flown == 0:
+            self.dead = True 
             return True
         
-
-    def update_pos(self, tile_map,offset = (0,0)):
-        
-        kill= False
-
-        self.collisions = {'up' :False,'down' : False, 'left': False, 'right': False }
-        self.frames_flown +=1 
-        
-        if self.frames_flown >= 50:
-            del self 
-            return True
-        
-        #make collision detection more precise. 
-        
-        self.pos[0] += self.velocity[0] 
-        self.center = [self.pos[0]+self.sprite.get_width()/3, self.pos[1] + self.sprite.get_height()/2]
+        self.pos[0] += self.velocity[0]
+        self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
         entity_rect = self.rect()
 
-        #when a bullet collides with a physics block, it leaves decals - based on their masks overlapping with the tiles. 
-        #add a black smudge effect to the tiles.
-
-        for rect_tile in tile_map.physics_rects_around(self.pos,self.size):
+        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
             if entity_rect.colliderect(rect_tile[0]):
-                if rect_tile[1].type == 'stairs' and  rect_tile[1].variant.split(';')[0] in ['0','1']:
-                    #you check for separate collisions 
-                    #make separate rects for ramps 
-                    if rect_tile[1].variant.split(';')[0] == '0':
-                        #left stairs
-                        #this part where check rects are created is not dynamic, so if tilesize changes this part needs to be changed manually. maybe figure out a mathematical 
-                        #way to create rects. 
-                        check_rects = [pygame.Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
-                                       pygame.Rect(rect_tile[0].left + 12,rect_tile[0].top,4,12),
-                                       pygame.Rect(rect_tile[0].left + 6,rect_tile[0].top + 6,6,6)
-                                       ]
-                        for check_rect in check_rects:
-                            if entity_rect.colliderect(check_rect):
-                                kill = self.collision_handler(tile_map,check_rect,entity_rect,self.velocity[0] > 0, True)
-                    else: 
-                        check_rects = [pygame.Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
-                                       pygame.Rect(rect_tile[0].left,rect_tile[0].top,4,12),
-                                       pygame.Rect(rect_tile[0].left + 4,rect_tile[0].top + 6,6,6)
-                                       ]
-                        for check_rect in check_rects:
-                            if entity_rect.colliderect(check_rect):
-                                kill = self.collision_handler(tile_map,check_rect,entity_rect,self.velocity[0] > 0, True)
-                else: 
-                    kill = self.collision_handler(tile_map,rect_tile,entity_rect,self.velocity[0] > 0, True)
-
-                    """
-                    color = tile_map.return_color(rect_tile[0])
-
-                    og_end_point_vec = pygame.math.Vector2((6,0))
-                    og_end_point_vec.rotate(self.angle)
-
-                    
-                    
-                    end_point = [self.center[0]+og_end_point_vec[0] - (self.sprite.get_width()/2 if self.velocity[0] >=0 else 0),self.center[1] + og_end_point_vec[1]] 
-
-                    collide_particle = Particle(self.game,'bullet_collide/rifle',end_point,'player')
-                    rotated_collide_particle_images = [pygame.transform.rotate(image,180+self.angle) for image in collide_particle.animation.copy().images]
-                    collide_particle.animation.images = rotated_collide_particle_images
-
-                    self.game.particles.append(collide_particle)
-                    
-                    offsets = [(-1,0), (0,0), (1,0)]
-                    for i in range(random.randint(6,11)):
-                        offset = random.choice(offsets)
-                        self.game.non_animated_particles.append(bullet_collide_particle(random.choice([(1,1),(2,1),(1,2)]),end_point,(180-self.angle) + random.randint(-88,88),3+random.random(),color,tile_map))
-                    
-                    bullet_mask = pygame.mask.from_surface(self.sprite)
-                    tile_mask = pygame.mask.Mask((rect_tile[0].width,rect_tile[0].height))
-                    bullet_mask.fill()
-                    tile_mask.fill()
-                    offset = (entity_rect[0] - rect_tile[0][0],entity_rect[1] - rect_tile[0][1])
-                    
-
-                    if tile_mask.overlap_area(bullet_mask,offset)>13:
-                        #add sparks particle when a bullet hits an enemy 
-                    
-
-                        collided_tile = tile_map.return_tile(rect_tile[0])
-                        if collided_tile.type == 'box':
-                
-                            del tile_map.tilemap[str(collided_tile.pos[0]) + ';' + str(collided_tile.pos[1])]
-                            destroy_box_smoke = Particle(self.game,'box_smoke',(rect_tile[0].centerx,rect_tile[0].centery),'tile',velocity=[0,0],frame = 10)  
-                            self.game.particles.append(destroy_box_smoke)
-                            collided_tile.drop_item()
-                            
-
-                        del self 
+                if rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
+                    check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
+                                   pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),
+                                   pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \
+                                  [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
+                                   pygame.Rect(rect_tile[0].left, rect_tile[0].top, 4, 12),
+                                   pygame.Rect(rect_tile[0].left + 4, rect_tile[0].top + 6, 6, 6)]
+                    for check_rect in check_rects:
+                        if entity_rect.colliderect(check_rect):
+                            if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[0] > 0, True):
+                                self.dead = True 
+                                return True
+                else:
+                    if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
+                        self.dead = True 
                         return True
-                    """
-        if kill:
-            
-            del self 
-            return True 
-        
-        self.pos[1] += self.velocity[1] 
 
-
-        self.center = [self.pos[0]+self.sprite.get_width()/3, self.pos[1] + self.sprite.get_height()/2]
-        
+        self.pos[1] += self.velocity[1]
+        self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
         entity_rect = self.rect()
 
-        #when a bullet collides with a physics block, it leaves decals - based on their masks overlapping with the tiles. 
-        #add a black smudge effect to the tiles.
-
-        for rect_tile in tile_map.physics_rects_around(self.pos,self.size):
+        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
             if entity_rect.colliderect(rect_tile[0]):
-                if rect_tile[1].type == 'stairs' and  rect_tile[1].variant.split(';')[0] in ['0','1']:
-                    #you check for separate collisions 
-                    #make separate rects for ramps 
-                    if rect_tile[1].variant.split(';')[0] == '0':
-                        #left stairs
-                        #this part where check rects are created is not dynamic, so if tilesize changes this part needs to be changed manually. maybe figure out a mathematical 
-                        #way to create rects. 
-                        check_rects = [pygame.Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
-                                       pygame.Rect(rect_tile[0].left + 12,rect_tile[0].top,4,12),
-                                       pygame.Rect(rect_tile[0].left + 6,rect_tile[0].top + 6,6,6)
-                                       ]
-                        for check_rect in check_rects:
-                            if entity_rect.colliderect(check_rect):
-                                kill = self.collision_handler(tile_map,check_rect,entity_rect,self.velocity[1] > 0 ,False)
-                    else: 
-                        check_rects = [pygame.Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
-                                       pygame.Rect(rect_tile[0].left,rect_tile[0].top,4,12),
-                                       pygame.Rect(rect_tile[0].left + 4,rect_tile[0].top + 6,6,6)
-                                       ]
-                        for check_rect in check_rects:
-                            if entity_rect.colliderect(check_rect):
-                                kill = self.collision_handler(tile_map,check_rect,entity_rect,self.velocity[1] > 0 ,False)
-                else: 
-                    kill = self.collision_handler(tile_map,rect_tile,entity_rect,self.velocity[1] > 0 ,False)
+                if rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
+                    check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
+                                   pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),
+                                   pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \
+                                  [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
+                                   pygame.Rect(rect_tile[0].left, rect_tile[0].top, 4, 12),
+                                   pygame.Rect(rect_tile[0].left + 4, rect_tile[0].top + 6, 6, 6)]
+                    for check_rect in check_rects:
+                        if entity_rect.colliderect(check_rect):
+                            if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[1] > 0, False):
+                                self.dead = True 
+                                return True
+                else:
+                    if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[1] > 0, False):
+                        self.dead = True 
+                        return True
+        return False
 
+    def render(self, surf, offset=(0, 0)):
+        #bullet_glow_mask = pygame.mask.from_surface(self.sprite)
+        surf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD)
 
-        if kill:
-            
-            del self 
-            return True 
-       
-      
-        #collision with entities crude method....
-        
-        """
-        entity_rect = self.rect() 
-        for enemy in self.game.existing_enemies:
-            if entity_rect.colliderect(enemy.rect()):
-                enemy.hit(self.damage)
-                og_end_point_vec = pygame.math.Vector2((6,0))
-                og_end_point_vec.rotate(self.angle)
-
-                center_pos = [self.pos[0]+self.sprite.get_width()/2, self.pos[1] + self.sprite.get_height()/2]
-                end_point = [center_pos[0]+og_end_point_vec[0]- (self.sprite.get_width()/2 if self.velocity[0] >=0 else 0),center_pos[1] + og_end_point_vec[1]] 
-                collide_particle = Particle(self.game,'bullet_collide/rifle',end_point,'player')
-                rotated_collide_particle_images = [pygame.transform.rotate(image,180+self.angle) for image in collide_particle.animation.copy().images]
-                collide_particle.animation.images = rotated_collide_particle_images
-
-                self.game.particles.append(collide_particle)
-
-                del self 
-                return True 
-        """
-
-            
-        
-             
     
-    
-    def render(self,surf,offset = (0,0)):
-        #test_surface = pygame.Surface((self.sprite.get_width(),self.sprite.get_height()))
-        #surf.blit(test_surface,(self.pos[0]-offset[0],self.pos[1]-offset[1]))
-        bullet_glow_mask = pygame.mask.from_surface(self.sprite)
-        #surf.blit(bullet_glow_mask.to_surface(unsetcolor=(0,0,0,0),setcolor=(255,255,255,255)),(self.pos[0] - offset[0],self.pos[1]-offset[1]))
-        surf.blit(self.sprite, (self.pos[0]-offset[0],self.pos[1]-offset[1]),special_flags = pygame.BLEND_RGB_ADD)
 
-    def copy(self):
-        return Bullet(self.game,self.pos,self.size,self.sprite,self.bullet_type)
 
 class tile_ign_Bullet(Bullet):
 
@@ -1659,9 +1440,10 @@ class Wheelbot_bullet(tile_ign_Bullet):
         self.pos = pos
         self.size = size
         self.type = type
-        self.frames_flown = 0
+        self.frames_flown = 300
         self.trailing_particles = []
         self.flip = False 
+        self.dead = False
 
         self.light = LIGHT(40,pixel_shader(40,(137,31,227),1,False))
         self.center = [self.pos[0]+self.animation.img().get_width()/2, self.pos[1] + self.animation.img().get_height()/2]
@@ -1672,10 +1454,11 @@ class Wheelbot_bullet(tile_ign_Bullet):
     def update_pos(self, tile_map, offset=(0, 0)):
         self.animation.update()
         self.collisions = {'up' :False,'down' : False, 'left': False, 'right': False }
-        self.frames_flown +=1 
+        self.frames_flown -=1 
       
 
-        if self.frames_flown >= 300:
+        if self.frames_flown == 300:
+            self.dead = True
             del self 
             return True
         
@@ -1705,6 +1488,7 @@ class Wheelbot_bullet(tile_ign_Bullet):
 
         entity_rect = self.rect()
         if entity_rect.colliderect(self.game.player.rect()):
+            self.dead = True
             self.game.player.hit(self.damage)
             og_end_point_vec = pygame.math.Vector2((6,0))
             og_end_point_vec.rotate(self.angle)

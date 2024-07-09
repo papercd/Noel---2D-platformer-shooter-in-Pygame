@@ -1,36 +1,23 @@
 
 import pygame
-
 import random
 import math
 import time
 import sys 
-from scripts.tilemap import Tilemap
-from scripts.utils import load_image,load_images,load_tile_images,Animation, load_sounds
-from scripts.entities import PlayerEntity,Canine,Wheel_bot,Sabre,Bullet
-from scripts.clouds import Clouds
-from scripts.particles import Particle
-from scripts.cursor import Cursor
-from scripts.weapons import Weapon,Wheelbot_weapon, AK_47,Flamethrower
-from scripts.background import Background
-from scripts.Pygame_Lights import LIGHT,global_light,pixel_shader
-from scripts.indicator import indicator
-from scripts.HUD import HUD 
-from scripts.grass import *
-
-from scripts.inventory import Item,ITEMS
 
 
-# ----------------------------------- quadtree imports 
-from scripts.quadtree import * 
-from scripts.range import * 
+from scripts import * 
+from assets import GameAssets
 
+#import pygame_light2d as pl2d 
+#from pygame_light2d import LightingEngine, PointLight, Hull
 
 #----------------------------------------- imports to integrate shaders 
-from array import array
-from collections import deque 
-import moderngl 
 
+
+from my_pygame_light2d.engine import LightingEngine, Layer_
+from my_pygame_light2d.light import PointLight
+from my_pygame_light2d.hull import Hull
 
 class myGame:
     def __init__(self):
@@ -40,17 +27,40 @@ class myGame:
         
         
         self.screen_shake = 0 
-        self.screen = pygame.display.set_mode((1040,652),pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
-        self.display = pygame.Surface((self.screen.get_width()//2,self.screen.get_height()//2),pygame.SRCALPHA)
-        self.bsurf = pygame.Surface((self.screen.get_width()//2,self.screen.get_height()//2),pygame.SRCALPHA)
 
-        self.display_2 = pygame.Surface((self.screen.get_width()//2,self.screen.get_height()//2))
+        self.screen_size = (1440,900)
+        self.native_res = (int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5))
+
+        self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
+        self.lights_engine.set_ambient(185,185,185,185)
+
+        #self.screen = pygame.display.set_mode(self.screen_size,pygame.RESIZABLE)
         
-        self.NODE_CAPACITY = 2
+
+        #there needs to be a foreground surface, and a background surface. 
+        #the background surfcae is where lighting is applied, and the foreground surface is where no lighting is applied. 
+        
+        
+        self.bsurf = pygame.Surface((int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5)),pygame.SRCALPHA)
+
+        #self.shadow_buffer_surf =  pygame.Surface((int(self.screen_size[0]//2.7),int(self.screen_size[1]//2.7)))
+
+        self.background_surf = pygame.Surface((int(self.screen_size[0]//2.5),int(self.screen_size[1]/2.5)),pygame.SRCALPHA)
+        self.foreground_surf = pygame.Surface((int(self.screen_size[0]//2.5),int(self.screen_size[1]//2.5)),pygame.SRCALPHA)
+
+        self.test_shader = self.lights_engine.load_shader_from_path('vertex.glsl','fog_fragment.glsl')
+        self.pixel_exp_shader = self.lights_engine.load_shader_from_path('vertex.glsl','exp_fragment.glsl')
+
+        
+        self.NODE_CAPACITY = 4
         self.qtree_x_slack = 300
         self.qtree_y_slack = 300
 
+        self.game_assets = GameAssets()
+
+        
+        #self.engine = RenderEngine(self.screen_size[0]//2,self.screen_size[1]//2)
         """
         self.sfx = {
             'jump': pygame.mixer.Sound(),
@@ -67,127 +77,10 @@ class myGame:
        
     
         #make a more efficient way to load assets maybe?
+        
 
-        self.assets = {
-            
-            'grass' : load_tile_images('tiles/grass',background='transparent'),
-            'live_grass': load_tile_images('grass',background='black'),
-            #'large_decor' : load_tile_images('tiles/large_decor'),
-            #'stone' : load_tile_images('tiles/stone',background='transparent'),
-            'box' : load_tile_images('tiles/box',background='transparent'),
-
-            'masks' : load_images('tiles/masks',background='transparent'),
-            'building_0' : load_tile_images('tiles/building_0',background='transparent'),
-            'building_1' : load_tile_images('tiles/building_1',background='transparent'),
-            'building_2' : load_tile_images('tiles/building_2',background='transparent'),
-            'building_3' : load_tile_images('tiles/building_3',background='transparent'),
-            'building_4' : load_tile_images('tiles/building_4',background='transparent'), 
-            'building_5' : load_tile_images('tiles/building_5',background='transparent'), 
-            'building_back' : load_tile_images('tiles/building_back',background='transparent'), 
-            'building_decor' : load_tile_images('tiles/building_decor',background='transparent'), 
-            'lights' : load_tile_images('tiles/light',background='transparent'), 
-            'stairs' : load_tile_images('tiles/building_stairs',background='transparent'), 
-
-
-            'player' : load_image('entities/player.png'),
-            'background': load_image('background.png'),
-            'test_background' : load_image('test_background.png'),
-
-            'cursor/default' : load_image('cursor/default_cursor.png',background='black'),
-            'crosshair' : load_image('cursor/crosshair.png'),
-
-
-            'clouds': load_images('clouds/default'),
-            'gray1_clouds' : load_images('clouds/gray1',background = 'transparent'),
-            'gray2_clouds' : load_images('clouds/gray2',background = 'transparent'),
-            
-            'player/holding_gun/idle' : Animation(load_images('entities/player/holding_gun/idle',background='transparent'), img_dur =6),
-            'player/holding_gun/run' : Animation(load_images('entities/player/holding_gun/run',background='transparent'), img_dur =4),
-
-            'player/holding_gun/jump_up' : Animation(load_images('entities/player/holding_gun/jump/up',background='transparent'), img_dur =5),
-            'player/holding_gun/jump_down' : Animation(load_images('entities/player/holding_gun/jump/down',background='transparent'), img_dur =5,halt=True),
-            'player/holding_gun/land' : Animation(load_images('entities/player/holding_gun/land',background='transparent'), img_dur =2,loop=False),
-           
-
-            'player/holding_gun/slide' : Animation(load_images('entities/player/slide',background='transparent'), img_dur =5),
-            'player/holding_gun/wall_slide' : Animation(load_images('entities/player/wall_slide',background='transparent'), img_dur =4),
-            'player/holding_gun/walk' : Animation(load_images('entities/player/holding_gun/walk',background='transparent'), img_dur =7),
-
-
-            'health_UI' : load_image('ui/health/0.png',background='transparent'),
-            'stamina_UI' : load_image('ui/stamina/0.png',background='transparent'),
-
-
-            'player/idle' : Animation(load_images('entities/player/idle',background='transparent'), img_dur =6),
-            'player/run' : Animation(load_images('entities/player/run',background='transparent'), img_dur =4),
-
-            'player/jump_up' : Animation(load_images('entities/player/jump/up',background='transparent'), img_dur =5),
-            'player/jump_down' : Animation(load_images('entities/player/jump/down',background='transparent'), img_dur =5,halt=True),
-            'player/land' : Animation(load_images('entities/player/land',background='transparent'), img_dur =2,loop=False),
-           
-
-            'player/slide' : Animation(load_images('entities/player/slide',background='transparent'), img_dur =5,halt = True),
-            'player/wall_slide' : Animation(load_images('entities/player/wall_slide',background='transparent'), img_dur =4),
-            
-
-            'particle/box_destroy' : Animation(load_images('particles/box',background='transparent'),img_dur= 3,loop= False),
-            'particle/box_smoke' : Animation(load_images('particles/box_break',background='black'),img_dur= 3,loop= False),
-            
-            'particle/leaf':Animation(load_images('particles/leaf'),img_dur =20,loop=False),
-            'particle/jump':Animation(load_images('particles/jump',background= 'black'),img_dur= 2, loop= False),
-            'particle/dash_left' : Animation(load_images('particles/dash/left',background='black'),img_dur=1,loop =False),
-            'particle/dash_right' : Animation(load_images('particles/dash/right',background='black'),img_dur=1,loop =False),
-            'particle/dash_air' : Animation(load_images('particles/dash/air',background='black'),img_dur=2,loop =False),
-            'particle/land' : Animation(load_images('particles/land',background='transparent'),img_dur=3,loop =False),
-            'particle/big_land' : Animation(load_images('particles/big_land',background='transparent'),img_dur=2,loop =False),
-            
-            'particle/shot_muzzle/laser_weapon' : Animation(load_images('particles/shot_muzzle/laser_weapon',background='transparent'),img_dur=3,loop =False),
-
-            'particle/smoke/ak_47' : Animation(load_images('particles/shoot/rifle',background='transparent'),img_dur=3,loop=False),
-
-            'particle/smoke/rifle_small' : Animation(load_images('particles/bullet_collide_smoke/rifle/small',background='black'),img_dur=2,loop=False),
-
-            'particle/smoke/laser_weapon' : Animation(load_images('particles/shoot/laser_weapon',background='transparent'),img_dur=3,loop=False),
-
-            'particle/bullet_collide/laser_weapon' :Animation(load_images('particles/bullet_collide/laser_weapon',background='transparent'),img_dur=2,loop=False),
-            'particle/bullet_collide/rifle' :Animation(load_images('particles/bullet_collide/rifle',background='transparent'),img_dur=2,loop=False),
-
-
-
-        } 
-
-        self.enemies = {
-            'Canine/black/idle' : Animation(load_images('entities/enemy/Canine/black/idle',background='transparent'),img_dur= 8),
-            'Canine/black/run' : Animation(load_images('entities/enemy/Canine/black/run',background= 'transparent'),img_dur= 6),
-            'Canine/black/jump_up': Animation(load_images('entities/enemy/Canine/black/jump/up',background= 'transparent'),img_dur= 1,loop = False),
-            'Canine/black/jump_down': Animation(load_images('entities/enemy/Canine/black/jump/down',background= 'transparent'),img_dur= 3,loop = False),
-            'Canine/black/hit': Animation(load_images('entities/enemy/Canine/black/hit',background= 'transparent'),img_dur= 5,loop=False),
-            'Canine/black/grounded_death': Animation(load_images('entities/enemy/Canine/black/death/grounded',background= 'transparent'),img_dur= 5,loop=False),
-
-            'Wheel_bot/idle': Animation(load_images('entities/enemy/Wheel_bot/idle',background='transparent'),img_dur= 6),
-            'Wheel_bot/move': Animation(load_images('entities/enemy/Wheel_bot/move',background='transparent'),img_dur= 7),
-            'Wheel_bot/dormant': Animation(load_images('entities/enemy/Wheel_bot/dormant',background='transparent'),img_dur=2,loop=True),
-            'Wheel_bot/alert': Animation(load_images('entities/enemy/Wheel_bot/alert',background='transparent'),img_dur=4,loop=False),
-            'Wheel_bot/wake': Animation(load_images('entities/enemy/Wheel_bot/wake',background='transparent'),img_dur=5,loop=False),
-            'Wheel_bot/new_charge': Animation(load_images('entities/enemy/Wheel_bot/new_charge',background='transparent'),img_dur=3,loop=True), 
-            'Wheel_bot/shoot': Animation(load_images('entities/enemy/Wheel_bot/shoot',background='transparent'),img_dur=4,loop=False),
-            'Wheel_bot/hit': Animation(load_images('entities/enemy/Wheel_bot/hit',background='transparent'),img_dur=4,loop=False),
-            'Wheel_bot/death': Animation(load_images('entities/enemy/Wheel_bot/death',background='transparent'),img_dur=4,loop=False),
-
-
-
-            #fix the img durations and loop variables accordingly 
-            'sabre/idle':  Animation(load_images('entities/enemy/sabre/idle',background='transparent'),img_dur= 6),
-            'sabre/move':  Animation(load_images('entities/enemy/sabre/move',background='transparent'),img_dur= 6),
-            'sabre/dormant':  Animation(load_images('entities/enemy/sabre/dormant',background='transparent'),img_dur= 6,loop=True),
-            'sabre/wake': Animation(load_images('entities/enemy/sabre/wake',background='transparent'),img_dur=5,loop=False),
-            #'sabre/attack_1': Animation(load_images('entities/enemy/sabre/attack_1',background='transparent'),img_dur=5,loop=False),
-            #'sabre/attack_2': Animation(load_images('entities/enemy/sabre/attack_1',background='transparent'),img_dur=5,loop=False),
-            #'sabre/hit': Animation(load_images('entities/enemy/sabre/hit',background='transparent'),img_dur=5,loop=False),
-            #'sabre/death': Animation(load_images('entities/enemy/sabre/death',background='transparent'),img_dur=5,loop=False),
-
-
-        }
+        self.assets = self.game_assets.assets
+        self.enemies = self.game_assets.enemies
 
 
         self.weapons = {
@@ -203,6 +96,7 @@ class myGame:
         }
 
         self.backgrounds = {
+
             'start' : Background(self,load_images('backgrounds/start',background='transparent')),
             'building' : Background(self,load_images('backgrounds/building',background='transparent')),
         }
@@ -220,26 +114,58 @@ class myGame:
         self.Tilemap = Tilemap(self,tile_size=16,offgrid_layers=2)
         self.Tilemap.load('map.json')
 
+        #self.quadtree_ = a
+
 
         self.lights = {}
         self.temp_lights = []
         self.shadow_objects = [] 
 
+        """"""
         
         for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
-            self.lights[(light.pos[0]*self.Tilemap.tile_size + 8,light.pos[1]*self.Tilemap.tile_size)] =LIGHT(370,pixel_shader(370,(255,255,255),1.5,True, 270, 90)) 
-            
-            
+            light = PointLight(position=((light.pos[0]*self.Tilemap.tile_size + 8), (light.pos[1]*self.Tilemap.tile_size)), power=1., radius=356)
+            light.set_color(255, 255, 255, 200)
+            self.lights_engine.lights.append(light)
+            #self.lights_engine.lights.append([(light.pos[0]*self.Tilemap.tile_size + 8,light.pos[1]*self.Tilemap.tile_size)] =LIGHT(200,pixel_shader(200,(255,255,255),1.0,True, 270, 90)) 
+        
+
+        """
+        light = PointLight(position=(100, 100), power=1., radius=250)
+        light.set_color(50, 100, 200, 200)
+        self.lights_engine.lights.append(light)
+        #
+        """
+        """
+        for i, key in enumerate(self.Tilemap.tilemap):
+            tile = self.Tilemap.tilemap[key] 
+            if tile.type != "spawners" and tile.type != "lights":
+                
+                vertices = [(tile.pos[0] * 2.5 * self.Tilemap.tile_size,tile.pos[1] * 2.5 * self.Tilemap.tile_size) , 
+                            ((tile.pos[0]+1) *2.5*self.Tilemap.tile_size,tile.pos[1] *2.5*self.Tilemap.tile_size ) , 
+                            ((tile.pos[0]+1) *2.5*self.Tilemap.tile_size,(tile.pos[1]+1) *2.5*self.Tilemap.tile_size ) ,
+                            ((tile.pos[0]) *2.5*self.Tilemap.tile_size,tile.pos[1] *2.5*self.Tilemap.tile_size ) ,
+                            ]
+                self.lights_engine.hulls.append(Hull(vertices))
+                print("added")
+                print(i)
+        """
+        
+        
+
+        """
         for key in self.Tilemap.tilemap:
             split_key = key.split(";")
             tile = self.Tilemap.tilemap[key]
-            if tile.type != "spawners":
-                self.shadow_objects.append(pygame.Rect(int(split_key[0]) * self.Tilemap.tile_size,int(split_key[1]) * self.Tilemap.tile_size,16,16))
-      
 
-        self.PLAYER_DEFAULT_SPEED = 2
+            if tile.type != "spawners" and tile.type != "lights":
+                print(tile.type)
+                self.shadow_objects.append(pygame.Rect(int(split_key[0]) * self.Tilemap.tile_size,int(split_key[1]) * self.Tilemap.tile_size,16,16))
+        """
+
+        self.PLAYER_DEFAULT_SPEED = 2.2
         self.player_cur_vel = 0
-        self.accel_decel_rate = 0.34
+        self.accel_decel_rate = 0.7
         self.accelerated_movement = 0
 
         self.player = PlayerEntity(self,(50,50),(14,16))
@@ -289,11 +215,11 @@ class myGame:
 
 
         self.inven_on = True
-        self.HUD = HUD(self.player,self.assets['health_UI'],self.display.get_size())
+        self.HUD = HUD(self.player,self.assets['health_UI'],self.foreground_surf.get_size())
         
         
         #extract grasstiles and place them down using the grassManager.
-        self.gm = GrassManager('data/images/grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
+        self.gm = GrassManager('data/images/tiles/live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
         self.grass_locations = []
 
         
@@ -311,256 +237,47 @@ class myGame:
             if spawner.variant == '0;0':
                 
                 self.player.pos = [spawner.pos[0] * self.Tilemap.tile_size, spawner.pos[1] * self.Tilemap.tile_size]
-            elif spawner.variant == '1;0': 
+                """
+                elif spawner.variant == '1;0': 
 
-                #canine wwww
-                self.existing_enemies.append(Canine(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(34,23),'black'))
-            
+                    #canine wwww
+                    self.existing_enemies.append(Canine(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(34,23),'black'))
+                """
         
             elif spawner.variant == '2;0':
                 
                 #wheelbot 
                 self.existing_enemies.append(Wheel_bot(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(20,22)))
+                """
+                elif spawner.variant == '3;0':
+                    self.existing_enemies.append(Sabre(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(30,27)))
+                """
 
-            elif spawner.variant == '3;0':
-                self.existing_enemies.append(Sabre(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(30,27)))
-       
+
         self.dt = 0
         self.start = time.time()
+        self.running_time = time.time()
         self.rot_func_t = 0
         self.main_offset = None 
+        
+
+        
+
+        self.lights_display = pygame.Surface(self.background_surf.get_size()) 
+        
 
     def run(self):
         
 
         while True: 
             
-            self.prev_cursor_pos = self.cursor.pos
-            self.dt = time.time() - self.start
-            self.start = time.time()
 
-            self.screen_shake = max(0,self.screen_shake -1)
-         
-            #frame counter for acceleration and dash timings 
-                 
-            self.timer += self.time_increment
-            if self.timer > 20:
-                self.boost_ready = False 
-                self.time_increment = False 
-                self.timer = 0
-
-
-            self.frame_count = (self.frame_count+1) % 360 
-            self.scroll[0] += (self.player.rect().centerx - self.display.get_width() /2 - self.scroll[0])/20
-            self.scroll[1] += (self.player.rect().centery - self.display.get_height() /2 - self.scroll[1])/20
-            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
-            
-
-
-
-
-
-            #----------------------------quadtree stuff 
-            boundary = Rectangle(Vector2(render_scroll[0]- self.qtree_x_slack,render_scroll[1]- self.qtree_y_slack),Vector2(self.display.get_width() +self.qtree_x_slack*2,self.display.get_height() +self.qtree_y_slack*2))
-            quadtree = QuadTree(self.NODE_CAPACITY, boundary)
-
-            x_lower = boundary.position.x
-            x_higher = x_lower + boundary.scale.x
-            y_lower = boundary.position.y
-            y_higher = y_lower + boundary.scale.y
-            #-------------------------------
-
-
-            for rect in self.leaf_spawners:
-                if random.random() * 399999 < rect.width * rect.height: 
-                    pos = (rect.x +random.random()* rect.width,rect.y + random.random() * rect.height)
-                    self.particles.append(Particle(self,'leaf',pos,'tree',velocity=[random.randrange(-100,100)/1000,0.3], frame = random.randint(0,20)))
-
-        
-            
-            self.display.fill((155,155,155))
-            self.bsurf.fill((0,0,0,0))
-            self.backgrounds['building'].render(self.display,render_scroll)
-           
-         
-
-
-            self.Tilemap.render(self.display,render_scroll)
-
-            
-
-            #Global lighting ----------------
-            
-            lights_display = pygame.Surface(self.display.get_size()) 
-            lights_display.blit(global_light(self.display.get_size(),100), (0,0))
-            # ----------------
-            
-
-            for enemy in self.existing_enemies.copy():
-                
-                if (enemy.pos[0] >= x_lower and enemy.pos[0] <= x_higher) and (enemy.pos[1] >= y_lower and enemy.pos[1] <= y_higher) :
-                    #if the enemy is within the boundaries of the quadtree, update it. 
-                    kill = enemy.update(self.Tilemap,self.player.pos,self.dt,(0,0))
-                    quadtree.insert(enemy)
-                    enemy.render(self.display,offset = render_scroll)
-                    if kill:
-                        self.existing_enemies.remove(enemy)
-            
-            
-           
             keys = pygame.key.get_pressed()
-
-
-
-
             if keys[pygame.K_LSHIFT]:
                 self.player.running = True 
             else: 
                 self.player.running = False
             
-        
-
-            for bullet in self.bullets_on_screen.copy():
-                if (bullet.pos[0] >= x_lower and bullet.pos[0] <= x_higher) and (bullet.pos[1] >= y_lower and bullet.pos[1] <= y_higher) :
-                    
-                        kill = bullet.update_pos(self.Tilemap)
-                        if kill: 
-                            self.bullets_on_screen.remove(bullet)
-                            #bullets_to_remove.append(bullet)
-                            continue 
-                        
-                        #quadtree.insert(bullet)
-                        bullet.light.main([],lights_display,bullet.center[0],bullet.center[1],render_scroll)
-                        bullet.render(self.display,offset = render_scroll)
-
-                        xx, yy = bullet.pos[0],bullet.pos[1]
-                        r = max(bullet.size) * 3  # Adjust range radius for rectangular particles
-
-                        rangeRect = Rectangle(Vector2(xx - r / 2, yy - r / 2), Vector2(r, r))
-                        
-                        nearby_entities = quadtree.queryRange(rangeRect)
-                        for entity in nearby_entities:
-                            
-                            #if bullet != entity and entity.type != "bullet" and entity.state != 'death':
-                                if  entity.state != 'death' and bullet.collide(entity) :
-                                    entity.hit(bullet.damage)
-                                    og_end_point_vec = pygame.math.Vector2((6,0))
-                                    og_end_point_vec.rotate(bullet.angle)
-
-                                    center_pos = [bullet.pos[0]+bullet.sprite.get_width()/2, bullet.pos[1] + bullet.sprite.get_height()/2]
-                                    end_point = [center_pos[0]+og_end_point_vec[0]- (bullet.sprite.get_width()/2 if bullet.velocity[0] >=0 else 0),center_pos[1] + og_end_point_vec[1]] 
-                                    collide_particle = Particle(self,'bullet_collide/rifle',end_point,'player')
-                                    rotated_collide_particle_images = [pygame.transform.rotate(image,180+bullet.angle) for image in collide_particle.animation.copy().images]
-                                    collide_particle.animation.images = rotated_collide_particle_images
-
-                                    self.particles.append(collide_particle)
-                                    if bullet in self.bullets_on_screen:
-                                        self.bullets_on_screen.remove(bullet)
-                                    #bullets_to_remove.append(bullet)
-                                    
-                                 
-                    
-     
-            for bullet in self.enemy_bullets.copy():
-                kill = bullet.update_pos(self.Tilemap)
-                bullet.render(self.display,offset=render_scroll)
-                bullet.light.main([],lights_display,bullet.center[0],bullet.center[1],render_scroll)
-                if kill: 
-                    self.enemy_bullets.remove(bullet)
-
-            for particle in self.particles.copy():
-                if particle == None: 
-                    self.particles.remove(particle)
-                else:
-                    kill =particle.update()
-                    particle.render(self.display,offset = render_scroll)
-                    if particle.type =='leaf':
-                        particle.pos[0] += math.sin(particle.animation.frame * 0.035) * 0.3
-                    if particle.source =='player' and particle.type[0:5] == 'smoke':
-                        particle.pos = self.player.cur_weapon_node.weapon.opening_pos
-                    if kill: 
-                        self.particles.remove(particle)
-            
-    
-
-            for i, particle in enumerate(self.physical_particles.copy()):
-                    
-                    kill = particle.update_pos(self.Tilemap,self.frame_count)
-                    if kill: 
-                        self.physical_particles.remove(particle)
-                        continue 
-                    if particle.life >= 17:
-                        particle.light.main([],lights_display,particle.x,particle.y,render_scroll)
-                    particle.render(self.bsurf,offset = render_scroll)
-
-                    if i % 4 == 0:
-                        xx, yy = particle.pos[0],particle.pos[1]
-                        r = particle.r * 3 
-                        
-                        rangeCircle = Circle(Vector2(xx, yy), r)
-
-                        nearby_entities = quadtree.queryRange(rangeCircle)
-
-                        for entity in nearby_entities:
-                            if  entity.state != 'death' and particle.collide(entity):
-                                entity.hit(particle.damage)
-
-                    
-            self.display.blit(self.bsurf,(0,0))
-
-            for particle in self.non_animated_particles.copy():
-                if particle == None: 
-                    self.non_animated_particles.remove(particle)
-                else: 
-                    kill = particle.update(self.dt)
-                    particle.render(self.display,offset =render_scroll)
-                    if kill:
-                        self.non_animated_particles.remove(particle)
-
-            for spark in self.sparks.copy():
-                if spark == None: 
-                    self.sparks.remove(spark)
-                else: 
-                    kill = spark.update()
-                    spark.render(self.display,offset = render_scroll)
-                    if kill:
-                        self.sparks.remove(spark)
-
-            self.player.update_pos(self.Tilemap,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
-            
-            self.player.render(self.display,render_scroll)
-
-            #------------------------grass renderer stuff
-
-            rot_function = lambda x, y: int(math.sin(self.rot_func_t / 60 + x / 100) * 7)
-
-            self.gm.update_render(self.display,self.dt,offset=render_scroll,rot_function= rot_function)
-
-            #----------------------------------
-
-
-           #lighting ------------------
-
-            
-            for key in self.lights: 
-                if  (key[0] >= render_scroll[0] - 200 and key[0] <= self.display.get_width() + render_scroll[0] + 200)  and (key[1] >= render_scroll[1] - 200 and key[1] <= self.display.get_height() + render_scroll[1]+ 200 ):
-                    light = self.lights[key]
-
-                    light.main([],lights_display,key[0],key[1],render_scroll)
-
-            for light in self.temp_lights.copy():
-                if light[1] != 0:
-                    light[1] -= 1 
-                    light[0].main([],lights_display,light[2][0],light[2][1],render_scroll) 
-                else: 
-                    self.temp_lights.remove(light)
-
-            
-            self.display.blit(lights_display,( 0, 0),special_flags= pygame.BLEND_RGB_MULT)
-
-           
-            
-
             #rapid fire and single fire toggle 
             if pygame.mouse.get_pressed()[0]:
                 if not self.cursor.interacting:
@@ -579,24 +296,267 @@ class myGame:
                 self.reset = True 
              
 
+            self.prev_cursor_pos = self.cursor.pos
+            self.dt = time.time() - self.start
+            self.start = time.time()
+            self.screen_shake = max(0,self.screen_shake -1)
+         
+            #frame counter for acceleration and dash timings 
+                 
+            self.timer += self.time_increment
+            if self.timer > 20:
+                self.boost_ready = False 
+                self.time_increment = False 
+                self.timer = 0
+
+
+            self.frame_count = (self.frame_count+1) % 360 
+            self.scroll[0] += (self.player.rect().centerx - self.background_surf.get_width() /2 - self.scroll[0])/20
+            self.scroll[1] += (self.player.rect().centery - self.background_surf.get_height() /2 - self.scroll[1])/20
+            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+            
+
+            #----------------------------quadtree stuff 
+            boundary = Rectangle(Vector2(render_scroll[0]- self.qtree_x_slack,render_scroll[1]- self.qtree_y_slack),Vector2(self.background_surf.get_width() +self.qtree_x_slack*2,self.background_surf.get_height() +self.qtree_y_slack*2))
+            quadtree = QuadTree(self.NODE_CAPACITY, boundary)
+
+            x_lower = boundary.position.x
+            x_higher = x_lower + boundary.scale.x
+            y_lower = boundary.position.y
+            y_higher = y_lower + boundary.scale.y
+            #-------------------------------
+
+
+
+
+
+
+            """
+
+
+            for rect in self.leaf_spawners:
+                if random.random() * 399999 < rect.width * rect.height: 
+                    pos = (rect.x +random.random()* rect.width,rect.y + random.random() * rect.height)
+                    self.particles.append(Particle(self,'leaf',pos,'tree',velocity=[random.randrange(-100,100)/1000,0.3], frame = random.randint(0,20)))
+
+            """
+
+            self.lights_engine.clear(0,0,0,255)
+            self.background_surf.fill((155,155,155))
+            self.foreground_surf.fill((0,0,0,0))
+            self.bsurf.fill((0,0,0,0))
+            self.backgrounds['building'].render(self.background_surf,render_scroll)
+           
+         
+
+
+            self.Tilemap.render(self.background_surf,render_scroll)
+
+            
+
+            #Global lighting ----------------
+            """
+            self.shadow_objects = self.Tilemap.update_shadow_objs(self.display,render_scroll)
+            """
+            #self.lights_display.fill((128,128,128,128))
+            #self.lights_display.blit(global_light(self.background_surf.get_size(),100), (0,0))
+            
+            self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
+            
+            # ----------------
+            
+
+            for enemy in self.existing_enemies.copy():
+                
+                if (enemy.pos[0] >= x_lower and enemy.pos[0] <= x_higher) and (enemy.pos[1] >= y_lower and enemy.pos[1] <= y_higher) :
+                    #if the enemy is within the boundaries of the quadtree, update it. 
+                    kill = enemy.update(self.Tilemap,self.player.pos,self.dt,(0,0))
+                    quadtree.insert(enemy)
+                    enemy.render(self.background_surf,offset = render_scroll)
+                    if kill:
+                        self.existing_enemies.remove(enemy)
+            
+            
+            for bullet in self.bullets_on_screen.copy():
+                #if (bullet.pos[0] >= x_lower and bullet.pos[0] <= x_higher) and (bullet.pos[1] >= y_lower and bullet.pos[1] <= y_higher) :
+                    
+                        kill = bullet.update_pos(self.Tilemap)
+                        if kill: 
+                            
+                            self.bullets_on_screen.remove(bullet)
+                            #bullets_to_remove.append(bullet)
+                            continue    
+
+                        if (bullet.pos[0] >= x_lower and bullet.pos[0] <= x_higher) and (bullet.pos[1] >= y_lower and bullet.pos[1] <= y_higher) :
+
+                            #quadtree.insert(bullet)
+                            #bullet.light.main([],self.lights_display,bullet.center[0],bullet.center[1],render_scroll)
+                           
+                            bullet.render(self.background_surf,offset = render_scroll)
+
+                            xx, yy = bullet.pos[0],bullet.pos[1]
+                            r = max(bullet.size) * 3  # Adjust range radius for rectangular particles
+
+                            rangeRect = Rectangle(Vector2(xx - r / 2, yy - r / 2), Vector2(r, r))
+                            
+                            nearby_entities = quadtree.queryRange(rangeRect)
+                            for entity in nearby_entities:
+                                
+                                #if bullet != entity and entity.type != "bullet" and entity.state != 'death':
+                                    if  entity.state != 'death' and bullet.collide(entity) :
+                                        bullet.dead = True
+                                        entity.hit(bullet.damage)
+                                        og_end_point_vec = pygame.math.Vector2((6,0))
+                                        og_end_point_vec.rotate(bullet.angle)
+
+                                        center_pos = [bullet.pos[0]+bullet.sprite.get_width()/2, bullet.pos[1] + bullet.sprite.get_height()/2]
+                                        end_point = [center_pos[0]+og_end_point_vec[0]- (bullet.sprite.get_width()/2 if bullet.velocity[0] >=0 else 0),center_pos[1] + og_end_point_vec[1]] 
+                                        collide_particle = Particle(self,'bullet_collide/rifle',end_point,'player')
+                                        rotated_collide_particle_images = [pygame.transform.rotate(image,180+bullet.angle) for image in collide_particle.animation.copy().images]
+                                        collide_particle.animation.images = rotated_collide_particle_images
+
+                                        self.particles.append(collide_particle)
+                                        if bullet in self.bullets_on_screen:
+                                            self.bullets_on_screen.remove(bullet)
+                                        #bullets_to_remove.append(bullet)
+                                    
+                                 
+    
+            for bullet in self.enemy_bullets.copy():
+                kill = bullet.update_pos(self.Tilemap)
+                bullet.render(self.background_surf,offset=render_scroll)
+                #bullet.light.main([],self.lights_display,bullet.center[0],bullet.center[1],render_scroll)
+                if kill: 
+                    self.enemy_bullets.remove(bullet)
+
+            for particle in self.particles.copy():
+                if particle == None: 
+                    self.particles.remove(particle)
+                else:
+                    kill =particle.update()
+                    particle.render(self.background_surf,offset = render_scroll)
+                    if particle.type =='leaf':
+                        particle.pos[0] += math.sin(particle.animation.frame * 0.035) * 0.3
+                    if particle.source =='player' and particle.type[0:5] == 'smoke':
+                        particle.pos = self.player.cur_weapon_node.weapon.opening_pos
+                    if kill: 
+                        self.particles.remove(particle)
+            
+
+            for i, particle in enumerate(self.physical_particles.copy()):
+                    
+                    kill = particle.update_pos(self.Tilemap,self.frame_count)
+                    if kill: 
+                        self.physical_particles.remove(particle)
+                        continue 
+                    #if particle.life >= 17:
+                        #particle.light.main([],self.lights_display,particle.x,particle.y,render_scroll)
+                    particle.render(self.bsurf,offset = render_scroll)
+
+                    if i % 7 == 0:
+                        xx, yy = particle.pos[0],particle.pos[1]
+                        r = particle.r * 3 
+                        
+                        rangeCircle = Circle(Vector2(xx, yy), r)
+
+                        nearby_entities = quadtree.queryRange(rangeCircle)
+
+                        for entity in nearby_entities:
+                            if  entity.state != 'death' and particle.collide(entity):
+                                entity.hit(particle.damage)
+
+                    
+            self.background_surf.blit(self.bsurf,(0,0))
+
+
+            for particle in self.non_animated_particles.copy():
+                if particle == None: 
+                    self.non_animated_particles.remove(particle)
+                else: 
+                    kill = particle.update(self.dt)
+                    particle.render(self.background_surf,offset =render_scroll)
+                    if kill:
+                        self.non_animated_particles.remove(particle)
+
+           
+
+            self.player.update_pos(self.Tilemap,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
+            self.player.render(self.background_surf,render_scroll)
+
+            #------------------------grass renderer stuff
+
+            rot_function = lambda x, y: int(math.sin(self.rot_func_t / 60 + x / 100) * 7)
+            self.gm.update_render(self.background_surf,self.dt,offset=render_scroll,rot_function= rot_function)
+            self.rot_func_t += self.dt * 100
+            #----------------------------------
+
+
+           #lighting ------------------
+
+            """
+            for key in self.lights: 
+                if  (key[0] >= render_scroll[0] - 200 and key[0] <= self.display.get_width() + render_scroll[0] + 200)  and (key[1] >= render_scroll[1] - 200 and key[1] <= self.display.get_height() + render_scroll[1]+ 200 ):
+                    light = self.lights[key]
+
+
+                    light.main(self.shadow_objects,self.lights_display,key[0],key[1],render_scroll)
+            
+            """
+            """
+            for light in self.temp_lights.copy():
+                if light[1] != 0:
+                    light[1] -= 1 
+                    #shadow_objs = light[0].filter_tiles(self.Tilemap.tilemap,self.Tilemap.tile_size,key[0],key[1],render_scroll) 
+                    light[0].main(self.shadow_objects,self.lights_display,light[2][0],light[2][1],render_scroll) 
+                else: 
+                    self.temp_lights.remove(light)
+            
+            """
+            #self.background_surf.blit(self.lights_display,( 0, 0),special_flags= pygame.BLEND_RGB_MULT)
+            
+           
+            
 
 
             
-            
-            display_mask = pygame.mask.from_surface(self.display)
+            """
+            display_mask = pygame.mask.from_surface(self.background_surf)
             display_sillhouette = display_mask.to_surface(setcolor=(0,0,0,180),unsetcolor=(0,0,0,0))
 
             for offset in [(-1,0),(1,0),(0,-1),(0,1)]:
-                self.display_2.blit(display_sillhouette,offset)
+                self.background_surf.blit(display_sillhouette,offset)
            
 
-           
+           """
+            #add decel and accel here 
+                        
+            if(self.player_movement[1]-self.player_movement[0])  >0 :
+                #means that the intent of the player movement is to the right.  
+                self.player_cur_vel = min( 1.3*self.PLAYER_DEFAULT_SPEED,self.accel_decel_rate + self.player_cur_vel)
+                
+            elif (self.player_movement[1]-self.player_movement[0]) <0 :
+                #means that the intent of the player movement is to the left.  
+                self.player_cur_vel = max( -1.3*self.PLAYER_DEFAULT_SPEED,self.player_cur_vel- self.accel_decel_rate )
+                
+            else: 
+                if self.player_cur_vel >= 0 :
+                    self.player_cur_vel = max(0,self.player_cur_vel - self.accel_decel_rate)
+                    
+                else:
+                    self.player_cur_vel = min(0,self.player_cur_vel + self.accel_decel_rate)
+            
+            
+            """
+            self.HUD.render_expanded(self.cursor,self.display,(0,0),closing = not self.inven_on)
+            """
+            self.HUD.render(self.foreground_surf,self.cursor,offset=(0,0),closing = self.inven_on)
+            self.cursor.update(keys,self.foreground_surf)
+            #self.cursor.render(self.display)
 
 
-           
 
-           
-            pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.KEYUP])
+
+
             
                         
             for event in pygame.event.get():
@@ -617,6 +577,24 @@ class myGame:
                 
                 #define when the right or left arrow keys are pressed, the corresponding player's movement variable varlues are changed. 
                 if event.type == pygame.KEYDOWN: 
+                    if event.key == pygame.K_v: 
+                        new_flamethrower = self.weapons['flamethrower'].copy()
+                        i = 0
+                        while i < 1000:
+                            new_flamethrower.magazine.append(0)
+                            i += 1
+                        self.HUD.Items_list[2][1].add_item(new_flamethrower)
+
+                    if event.key == pygame.K_f:
+                        new_ak = self.weapons['ak'].copy()
+                        i = 0
+                        while i <1000:
+                            test_shell_image = self.bullets['rifle_small'].copy()
+                            test_shell = Bullet(self,[0,0],test_shell_image.get_size(),test_shell_image,'rifle_small')
+                            new_ak.load(test_shell)
+                            i+=1 
+
+                        self.HUD.Items_list[2][1].add_item(new_ak)
 
 
                     if event.key == pygame.K_c:
@@ -625,6 +603,7 @@ class myGame:
                         self.inven_on = not self.inven_on
 
                     if event.key == pygame.K_a: 
+                        """
                         if self.player.flip: 
                             if self.timer >=0 and self.timer < 20:
                                 if self.boost_ready:
@@ -637,10 +616,11 @@ class myGame:
                         self.timer = 0
                         self.time_increment = True
 
-                        
+                        """
                         self.player_movement[0] = True
 
                     if event.key == pygame.K_d: 
+                        """
                         if not self.player.flip:
                             if self.timer >=0 and self.timer < 20:
                                 if self.boost_ready: 
@@ -652,6 +632,8 @@ class myGame:
                             self.boost_ready = True 
                         self.timer = 0
                         self.time_increment = True 
+
+                        """
                         self.player_movement[1] = True
                         
                     if event.key == pygame.K_w:
@@ -674,41 +656,48 @@ class myGame:
                     if event.key == pygame.K_s: 
                         self.player.slide =False 
 
-            #add decel and accel here 
-                        
-            if(self.player_movement[1]-self.player_movement[0])  >0 :
-                #means that the intent of the player movement is to the right.  
-                self.player_cur_vel = min( 1.3*self.PLAYER_DEFAULT_SPEED,self.accel_decel_rate + self.player_cur_vel)
-                
-            elif (self.player_movement[1]-self.player_movement[0]) <0 :
-                #means that the intent of the player movement is to the left.  
-                self.player_cur_vel = max( -1.3*self.PLAYER_DEFAULT_SPEED,self.player_cur_vel- self.accel_decel_rate )
-                
-            else: 
-                if self.player_cur_vel >= 0 :
-                    self.player_cur_vel = max(0,self.player_cur_vel - self.accel_decel_rate)
-                    
-                else:
-                    self.player_cur_vel = min(0,self.player_cur_vel + self.accel_decel_rate)
             
-            
-            """
-            self.HUD.render_expanded(self.cursor,self.display,(0,0),closing = not self.inven_on)
-            """
-            self.HUD.render(self.display,self.cursor,offset=(0,0),closing = self.inven_on)
 
-            self.cursor.update(keys,self.display)
-            #self.cursor.render(self.display)
 
-            self.display_2.blit(self.display,(0,0))
-            self.rot_func_t += self.dt * 100
-            
+            #self.display_2.blit(self.display,(0,0))
+
             screenshake_offset = (random.random()* self.screen_shake - self.screen_shake /2, random.random()* self.screen_shake - self.screen_shake /2)
 
-            self.screen.blit(pygame.transform.scale(self.display_2,self.screen.get_size()),screenshake_offset)
-            pygame.display.update()
+            tex = self.lights_engine.surface_to_texture(self.background_surf)
+           
 
-            #self.dt = self.clock.tick(60) / 1000
+            
+            self.test_shader['iTime'] = self.running_time -time.time()
+            self.lights_engine.render_texture_with_trans(
+                tex, Layer_.BACKGROUND,
+                position= (-screenshake_offset[0],-screenshake_offset[1])
+                
+            )
+            """
+            self.lights_engine.render_texture(
+                tex, Layer_.BACKGROUND,
+                pygame.Rect(-screenshake_offset[0] ,-screenshake_offset[1],tex.width ,tex.height),
+                pygame.Rect(0,0,tex.width,tex.height)
+            )"""
+            tex.release()
+
+            tex = self.lights_engine.surface_to_texture(self.foreground_surf)
+            self.lights_engine.render_texture(
+                tex, Layer_.FOREGROUND,
+                pygame.Rect(0,0,tex.width ,tex.height),
+                pygame.Rect(0,0,tex.width,tex.height)
+            )
+            tex.release()
+            
+            self.lights_engine.render((int((render_scroll[0] -screenshake_offset[0])),int((render_scroll[1]-screenshake_offset[1]))))
+            
+            #self.screen.blit(pygame.transform.scale(self.display_2,self.screen.get_size()),screenshake_offset)
+
+
+            pygame.display.flip()
+            #pygame.display.update()
+            fps = self.clock.get_fps()
+            pygame.display.set_caption(f'Pygame Window - FPS: {fps:.2f}')
             self.clock.tick(60)
 
 myGame().run()

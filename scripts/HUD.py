@@ -50,16 +50,7 @@ class HUD:
     
        self.items_engine = Inventory_Engine(self.Items_list)
     
-       
-    """
 
-    def render_expanded(self,cursor,surf,offset= [0,0], closing = True): 
-        self.Items_list[1].update(surf,1,self.Items_list,cursor,"", expanded = True , closing = closing)
-
-    
-        #self.inven_list[0].update(surf,0,self.inven_list,cursor,"") 
-        
-    """
 
     def render(self,surf,cursor,offset = [0,0],closing = True):
         #render character face 
@@ -75,15 +66,7 @@ class HUD:
         surf.blit(self.stamina_bar_UI,(self.stamina_bar_render_position[0]- 2, self.stamina_bar_render_position[1]-2))
         self.stamina_bar.render(surf,offset)
         
-        #render health and stamina indicator 
-        """
-        health_ind = indicator(int(self.health_bar.cur_resource),int(self.health_bar.max_resource))
-        health_ind.render(self.health_bar.x + self.health_bar.w //2 ,self.health_bar.y-1,surf)
-        
-        #render the stamina bar indicator 
-        stamina_ind = indicator(int(self.stamina_bar.cur_resource),int(self.stamina_bar.max_resource))
-        stamina_ind.render(self.stamina_bar.x+self.stamina_bar.w//2,self.stamina_bar.y-1,surf)
-        """
+      
         #render the weapon panel 
         self.inven_panel.render(surf,offset,expanded = closing)
 
@@ -91,9 +74,4 @@ class HUD:
         self.items_engine.update(surf,cursor,closing,"")
 
   
-
-        # self.Items_list[0].update(surf,0,self.Items_list,cursor,"")
-
-
-#cur opacity, cur position, done-ness 
 

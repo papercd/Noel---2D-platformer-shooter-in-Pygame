@@ -2,7 +2,7 @@ import platform
 import random 
 import pygame 
 import math
-from scripts.utils import blur 
+#from scripts.utils import blur 
 from scripts.Pygame_Lights import LIGHT,pixel_shader
 
 class Flame_particle:
@@ -35,6 +35,9 @@ class Flame_particle:
         self.sin = random.randint(-10, 10)/7
         self.sinr = random.randint(5, 10)
         self.r = random.randint(1,2)
+
+        self.dead = False
+        self.center = [self.x + self.r,self.y+self.r]
 
         self.ox = random.randint(-1, 1)
         self.oy = random.randint(-1, 1)
@@ -161,16 +164,10 @@ class Flame_particle:
         self.damage = max(2,int(self.damage * (self.life/self.maxlife)))
 
         self.life -=1
-        if self.life == self.maxlife*2//3:
-            del self.light 
-            self.light = LIGHT(int(8 + self.r),pixel_shader(int(8 + self.r),(173,92,46),1,False))
-        if self.life == self.maxlife//3:
-            del self.light 
-            self.light = LIGHT(int(8 + self.r),pixel_shader(int(8 + self.r),(183,92,46),1,False)) 
-        if self.life == self.maxlife//4:
-            del self.light 
-            self.light = LIGHT(int(8 + self.r),pixel_shader(int(8 + self.r),(163,72,26),1,False))
+        
+      
         if self.life == 0:
+            self.dead = True 
             del self 
             return True 
         
@@ -347,6 +344,8 @@ class Flame_particle:
         self.ren_x += self.ox*(5-self.i)
         self.ren_y += self.oy*(5-self.i)
 
+        self.center[0] = self.ren_x + self.r
+        self.center[1] = self.ren_y + self.r
         
         if self.life < self.maxlife/4:
             self.alpha = int((self.life/self.maxlife)*255)

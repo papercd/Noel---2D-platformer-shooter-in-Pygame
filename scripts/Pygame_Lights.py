@@ -108,10 +108,11 @@ class LIGHT:
         return corners
 
     def get_tiles(self, tiles, x, y):
+
         points = []
 
         for rect in tiles:
-            if (rect.x - x >= (-self.radius) - rect.width and rect.x - x <= self.radius) and (rect.y - y >= (-self.radius)-rect.height and rect.y - y <= self.radius):
+            if (rect.x - x  >= (-self.radius) - rect.width and rect.x - x <= self.radius) and (rect.y - y >= (-self.radius)-rect.height and rect.y - y <= self.radius):
                 points.append([[rect.x+rect.width, rect.y], [rect.x, rect.y], [rect.x, rect.y+rect.height], [rect.x+rect.width, rect.y+rect.height]])
 
         return points
@@ -149,6 +150,20 @@ class LIGHT:
         display.blit(self.render_surface, (x - self.radius - offset[0], y - self.radius- offset[1]), special_flags=pygame.BLEND_RGBA_ADD)
 
         return display
+    
+
+    def filter_tiles(self,tile_size,x,y):
+        light_tile_pos = (x//tile_size,y//tile_size)
+        check_radius = (self.radius+tile_size)//tile_size
+        bounding_box_verts = [ (  light_tile_pos[0] - check_radius , light_tile_pos[1] -check_radius),
+                               (  light_tile_pos[0] + check_radius + 1, light_tile_pos[1] +check_radius),
+                               (  light_tile_pos[0] - check_radius , light_tile_pos[1] +check_radius + 1),
+                               (  light_tile_pos[0] - check_radius +1 , light_tile_pos[1] +check_radius + 1),
+                                ] 
+                                
+
+
+
 
 def global_light(size, intensity):
     dark = pygame.Surface(size).convert_alpha()
