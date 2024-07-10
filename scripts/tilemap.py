@@ -128,7 +128,8 @@ class Tilemap:
                 if coor in self.tilemap:
                     tile = self.tilemap[coor]
                     if tile.type != "spawners" and tile.type != "lights":
-                        if tile.type.split('_')[1] == 'stairs':
+                        tile_type_check = len(tile.type.split('_')) == 1
+                        if not tile_type_check and tile.type.split('_')[1] == 'stairs':
                             pass 
                         else:
                             variant_num = int(tile.variant.split(';')[0]) 

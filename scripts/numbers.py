@@ -17,7 +17,7 @@ class numbers:
 
     def transform(self):
         number = []
-        if self.number ==0:
+        if self.number == 0:
             self.length+=4
             number.append(DEFAULT_NUMBERS[0])
             return number

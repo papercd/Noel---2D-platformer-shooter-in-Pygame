@@ -51,6 +51,7 @@ class myGame:
 
         self.test_shader = self.lights_engine.load_shader_from_path('vertex.glsl','fog_fragment.glsl')
         self.pixel_exp_shader = self.lights_engine.load_shader_from_path('vertex.glsl','exp_fragment.glsl')
+        self.sparks_shader = self.lights_engine.load_shader_from_path('vertex.glsl','sparks.glsl')
 
         
         self.NODE_CAPACITY = 4
@@ -670,7 +671,7 @@ class myGame:
             self.test_shader['iTime'] = self.running_time -time.time()
             self.lights_engine.render_texture_with_trans(
                 tex, Layer_.BACKGROUND,
-                position= (-screenshake_offset[0],-screenshake_offset[1])
+                position= (-screenshake_offset[0],-screenshake_offset[1]) 
                 
             )
             """

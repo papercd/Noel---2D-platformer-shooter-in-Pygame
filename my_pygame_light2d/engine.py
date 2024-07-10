@@ -31,6 +31,7 @@ class LightingEngine:
         """
 
         # Initialize private members
+        
         self._screen_res = screen_res
         self._native_res = native_res
         self._lightmap_res = lightmap_res
@@ -70,8 +71,10 @@ class LightingEngine:
             pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
 
         # Configure pygame display
-        pygame.display.set_mode(
+        self._pygame_display = pygame.display.set_mode(
             self._screen_res, pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF | pygame.RESIZABLE)
+        
+        # initialize thorpy for gui elements 
 
     def _load_shaders(self):
         # Read source files

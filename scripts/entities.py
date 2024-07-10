@@ -77,6 +77,7 @@ class PhysicsEntity:
         entity_rect = self.rect()
         for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
             tile_type = rect_tile[1].type
+
             if entity_rect.colliderect(rect_tile[0]) and tile_type.split('_')[1] != 'stairs':
                 if frame_movement[0] > 0:
                     self.collisions['right'] = True

@@ -154,11 +154,13 @@ class Weapon:
 
         
         if self.holder.state == 'slide' or self.holder.state == 'wall_slide':
+            
             if self.holder.flip:
                 rotate_cap_left = True 
             else: 
                 rotate_cap_right = True 
-        
+            
+            pass 
         #get the angle, the pivot, and offset
         if self.flipped: 
             self.pivot = [self.holder.pos[0]+self.right_anchor[0]-offset[0]-1,self.holder.pos[1]+self.right_anchor[1] -offset[1]]

@@ -60,6 +60,8 @@ class inven_panel:
         surf.blit(self.TL_cur_weapon_frame[self.player.changing_done//3],(self.topleft[0] - offset[0] + change_offset[self.player.changing_done//3][0]-1,self.topleft[1] - offset[1]+change_offset[self.player.changing_done//3][1] -3 ))
 
 
+
+
 class tile_panel:
 
     def __init__(self,topleft,x_bound,tiles):
