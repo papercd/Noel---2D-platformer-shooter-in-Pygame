@@ -6,9 +6,10 @@ import time
 
 
 from scripts.tilemap import Tilemap,Tile,Light
+
 from scripts.utils import load_images,load_tile_images
 from scripts.panel import tile_panel 
-from scripts.Pygame_Lights import LIGHT
+
 from scripts.numbers import numbers
 from scripts.alphabet import alphabets
 from scripts.grass import * 
@@ -99,21 +100,23 @@ class Editor:
         self.offgrid_layer_num = numbers(self.cur_offgrid_layer)
 
         try: 
-            self.Tilemap.load('map.json')
+            self.lights_engine.lights = self.Tilemap.load('map.json')
         except FileNotFoundError:
             pass
         
-
+        """
         for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')], keep=True):
             if isinstance(light.pos[0],int):
                 
                 light = PointLight(position=((light.pos[0]*self.Tilemap.tile_size + 7), (light.pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
             else: 
-                light = PointLight(position=((light.pos[0] + 8), (light.pos[1] +2)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                light = PointLight(position=((light.pos[0] + 8), (light.pos[1] +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
             light.set_color(255, 255, 255, 200)
 
             
             self.lights_engine.lights.append(light)
+        """
+        
 
         self.gm = GrassManager('data/images/tiles/live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
 
@@ -310,6 +313,7 @@ class Editor:
                                 
                                         x_check = int(self.selection_box_start_pos[0]) % self.Tilemap.tile_size
                                         y_check = int(self.selection_box_start_pos[1]) % self.Tilemap.tile_size
+                                        
                                         if x_check == 0:
                                             x_shift = 0 
                                         else:
@@ -331,24 +335,53 @@ class Editor:
                                                 
                                                 tile_pos_ = ((new_start_x + x*self.Tilemap.tile_size)//self.Tilemap.tile_size,(new_start_y + y*self.Tilemap.tile_size)//self.Tilemap.tile_size)
                                                 
-                                                if cur_tile_panel[3] == "lights":
-                                                    self.Tilemap.tilemap[str(tile_pos_[0])+';'+str(tile_pos_[1])] = Light(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_) 
+                                                if str(tile_pos_[0])+';'+str(tile_pos_[1]) not in self.Tilemap.tilemap: 
+                                                    if cur_tile_panel[3] == "lights":
+                                                        self.Tilemap.tilemap[str(tile_pos_[0])+';'+str(tile_pos_[1])] = Light(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_) 
 
-                                                    light = PointLight(position=((tile_pos[0]*self.Tilemap.tile_size + 7), (tile_pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
-                                                    light.set_color(255, 255, 255, 200)
-                                                    self.lights_engine.lights.append(light)
-                                                else: self.Tilemap.tilemap[str(tile_pos_[0])+';'+str(tile_pos_[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_) 
+                                                        light = PointLight(position=((tile_pos_[0]*self.Tilemap.tile_size + 7), (tile_pos_[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                                                        light.set_color(255, 255, 255, 200)
+                                                        self.lights_engine.lights.append(light)
+                                                    else: self.Tilemap.tilemap[str(tile_pos_[0])+';'+str(tile_pos_[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_) 
+                                                else: 
+                                                    if self.Tilemap.tilemap[str(tile_pos_[0])+';'+str(tile_pos_[1])].type == "lights":
+                                                        for light in self.lights_engine.lights: 
+                                                            if (int(light.position[0]//(self.Tilemap.tile_size)),int(light.position[1]//(self.Tilemap.tile_size))) == (tile_pos_[0] ,tile_pos_[1]): 
+                                                                self.lights_engine.lights.remove(light)
+                                                                break
+                                                        self.Tilemap.tilemap[str(tile_pos_[0])+';'+str(tile_pos_[1])] = Light(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_) 
+                                                        light = PointLight(position=((tile_pos_[0]*self.Tilemap.tile_size + 7), (tile_pos_[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                                                        light.set_color(255, 255, 255, 200)
+                                                        self.lights_engine.lights.append(light)
+                                                    else: self.Tilemap.tilemap[str(tile_pos_[0])+';'+str(tile_pos_[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_) 
                                             
                             else:
                                
-                                if str(tile_pos[0])+';'+str(tile_pos[1]) not in self.Tilemap.tilemap and cur_tile_panel[3] == "lights":
-                                    
-                                    self.Tilemap.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = Light(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
-
-                                    light = PointLight(position=((tile_pos[0]*self.Tilemap.tile_size + 7), (tile_pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
-                                    light.set_color(255, 255, 255, 200)
-                                    self.lights_engine.lights.append(light)
-                                else: self.Tilemap.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
+                                if str(tile_pos[0])+';'+str(tile_pos[1]) not in self.Tilemap.tilemap:
+                                    if  cur_tile_panel[3] == "lights":
+                                        self.Tilemap.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = Light(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
+                                        
+                                        light = PointLight(position=((tile_pos[0]*self.Tilemap.tile_size + 7), (tile_pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                                        light.set_color(255, 255, 255, 200)
+                                        self.lights_engine.lights.append(light)
+                                    else: 
+                                        self.Tilemap.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
+                                        
+                                else:
+                                    if self.Tilemap.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])].type == "lights":
+                                        #you have to delete the light first, then create the light object.
+                                        for light in self.lights_engine.lights: 
+                                            if (int(light.position[0]//(self.Tilemap.tile_size)),int(light.position[1]//(self.Tilemap.tile_size))) == (tile_pos[0] ,tile_pos[1]): 
+                                                self.lights_engine.lights.remove(light)
+                                                break
+                                        self.Tilemap.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = Light(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
+                                        
+                                        light = PointLight(position=((tile_pos[0]*self.Tilemap.tile_size + 7), (tile_pos[1]*self.Tilemap.tile_size +3)), power=1., radius= self.DEFAULT_LIGHT_RADIUS)
+                                        light.set_color(255, 255, 255, 200)
+                                        self.lights_engine.lights.append(light)
+                                        
+                                    else: 
+                                        self.Tilemap.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
                                 
                                 
                                     
@@ -362,6 +395,7 @@ class Editor:
                                     
                                     if (int(light.position[0]//(self.Tilemap.tile_size)),int(light.position[1]//(self.Tilemap.tile_size))) == (tile_pos[0] ,tile_pos[1]): 
                                         self.lights_engine.lights.remove(light)
+                                        break
                                         
                             del self.Tilemap.tilemap[click_loc]
 
@@ -669,8 +703,7 @@ class Editor:
                                     
                                     if dicts[tile_pos_].type == 'lights': 
                                         for light in self.lights_engine.lights: 
-                                            
-
+                                         
                                             if (int(light.position[0]//(self.Tilemap.tile_size)),int(light.position[1]//(self.Tilemap.tile_size))) == (int(check_loc[0]) ,int(check_loc[1])): 
                                                 self.lights_engine.lights.remove(light)
                                                 break
@@ -745,7 +778,7 @@ class Editor:
                         self.lights_engine.lights.append(light)
                     
                     
-
+                
                     #self.screen = pygame.display.set_mode((event.w,event.h),pygame.RESIZABLE) 
 
                 #We need to define when the close button is pressed on the window. 
@@ -755,19 +788,27 @@ class Editor:
                     sys.exit() 
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:
+                        on_light_double = False
                         if self.timer ==0 :
                             self.timer = 0.0001
                         elif self.timer < 0.2 :
-                            print("dh")
+                            
                             #when you double clicked, check if you double clicked on a light. 
                             tile_loc =  str(int(((mpos[0] + render_scroll[0]) //self.Tilemap.tile_size))) + ';' + str(int(((mpos[1]+ render_scroll[1])//self.Tilemap.tile_size)))
                             if tile_loc in self.Tilemap.tilemap and self.Tilemap.tilemap[tile_loc].type == "lights":
+                                light_ref = None
+                                for light in self.lights_engine.lights:
+                                    if str(int((light.position[0] //self.Tilemap.tile_size))) + ';' + str(int((light.position[1]//self.Tilemap.tile_size))) == tile_loc: 
+                                        light_ref = light
+     
+                                
                                 #open the light configuration menu 
                                 UI.init(self.foreground_surf)
                                 menu = Menu(self,mpos)
+                                on_light_double = True
                                 running = True
                                 while running: 
-                                    running = menu.run()
+                                    running = menu.run(light_ref)
                                     self.render_surfaces(render_scroll)
                                 
                                 
@@ -780,7 +821,8 @@ class Editor:
 
 
                             self.timer = 0
-                        self.clicking = True
+                            
+                        self.clicking = not on_light_double 
                         self.main_tile_panel.check_click(mpos,self.background_surf)
                     if event.button == 3:
                         self.right_clicking = True  
@@ -915,6 +957,8 @@ class Editor:
                         self.stick_to_grid = not self.stick_to_grid
                     if event.key == pygame.K_f: 
                         self.flip_tile = not self.flip_tile
+                    if event.key == pygame.K_8:
+                        print(self.Tilemap.tilemap)
 
                     if event.key == pygame.K_o: 
                         self.Tilemap.save('map.json')

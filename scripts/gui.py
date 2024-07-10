@@ -34,14 +34,15 @@ class Menu:
         self.pos = pos
 
         self.sliders = [
-            Slider(pos, (25,5), 0.5, 0, 255),
-            Slider((pos[0], pos[1]+15), (25,5), 0.5, 0, 255),
-            Slider((pos[0], pos[1]+30), (25,5), 0.5, 0, 255),
-            Slider((pos[0] + 35, pos[1]), (25,5), 0.5, 0, 100),
-            Slider((pos[0] + 35, pos[1]+15), (25,5), 0.5, 0, 356),
+            Slider((pos[0]+30, pos[1]), (25,5), 1., 0, 255),
+            Slider((pos[0]+30 , pos[1]+15), (25,5), 1., 0, 255),
+            Slider((pos[0]+30, pos[1]+30), (25,5), 1., 0, 255),
+            Slider((pos[0]+30, pos[1]+45), (25,5), 1., 0, 255),
+            Slider((pos[0] +30+ 35, pos[1]), (25,5), 1., 0, 100),
+            Slider((pos[0] +30+ 35, pos[1]+15), (25,5), 1., 0, 356),
         ]
 
-    def run(self):
+    def run(self,light):
         
         mouse = pygame.mouse.get_pressed()
         mpos = pygame.mouse.get_pos() 
@@ -63,6 +64,13 @@ class Menu:
                 slider.hovered = False
             slider.render(self.game.foreground_surf)
             #slider.display_value(self.game.foreground_surf)
+        
+        light.set_color(int(self.sliders[0].get_value()),int(self.sliders[1].get_value()),\
+                        int(self.sliders[2].get_value()),int(self.sliders[3].get_value()))
+      
+        light.power = self.sliders[4].get_value()/100
+        light.radius = self.sliders[5].get_value()
+
         
 
         for event in pygame.event.get():

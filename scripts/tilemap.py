@@ -4,6 +4,7 @@ import random
 import pygame
 import heapq
 from my_pygame_light2d.hull import Hull
+from my_pygame_light2d.light import PointLight
 
 PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs'}
 AUTOTILE_TYPES = {'grass','stone','building_0','building_1','building_2','building_3','building_4'}
@@ -152,10 +153,10 @@ class Tilemap:
         seriable_tilemap = {}
         for key in self.tilemap: 
             tile = self.tilemap[key]
-            if isinstance(tile,Light): 
-                print("checking")
+            
+            if isinstance(tile,Light):  
                 seriable_tilemap[str(tile.pos[0]) +';' + str(tile.pos[1])] = {'type': tile.type,'variant' : tile.variant, 'pos' : tile.pos,'radius': tile.radius,\
-                                                                                                     'power': tile.power, 'colorValue:':tile.color_value}
+                                                                                                     'power': tile.power, 'colorValue':tile.color_value}
             else: seriable_tilemap[str(tile.pos[0]) +';' + str(tile.pos[1])] = {'type': tile.type,'variant' : tile.variant, 'pos' : tile.pos}
 
         
@@ -176,7 +177,7 @@ class Tilemap:
             for key in dict: 
                 tile = dict[key]
                 if isinstance(tile,Light): seriable_offgrid[i][str(tile.pos[0]) + ';' + str(tile.pos[1])] = {'type': tile.type,'variant' : tile.variant, 'pos' : tile.pos,'radius': tile.radius,\
-                                                                                                     'power': tile.power, 'colorValue:':tile.color_value}
+                                                                                                     'power': tile.power, 'colorValue':tile.color_value}
                 else: seriable_offgrid[i][str(tile.pos[0]) + ';' + str(tile.pos[1])] = {'type': tile.type , 'variant': tile.variant, 'pos' : tile.pos}
 
         return seriable_tilemap,seriable_offgrid,seriable_decor,seriable_grass
@@ -197,9 +198,13 @@ class Tilemap:
         json.dump(data,f)
         f.close
 
+   
+
+
     def load(self,path):
         f = open(path,'r')
         tilemap_data = json.load(f)
+        lights = []
 
         for tile_key in tilemap_data['tilemap']:
             """
@@ -225,16 +230,43 @@ class Tilemap:
                     shadow_objects = (pygame.Rect(int(split_key[0]) * self.tile_size, int(split_key[1]) * self.tile_size,self.tile_size,self.tile_size))
                     """
             #print(shadow_objects)
-            if len(tilemap_data['tilemap'][tile_key]) == 3 :
+            if tilemap_data['tilemap'][tile_key]['type'] != "lights" :
+
                 self.tilemap[tile_key] = Tile(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],tilemap_data['tilemap'][tile_key]["pos"])
-            else: self.tilemap[tile_key] = Light(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],\
+            else: 
+                self.tilemap[tile_key] = Light(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],\
                                                  tilemap_data['tilemap'][tile_key]["pos"],radius =tilemap_data['tilemap'][tile_key]["radius"], power = tilemap_data['tilemap'][tile_key]["power"],\
                                                      color_value= tilemap_data['tilemap'][tile_key]["colorValue"] )
+                if isinstance(tilemap_data['tilemap'][tile_key]["pos"][0],int):
+                    light = PointLight(position = (tilemap_data['tilemap'][tile_key]["pos"][0]*self.tile_size+7,tilemap_data['tilemap'][tile_key]["pos"][1]*self.tile_size+3),\
+                                         power= tilemap_data['tilemap'][tile_key]["power"],radius = tilemap_data['tilemap'][tile_key]["radius"] )
+                    light.set_color(*tilemap_data['tilemap'][tile_key]["colorValue"])
+                    lights.append(light)
+                else: 
+                    light = PointLight(position = (tilemap_data['tilemap'][tile_key]["pos"][0]+7,tilemap_data['tilemap'][tile_key]["pos"][1]+3),\
+                                         power= tilemap_data['tilemap'][tile_key]["power"],radius = tilemap_data['tilemap'][tile_key]["radius"] )
+                    light.set_color(*tilemap_data['tilemap'][tile_key]["colorValue"])
+                    lights.append(light)
+
+                
+                
        
         for i in range(0,self.offgrid_layers):
             for tile_key in tilemap_data['offgrid_'+ str(i)]:
+                if tilemap_data['offgrid_' + str(i)][tile_key]["type"] == "lights":
+                    if isinstance(tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][0],int):
+                        light = PointLight(position = (tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][0]*self.tile_size+7,tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][1]*self.tile_size+3),\
+                                         power= tilemap_data['offgrid_'+ str(i)][tile_key]["power"],radius = tilemap_data['offgrid_'+ str(i)][tile_key]["radius"] )
+                        light.set_color(*tilemap_data['offgrid_' + str(i)][tile_key]["colorValue"])
+                        lights.append(light)
+                    else: 
+                        light = PointLight(position = (tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][0]+7,tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][1]+3),\
+                                         power= tilemap_data['offgrid_'+ str(i)][tile_key]["power"],radius = tilemap_data['offgrid_'+ str(i)][tile_key]["radius"] )
+                        light.set_color(*tilemap_data['offgrid_' + str(i)][tile_key]["colorValue"])
+                        lights.append(light)
+                        
                 self.offgrid_tiles[i][tile_key] = Tile(tilemap_data['offgrid_'+str(i)][tile_key]["type"],tilemap_data['offgrid_'+str(i)][tile_key]["variant"],tilemap_data['offgrid_'+str(i)][tile_key]["pos"] )
-        
+
 
         for tile_value in tilemap_data['decor']:
             self.decorations.append(Tile(tile_value["type"],tile_value["variant"],tile_value["pos"]))
@@ -251,7 +283,7 @@ class Tilemap:
                 print(tile_value["pos"][0],tile_value["pos"][1])
                 self.offgrid_tiles_pos[(tile_value["pos"][0],tile_value["pos"][1])] = True 
         """
-
+        return lights
 
         f.close
 
@@ -488,7 +520,7 @@ class Tilemap:
         matches = []
         
         for i,dict in enumerate(self.offgrid_tiles.copy()):
-            for loc in dict:
+            for loc in dict.copy():
                 tile = dict[loc]
                 
                 if (tile.type,tile.variant) in id_pairs: 
@@ -794,6 +826,7 @@ class Tile:
 
 class Light(Tile):
     def __init__(self, type, variant, pos, dirty=False, radius = 356,power = 1.0,color_value = (255,255,255,255)):
+        
         super().__init__(type, variant, pos, dirty)
         self.radius = radius
         self.power = power
