@@ -27,6 +27,10 @@ class Accurate_Rect_Body():
     def render(self,surf,offset= [0,0]):
         pass 
 
+
+
+
+
 class PhysicsEntity:
     def __init__(self, game, e_type, pos, size):
         self.game = game
@@ -77,6 +81,7 @@ class PhysicsEntity:
         entity_rect = self.rect()
         for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
             tile_type = rect_tile[1].type
+
             if entity_rect.colliderect(rect_tile[0]) and tile_type.split('_')[1] != 'stairs':
                 if frame_movement[0] > 0:
                     self.collisions['right'] = True
@@ -310,6 +315,8 @@ class Sabre(Enemy):
         super().render(surf,offset=offset)
         
 """
+
+
 
 class Wheel_bot(Enemy):
     def __init__(self, game, pos, size):
@@ -879,8 +886,9 @@ class PlayerEntity(PhysicsEntity):
         self.air_time +=1
         
         
-        self.changing_done += self.change_weapon_inc
+        self.changing_done = min(6,self.change_weapon_inc + self.changing_done)
         if self.changing_done == 6:
+             
             self.change_weapon(self.change_scroll)
         
 
@@ -995,7 +1003,7 @@ class PlayerEntity(PhysicsEntity):
                 
         
         
-
+        #print(self.changing_done)
         if self.equipped:
             self.cur_weapon_node.weapon.update(self.d_cursor_pos)
         
@@ -1050,7 +1058,7 @@ class PlayerEntity(PhysicsEntity):
         stamina_ind = indicator(int(self.stamina_bar.cur_resource),int(self.stamina_bar.max_resource))
         stamina_ind.render(self.stamina_bar.x+34,self.stamina_bar.y-1,surf)
         """
-
+        #print(self.changing_done)
         if self.equipped: 
             
             if self.changing_done == 0:
@@ -1060,7 +1068,8 @@ class PlayerEntity(PhysicsEntity):
                     angles = [angle for angle in range(0,-121,-20)]  
                     
                 else: 
-                    angles = [angle for angle in range(120,-1,-20)]                    
+                    angles = [angle for angle in range(120,-1,-20)]      
+                        
                 arm_pos_angle = angles[self.changing_done]
                 self.cur_weapon_node.weapon.render(surf,offset,set_angle = arm_pos_angle) 
             

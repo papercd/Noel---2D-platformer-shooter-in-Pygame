@@ -4,6 +4,8 @@ class GameAssets:
     def __init__(self):
         self.assets = {}
         self.enemies = {}
+
+        self.interactables = {}
         self.load_assets()
 
     def load_assets(self):
@@ -15,6 +17,8 @@ class GameAssets:
         self.assets.update(self.load_ui_assets())
         self.assets.update(self.load_particle_assets())
         self.enemies.update(self.load_enemy_assets())
+
+        self.interactables.update(self.load_interactable_assets())
 
     def load_grass_assets(self):
         return load_tile_assets(['grass', 'live_grass'], background='transparent')
@@ -121,3 +125,10 @@ class GameAssets:
             # Add other sabre animations as needed
             }
             return load_animation_assets(enemy_animations)
+    
+    # Animation
+    def load_interactable_assets(self):
+            interactable_animations = {
+                 'building_door' : ('tiles/door/building_door','transparent',5, True,False)
+            }
+            return load_animation_assets(interactable_animations)

@@ -5,7 +5,7 @@ import moderngl
 import pygame
 import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
-
+import math
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
 from my_pygame_light2d.hull import Hull
@@ -31,8 +31,11 @@ class LightingEngine:
         """
 
         # Initialize private members
+        
         self._screen_res = screen_res
         self._native_res = native_res
+        self._diagonal = math.sqrt(self._native_res[0]**2 + self._native_res[1] **2)
+
         self._lightmap_res = lightmap_res
         self._ambient = (.25, .25, .25, .25)
 
@@ -70,8 +73,12 @@ class LightingEngine:
             pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
 
         # Configure pygame display
-        pygame.display.set_mode(
+        self._pygame_display = pygame.display.set_mode(
             self._screen_res, pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF | pygame.RESIZABLE)
+        
+        
+
+        # initialize thorpy for gui elements 
 
     def _load_shaders(self):
         # Read source files
@@ -324,7 +331,7 @@ class LightingEngine:
         self._fbo_bg.clear(R, G, B, A)
         self._fbo_fg.clear(0, 0, 0, 0)
 
-    def render(self,offset = (0,0)):
+    def render(self,range,offset = (0,0)):
         """
         Render the lighting effects onto the screen.
 
@@ -359,7 +366,7 @@ class LightingEngine:
         self._send_hull_data(offset)
 
         # Render lights onto double buffer
-        self._render_to_buf_lt(offset)
+        self._render_to_buf_lt(range,offset)
 
         # Blur lightmap for soft shadows and render onto aomap
         self._render_aomap()
@@ -431,6 +438,7 @@ class LightingEngine:
         # Lists with hull vertices and indices
         vertices = []
         indices = []
+
         for hull in self.hulls:
             if not hull.enabled:
                 continue
@@ -452,7 +460,7 @@ class LightingEngine:
         data_ind = np.array(indices, dtype=np.int32).flatten().tobytes()
         self._ssbo_ind.write(data_ind)
 
-    def _render_to_buf_lt(self,offset = (0,0)):
+    def _render_to_buf_lt(self,range,offset = (0,0)):
         # Disable alpha blending to render lights
         self.ctx.disable(moderngl.BLEND)
 
@@ -461,6 +469,17 @@ class LightingEngine:
             if light.illuminator and light.illuminator.dead:
                 self.lights.remove(light)
                 continue 
+            if math.dist(light.position,offset) > light.radius + self._diagonal:
+                continue
+            
+            if light.position[0] < range[0] or light.position[0] > range[1]:
+                #decrease power of light 
+                dec = light.power/10
+                light.cur_power = max(0.0,light.cur_power - dec)
+            else: 
+                inc = light.power/10
+                light.cur_power = min(light.power, light.cur_power + inc)
+
                 
             if light.life == 0:
                 self.lights.remove(light)
@@ -490,7 +509,7 @@ class LightingEngine:
             # Send light uniforms
             self._prog_light['lightPos'] = self._point_to_uv((int(light.position[0] - offset[0]), int(light.position[1] - offset[1])))
             self._prog_light['lightCol'] = light._color
-            self._prog_light['lightPower'] = light.power
+            self._prog_light['lightPower'] = light.cur_power
             self._prog_light['radius'] = light.radius
             self._prog_light['castShadows'] = light.cast_shadows
             self._prog_light['native_width'] = self._native_res[0]

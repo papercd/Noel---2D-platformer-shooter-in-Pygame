@@ -369,158 +369,166 @@ class Cell():
                 if p.life < 1:
                     self.particles.remove(p)
 
-        if not expanded or (expanded and opacity == 255) : 
+        
+        if self.type == 'weapon':
+            bool = player.changing_done == 0
+        else: 
+            bool = True 
+
+        if not expanded or (expanded and opacity == 255):  
             
             if self.item is not None:
                 
                 self.item.draw(*position,surf, scale)
-                if not cursor.box.colliderect(cell_box):
-                    return
-                
-                if cursor.cooldown != 0:
-                    return
-                
-                
-
-                if cursor.magnet and cursor.item.name == self.item.name and self.item.stackable:
-                    if not (cursor.item.type == self.type ):
+           
+                if bool: 
+                    if not cursor.box.colliderect(cell_box):
                         return
-                    amount = stack_limit - cursor.item.amount
-                    if self.item.amount + cursor.item.amount <= stack_limit:
-                        cursor.item.amount += self.item.amount
-                        self.item = None
-                    else:
-                        cursor.item.amount += amount
-                        self.item.amount -= amount
-
-                    self.particles.append(Dust())
-                    cursor.set_cooldown()
-
-                if cursor.item is None:
-                    cursor.context = Cursor_Context_Box(
-                        self.item.get_name(), self.item.get_description(), 0 if True else 1)
-                    if cursor.pressed[0] and cursor.move:
-                        index = inventory_id
-                        for i in range(len(inventory_list)):
-                            
-                            index = index + \
-                                1 if index < len(inventory_list) - 1 else 0
-                            while self.item.type != inventory_list[index][1].name: index = index +1 if index < len(inventory_list) -1 else 0
-                            if index == inventory_id:
-                                break
-                            if inventory_list[index][1].capacity != inventory_list[index][1].item_count:
-                                break
-                            else:
-                                for row in inventory_list[index][1].cells:
-                                    for cell in row: 
-                                        if cell.item.name == self.item.name and cell.item.stackable:
-                                            if cell.item.amount + self.item.amount <= inventory_list[index][1].stack_limit:
-                                                break
-                           
-                                                            
-                                
-                        temp = self.item
-                        self.item = None
-
-                        if self.type == 'weapon':
-                            
-                            player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
-                            player.equip()
-                        
-                       
-                        inventory_list[index][1].add_item(temp)
-                       
-
-
-                        self.particles.append(Dust())
-                        cursor.set_cooldown()
-
-                    elif cursor.pressed[0]:
-                        cursor.item = self.item
-                        self.item = None
-                        if self.type == 'weapon':
-                            
-                            player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
-                            player.equip()
-                        self.particles.append(Dust())
-                        cursor.set_cooldown()
-                    elif cursor.pressed[2] and self.item.amount > 1:
-                        half = self.item.amount // 2
-                        cursor.item = self.item.copy()
-                        cursor.item.amount = half
-                        self.item.amount -= half
-                        self.particles.append(Dust())
-                        cursor.set_cooldown()
-                else:
+                    
                     if cursor.cooldown != 0:
                         return
-                    if cursor.pressed[0] and cursor.item.name == self.item.name and self.item.amount + cursor.item.amount <= stack_limit and self.item.stackable:
+                    
+                    
+
+                    if cursor.magnet and cursor.item.name == self.item.name and self.item.stackable:
                         if not (cursor.item.type == self.type ):
                             return
-                        self.item.amount += cursor.item.amount
-                        cursor.item = None
+                        amount = stack_limit - cursor.item.amount
+                        if self.item.amount + cursor.item.amount <= stack_limit:
+                            cursor.item.amount += self.item.amount
+                            self.item = None
+                        else:
+                            cursor.item.amount += amount
+                            self.item.amount -= amount
+
                         self.particles.append(Dust())
                         cursor.set_cooldown()
-                    elif cursor.pressed[0] and cursor.item.name == self.item.name and self.item.stackable:
-                        if not (cursor.item.type == self.type ):
-                            return
-                        amount = stack_limit - self.item.amount
-                        self.item.amount += amount
-                        cursor.item.amount -= amount
-                        self.particles.append(Dust())
-                        cursor.set_cooldown()
 
-                    elif cursor.pressed[0]:
-                        if not (cursor.item.type == self.type ):
-                            return
-                        temp = cursor.item.copy()
-
-                        
-                        cursor.item = self.item
-                        
-                       
-                        self.item = temp
-
-                        if self.type == 'weapon':
+                    if cursor.item is None:
+                        cursor.context = Cursor_Context_Box(
+                            self.item.get_name(), self.item.get_description(), 0 if True else 1)
+                        if cursor.pressed[0] and cursor.move:
+                            index = inventory_id
+                            for i in range(len(inventory_list)):
+                                
+                                index = index + \
+                                    1 if index < len(inventory_list) - 1 else 0
+                                while self.item.type != inventory_list[index][1].name: index = index +1 if index < len(inventory_list) -1 else 0
+                                if index == inventory_id:
+                                    break
+                                if inventory_list[index][1].capacity != inventory_list[index][1].item_count:
+                                    break
+                                else:
+                                    for row in inventory_list[index][1].cells:
+                                        for cell in row: 
+                                            if cell.item.name == self.item.name and cell.item.stackable:
+                                                if cell.item.amount + self.item.amount <= inventory_list[index][1].stack_limit:
+                                                    break
                             
-                            
-                            #temp.sprite = pygame.transform.flip(temp.sprite,True,False)
-                            corres_node = player.weapon_inven.find_node(self.ind)
-                            corres_node.weapon = temp
-                            player.equip()
+                                                                
+                                    
+                            temp = self.item
+                            self.item = None
 
-                        self.particles.append(Dust())
-                        cursor.set_cooldown()
+                            if self.type == 'weapon':
+                                
+                                player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
+                                player.equip()
+                            
+                        
+                            inventory_list[index][1].add_item(temp)
+                        
+
+
+                            self.particles.append(Dust())
+                            cursor.set_cooldown()
+
+                        elif cursor.pressed[0]:
+                            cursor.item = self.item
+                            self.item = None
+                            if self.type == 'weapon':
+                                
+                                player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
+                                player.equip()
+                            self.particles.append(Dust())
+                            cursor.set_cooldown()
+                        elif cursor.pressed[2] and self.item.amount > 1:
+                            half = self.item.amount // 2
+                            cursor.item = self.item.copy()
+                            cursor.item.amount = half
+                            self.item.amount -= half
+                            self.particles.append(Dust())
+                            cursor.set_cooldown()
+                    else:
+                        if cursor.cooldown != 0:
+                            return
+                        if cursor.pressed[0] and cursor.item.name == self.item.name and self.item.amount + cursor.item.amount <= stack_limit and self.item.stackable:
+                            if not (cursor.item.type == self.type ):
+                                return
+                            self.item.amount += cursor.item.amount
+                            cursor.item = None
+                            self.particles.append(Dust())
+                            cursor.set_cooldown()
+                        elif cursor.pressed[0] and cursor.item.name == self.item.name and self.item.stackable:
+                            if not (cursor.item.type == self.type ):
+                                return
+                            amount = stack_limit - self.item.amount
+                            self.item.amount += amount
+                            cursor.item.amount -= amount
+                            self.particles.append(Dust())
+                            cursor.set_cooldown()
+
+                        elif cursor.pressed[0]:
+                            if not (cursor.item.type == self.type ):
+                                return
+                            temp = cursor.item.copy()
+
+                            
+                            cursor.item = self.item
+                            
+                        
+                            self.item = temp
+
+                            if self.type == 'weapon':
+                                
+                                
+                                #temp.sprite = pygame.transform.flip(temp.sprite,True,False)
+                                corres_node = player.weapon_inven.find_node(self.ind)
+                                corres_node.weapon = temp
+                                player.equip()
+
+                            self.particles.append(Dust())
+                            cursor.set_cooldown()
 
             elif cursor.item is not None and cursor.box.colliderect(cell_box) and cursor.cooldown == 0:
-                
-                if cursor.pressed[0]:
-                    if not (cursor.item.type == self.type ):
-                            return
-                    self.item = cursor.item
-
-                    if self.type == 'weapon':
-                       
-                        player.weapon_inven.add_weapon(self.ind,cursor.item)
-                        player.equip()
-
-                    cursor.item = None
-                    self.particles.append(Dust())
-                    cursor.set_cooldown()
-                elif cursor.pressed[2] and cursor.item.stackable:
-                    if not (cursor.item.type == self.type ):
-                            return
-                    if cursor.item.amount > 1:
-                        half = cursor.item.amount // 2
-                        self.item = cursor.item.copy()
-                        self.item.amount = half
-                        cursor.item.amount -= half
-                    else:
+                if bool: 
+                    if cursor.pressed[0]:
+                        if not (cursor.item.type == self.type ):
+                                return
                         self.item = cursor.item
-                        cursor.item = None
 
-                    self.particles.append(Dust())
-                    cursor.set_cooldown()
+                        if self.type == 'weapon':
+                        
+                            player.weapon_inven.add_weapon(self.ind,cursor.item)
+                            player.equip()
+
+                        cursor.item = None
+                        self.particles.append(Dust())
+                        cursor.set_cooldown()
+                    elif cursor.pressed[2] and cursor.item.stackable:
+                        if not (cursor.item.type == self.type ):
+                                return
+                        if cursor.item.amount > 1:
+                            half = cursor.item.amount // 2
+                            self.item = cursor.item.copy()
+                            self.item.amount = half
+                            cursor.item.amount -= half
+                        else:
+                            self.item = cursor.item
+                            cursor.item = None
+
+                        self.particles.append(Dust())
+                        cursor.set_cooldown()
 
 
 
@@ -613,7 +621,7 @@ class Inventory():
                 if cell.item is None:
                     cell.item = item
                     if cell.type == 'weapon':
-                        print("check5")
+                        
                         self.player.weapon_inven.add_weapon(cell.ind,cell.item)
                         self.player.equip()
 
@@ -629,8 +637,6 @@ class Inventory():
                         if item.amount > 0:
                             self.add_item(item.copy())
                         return
-
-        print("Inventory is full")
 
     def get_item_list(self) -> list:
         item_list = []

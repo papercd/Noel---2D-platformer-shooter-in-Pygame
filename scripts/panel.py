@@ -60,6 +60,8 @@ class inven_panel:
         surf.blit(self.TL_cur_weapon_frame[self.player.changing_done//3],(self.topleft[0] - offset[0] + change_offset[self.player.changing_done//3][0]-1,self.topleft[1] - offset[1]+change_offset[self.player.changing_done//3][1] -3 ))
 
 
+
+
 class tile_panel:
 
     def __init__(self,topleft,x_bound,tiles):
@@ -375,8 +377,6 @@ class tile_panel:
                                     tile_panels_within[0][1] += up_down * 20  
                             else: 
                                 tile_panel[0][1] +=up_down * 20
-                    
-
 
          
     def return_tile_selection(self):
@@ -483,6 +483,7 @@ class tile_panel:
         for tile_panel in self.tile_panels:
             if isinstance(tile_panel,list) and isinstance(tile_panel[-1],list):
                 for varition in tile_panel:
+                    #print(varition)
                     if (varition[0][1]  >= 0) and (varition[0][1] +varition[1][1] <= surf.get_height()*3/5):
                 
                         if varition[4] :

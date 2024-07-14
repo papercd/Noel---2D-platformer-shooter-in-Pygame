@@ -27,6 +27,7 @@ class PointLight:
         self.illuminator = illuminator
         self.position = list(position)
         self.power = power
+        self.cur_power = power
         self.radius = radius
         self.enabled = enabled
         self.cast_shadows = True
@@ -52,5 +53,4 @@ class PointLight:
         Returns:
             tuple[int]: Denormalized color values (R, G, B, A) in the range of 0 to 255.
         """
-
         return denormalize_color(self._color)

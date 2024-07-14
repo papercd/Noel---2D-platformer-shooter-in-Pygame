@@ -12,7 +12,7 @@ from assets import GameAssets
 #import pygame_light2d as pl2d 
 #from pygame_light2d import LightingEngine, PointLight, Hull
 
-#----------------------------------------- imports to integrate shaders 
+#----------------------------------------- impDorts to integrate shaders 
 
 
 from my_pygame_light2d.engine import LightingEngine, Layer_
@@ -23,7 +23,6 @@ class myGame:
     def __init__(self):
         pygame.init() 
         pygame.mixer.pre_init(44100, -16, 2, 512)
-        pygame.display.set_caption('Noel.')
         
         
         self.screen_shake = 0 
@@ -33,7 +32,7 @@ class myGame:
         self.native_res = (int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5))
 
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
-        self.lights_engine.set_ambient(185,185,185,185)
+        
 
         #self.screen = pygame.display.set_mode(self.screen_size,pygame.RESIZABLE)
         
@@ -51,6 +50,8 @@ class myGame:
 
         self.test_shader = self.lights_engine.load_shader_from_path('vertex.glsl','fog_fragment.glsl')
         self.pixel_exp_shader = self.lights_engine.load_shader_from_path('vertex.glsl','exp_fragment.glsl')
+        self.sparks_shader = self.lights_engine.load_shader_from_path('vertex.glsl','sparks.glsl')
+        self.dithering_shader = self.lights_engine.load_shader_from_path('vertex.glsl','dithering.glsl')
 
         
         self.NODE_CAPACITY = 4
@@ -112,7 +113,7 @@ class myGame:
         self.sparks = []
 
         self.Tilemap = Tilemap(self,tile_size=16,offgrid_layers=2)
-        self.Tilemap.load('map.json')
+        
 
         #self.quadtree_ = a
 
@@ -122,13 +123,15 @@ class myGame:
         self.shadow_objects = [] 
 
         """"""
-        
+        self.lights_engine.lights = self.Tilemap.load('map.json')
+
+        """
         for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
             light = PointLight(position=((light.pos[0]*self.Tilemap.tile_size + 8), (light.pos[1]*self.Tilemap.tile_size)), power=1., radius=356)
             light.set_color(255, 255, 255, 200)
             self.lights_engine.lights.append(light)
             #self.lights_engine.lights.append([(light.pos[0]*self.Tilemap.tile_size + 8,light.pos[1]*self.Tilemap.tile_size)] =LIGHT(200,pixel_shader(200,(255,255,255),1.0,True, 270, 90)) 
-        
+        """
 
         """
         light = PointLight(position=(100, 100), power=1., radius=250)
@@ -262,13 +265,15 @@ class myGame:
         
 
         
-
-        self.lights_display = pygame.Surface(self.background_surf.get_size()) 
+        self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
+        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
+        #self.lights_display = pygame.Surface(self.background_surf.get_size()) 
         
 
     def run(self):
-        
-
+        pygame.mixer.music.load('data/music/Abstraction - Patreon Goal Reward Loops/Patreon Goal Reward Loops - Track 05.wav')
+        pygame.mixer.music.set_volume(0.3)
+        #pygame.mixer.music.play(loops=-1)
         while True: 
             
 
@@ -352,7 +357,17 @@ class myGame:
 
             self.Tilemap.render(self.background_surf,render_scroll)
 
-            
+            if self.player.pos[0] < self.ambient_node_ptr.range[0]:
+                if self.ambient_node_ptr.prev: 
+                    self.ambient_node_ptr = self.ambient_node_ptr.prev
+                    self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
+            elif self.player.pos[0] > self.ambient_node_ptr.range[1]:
+                if self.ambient_node_ptr.next: 
+                    self.ambient_node_ptr = self.ambient_node_ptr.next
+                    self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
+
+
+
 
             #Global lighting ----------------
             """
@@ -643,7 +658,7 @@ class myGame:
                         self.player.slide = True 
                     if event.key == pygame.K_g: 
                         self.player.toggle_rapid_fire()
-
+                 
                         
                 #define when the right or left arrow keys are then lifted, the corresponding player's movement variable values are changed back to false.
                 if event.type == pygame.KEYUP: 
@@ -660,7 +675,7 @@ class myGame:
 
 
             #self.display_2.blit(self.display,(0,0))
-
+            #print(len(self.lights_engine.hulls))
             screenshake_offset = (random.random()* self.screen_shake - self.screen_shake /2, random.random()* self.screen_shake - self.screen_shake /2)
 
             tex = self.lights_engine.surface_to_texture(self.background_surf)
@@ -671,7 +686,6 @@ class myGame:
             self.lights_engine.render_texture_with_trans(
                 tex, Layer_.BACKGROUND,
                 position= (-screenshake_offset[0],-screenshake_offset[1])
-                
             )
             """
             self.lights_engine.render_texture(
@@ -689,7 +703,7 @@ class myGame:
             )
             tex.release()
             
-            self.lights_engine.render((int((render_scroll[0] -screenshake_offset[0])),int((render_scroll[1]-screenshake_offset[1]))))
+            self.lights_engine.render(self.ambient_node_ptr.range,(int((render_scroll[0] -screenshake_offset[0])),int((render_scroll[1]-screenshake_offset[1]))))
             
             #self.screen.blit(pygame.transform.scale(self.display_2,self.screen.get_size()),screenshake_offset)
 
@@ -697,7 +711,7 @@ class myGame:
             pygame.display.flip()
             #pygame.display.update()
             fps = self.clock.get_fps()
-            pygame.display.set_caption(f'Pygame Window - FPS: {fps:.2f}')
+            pygame.display.set_caption(f'Custom Engine - FPS: {fps:.2f}')
             self.clock.tick(60)
 
 myGame().run()
