@@ -377,8 +377,6 @@ class tile_panel:
                                     tile_panels_within[0][1] += up_down * 20  
                             else: 
                                 tile_panel[0][1] +=up_down * 20
-                    
-
 
          
     def return_tile_selection(self):
@@ -485,6 +483,7 @@ class tile_panel:
         for tile_panel in self.tile_panels:
             if isinstance(tile_panel,list) and isinstance(tile_panel[-1],list):
                 for varition in tile_panel:
+                    #print(varition)
                     if (varition[0][1]  >= 0) and (varition[0][1] +varition[1][1] <= surf.get_height()*3/5):
                 
                         if varition[4] :

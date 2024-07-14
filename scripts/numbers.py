@@ -1,7 +1,7 @@
-from scripts.utils import load_images
+from scripts.utils import load_images,load_image
 
 DEFAULT_NUMBERS = load_images('text/numbers',background='transparent')
-
+MINUS = load_image('text/minus.png',background= "transparent")
 #only positive numbers for now. 
 
 class numbers:
@@ -23,6 +23,10 @@ class numbers:
             return number
         else: 
             dummy_number = self.number
+            if dummy_number < 0:
+                dummy_number = -dummy_number
+                number.append(MINUS)
+                self.length+=4
             while dummy_number > 0 :
                 digit = dummy_number % 10
                 number.append(DEFAULT_NUMBERS[digit])

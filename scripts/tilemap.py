@@ -5,6 +5,7 @@ import pygame
 import heapq
 from my_pygame_light2d.hull import Hull
 from my_pygame_light2d.light import PointLight
+from scripts.weapon_list import ambientNodeList
 
 PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs'}
 AUTOTILE_TYPES = {'grass','stone','building_0','building_1','building_2','building_3','building_4'}
@@ -87,6 +88,10 @@ class Tilemap:
 
         self.tilemap = {}
         self.grass = {}
+
+        self.ambientNodes = ambientNodeList() 
+
+
        
         self.offgrid_layers = offgrid_layers
         self.offgrid_tiles = [{} for i in range(0,offgrid_layers)]
@@ -128,28 +133,50 @@ class Tilemap:
                 coor = str(x_cor) + ';' + str(y_cor)
                 if coor in self.tilemap:
                     tile = self.tilemap[coor]
-                    if tile.type != "spawners" and tile.type != "lights":
-                        tile_type_check = len(tile.type.split('_')) == 1
-                        if not tile_type_check and tile.type.split('_')[1] == 'stairs':
-                            pass 
-                        else:
-                            variant_num = int(tile.variant.split(';')[0]) 
-                            if variant_num ==  8: continue
-                            else: 
-                                step = STEPS_EVEN[ variant_num // 2] if variant_num %2 == 0 else STEPS_ODD[variant_num//2]
-
-                            vertices = [(tile.pos[0] *   self.tile_size + step[0]* 4  ,tile.pos[1]   * self.tile_size+step[1]* 4 ) , 
-                                        ((tile.pos[0]+1) *self.tile_size+step[0]* 4 ,tile.pos[1] *self.tile_size+step[1]* 4  ) , 
-                                        ((tile.pos[0]+1)*self.tile_size+step[0]* 4 ,(tile.pos[1]+1) *self.tile_size+step[1]* 4  ) ,
-                                        ((tile.pos[0]) *self.tile_size+step[0]* 4 ,tile.pos[1] *self.tile_size+step[1]* 4  ) ,
-                                        ]
-                            hulls.append(Hull(vertices))
-
+                    if tile.type != "spawners" and tile.type != "lights" and tile.hull:
+                        tile_variant = tile.variant.split(';')
+                        if tile_variant[0] == '8':
+                            if not tile.enclosed:
+                                hulls.append(tile.hull[0])
+                        else:   
+                            for hull in tile.hull: 
+                                hulls.append(hull)  
 
         return hulls
+    
+
+    #method to use when resizing window
+    def create_lights(self):
+        list =[] 
+        for key in self.tilemap:
+            tile = self.tilemap[key]
+            if tile.type =="lights":
+                light = PointLight(position = (tile.pos[0] * self.tile_size +7,tile.pos[1] * self.tile_size +3 ),power = \
+                                       tile.power, radius= tile.radius )
+                light.set_color(*tile.color_value)
+                list.append(light)
+
+        for dict in self.offgrid_tiles:
+            for key in dict:
+                tile = dict[key]
+                if tile.type =="lights":
+                    light = PointLight(position = (tile.pos[0] * self.tile_size +7,tile.pos[1] * self.tile_size +3 ),power = \
+                                        tile.power, radius= tile.radius )
+                    light.set_color(*tile.color_value)
+                    list.append(light)
+        return list 
+
+            
+
 
 
     def json_seriable(self):
+
+        #now save ambientNode list data into json file. 
+
+        ambient_nodes = self.ambientNodes.json_seriable()
+        
+
         seriable_tilemap = {}
         for key in self.tilemap: 
             tile = self.tilemap[key]
@@ -180,13 +207,15 @@ class Tilemap:
                                                                                                      'power': tile.power, 'colorValue':tile.color_value}
                 else: seriable_offgrid[i][str(tile.pos[0]) + ';' + str(tile.pos[1])] = {'type': tile.type , 'variant': tile.variant, 'pos' : tile.pos}
 
-        return seriable_tilemap,seriable_offgrid,seriable_decor,seriable_grass
+
+        return ambient_nodes,seriable_tilemap,seriable_offgrid,seriable_decor,seriable_grass
 
 
     def save(self,path):
         f = open(path,'w')
-        tilemap,offgrid, decor, grass = self.json_seriable()
+        ambient_nodes,tilemap,offgrid, decor, grass = self.json_seriable()
         data = {
+            'ambient_nodes' : ambient_nodes,
             'tilemap': tilemap,
             'tile_size': self.tile_size,
             **{'offgrid_' + str(i): v for i, v in enumerate(offgrid)},
@@ -194,17 +223,254 @@ class Tilemap:
             'grass': grass
             
         }
-
-        json.dump(data,f)
+        
+        json.dump(data,f)           
         f.close
 
-   
 
+
+
+    def place_tile(self,tile_pos,tile_info):
+        if tile_info[3].endswith('door'):
+            print("check") 
+        else: 
+
+            enclosed = self.check_enclosure(tile_pos,self.tilemap)
+            tile = Tile(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos,enclosed = enclosed)
+            self.create_hull_tile_ver(tile)
+            
+            self.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = tile
+            self.update_enclosure(tile)
+        
+
+    
+    def update_enclosure(self,tile):
+        for offset in [(1,0),(-1,0),(0,-1),(0,1)]:
+            check_loc = str(tile.pos[0] +offset[0]) + ';' +str(tile.pos[1]+ offset[1])
+            if check_loc in self.tilemap:
+                count = 0
+                for offset_ in [(1,0),(-1,0),(0,-1),(0,1)]:
+                    second_check_loc = str(tile.pos[0] +offset[0]+offset_[0]) + ';' +str(tile.pos[1]+ offset[1]+offset_[1])
+                    if second_check_loc == str(tile.pos[0]) + ';' + str(tile.pos[1]):
+                        continue 
+                    else: 
+                        if second_check_loc in self.tilemap:
+                            count +=1
+                if count == 3:
+                    self.tilemap[check_loc].enclosed = True
+                            
+
+    def create_hull_tile_ver(self,tile_data):
+
+        if tile_data.type != "spawners":
+            tile_type_check = len(tile_data.type.split('_')) == 1
+            if not tile_type_check and tile_data.type.split('_')[1] == 'stairs':
+                variant = tile_data.variant.split(';')
+                if variant[0] == '0':
+                    vertices = ((tile_data.pos[0] * self.tile_size +4   ,tile_data.pos[1]   * self.tile_size+13 ) , 
+                                ((tile_data.pos[0]+1) *self.tile_size -1 ,tile_data.pos[1] *self.tile_size +13  ) , 
+                                ((tile_data.pos[0]+1)*self.tile_size-1 ,(tile_data.pos[1]+1) *self.tile_size  ) ,
+                                ((tile_data.pos[0]) *self.tile_size+4,(tile_data.pos[1]+1) *self.tile_size  ) ,
+                                ),((tile_data.pos[0] * self.tile_size +8   ,tile_data.pos[1]   * self.tile_size+9 ) , 
+                                ((tile_data.pos[0]+1) *self.tile_size -1 ,tile_data.pos[1] *self.tile_size +9  ) , 
+                                ((tile_data.pos[0]+1)*self.tile_size-1 ,(tile_data.pos[1]+1) *self.tile_size-2  ) ,
+                                ((tile_data.pos[0]) *self.tile_size+8,(tile_data.pos[1]+1) *self.tile_size-2  ) ,
+                                ),((tile_data.pos[0] * self.tile_size +12   ,tile_data.pos[1]   * self.tile_size+5 ) , 
+                                ((tile_data.pos[0]+1) *self.tile_size -1 ,tile_data.pos[1] *self.tile_size +5  ) , 
+                                ((tile_data.pos[0]+1)*self.tile_size-1 ,(tile_data.pos[1]+1) *self.tile_size-7  ) ,
+                                ((tile_data.pos[0]) *self.tile_size+12,(tile_data.pos[1]+1) *self.tile_size-7  ) ,
+                                ),((tile_data.pos[0] * self.tile_size +17   ,tile_data.pos[1]   * self.tile_size+1 ) , 
+                                ((tile_data.pos[0]+1) *self.tile_size -1 ,tile_data.pos[1] *self.tile_size +1  ) , 
+                                ((tile_data.pos[0]+1)*self.tile_size-1 ,(tile_data.pos[1]+1) *self.tile_size-11  ) ,
+                                ((tile_data.pos[0]) *self.tile_size+17,(tile_data.pos[1]+1) *self.tile_size -11 ) ,
+                                )
+                    
+                    tile_data.hull = [Hull(vertice) for vertice in vertices]
+                        
+                elif variant[0] == '1':
+                    vertices = ((tile_data.pos[0] * self.tile_size    ,tile_data.pos[1]   * self.tile_size+13 ) , 
+                                ((tile_data.pos[0]+1) *self.tile_size -1 ,tile_data.pos[1] *self.tile_size +13  ) , 
+                                ((tile_data.pos[0]+1)*self.tile_size-1 ,(tile_data.pos[1]+1) *self.tile_size  ) ,
+                                ((tile_data.pos[0]) *self.tile_size,(tile_data.pos[1]+1) *self.tile_size  ) ,
+                                ),((tile_data.pos[0] * self.tile_size    ,tile_data.pos[1]   * self.tile_size+9 ) , 
+                                ((tile_data.pos[0]+1) *self.tile_size -5 ,tile_data.pos[1] *self.tile_size +9  ) , 
+                                ((tile_data.pos[0]+1)*self.tile_size-5 ,(tile_data.pos[1]+1) *self.tile_size-3  ) ,
+                                ((tile_data.pos[0]) *self.tile_size,(tile_data.pos[1]+1) *self.tile_size-3  ) ,
+                                ),((tile_data.pos[0] * self.tile_size    ,tile_data.pos[1]   * self.tile_size+5 ) , 
+                                ((tile_data.pos[0]+1) *self.tile_size -9 ,tile_data.pos[1] *self.tile_size +5  ) , 
+                                ((tile_data.pos[0]+1)*self.tile_size-9 ,(tile_data.pos[1]+1) *self.tile_size-7  ) ,
+                                ((tile_data.pos[0]) *self.tile_size,(tile_data.pos[1]+1) *self.tile_size-7  ) ,
+                                ),((tile_data.pos[0] * self.tile_size    ,tile_data.pos[1]   * self.tile_size+1 ) , 
+                                ((tile_data.pos[0]) *self.tile_size +2 ,tile_data.pos[1] *self.tile_size +1  ) , 
+                                ((tile_data.pos[0])*self.tile_size+2 ,(tile_data.pos[1]) *self.tile_size+4  ) ,
+                                ((tile_data.pos[0]) *self.tile_size,(tile_data.pos[1]) *self.tile_size+4 ) ,
+                                )
+                    tile_data.hull = [Hull(vertice) for vertice in vertices]
+                    
+                else: 
+                    if variant[1] == '1':
+                        vertices = ((tile_data.pos[0] *   self.tile_size  ,tile_data.pos[1]   * self.tile_size + 4 ) , 
+                                    ((tile_data.pos[0]+1) *self.tile_size  ,tile_data.pos[1] *self.tile_size+4  ) , 
+                                    ((tile_data.pos[0]+1)*self.tile_size  ,(tile_data.pos[1]+1) *self.tile_size ) ,
+                                    ((tile_data.pos[0]) *self.tile_size ,(tile_data.pos[1]+1) *self.tile_size  ) ,
+                                    )
+                            
+                                        
+                    else: 
+                        vertices = ((tile_data.pos[0] *   self.tile_size   ,tile_data.pos[1]   * self.tile_size ) , 
+                                    ((tile_data.pos[0]+1) *self.tile_size ,tile_data.pos[1] *self.tile_size  ) , 
+                                    ((tile_data.pos[0]+1)*self.tile_size ,(tile_data.pos[1]+1) *self.tile_size  ) ,
+                                    ((tile_data.pos[0]) *self.tile_size ,(tile_data.pos[1]+1) *self.tile_size  ) ,
+                                    )
+                    tile_data.hull = [Hull(vertices)]
+                
+                                  
+            else:
+                variant_num = int(tile_data.variant.split(';')[0])
+                if variant_num == 8 :
+                    vertices = [(tile_data.pos[0] *   self.tile_size + 2  ,tile_data.pos[1]   * self.tile_size+ 2 ) , 
+                                ((tile_data.pos[0]+1) *self.tile_size - 2 ,tile_data.pos[1] *self.tile_size+ 2  ) , 
+                                ((tile_data.pos[0]+1)*self.tile_size- 2 ,(tile_data.pos[1]+1) *self.tile_size- 2  ) ,
+                                ((tile_data.pos[0]) *self.tile_size+ 2 ,(tile_data.pos[1]+1) *self.tile_size- 2  ) ,
+                                ]
+                    tile_data.hull = [Hull(vertices)]
+                else: 
+                    step = STEPS_EVEN[ variant_num // 2] if variant_num %2 == 0 else STEPS_ODD[variant_num//2]
+                    vertices = [(tile_data.pos[0] *   self.tile_size + step[0]* 4  ,tile_data.pos[1]   * self.tile_size+step[1]* 4 ) , 
+                                ((tile_data.pos[0]+1) *self.tile_size+step[0]* 4 ,tile_data.pos[1] *self.tile_size+step[1]* 4  ) , 
+                                ((tile_data.pos[0]+1)*self.tile_size+step[0]* 4 ,(tile_data.pos[1]+1) *self.tile_size+step[1]* 4  ) ,
+                                ((tile_data.pos[0]) *self.tile_size+step[0]* 4 ,(tile_data.pos[1]+1) *self.tile_size+step[1]* 4  ) ,
+                                ]
+                    tile_data.hull = [Hull(vertices)]
+                 
+        else: 
+            tile_data.hull = None
+
+
+    def create_hull(self,tile_data):
+        
+        hulls = []
+
+        if tile_data['type'] != "spawners":
+            tile_type_check = len(tile_data['type'].split('_')) == 1
+            if not tile_type_check and tile_data['type'].split('_')[1] == 'stairs':
+                variant = tile_data['variant'].split(';')
+                if variant[0] == '0':
+                    vertices = ((tile_data['pos'][0] * self.tile_size +4   ,tile_data['pos'][1]   * self.tile_size+13 ) , 
+                                ((tile_data['pos'][0]+1) *self.tile_size -1 ,tile_data['pos'][1] *self.tile_size +13  ) , 
+                                ((tile_data['pos'][0]+1)*self.tile_size-1 ,(tile_data['pos'][1]+1) *self.tile_size  ) ,
+                                ((tile_data['pos'][0]) *self.tile_size+4,(tile_data['pos'][1]+1) *self.tile_size  ) ,
+                                ),((tile_data['pos'][0] * self.tile_size +8   ,tile_data['pos'][1]   * self.tile_size+9 ) , 
+                                ((tile_data['pos'][0]+1) *self.tile_size -1 ,tile_data['pos'][1] *self.tile_size +9  ) , 
+                                ((tile_data['pos'][0]+1)*self.tile_size-1 ,(tile_data['pos'][1]+1) *self.tile_size-2  ) ,
+                                ((tile_data['pos'][0]) *self.tile_size+8,(tile_data['pos'][1]+1) *self.tile_size-2  ) ,
+                                ),((tile_data['pos'][0] * self.tile_size +12   ,tile_data['pos'][1]   * self.tile_size+5 ) , 
+                                ((tile_data['pos'][0]+1) *self.tile_size -1 ,tile_data['pos'][1] *self.tile_size +5  ) , 
+                                ((tile_data['pos'][0]+1)*self.tile_size-1 ,(tile_data['pos'][1]+1) *self.tile_size-7  ) ,
+                                ((tile_data['pos'][0]) *self.tile_size+12,(tile_data['pos'][1]+1) *self.tile_size-7  ) ,
+                                ),((tile_data['pos'][0] * self.tile_size +17   ,tile_data['pos'][1]   * self.tile_size+1 ) , 
+                                ((tile_data['pos'][0]+1) *self.tile_size -1 ,tile_data['pos'][1] *self.tile_size +1  ) , 
+                                ((tile_data['pos'][0]+1)*self.tile_size-1 ,(tile_data['pos'][1]+1) *self.tile_size-11  ) ,
+                                ((tile_data['pos'][0]) *self.tile_size+17,(tile_data['pos'][1]+1) *self.tile_size -11 ) ,
+                                )
+                    for vertice in vertices:
+                        hulls.append(Hull(vertice))
+                elif variant[0] == '1':
+                    vertices = ((tile_data['pos'][0] * self.tile_size    ,tile_data['pos'][1]   * self.tile_size+13 ) , 
+                                ((tile_data['pos'][0]+1) *self.tile_size -1 ,tile_data['pos'][1] *self.tile_size +13  ) , 
+                                ((tile_data['pos'][0]+1)*self.tile_size-1 ,(tile_data['pos'][1]+1) *self.tile_size  ) ,
+                                ((tile_data['pos'][0]) *self.tile_size,(tile_data['pos'][1]+1) *self.tile_size  ) ,
+                                ),((tile_data['pos'][0] * self.tile_size    ,tile_data['pos'][1]   * self.tile_size+9 ) , 
+                                ((tile_data['pos'][0]+1) *self.tile_size -5 ,tile_data['pos'][1] *self.tile_size +9  ) , 
+                                ((tile_data['pos'][0]+1)*self.tile_size-5 ,(tile_data['pos'][1]+1) *self.tile_size-3  ) ,
+                                ((tile_data['pos'][0]) *self.tile_size,(tile_data['pos'][1]+1) *self.tile_size-3  ) ,
+                                ),((tile_data['pos'][0] * self.tile_size    ,tile_data['pos'][1]   * self.tile_size+5 ) , 
+                                ((tile_data['pos'][0]+1) *self.tile_size -9 ,tile_data['pos'][1] *self.tile_size +5  ) , 
+                                ((tile_data['pos'][0]+1)*self.tile_size-9 ,(tile_data['pos'][1]+1) *self.tile_size-7  ) ,
+                                ((tile_data['pos'][0]) *self.tile_size,(tile_data['pos'][1]+1) *self.tile_size-7  ) ,
+                                ),((tile_data['pos'][0] * self.tile_size    ,tile_data['pos'][1]   * self.tile_size+1 ) , 
+                                ((tile_data['pos'][0]) *self.tile_size +2 ,tile_data['pos'][1] *self.tile_size +1  ) , 
+                                ((tile_data['pos'][0])*self.tile_size+2 ,(tile_data['pos'][1]) *self.tile_size+4  ) ,
+                                ((tile_data['pos'][0]) *self.tile_size,(tile_data['pos'][1]) *self.tile_size+4 ) ,
+                                )
+                    for vertice in vertices:
+                        hulls.append(Hull(vertice))
+                    
+                else: 
+                    if variant[1] == '1':
+                        vertices = ((tile_data['pos'][0] *   self.tile_size  ,tile_data['pos'][1]   * self.tile_size + 4 ) , 
+                                    ((tile_data['pos'][0]+1) *self.tile_size  ,tile_data['pos'][1] *self.tile_size+4  ) , 
+                                    ((tile_data['pos'][0]+1)*self.tile_size  ,(tile_data['pos'][1]+1) *self.tile_size ) ,
+                                    ((tile_data['pos'][0]) *self.tile_size ,(tile_data['pos'][1]+1) *self.tile_size  ) ,
+                                    )
+                            
+                                        
+                    else: 
+                        vertices = ((tile_data['pos'][0] *   self.tile_size   ,tile_data['pos'][1]   * self.tile_size ) , 
+                                    ((tile_data['pos'][0]+1) *self.tile_size ,tile_data['pos'][1] *self.tile_size  ) , 
+                                    ((tile_data['pos'][0]+1)*self.tile_size ,(tile_data['pos'][1]+1) *self.tile_size  ) ,
+                                    ((tile_data['pos'][0]) *self.tile_size ,(tile_data['pos'][1]+1) *self.tile_size  ) ,
+                                    )
+                    hulls.append(Hull(vertices))
+                
+                return hulls                      
+            else:
+                variant_num = int(tile_data['variant'].split(';')[0])
+                print(variant_num)
+                if variant_num == 8:
+                    vertices = [(tile_data['pos'][0] *   self.tile_size + 2  ,tile_data['pos'][1]   * self.tile_size+ 2 ) , 
+                                ((tile_data['pos'][0]+1) *self.tile_size - 2 ,tile_data['pos'][1] *self.tile_size+ 2  ) , 
+                                ((tile_data['pos'][0]+1)*self.tile_size- 2 ,(tile_data['pos'][1]+1) *self.tile_size- 2  ) ,
+                                ((tile_data['pos'][0]) *self.tile_size+ 2 ,(tile_data['pos'][1]+1) *self.tile_size- 2  ) ,
+                                ]
+                    hulls.append(Hull(vertices))
+                else: 
+                    step = STEPS_EVEN[ variant_num // 2] if variant_num %2 == 0 else STEPS_ODD[variant_num//2]
+                    vertices = [(tile_data['pos'][0] *   self.tile_size + step[0]* 4  ,tile_data['pos'][1]   * self.tile_size+step[1]* 4 ) , 
+                                ((tile_data['pos'][0]+1) *self.tile_size+step[0]* 4 ,tile_data['pos'][1] *self.tile_size+step[1]* 4  ) , 
+                                ((tile_data['pos'][0]+1)*self.tile_size+step[0]* 4 ,(tile_data['pos'][1]+1) *self.tile_size+step[1]* 4  ) ,
+                                ((tile_data['pos'][0]) *self.tile_size+step[0]* 4 ,(tile_data['pos'][1]+1) *self.tile_size+step[1]* 4  ) ,
+                                ]
+                    hulls.append(Hull(vertices))
+                return hulls 
+        else: 
+            return None
+
+    def check_enclosure(self,tile_data,tilemap_data):
+        for offset in [(-1,0),(1,0),(0,1),(0,-1)]:
+            check_loc = str(tile_data[0] + offset[0]) + ';' + str(tile_data[1] + offset[1])
+
+            if check_loc not in tilemap_data:
+                return False
+        return True         
+
+    """
+    def load_lights(self,tilemap_data):
+        lights = []
+        
+        if isinstance(tilemap_data[next(iter(tilemap_data))],dict):
+            pass
+        else:
+            for key in tilemap_data:
+                tile = tilemap_data[key]
+                if tile.type == 'lights':
+                    if isinstance(tile.pos[0],int):
+                        light = PointLight(position = (tilemap_data['tilemap'][tile_key]["pos"][0]*self.tile_size+7,tilemap_data['tilemap'][tile_key]["pos"][1]*self.tile_size+3),\
+                                         power= tilemap_data['tilemap'][tile_key]["power"],radius = tilemap_data['tilemap'][tile_key]["radius"] )
+                        light.set_color(*tilemap_data['tilemap'][tile_key]["colorValue"])
+                        lights.append(light)
+                    else: 
+                        pass
+    """
 
     def load(self,path):
         f = open(path,'r')
         tilemap_data = json.load(f)
         lights = []
+
+        #create the ambient nodes here with the data. 
+        for node_data in tilemap_data['ambient_nodes']:
+            self.ambientNodes.insert_node(node_data["range"],node_data["colorValue"])
 
         for tile_key in tilemap_data['tilemap']:
             """
@@ -231,8 +497,11 @@ class Tilemap:
                     """
             #print(shadow_objects)
             if tilemap_data['tilemap'][tile_key]['type'] != "lights" :
+                Hull = self.create_hull(tilemap_data['tilemap'][tile_key]) 
 
-                self.tilemap[tile_key] = Tile(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],tilemap_data['tilemap'][tile_key]["pos"])
+                enclosed = self.check_enclosure(tilemap_data['tilemap'][tile_key]['pos'],tilemap_data['tilemap'])
+
+                self.tilemap[tile_key] = Tile(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],tilemap_data['tilemap'][tile_key]["pos"],hull= Hull,enclosed = enclosed)
             else: 
                 self.tilemap[tile_key] = Light(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],\
                                                  tilemap_data['tilemap'][tile_key]["pos"],radius =tilemap_data['tilemap'][tile_key]["radius"], power = tilemap_data['tilemap'][tile_key]["power"],\
@@ -248,7 +517,7 @@ class Tilemap:
                     light.set_color(*tilemap_data['tilemap'][tile_key]["colorValue"])
                     lights.append(light)
 
-                
+
                 
        
         for i in range(0,self.offgrid_layers):
@@ -259,13 +528,17 @@ class Tilemap:
                                          power= tilemap_data['offgrid_'+ str(i)][tile_key]["power"],radius = tilemap_data['offgrid_'+ str(i)][tile_key]["radius"] )
                         light.set_color(*tilemap_data['offgrid_' + str(i)][tile_key]["colorValue"])
                         lights.append(light)
+                        self.offgrid_tiles[i][tile_key] = Light(tilemap_data['offgrid_'+str(i)][tile_key]["type"],tilemap_data['offgrid_'+str(i)][tile_key]["variant"],tilemap_data['offgrid_'+str(i)][tile_key]["pos"],\
+                                                                radius = tilemap_data['offgrid_'+str(i)][tile_key]['radius'],power = tilemap_data['offgrid_'+str(i)][tile_key]['power'],color_value=tilemap_data['offgrid_'+str(i)][tile_key]['colorValue'] )
                     else: 
                         light = PointLight(position = (tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][0]+7,tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][1]+3),\
                                          power= tilemap_data['offgrid_'+ str(i)][tile_key]["power"],radius = tilemap_data['offgrid_'+ str(i)][tile_key]["radius"] )
                         light.set_color(*tilemap_data['offgrid_' + str(i)][tile_key]["colorValue"])
                         lights.append(light)
-                        
-                self.offgrid_tiles[i][tile_key] = Tile(tilemap_data['offgrid_'+str(i)][tile_key]["type"],tilemap_data['offgrid_'+str(i)][tile_key]["variant"],tilemap_data['offgrid_'+str(i)][tile_key]["pos"] )
+                        self.offgrid_tiles[i][tile_key] = Light(tilemap_data['offgrid_'+str(i)][tile_key]["type"],tilemap_data['offgrid_'+str(i)][tile_key]["variant"],(tilemap_data['offgrid_'+str(i)][tile_key]["pos"][0] // self.tile_size,tilemap_data['offgrid_'+str(i)][tile_key]["pos"][1] // self.tile_size),\
+                                                            radius = tilemap_data['offgrid_'+str(i)][tile_key]['radius'],power = tilemap_data['offgrid_'+str(i)][tile_key]['power'],color_value=tilemap_data['offgrid_'+str(i)][tile_key]['colorValue'] )
+
+                else: self.offgrid_tiles[i][tile_key] = Tile(tilemap_data['offgrid_'+str(i)][tile_key]["type"],tilemap_data['offgrid_'+str(i)][tile_key]["variant"],tilemap_data['offgrid_'+str(i)][tile_key]["pos"] )
 
 
         for tile_value in tilemap_data['decor']:
@@ -283,9 +556,10 @@ class Tilemap:
                 print(tile_value["pos"][0],tile_value["pos"][1])
                 self.offgrid_tiles_pos[(tile_value["pos"][0],tile_value["pos"][1])] = True 
         """
+        f.close
         return lights
 
-        f.close
+        
 
     def graph_between_ent_player(self,ent_pos,player_pos):
 
@@ -634,6 +908,8 @@ class Tilemap:
         surrounding_rects_tiles = []
 
         # Get the tiles around the given position
+
+        # If the tile type is interactable, then 
         tiles_around = self.tiles_around(pos, size)
         
         for tile in tiles_around:
@@ -720,8 +996,11 @@ class Tilemap:
                             if isinstance(asset, list):
                                 variant_sub_1 = random.randint(0, len(asset) - 1) if random_ else 0
                                 tile.variant = f"{variant_sub_0};{variant_sub_1}"
+                                self.create_hull_tile_ver(tile)
+
                             else:
                                 tile.variant = f"{variant_sub_0};0"
+                                self.create_hull_tile_ver(tile)
                     else:
                         if neighbors in AUTOTILE_MAP:
                             variant_sub_0 = AUTOTILE_MAP[neighbors]
@@ -729,8 +1008,10 @@ class Tilemap:
                             if isinstance(asset, list):
                                 variant_sub_1 = random.randint(0, len(asset) - 1) if random_ else 0
                                 tile.variant = f"{variant_sub_0};{variant_sub_1}"
+                                self.create_hull_tile_ver(tile)
                             else:
                                 tile.variant = f"{variant_sub_0};0"
+                                self.create_hull_tile_ver(tile)
 
 
     #the only thing that needs updating for tiles are the decals for now, So there is no separate update function for now. 
@@ -807,21 +1088,33 @@ class Tilemap:
                     surf.blit(self.game.assets[tile.type][int(variant_sub[0])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
         
 
-        
+
+
+
         
 class Tile: 
-    def __init__(self,type,variant,pos,dirty = False):
+    def __init__(self,type,variant,pos,dirty = False , hull = None,enclosed = False):
         
         self.type = type 
         self.variant = variant
         self.pos = pos 
         self.dirty = dirty
+        self.hull = hull
+        self.enclosed = enclosed
         self.decals = []
         
    
     def drop_item(self):
         if self.type == 'box':
             print('item_dropped')
+
+
+class Door(Tile):
+    def __init__(self, type, variant, pos,size, dirty=False, hull=None, enclosed=False):
+        super().__init__(type, variant, pos, dirty, hull, enclosed)
+        self.open = False 
+        self.size = size
+
 
 
 class Light(Tile):

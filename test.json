@@ -1,0 +1,1 @@
+{"ambient_nodes": [], "tilemap": {}, "tile_size": 16, "offgrid_0": {"14;7": {"type": "lights", "variant": "0;0", "pos": [14, 7], "radius": 356, "power": 0.9666666666666663, "colorValue": [172, 255, 255, 255]}}, "offgrid_1": {}, "decor": [], "grass": {}}

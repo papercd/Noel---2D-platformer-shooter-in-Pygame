@@ -1,0 +1,52 @@
+game writing: 
+
+shoot em all.
+
+Noel: 
+
+it was gonna be about a soldier going on an adventure in a distraught world, overflown with different aliens, or creatures. 
+
+to save his dog. 
+
+and the dog's name or this guy's name is Noel. 
+
+
+
+what is my Game's 'special' or 'main' game characteristic, what is the hook?
+
+- create one gameplay mechanic that is going to be dyanmic, and fun. - 
+
+that the game will revolve around. 
+
+collectable items - teleportation - slow down the game,  then you can click on a certain point to teleport to. 
+
+			  jetpack  - boosting, horitontal dash,  
+
+weapons  -	 default weapon - 'ak' - infinite ammo 
+	      - can pickup cool weapons that aliens use. 
+
+
+'infections'  - can contain blood of enemies, 
+
+		- when you drink the blood, you gain their special abilities for a certain amount of time.
+
+ 
+
+
+
+first setting will be the day of the 'happening',
+
+Noel will wake up his dog missing, and will go out to save it.  - This will be the demo. 
+
+write the demo scene: 
+
+http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf
+
+
+
+
+
+
+
+
+

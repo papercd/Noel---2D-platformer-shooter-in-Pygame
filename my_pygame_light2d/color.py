@@ -16,4 +16,4 @@ def normalize_color_arguments(R: (int | tuple[int]), G: int, B: int, A: int):
 
 # Convert from 0-1 to 0-255
 def denormalize_color(col):
-    return (int(x * 255) for x in col)
+    return [int(x * 255) for x in col ]

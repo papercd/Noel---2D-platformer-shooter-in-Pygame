@@ -320,8 +320,8 @@ class Flamethrower(Weapon):
             # -------------   predetermined particle parameters 
                 size = 6
                 density = 4
-                rise = 2.7
-                spread = 1.2
+                rise = 2.9
+                spread = 1.4
                 wind = 0
                 #---------------
                 ox,oy = self.mpos[0],self.mpos[1]
