@@ -33,6 +33,7 @@ def load_image_assets_multiple(paths):
     return {key: load_images(path, background=bg) for key, (path, bg) in paths.items()}
 
 
+
 def load_animation_assets(animations):
     return {
         key: Animation(load_images(path, background=bg), img_dur=dur, loop=loop, halt=halt)

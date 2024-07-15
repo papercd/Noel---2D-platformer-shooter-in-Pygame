@@ -27,6 +27,10 @@ class Accurate_Rect_Body():
     def render(self,surf,offset= [0,0]):
         pass 
 
+class interactable:
+    # a class that defines interactable objects, like doors, which physics don't apply constantly, but 
+    # should still be recognized as a tile.
+    pass 
 
 
 
@@ -80,8 +84,9 @@ class PhysicsEntity:
         self.pos[0] += frame_movement[0]
         entity_rect = self.rect()
         for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+            
             tile_type = rect_tile[1].type
-
+            
             if entity_rect.colliderect(rect_tile[0]) and tile_type.split('_')[1] != 'stairs':
                 if frame_movement[0] > 0:
                     self.collisions['right'] = True

@@ -81,6 +81,7 @@ class myGame:
         
 
         self.assets = self.game_assets.assets
+        self.interactables = self.game_assets.interactables
         self.enemies = self.game_assets.enemies
 
 
