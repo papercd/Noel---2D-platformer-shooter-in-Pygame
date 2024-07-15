@@ -26,7 +26,8 @@ class GameAssets:
     def load_building_assets(self):
         building_paths = [
             'building_0', 'building_1', 'building_2', 'building_3', 'building_4',
-            'building_5', 'building_back', 'building_decor', 'lights', 'building_stairs'
+            'building_5', 'building_back', 'building_decor', 'lights', 'building_stairs',
+            'building_door_0' 
         ]
         return load_tile_assets(building_paths, background='transparent')
 
@@ -129,6 +130,6 @@ class GameAssets:
     # Animation
     def load_interactable_assets(self):
             interactable_animations = {
-                 'building_door' : ('tiles/door/building_door','transparent',5, True,False)
+                 'building_door_0' : ('interactables/building_door/0','transparent',5, True,False)
             }
             return load_animation_assets(interactable_animations)

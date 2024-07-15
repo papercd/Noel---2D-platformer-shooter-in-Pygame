@@ -6,7 +6,7 @@ import time
 
 
 from scripts.tilemap import Tilemap,Tile,Light
-from scripts.utils import load_images,load_tile_images
+from scripts.utils import load_images,load_tile_images,Animation
 from scripts.panel import tile_panel 
 
 from scripts.numbers import numbers
@@ -81,10 +81,15 @@ class Editor:
             'building_stairs' : load_tile_images('tiles/building_stairs',background='transparent'), 
             'live_grass': load_tile_images('tiles/live_grass',background='black'),
 
-            'door': load_tile_images('tiles/door/building_door_edit',background = 'transparent'),
+            'building_door': load_tile_images('interactables/building_door_edit',background = 'transparent'),
             #'large_decor' : load_tile_images('tiles/large_decor'),
             'spawners' : load_tile_images('tiles/spawners',background='transparent'),
         } 
+
+        
+        self.interactables = {
+            'building_door_0' : Animation(load_images('interactables/building_door/0',background='transparent'),5,True,False)
+        }
 
         self.backgrounds = {
             'start' : Background(self,load_images('backgrounds/start',background='transparent')),
@@ -398,6 +403,8 @@ class Editor:
 
                                                         
                                                     else: 
+                                                        #check if the tile is a door (expand to interactables later on.)
+                                                        
                                                         self.Tilemap.place_tile(tile_pos_,cur_tile_panel)
                                                         
                                             
@@ -432,13 +439,35 @@ class Editor:
                         if click_loc in self.Tilemap.tilemap: 
                             if self.Tilemap.tilemap[click_loc].type == 'lights': 
                                 self.remove_light(tile_pos)
+                            
+                            else: 
+                                if self.Tilemap.tilemap[click_loc].type.endswith('door'): 
+                                    # Check the location below: 
+                                    check_loc = str(tile_pos[0]) + ';' + str(tile_pos[1]+1)
+                                    if check_loc in self.Tilemap.tilemap and self.Tilemap.tilemap[check_loc].type.endswith('door'):
+                                        del self.Tilemap.tilemap[click_loc]
+                                        del self.Tilemap.tilemap[check_loc]
+                                    else:
+                                        # If the location immediately below the right click tile position does not contain a door tile, 
+                                        # Then check the location above.   
+                                        above_check = str(tile_pos[0]) + ';' + str(tile_pos[1]-1)
+                                        if above_check in self.Tilemap.tilemap and self.Tilemap.tilemap[above_check].type.endswith('door'):
+                                            del self.Tilemap.tilemap[above_check]
+                                            del self.Tilemap.tilemap[click_loc]
+                                        else: 
+                                            print("unpaired door tile error.")
+                                    
+
+                                else: 
+                                    for offset in [(1,0),(-1,0),(0,1),(0,-1)]:
+                                        check_loc = str(tile_pos[0] + offset[0]) + ';' +str(tile_pos[1] + offset[1])
+                                        if check_loc in self.Tilemap.tilemap:
+                                            self.Tilemap.tilemap[check_loc].enclosed = False 
+                                    del self.Tilemap.tilemap[click_loc]
                                 
 
-                            for offset in [(1,0),(-1,0),(0,1),(0,-1)]:
-                                check_loc = str(tile_pos[0] + offset[0]) + ';' +str(tile_pos[1] + offset[1])
-                                if check_loc in self.Tilemap.tilemap:
-                                    self.Tilemap.tilemap[check_loc].enclosed = False 
-                            del self.Tilemap.tilemap[click_loc]
+
+                           
 
                 else: 
                     #off grid tiles 
@@ -480,6 +509,7 @@ class Editor:
 
                                     
                                                         else: 
+                                                            
                                                             self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][str(tile_pos_[0])+';'+str(tile_pos_[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_)
                                                     else: 
                                                         if self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][str(tile_pos_[0])+';'+str(tile_pos_[1])].type == "lights":
@@ -488,6 +518,8 @@ class Editor:
                                                             self.add_light(tile_pos_)
 
                                                         else: 
+                                                             
+                                            
                                                             self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][str(tile_pos_[0])+';'+str(tile_pos_[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos_)
 
                                             
@@ -499,7 +531,7 @@ class Editor:
                                             self.add_light(tile_pos)
                                         
                                         else:
-                                             
+                                        
                                             self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][str(tile_pos[0])+';'+str(tile_pos[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
                                     else: 
                                         if self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][str(tile_pos[0])+';'+str(tile_pos[1])].type == "lights":
@@ -508,7 +540,6 @@ class Editor:
                                             self.add_light(tile_pos)
                                             
                                         else: 
-                                            
                                             self.Tilemap.offgrid_tiles[self.cur_offgrid_layer][str(tile_pos[0])+';'+str(tile_pos[1])] = Tile(cur_tile_panel[3],str(cur_tile_panel[5][0]) + ';' + str(cur_tile_panel[5][1]),tile_pos)
 
 
@@ -767,7 +798,26 @@ class Editor:
                                             if (int(light.position[0]//(self.Tilemap.tile_size)),int(light.position[1]//(self.Tilemap.tile_size))) == (int(check_loc[0]) ,int(check_loc[1])): 
                                                 self.lights_engine.lights.remove(light)
                                                 break
-                                    del dicts[tile_pos_]   
+                                        del dicts[tile_pos_] 
+                                    else: 
+                                        if dicts[tile_pos_].type.endswith('door'):
+                                            # Check the location below 
+                                            below_check = check_loc[0] + ';' + str(int(check_loc[1]) + 1)
+                                            if below_check in dicts and dicts[below_check].type.endswith('door'):
+                                                del dicts[tile_pos_]
+                                                del dicts[below_check]
+                                            else: 
+                                                # Check the location above 
+                                                above_check = check_loc[0] + ';' + str(int(check_loc[1]) -1)
+                                                if above_check in dicts and dicts[above_check].type.endswith('door'):
+                                                    del dicts[tile_pos_]
+                                                    del dicts[above_check]
+                                                else: 
+                                                    print("unpaired door tile error.") 
+                                        else: 
+                                            del dicts[tile_pos_]
+
+                                       
 
                 #blit the selection box. 
                 pygame.draw.rect(self.background_surf,(0,100,255),(self.selection_box_start_pos[0]-render_scroll[0],self.selection_box_start_pos[1]-render_scroll[1],self.selection_box_dim[0],self.selection_box_dim[1]),2)
@@ -997,6 +1047,13 @@ class Editor:
                                 light.set_color(255, 255, 255, 200)
                                 self.lights_engine.lights.append(light)
                             """
+                    if event.key == pygame.K_5: 
+                        # Print out the door tiles in the tilemap. 
+                        for tilekey in self.Tilemap.tilemap: 
+                            if self.Tilemap.tilemap[tilekey].type.endswith('door'):
+                                print(self.Tilemap.tilemap[tilekey])
+
+                    
                     if event.key == pygame.K_l:
                         #you can set ambient light with this.
                         UI.init(self.foreground_surf)

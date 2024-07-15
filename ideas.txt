@@ -1,0 +1,15 @@
+
+
+Noel :
+
+
+-----------------------------------------
+
+implement door - 0
+
+spamming right click as you are equiping causes a crash. Has to do with self.angle_opening variable not being assigned a value 
+on init. 
+
+slow down player movement when on stairs -1 
+
+come up with new decoration tiles (matching the 'city' setting)
