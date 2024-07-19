@@ -43,6 +43,46 @@ write the demo scene:
 http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf
 
 
+Noel: 
+
+
+today: create the map , make the door open. 
+
+different ambient values should be applied to the pixels. How? - > self.ambient x -> lookup ambient depending on x value. 
+
+
+
+
+#version 330 core
+
+in vec2 fragmentTexCoord; // top-left is [0, 1] and bottom-right is [1, 0]
+uniform sampler2D imageTexture; // used texture unit
+uniform sampler2D lightmap;
+uniform vec4 ambient;
+
+uniform float maxLuminosity = 2.5f;
+
+uniform vec2 range;
+
+const vec4 blackAmbient = vec4(0.0, 0.0, 0.0, 1.0);
+
+out vec4 color;
+
+void main()
+{
+    vec4 texcolor = texture(imageTexture, fragmentTexCoord);
+    vec4 lightVal = texture(lightmap, fragmentTexCoord);
+
+    lightVal = clamp(lightVal, 0.0, 1.0);
+    
+    if (fragmentTexCoord.x < range.x || fragmentTexCoord.x > range.y) {
+        color = texcolor * (blackAmbient + lightVal);
+    } else {
+        color = texcolor * (ambient + lightVal);
+    }
+}
+
+
 
 
 

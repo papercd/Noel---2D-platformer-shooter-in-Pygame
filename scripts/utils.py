@@ -21,6 +21,8 @@ def load_image(path,background = 'black'):
     return sprite 
 
 
+
+
 #now the this load_images function will get all the sprites within one directory and turn them into a list.
 
 def load_tile_assets(paths, background=None):

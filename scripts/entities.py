@@ -3,6 +3,7 @@
 import random
 import pygame 
 import math
+from scripts.los import line_of_sight
 from scripts.particles import Particle,non_animated_particle,bullet_collide_particle,bullet_trail_particle_wheelbot
 from scripts.health import HealthBar,StaminaBar
 from scripts.indicator import indicator 
@@ -62,9 +63,10 @@ class PhysicsEntity:
         return pygame.Rect(self.pos[0], self.pos[1], self.size[0], self.size[1])
 
     def rect(self):
+        
         return pygame.Rect(self.pos[0], self.pos[1], self.size[0], self.size[1])
 
-    def update_pos(self, tile_map, movement=(0, 0)):
+    def update_pos(self, tile_map, movement=(0, 0),anim_offset = (0,0)):
         if movement[0] > 0:
             self.flip = False
         if movement[0] < 0 :
@@ -83,22 +85,25 @@ class PhysicsEntity:
 
         self.pos[0] += frame_movement[0]
         entity_rect = self.rect()
-        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+        for rect_tile in tile_map.physics_rects_around((self.pos[0] +anim_offset[0] ,self.pos[1] +anim_offset[1] ), self.size):
             
             tile_type = rect_tile[1].type
             
             if entity_rect.colliderect(rect_tile[0]) and tile_type.split('_')[1] != 'stairs':
                 if frame_movement[0] > 0:
                     self.collisions['right'] = True
+                    
                     entity_rect.right = rect_tile[0].left
                 elif frame_movement[0] < 0:
                     self.collisions['left'] = True
+                    
                     entity_rect.left = rect_tile[0].right
-                self.pos[0] = entity_rect.x
+                
+                self.pos[0] = entity_rect.x - anim_offset[0]
 
         self.pos[1] += frame_movement[1]
         entity_rect = self.rect()
-        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+        for rect_tile in tile_map.physics_rects_around((self.pos[0] +anim_offset[0] ,self.pos[1] +anim_offset[1]), self.size):
             tile_type = rect_tile[1].type
             if entity_rect.colliderect(rect_tile[0]):
                 if tile_type.split('_')[1] != 'stairs':
@@ -110,7 +115,7 @@ class PhysicsEntity:
                         self.collisions['up'] = True
                         entity_rect.top = rect_tile[0].bottom
                     self.velocity[1] = 0
-                    self.pos[1] = entity_rect.y
+                    self.pos[1] = entity_rect.y - anim_offset[1]
                 else:
                     variant = rect_tile[1].variant.split(';')[0]
                     pos_height = 0
@@ -133,7 +138,7 @@ class PhysicsEntity:
                     if entity_rect.bottom > target_y:
                         self.on_ramp = 1 if variant == '0' else -1
                         entity_rect.bottom = target_y
-                        self.pos[1] = entity_rect.y
+                        self.pos[1] = entity_rect.y -anim_offset[1]
                         self.collisions['down'] = True
 
     def render(self, surf, offset):
@@ -183,6 +188,85 @@ class Enemy(PhysicsEntity):
                 for offset_ in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                     surf.blit(hit_surface, (int(self.pos[0] - offset[0] + offset_[0]), int(self.pos[1] - offset[1] + offset_[1])))
                 self.hit_mask = None
+
+
+    def _handle_movment(self,tilemap,movement,check_offset):
+        flip_offset = -check_offset if self.flip else check_offset + self.size[0]
+        solid_check_1 = tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8))
+        solid_check_2 = tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - tilemap.tile_size))
+        
+        if solid_check_1:
+            if solid_check_2:
+                if tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
+                    self.flip = not self.flip
+                else:
+                    self.velocity[1] = -5
+            else:
+                tile = tilemap.return_tile(None, (self.pos[0] + flip_offset, self.pos[1] + 8))
+                if tile is None or tile.type == 'stairs':
+                    movement = (movement[0] + (-1.5 if self.flip else 1.5), movement[1])
+                else:
+                    self.velocity[1] = -3.3
+        else:
+            if solid_check_2:
+                if not tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
+                    self.velocity[1] = -5
+                else:
+                    self.flip = not self.flip
+            else:
+                movement = self._handle_fall(tilemap, movement, flip_offset)
+
+        return movement
+        
+
+    
+    def _handle_fall(self,tilemap,movement,flip_offset):
+        for i in range(1, 6):
+            if tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 + i * tilemap.tile_size)):
+                movement = (movement[0] + (-1.5 if self.flip else 1.5), movement[1])
+                break
+        else:
+            self.flip = not self.flip
+        return movement
+
+    def _update_health_bar(self,offset = (0,0)):
+        self.health_bar.x = self.pos[0] + offset[0]
+        self.health_bar.y = self.pos[1] + offset[1]
+        self.health_bar.update(self.hp)
+
+
+    def _handle_death(self):
+        self.set_state('death')
+        if self.animation.done:
+            del self
+            return True
+    
+
+    def _handle_aggro_state(self, distance, tilemap,movement, player_pos,):
+        if distance < 12 * tilemap.tile_size or self.first_hit:
+            self.aggro = True
+        if self.hurt:
+            self._handle_hurt_state(player_pos)
+        else:
+            self._handle_combat_state(movement, player_pos,tilemap) 
+
+    
+    def _handle_hurt_state(self, player_pos):
+        pass 
+
+
+    def _handle_combat_state(self, movement, player_pos):
+        pass 
+
+
+    def _handle_attack_state(self, player_pos):
+        pass 
+
+    def hit(self,hit_damage):
+        pass 
+    
+
+
 
     def hit(self, hit_damage):
         if self.hp > 0:
@@ -338,8 +422,9 @@ class Wheel_bot(Enemy):
     def collision_rect(self):
         return pygame.Rect(self.pos[0] + 3, self.pos[1] + 1, 14, 20)
 
-    def update(self, tilemap, player_pos, dt, movement=(0, 0)):
-        if math.dist(self.pos, player_pos) > 20 * tilemap.tile_size:
+    def update(self, tilemap, player_pos, dt, movement=(0, 0)):   
+        if math.dist(self.pos, player_pos) > 15 * tilemap.tile_size:
+           
             self.aggro_timer = self.aggro = self.charge_time = 0
             self.first_hit = self.shooting = False
 
@@ -392,6 +477,8 @@ class Wheel_bot(Enemy):
 
         return movement
 
+
+
     def _handle_fall(self, tilemap, movement, flip_offset):
         for i in range(1, 6):
             if tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 + i * tilemap.tile_size)):
@@ -425,12 +512,16 @@ class Wheel_bot(Enemy):
             self._handle_aggro_state(distance, tilemap, movement, player_pos)
 
     def _handle_aggro_state(self, distance, tilemap,movement, player_pos):
-        if distance < 12 * tilemap.tile_size or self.first_hit:
-            self.aggro = True
-        if self.hurt:
-            self._handle_hurt_state(player_pos)
-        else:
-            self._handle_combat_state(movement, player_pos)
+        
+            if (distance < 12 * tilemap.tile_size or self.first_hit):
+                if line_of_sight(player_pos,self.pos,tilemap.tilemap,16):
+                    self.aggro = True
+                else: 
+                    self.aggro  = False 
+            if self.hurt:
+                self._handle_hurt_state(player_pos)
+            else:
+                self._handle_combat_state(movement, player_pos,tilemap)
 
     def _handle_hurt_state(self, player_pos):
         self.shooting = False
@@ -441,7 +532,7 @@ class Wheel_bot(Enemy):
             self.hurt = False
             self.alerted = True
 
-    def _handle_combat_state(self, movement, player_pos):
+    def _handle_combat_state(self, movement, player_pos,tilemap):
         if not self.aggro:
             self.charge_time = 0
             if self.collisions['down']:
@@ -451,9 +542,9 @@ class Wheel_bot(Enemy):
             else:
                 self.set_state('idle')
         else:
-            self._handle_attack_state(player_pos)
+            self._handle_attack_state(player_pos,tilemap)
 
-    def _handle_attack_state(self, player_pos):
+    def _handle_attack_state(self, player_pos,tilemap):
         self.flip = player_pos[0] < self.pos[0]
         if not self.alerted:
             self.set_state('alert')
@@ -461,6 +552,7 @@ class Wheel_bot(Enemy):
                 self.charge_time = 0
                 self.alerted = True
         else:
+            
             self.weapon.update(player_pos)
             if not self.shooting:
                 if self.charge_time < 100:
@@ -497,7 +589,119 @@ class Wheel_bot(Enemy):
             self.weapon.render(surf, offset)
 
 
+class Ball_slinger(Enemy):
+    def __init__(self, game, pos, size):
+        super().__init__(game, pos, size,'ball_slinger', 200)
+        self.charge_time = 0
+        self.hurt = False 
+        self.hit_mask = None 
+        self.health_bar = HealthBar(self.pos[0] + 3, self.pos[1] - 5, 16, 2, self.hp, True)
+
+    
+    def rect(self):
         
+        return pygame.Rect(self.pos[0] +9,self.pos[1]+8,13,19)
+
+    def collision_rect(self):
+        pass 
+
+    
+
+    def update(self,tilemap,player_pos,dt,movement = (0,0)):
+        if math.dist(self.pos, player_pos) > 20 * tilemap.tile_size:
+            self.aggro_timer = self.aggro = self.charge_time = 0
+            self.first_hit = False 
+        
+        if self.hp > 0:
+            if self.walking: 
+                if self.aggro: 
+                    self.aggro_timer += self.aggro 
+                else:
+                    movement = self._handle_movement(tilemap,movement)
+                    self.walking = max(0,self.walking-1)
+            elif random.random() < 0.01:
+                self.walking = random.randint(30,120)
+        else: 
+            pass 
+        
+        super().update_pos(tilemap,movement=movement,anim_offset= (9,8))
+        kill = False 
+        if self.hp <= 0 :
+            kill = self._handle_death()
+        else:
+            self._handle_states(tilemap, movement,player_pos)
+        if kill: return True 
+
+        
+    
+    def _handle_states(self,tilemap,movement,player_pos):
+        distance = math.dist(self.pos,player_pos)
+        self._handle_aggro_state(distance,tilemap,movement,player_pos)
+
+    
+    def _handle_aggro_state(self, distance, tilemap, movement, player_pos):
+            if (distance < 12 * tilemap.tile_size or self.first_hit):
+                if line_of_sight(player_pos,self.pos,tilemap.tilemap,16):
+                    self.aggro = True
+                else: 
+                    self.aggro  = False 
+            if self.hurt:
+                self._handle_hurt_state(player_pos)
+            else:
+                self._handle_combat_state(movement, player_pos,tilemap)
+
+    def _handle_combat_state(self, movement, player_pos,tilemap):
+        if not self.aggro:
+            self.charge_time = 0
+            if self.collisions['down']:
+                self.air_time = 0
+            if movement[0] != 0:
+                self.set_state('move')
+            else:
+                self.set_state('idle')
+
+
+    def _handle_movement(self,tilemap,movement):
+        flip_offset = -6 if self.flip else 6 + 30
+        solid_check_1 = tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8))
+        solid_check_2 = tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - tilemap.tile_size))
+        
+        if solid_check_1:
+            if solid_check_2:
+                if tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
+                    self.flip = not self.flip
+                else:
+                    print("check1")
+                    self.velocity[1] = -5
+            else:
+                tile = tilemap.return_tile(None, (self.pos[0] + flip_offset, self.pos[1] + 8))
+                if tile is None or tile.type == 'stairs':
+                    movement = (movement[0] + (-1.5 if self.flip else 1.5), movement[1])
+                else:
+                    print("check2")
+                    self.velocity[1] = -4.5
+        else:
+            if solid_check_2:
+                if not tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
+                    print("check3")
+                    self.velocity[1] = -5
+                else:
+                    self.flip = not self.flip
+            else:
+                movement = self._handle_fall(tilemap, movement, flip_offset)
+
+        return movement
+        
+    
+    def _handle_fall(self, tilemap, movement, flip_offset):
+        for i in range(1, 6):
+            if tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 + i * tilemap.tile_size)):
+                movement = (movement[0] + (-1.5 if self.flip else 1.5), movement[1])
+                break
+        else:
+            self.flip = not self.flip
+        return movement
+
         
 """
 class Canine(Enemy):

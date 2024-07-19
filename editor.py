@@ -92,8 +92,8 @@ class Editor:
         }
 
         self.backgrounds = {
-            'start' : Background(self,load_images('backgrounds/start',background='transparent')),
-            'building' : Background(self,load_images('backgrounds/building',background='transparent')),
+            #'start' : Background(self,load_images('backgrounds/start',background='transparent')),
+            'building' : Background(self,load_images('backgrounds/building',background= 'transparent')),
         }
 
         self.movement = [False,False,False,False]
@@ -103,7 +103,7 @@ class Editor:
 
         self.cur_offgrid_layer = 0
 
-        self.json_file = 'map.json'
+        self.json_file = 'test.json'
 
         self.offgrid_layer_ind = alphabets('cur_off_layer')
         self.offgrid_layer_num = numbers(self.cur_offgrid_layer)
@@ -439,6 +439,7 @@ class Editor:
                         if click_loc in self.Tilemap.tilemap: 
                             if self.Tilemap.tilemap[click_loc].type == 'lights': 
                                 self.remove_light(tile_pos)
+                                del self.Tilemap.tilemap[click_loc]
                             
                             else: 
                                 if self.Tilemap.tilemap[click_loc].type.endswith('door'): 
@@ -1252,7 +1253,7 @@ class Editor:
         )
         tex.release()
 
-        self.lights_engine.render(self.ambient_node_ptr.range,(int(render_scroll[0] ),int(render_scroll[1])))
+        self.lights_engine.render(self.ambient_node_ptr.range,render_scroll,(0,0))
 
         pygame.display.flip()
 

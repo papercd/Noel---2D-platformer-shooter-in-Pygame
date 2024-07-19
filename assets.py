@@ -123,6 +123,10 @@ class GameAssets:
             'sabre/move': ('entities/enemy/sabre/move', 'transparent', 6, True,False),
             'sabre/dormant': ('entities/enemy/sabre/dormant', 'transparent', 6, True,False),
             'sabre/wake': ('entities/enemy/sabre/wake', 'transparent', 5, False,False),
+
+
+            'ball_slinger/idle' : ('entities/enemy/ball_slinger/idle','transparent',7,True,False),
+            'ball_slinger/move' : ('entities/enemy/ball_slinger/move','transparent',6,True,False)
             # Add other sabre animations as needed
             }
             return load_animation_assets(enemy_animations)
