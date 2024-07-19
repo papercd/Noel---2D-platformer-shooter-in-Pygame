@@ -88,8 +88,34 @@ class LightingEngine:
             'pygame_light2d', 'fragment_light.glsl')
         fragment_src_blur = resources.read_text(
             'pygame_light2d', 'fragment_blur.glsl')
+        
+        # Read source files
+
+        with open('my_pygame_light2d/fragment_mask.glsl', encoding='utf-8') as file:
+           
+            fragment_src_mask = file.read()
+            
+            try:
+                self._prog_mask = self.ctx.program(vertex_shader=vertex_src, fragment_shader=fragment_src_mask)
+            except Exception as e:
+                print("Shader compilation or linking error:", e)
+                return
+
+            # Print all active uniforms to verify 'range' is present
+            print("Active uniforms:")
+            for uniform in self._prog_mask:
+                print(uniform)
+            
+            try:
+                print(self._prog_mask['range'])
+            except KeyError:
+                print("Uniform 'range' not found")
+
+        """
         fragment_src_mask = resources.read_text(
             'pygame_light2d', 'fragment_mask.glsl')
+
+        """
         fragment_src_draw = resources.read_text(
             'pygame_light2d', 'fragment_draw.glsl')
 
@@ -100,8 +126,9 @@ class LightingEngine:
                                             fragment_shader=fragment_src_light)
         self._prog_blur = self.ctx.program(vertex_shader=vertex_src,
                                            fragment_shader=fragment_src_blur)
-        self._prog_mask = self.ctx.program(vertex_shader=vertex_src,
-                                           fragment_shader=fragment_src_mask)
+        
+        
+        
         self._prog_draw = self.ctx.program(vertex_shader=vertex_src,
                                            fragment_shader=fragment_src_draw)
 
@@ -331,7 +358,7 @@ class LightingEngine:
         self._fbo_bg.clear(R, G, B, A)
         self._fbo_fg.clear(0, 0, 0, 0)
 
-    def render(self,range,offset = (0,0)):
+    def render(self,range,offset,screen_shake):
         """
         Render the lighting effects onto the screen.
 
@@ -355,6 +382,9 @@ class LightingEngine:
         self._buf_lt.clear(0, 0, 0, 0)
 
 
+        render_shake = (int((offset[0] -screen_shake[0])),int((offset[1] -screen_shake[1])))
+
+
         """
         
         position of 'hulls' or shadow objects, and the lights  are  offsetted.
@@ -363,16 +393,16 @@ class LightingEngine:
 
 
         # Send hull data to SSBOs
-        self._send_hull_data(offset)
+        self._send_hull_data(render_shake)
 
         # Render lights onto double buffer
-        self._render_to_buf_lt(range,offset)
+        self._render_to_buf_lt(range,render_shake)
 
         # Blur lightmap for soft shadows and render onto aomap
         self._render_aomap()
 
         # Render background masked with the lightmap
-        self._render_background()
+        self._render_background(range,offset)
 
         # Render foreground onto screen
         self._render_foreground()
@@ -434,7 +464,7 @@ class LightingEngine:
         vbo.release()
         vao.release()
 
-    def _send_hull_data(self,offset = (0,0)):
+    def _send_hull_data(self,offset):
         # Lists with hull vertices and indices
         vertices = []
         indices = []
@@ -447,7 +477,7 @@ class LightingEngine:
             #the vertices of the hulls are adjusted by the offset, then added to the list. 
 
             for vertice in hull.vertices:
-                vertices_buffer.append((int(vertice[0] - offset[0]), int(vertice[1] - offset[1])))
+                vertices_buffer.append((int(vertice[0]- offset[0]), int(vertice[1]-offset[1])))
             vertices += vertices_buffer
             indices.append(len(vertices))
 
@@ -460,7 +490,7 @@ class LightingEngine:
         data_ind = np.array(indices, dtype=np.int32).flatten().tobytes()
         self._ssbo_ind.write(data_ind)
 
-    def _render_to_buf_lt(self,range,offset = (0,0)):
+    def _render_to_buf_lt(self,range,offset):
         # Disable alpha blending to render lights
         self.ctx.disable(moderngl.BLEND)
 
@@ -507,7 +537,7 @@ class LightingEngine:
             #the light position is offseted, then passed to the shader.
 
             # Send light uniforms
-            self._prog_light['lightPos'] = self._point_to_uv((int(light.position[0] - offset[0]), int(light.position[1] - offset[1])))
+            self._prog_light['lightPos'] = self._point_to_uv((int(light.position[0]-offset[0] ),int(light.position[1]-offset[1] )))
             self._prog_light['lightCol'] = light._color
             self._prog_light['lightPower'] = light.cur_power
             self._prog_light['radius'] = light.radius
@@ -535,14 +565,20 @@ class LightingEngine:
         self._prog_blur['blurRadius'] = self.shadow_blur_radius
         self._vao_blur.render()
 
-    def _render_background(self):
+    def _render_background(self,range,offset):
         self.ctx.screen.use()
         self._tex_bg.use()
 
         self._tex_ao.use(1)
+
+        # calculate lowerBound and upper bound values to pass to shader 
+      
+       
         self._prog_mask['lightmap'].value = 1
         self._prog_mask['ambient'].value = self._ambient
 
+        #self._prog_mask['range'].value = ((range[0] - offset[0])/self._native_res[0],(range[1] - offset[0])/self._native_res[0])
+        
         self._vao_mask.render()
 
     def _render_foreground(self):

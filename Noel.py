@@ -98,9 +98,8 @@ class myGame:
         }
 
         self.backgrounds = {
-
-            'start' : Background(self,load_images('backgrounds/start',background='transparent')),
-            'building' : Background(self,load_images('backgrounds/building',background='transparent')),
+            'building' : Background(self,load_images('backgrounds/building',background= 'transparent')),
+            'new_building' : Background(self,load_images('backgrounds/new_building',background='transparent'))
         }
         
 
@@ -124,7 +123,7 @@ class myGame:
         self.shadow_objects = [] 
 
         """"""
-        self.lights_engine.lights = self.Tilemap.load('map.json')
+        self.lights_engine.lights = self.Tilemap.load('test.json')
 
         """
         for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
@@ -199,7 +198,7 @@ class myGame:
             test_shell = Bullet(self,[0,0],test_shell_image.get_size(),test_shell_image,'rifle_small')
             self.ak_47.load(test_shell)
         
-        self.ak_47_2 = self.weapons['ak'].copy()
+        self.ak_47_2 = self.weapons['ak'].copya()
         for i in range(0,1005):
             test_shell_image = self.bullets['rifle_small'].copy()
             test_shell = Bullet(self,[0,0],test_shell_image.get_size(),test_shell_image,'rifle_small')
@@ -222,7 +221,7 @@ class myGame:
         self.HUD = HUD(self.player,self.assets['health_UI'],self.foreground_surf.get_size())
         
         
-        #extract grasstiles and place them down using the grassManager.
+        #extract grddddddasstiles and place them down using the grassManager.
         self.gm = GrassManager('data/images/tiles/live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
         self.grass_locations = []
 
@@ -237,7 +236,7 @@ class myGame:
     
         #spawner order: 0 : player, 1: canine: 2: wheel bot 
         
-        for spawner in self.Tilemap.extract([('spawners','0;0'),('spawners','1;0'),('spawners','2;0'),('spawners','3;0')]):   
+        for spawner in self.Tilemap.extract([('spawners','0;0'),('spawners','1;0'),('spawners','2;0'),('spawners','3;0'),('spawners','4;0')]):   
             if spawner.variant == '0;0':
                 
                 self.player.pos = [spawner.pos[0] * self.Tilemap.tile_size, spawner.pos[1] * self.Tilemap.tile_size]
@@ -251,12 +250,16 @@ class myGame:
             elif spawner.variant == '2;0':
                 
                 #wheelbot 
+                #print("check")
                 self.existing_enemies.append(Wheel_bot(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(20,22)))
                 """
                 elif spawner.variant == '3;0':
                     self.existing_enemies.append(Sabre(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(30,27)))
                 """
-
+            elif spawner.variant == "4;0":
+                #ball slinger 
+                print("check")
+                self.existing_enemies.append(Ball_slinger(self,(spawner.pos[0] *self.Tilemap.tile_size,spawner.pos[1] *self.Tilemap.tile_size), (13,19)))
 
         self.dt = 0
         self.start = time.time()
@@ -351,7 +354,10 @@ class myGame:
             self.background_surf.fill((155,155,155))
             self.foreground_surf.fill((0,0,0,0))
             self.bsurf.fill((0,0,0,0))
+
             self.backgrounds['building'].render(self.background_surf,render_scroll)
+
+            #self.backgrounds['new_building'].render(self.background_surf,render_scroll)
            
          
 
@@ -672,13 +678,14 @@ class myGame:
                     if event.key == pygame.K_s: 
                         self.player.slide =False 
 
-            
-
+            #print(self.player.pos[0] - render_scroll[0] ,self.cursor.pos[0])
+            #print(self.ambient_node_ptr.range[0] - render_scroll[0])
 
             #self.display_2.blit(self.display,(0,0))
             #print(len(self.lights_engine.hulls))
             screenshake_offset = (random.random()* self.screen_shake - self.screen_shake /2, random.random()* self.screen_shake - self.screen_shake /2)
 
+            
             tex = self.lights_engine.surface_to_texture(self.background_surf)
            
 
@@ -704,7 +711,10 @@ class myGame:
             )
             tex.release()
             
-            self.lights_engine.render(self.ambient_node_ptr.range,(int((render_scroll[0] -screenshake_offset[0])),int((render_scroll[1]-screenshake_offset[1]))))
+
+
+
+            self.lights_engine.render(self.ambient_node_ptr.range,render_scroll, screenshake_offset)
             
             #self.screen.blit(pygame.transform.scale(self.display_2,self.screen.get_size()),screenshake_offset)
 

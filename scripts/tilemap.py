@@ -461,7 +461,7 @@ class Tilemap:
 
                 else: 
                     variant_num = int(tile_data['variant'].split(';')[0])
-                    print(variant_num)
+                    
                     if variant_num == 8:
                         vertices = [(tile_data['pos'][0] *   self.tile_size + 2  ,tile_data['pos'][1]   * self.tile_size+ 2 ) , 
                                     ((tile_data['pos'][0]+1) *self.tile_size - 2 ,tile_data['pos'][1] *self.tile_size+ 2  ) , 
