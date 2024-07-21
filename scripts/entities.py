@@ -15,6 +15,9 @@ from scripts.weapon_list import DoublyLinkedList
 from my_pygame_light2d.light import PointLight
 
 
+INTERACTABLES = {'building_door','trap_door'}
+
+
 #a body class to implement a more accurate body with better physics that require rotation, 
 #utilizing the pymunk module. 
 
@@ -83,23 +86,69 @@ class PhysicsEntity:
 
         frame_movement = (movement[0] + self.velocity[0], movement[1] + self.velocity[1]) if not self.cut_movement_input else self.velocity
 
+        interactables = []
+
         self.pos[0] += frame_movement[0]
         entity_rect = self.rect()
         for rect_tile in tile_map.physics_rects_around((self.pos[0] +anim_offset[0] ,self.pos[1] +anim_offset[1] ), self.size):
             
             tile_type = rect_tile[1].type
             
+            if tile_type in INTERACTABLES:
+                interactables.append(rect_tile) 
+            
+
             if entity_rect.colliderect(rect_tile[0]) and tile_type.split('_')[1] != 'stairs':
-                if frame_movement[0] > 0:
-                    self.collisions['right'] = True
-                    
-                    entity_rect.right = rect_tile[0].left
-                elif frame_movement[0] < 0:
-                    self.collisions['left'] = True
-                    
-                    entity_rect.left = rect_tile[0].right
-                
-                self.pos[0] = entity_rect.x - anim_offset[0]
+                if tile_type.split('_')[1] == 'door':
+                    if  rect_tile[1].open:
+                        continue
+                    else:
+
+                        # if you close the door on youself (trap door and vertical door)
+                        if rect_tile[1].trap: 
+                            continue 
+                        else: 
+                            if frame_movement[0] > 0 :
+                                self.collisions['right'] = True
+                                
+                                entity_rect.right = rect_tile[0].left
+                            elif frame_movement[0] < 0:
+                                self.collisions['left'] = True
+                                
+                                entity_rect.left = rect_tile[0].right
+                            else: 
+                                if entity_rect.centerx -rect_tile[0].centerx <0:
+                                    self.collisions['right'] = True
+                                    entity_rect.right = rect_tile[0].left
+                                    
+                                else:
+                                    self.collisions['left'] = True 
+                                    entity_rect.left = rect_tile[0].right 
+                                
+                            self.pos[0] = entity_rect.x - anim_offset[0]
+                            
+                else:
+                    if frame_movement[0] > 0:
+                        self.collisions['right'] = True
+                        
+                        entity_rect.right = rect_tile[0].left
+                    elif frame_movement[0] < 0:
+                        self.collisions['left'] = True
+                        
+                        entity_rect.left = rect_tile[0].right
+                    else: 
+                        if entity_rect.centerx -rect_tile[0].centerx <0:
+                            self.collisions['right'] = True
+                            entity_rect.right = rect_tile[0].left
+                            
+                        else:
+                            self.collisions['left'] = True 
+                            entity_rect.left = rect_tile[0].right 
+                        
+
+
+
+                    self.pos[0] = entity_rect.x - anim_offset[0]
 
         self.pos[1] += frame_movement[1]
         entity_rect = self.rect()
@@ -107,6 +156,10 @@ class PhysicsEntity:
             tile_type = rect_tile[1].type
             if entity_rect.colliderect(rect_tile[0]):
                 if tile_type.split('_')[1] != 'stairs':
+                    if tile_type.split('_')[1] == 'door' and  rect_tile[1].open:
+                        continue 
+                    
+
                     if frame_movement[1] > 0:
                         self.collisions['down'] = True
                         self.on_ramp = 0
@@ -140,6 +193,8 @@ class PhysicsEntity:
                         entity_rect.bottom = target_y
                         self.pos[1] = entity_rect.y -anim_offset[1]
                         self.collisions['down'] = True
+        
+        return interactables
 
     def render(self, surf, offset):
         surf.blit(pygame.transform.flip(self.animation.img(), self.flip, False),
@@ -453,29 +508,32 @@ class Wheel_bot(Enemy):
         flip_offset = -8 if self.flip else 8 + self.size[0]
         solid_check_1 = tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8))
         solid_check_2 = tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - tilemap.tile_size))
-
-        if solid_check_1:
-            if solid_check_2:
-                if tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
-                    self.flip = not self.flip
-                else:
-                    self.velocity[1] = -5
-            else:
-                tile = tilemap.return_tile(None, (self.pos[0] + flip_offset, self.pos[1] + 8))
-                if tile is None or tile.type == 'stairs':
-                    movement = (movement[0] + (-1.5 if self.flip else 1.5), movement[1])
-                else:
-                    self.velocity[1] = -3.3
+        if self.aggro: 
+            # follow the player:
+            pass 
         else:
-            if solid_check_2:
-                if not tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
-                    self.velocity[1] = -5
+            if solid_check_1:
+                if solid_check_2:
+                    if tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
+                        self.flip = not self.flip
+                    else:
+                        self.velocity[1] = -5
                 else:
-                    self.flip = not self.flip
+                    tile = tilemap.return_tile(None, (self.pos[0] + flip_offset, self.pos[1] + 8))
+                    if tile is None or tile.type == 'stairs':
+                        movement = (movement[0] + (-1.5 if self.flip else 1.5), movement[1])
+                    else:
+                        self.velocity[1] = -3.3
             else:
-                movement = self._handle_fall(tilemap, movement, flip_offset)
+                if solid_check_2:
+                    if not tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
+                        self.velocity[1] = -5
+                    else:
+                        self.flip = not self.flip
+                else:
+                    movement = self._handle_fall(tilemap, movement, flip_offset)
 
-        return movement
+            return movement
 
 
 
@@ -589,121 +647,173 @@ class Wheel_bot(Enemy):
             self.weapon.render(surf, offset)
 
 
+class Tormentor(Enemy):
+    def __init__(self, game, pos, size, variant, hp):
+        super().__init__(game, pos, size, 'tormentor', 500)
+
+
+
+class Shotgunner(Enemy):
+    def __init__(self, game, pos, size):
+        super().__init__(game, pos, size, 'shotgunner', 300)
+
+
+
+
 class Ball_slinger(Enemy):
     def __init__(self, game, pos, size):
-        super().__init__(game, pos, size,'ball_slinger', 200)
+        super().__init__(game, pos, size,'ball_slinger', 300)
         self.charge_time = 0
         self.hurt = False 
         self.hit_mask = None 
-        self.health_bar = HealthBar(self.pos[0] + 3, self.pos[1] - 5, 16, 2, self.hp, True)
-
+        self.health_bar = HealthBar(self.pos[0] + 6, self.pos[1] - 5, 16, 2, self.hp, True)
+        self.attacking = False 
     
     def rect(self):
         
         return pygame.Rect(self.pos[0] +9,self.pos[1]+8,13,19)
 
     def collision_rect(self):
-        pass 
+        return pygame.Rect(self.pos[0] -3,self.pos[1]+8,13,19) 
 
     
 
     def update(self,tilemap,player_pos,dt,movement = (0,0)):
-        if math.dist(self.pos, player_pos) > 20 * tilemap.tile_size:
-            self.aggro_timer = self.aggro = self.charge_time = 0
-            self.first_hit = False 
+   
         
         if self.hp > 0:
             if self.walking: 
                 if self.aggro: 
                     self.aggro_timer += self.aggro 
+                    #movement = self._handle_movement(tilemap,movement)
                 else:
-                    movement = self._handle_movement(tilemap,movement)
                     self.walking = max(0,self.walking-1)
+                movement = self._handle_movement(tilemap,movement)
             elif random.random() < 0.01:
                 self.walking = random.randint(30,120)
         else: 
             pass 
         
+        self._update_health_bar()
         super().update_pos(tilemap,movement=movement,anim_offset= (9,8))
+
         kill = False 
         if self.hp <= 0 :
             kill = self._handle_death()
         else:
+            pass
             self._handle_states(tilemap, movement,player_pos)
         if kill: return True 
-
         
+    def _update_health_bar(self, offset=(0, 0)):
+        self.health_bar.x = self.pos[0] +6
+        self.health_bar.y = self.pos[1] - 6
+        self.health_bar.update(self.hp)
     
     def _handle_states(self,tilemap,movement,player_pos):
-        distance = math.dist(self.pos,player_pos)
-        self._handle_aggro_state(distance,tilemap,movement,player_pos)
-
-    
-    def _handle_aggro_state(self, distance, tilemap, movement, player_pos):
-            if (distance < 12 * tilemap.tile_size or self.first_hit):
-                if line_of_sight(player_pos,self.pos,tilemap.tilemap,16):
-                    self.aggro = True
-                else: 
-                    self.aggro  = False 
-            if self.hurt:
-                self._handle_hurt_state(player_pos)
-            else:
-                self._handle_combat_state(movement, player_pos,tilemap)
-
-    def _handle_combat_state(self, movement, player_pos,tilemap):
-        if not self.aggro:
-            self.charge_time = 0
+        if math.dist(self.pos, player_pos) > 15 * tilemap.tile_size:
+            # the wandering state 
+            self.attacking = False 
+            self.aggro = False
+            
             if self.collisions['down']:
                 self.air_time = 0
             if movement[0] != 0:
                 self.set_state('move')
             else:
-                self.set_state('idle')
+                self.set_state('idle') 
+        elif math.dist(self.pos, player_pos) < 3 * tilemap.tile_size or self.attacking:
+            # the attacking state 
+            
+            self.flip = player_pos[0] < self.pos[0]
+            self.aggro = True
+            self.attacking = True
 
+            if self.charge_time == 0:
+                self.set_state('transition')
+                if self.animation.done: 
+                    self.charge_time +=1
+            elif self.charge_time ==1:
+                self.set_state('charge')
+                if self.animation.done: 
+                    self.charge_time +=1
+            else: 
+                
+                self.set_state('attack')
+                
+                if (self.animation.frame/self.animation.img_dur) == 0.0 or (self.animation.frame/self.animation.img_dur) == 4.0:
+                    if (self.animation.frame/self.animation.img_dur) == 0.0:     
+                        attack_particle = Particle(self.game,'ball_slinger_attack' + ('' if not self.flip else '_flipped'),(self.pos[0] + (-3 if self.flip else 40),self.pos[1]+18),'ball_slinger') 
+                        self.game.particles.append(attack_particle)
 
+                    light = PointLight((self.pos[0] + (-23 if self.flip else 60),self.pos[1]+22),power = 0.82,radius = 52,life = 3)
+                    light.set_color(255,35,19)
+                    light.cast_shadows = False
+                    self.game.lights_engine.lights.append(light)
+                    
+                if self.animation.done:
+                    self.attacking = False
+                    self.charge_time = 0  
+        else: 
+
+            # maybe add the a star algorithm here. Maybe. 
+            self.flip = player_pos[0] < self.pos[0]
+            # the following state
+            self.charge_time = 0
+            
+            self.attacking = False 
+            self.aggro = True 
+            self.walking = 120
+            self.set_state('move')
+             
+        
+    
     def _handle_movement(self,tilemap,movement):
-        flip_offset = -6 if self.flip else 6 + 30
+        flip_offset = -8 if self.flip else 8 + self.size[0]
         solid_check_1 = tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8))
         solid_check_2 = tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - tilemap.tile_size))
         
-        if solid_check_1:
-            if solid_check_2:
-                if tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
-                    self.flip = not self.flip
+        if self.aggro == True:
+            if self.attacking: 
+                
+                movement = (0,0)
+            else: 
+                
+                movement = (movement[0] + (-2.5 if self.flip else 2.5), movement[1])  
+            return movement
+            
+        else: 
+            
+            self.charge_time = 0
+            if solid_check_1:
+                if solid_check_2:
+                    if tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
+                        self.flip = not self.flip
+                    else:
+                        self.velocity[1] = -5
                 else:
-                    print("check1")
-                    self.velocity[1] = -5
+                    tile = tilemap.return_tile(None, (self.pos[0] + flip_offset, self.pos[1] + 8))
+                    if tile is None or tile.type == 'stairs':
+                        movement = (movement[0] + (-2.5 if self.flip else 2.5), movement[1])
+                    else:
+                        self.velocity[1] = -3.3
             else:
-                tile = tilemap.return_tile(None, (self.pos[0] + flip_offset, self.pos[1] + 8))
-                if tile is None or tile.type == 'stairs':
-                    movement = (movement[0] + (-1.5 if self.flip else 1.5), movement[1])
+                if solid_check_2:
+                    if not tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
+                        self.velocity[1] = -5
+                    else:
+                        self.flip = not self.flip
                 else:
-                    print("check2")
-                    self.velocity[1] = -4.5
-        else:
-            if solid_check_2:
-                if not tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 - 2 * tilemap.tile_size)):
-                    print("check3")
-                    self.velocity[1] = -5
-                else:
-                    self.flip = not self.flip
-            else:
-                movement = self._handle_fall(tilemap, movement, flip_offset)
+                    movement = self._handle_fall(tilemap, movement, flip_offset)
 
-        return movement
+            return movement
+            
         
-    
-    def _handle_fall(self, tilemap, movement, flip_offset):
-        for i in range(1, 6):
-            if tilemap.solid_check((self.pos[0] + flip_offset, self.pos[1] + 8 + i * tilemap.tile_size)):
-                movement = (movement[0] + (-1.5 if self.flip else 1.5), movement[1])
-                break
-        else:
-            self.flip = not self.flip
-        return movement
+    def render(self,surf,offset):
+        if self.aggro:
+            self.health_bar.render(surf, offset)
+        super().render(surf, (offset[0], offset[1]))
 
-        
-"""
 class Canine(Enemy):
     def __init__(self,game,pos,size,color):
         self.color = color 
@@ -821,7 +931,7 @@ class Canine(Enemy):
                     pass 
 
 
-                    
+                    """
                     
                     if dir > 0:
                         current_node = self.path[0]
@@ -842,6 +952,7 @@ class Canine(Enemy):
                             movement = (movement[0] -0.2,movement[1] )
                         if current_node.down and isinstance(current_node.down,Node):
                             movement = (movement[0] -0.2,movement[1] )
+                    """
                     
         
 
@@ -963,7 +1074,7 @@ class Canine(Enemy):
         
         # (self.pos[0]+self.size[0] + (-8 if self.flip else 8),self.pos[1]//16-tilemap.tile_size)
         
-        
+        """
         if self.path: 
             for key in self.path: 
                 test_surf = pygame.Surface((1,1))
@@ -972,7 +1083,8 @@ class Canine(Enemy):
                
                 surf.blit(test_surf,(node.pos[0]*16 -offset[0] + 8,node.pos[1]*16 - offset[1]+8))
         
-        
+        """
+
         if self.path: 
             for node in self.path: 
               
@@ -996,7 +1108,7 @@ class Canine(Enemy):
         self.first_hit = True 
         self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
 
-"""
+
 
 class PlayerEntity(PhysicsEntity):
     def __init__(self,game,pos,size):
@@ -1042,6 +1154,7 @@ class PlayerEntity(PhysicsEntity):
         self.d_cursor_pos = [0,0]
         self.time = 0
         
+        self.interactables = None
         
 
         
@@ -1085,7 +1198,7 @@ class PlayerEntity(PhysicsEntity):
             new_movement[1] *= (20 - self.hard_land_recovery_time)/20 
             self.hard_land_recovery_time -= 1
             
-        super().update_pos(tile_map, new_movement)
+        self.interactables = super().update_pos(tile_map, new_movement)
 
         
 
@@ -1235,6 +1348,7 @@ class PlayerEntity(PhysicsEntity):
                 self.fatigued = True 
                 return 1
         
+    
         
     
     def render(self,surf,offset):
@@ -1282,6 +1396,22 @@ class PlayerEntity(PhysicsEntity):
                 arm_pos_angle = angles[self.changing_done]
                 self.cur_weapon_node.weapon.render(surf,offset,set_angle = arm_pos_angle) 
             
+    
+    def interact(self):
+        # find the interactable that is closest to the player's center position. 
+        if self.interactables: 
+            min_distance = float('inf')
+            closest_interactable = None 
+            player_rect = self.rect()
+            for interactable in self.interactables:
+                distance = math.sqrt((interactable[0].centerx-player_rect.centerx)**2 + (interactable[0].centery-player_rect.centery)**2)
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_interactable = interactable
+
+            closest_interactable[1].interact()
+
+    
     
     def dash(self):
         if not self.fatigued: 

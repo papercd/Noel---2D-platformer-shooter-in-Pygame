@@ -189,7 +189,7 @@ class myGame:
         self.frame_count = 0
         self.reset = True 
         
-
+        
         # ------------------- ak bullet loading and equip
         """
         self.ak_47 = self.weapons['ak'].copy()
@@ -206,7 +206,7 @@ class myGame:
         """
         """
         self.flamethrower = self.weapons['flamethrower'].copy()
-        for i in range(0,1005):
+        for i in range(0,1005):d
             self.flamethrower.magazine.append(0)
         """
 
@@ -221,7 +221,7 @@ class myGame:
         self.HUD = HUD(self.player,self.assets['health_UI'],self.foreground_surf.get_size())
         
         
-        #extract grddddddasstiles and place them down using the grassManager.
+        #extract grddddddasstiles and place them down using the grassManagerd.
         self.gm = GrassManager('data/images/tiles/live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
         self.grass_locations = []
 
@@ -240,12 +240,12 @@ class myGame:
             if spawner.variant == '0;0':
                 
                 self.player.pos = [spawner.pos[0] * self.Tilemap.tile_size, spawner.pos[1] * self.Tilemap.tile_size]
-                """
-                elif spawner.variant == '1;0': 
+                
+            elif spawner.variant == '1;0': 
 
                     #canine wwww
-                    self.existing_enemies.append(Canine(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(34,23),'black'))
-                """
+                self.existing_enemies.append(Canine(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(34,23),'black'))
+                
         
             elif spawner.variant == '2;0':
                 
@@ -337,7 +337,7 @@ class myGame:
 
 
 
-
+            #print(self.player.interactables)
 
 
             """
@@ -357,7 +357,7 @@ class myGame:
 
             self.backgrounds['building'].render(self.background_surf,render_scroll)
 
-            #self.backgrounds['new_building'].render(self.background_surf,render_scroll)
+            #self.backgrounds['new_building'].render(selaaaaaf.background_surf,render_scroll)
            
          
 
@@ -381,7 +381,7 @@ class myGame:
             self.shadow_objects = self.Tilemap.update_shadow_objs(self.display,render_scroll)
             """
             #self.lights_display.fill((128,128,128,128))
-            #self.lights_display.blit(global_light(self.background_surf.get_size(),100), (0,0))
+            #self.lights_display.blit(global_light(self.background_swurf.get_size(),100), (0,0))
             
             self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
             
@@ -394,6 +394,10 @@ class myGame:
                     #if the enemy is within the boundaries of the quadtree, update it. 
                     kill = enemy.update(self.Tilemap,self.player.pos,self.dt,(0,0))
                     quadtree.insert(enemy)
+
+                    # If an enemy collides with another enemy, it should push itself away. To avoid too much overlap.
+                    
+
                     enemy.render(self.background_surf,offset = render_scroll)
                     if kill:
                         self.existing_enemies.remove(enemy)
@@ -412,7 +416,7 @@ class myGame:
                         if (bullet.pos[0] >= x_lower and bullet.pos[0] <= x_higher) and (bullet.pos[1] >= y_lower and bullet.pos[1] <= y_higher) :
 
                             #quadtree.insert(bullet)
-                            #bullet.light.main([],self.lights_display,bullet.center[0],bullet.center[1],render_scroll)
+                            #bullet.light.main([]d,self.lights_display,bullet.center[0],bullet.center[1],render_scroll)
                            
                             bullet.render(self.background_surf,offset = render_scroll)
 
@@ -475,7 +479,7 @@ class myGame:
                         #particle.light.main([],self.lights_display,particle.x,particle.y,render_scroll)
                     particle.render(self.bsurf,offset = render_scroll)
 
-                    if i % 7 == 0:
+                    if i % 4 == 0:
                         xx, yy = particle.pos[0],particle.pos[1]
                         r = particle.r * 3 
                         
@@ -599,6 +603,10 @@ class myGame:
                 
                 #define when the right or left arrow keys are pressed, the corresponding player's movement variable varlues are changed. 
                 if event.type == pygame.KEYDOWN: 
+
+                    if event.key == pygame.K_SPACE: 
+                        self.player.interact()
+
                     if event.key == pygame.K_v: 
                         new_flamethrower = self.weapons['flamethrower'].copy()
                         i = 0

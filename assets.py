@@ -27,7 +27,7 @@ class GameAssets:
         building_paths = [
             'building_0', 'building_1', 'building_2', 'building_3', 'building_4',
             'building_5', 'building_back', 'building_decor', 'lights', 'building_stairs',
-            'building_door_0' 
+            'building_door_0','dungeon_back','trap_door'
         ]
         return load_tile_assets(building_paths, background='transparent')
 
@@ -78,6 +78,8 @@ class GameAssets:
 
     def load_particle_assets(self):
         particle_animations = {
+            'particle/ball_slinger_attack': ('particles/attack/ball_slinger/normal','transparent',6,False,False),
+            'particle/ball_slinger_attack_flipped': ('particles/attack/ball_slinger/flipped','transparent',6,False,False),
             'particle/box_destroy': ('particles/box', 'transparent', 3, False, False),
             'particle/box_smoke': ('particles/box_break', 'black', 3, False, False),
             'particle/leaf': ('particles/leaf', 'black', 20, False, False),
@@ -126,14 +128,32 @@ class GameAssets:
 
 
             'ball_slinger/idle' : ('entities/enemy/ball_slinger/idle','transparent',7,True,False),
-            'ball_slinger/move' : ('entities/enemy/ball_slinger/move','transparent',6,True,False)
-            # Add other sabre animations as needed
+            'ball_slinger/move' : ('entities/enemy/ball_slinger/move','transparent',6,True,False),
+            'ball_slinger/transition' : ('entities/enemy/ball_slinger/transition','transparent',6,False,False),
+            'ball_slinger/charge' : ('entities/enemy/ball_slinger/charge','transparent',6,False,False),
+            'ball_slinger/attack' : ('entities/enemy/ball_slinger/attack','transparent',6,False,False),
+            'ball_slinger/death' : ('entities/enemy/ball_slinger/death','transparent',6,False,False),
+
+            'shotguner/idle' : ('entities/enemy/shotgunner/idle','transparent',7,True,False),
+            'shotguner/move' : ('entities/enemy/shotgunner/move','transparent',6,True,False),
+		#	'shotguner/shoot' : ('entities/enemy/shotgunner/shoot','transparent',6,False,False),
+            'shotguner/attack' : ('entities/enemy/shotgunner/attack','transparent',6,False,False),
+         #   'shotguner/death' : ('entities/enemy/shotgunner/death','transparent',6,False,False),
+
+            
+            
+            
+            
+
+            
             }
             return load_animation_assets(enemy_animations)
     
     # Animation
     def load_interactable_assets(self):
             interactable_animations = {
-                 'building_door_0' : ('interactables/building_door/0','transparent',5, True,False)
+                 'building_door_0' : ('interactables/building_door/0','transparent',5, True,False),
+                 'trap_door' : ('interactables/trap_door','transparent',5,True,False),
+
             }
             return load_animation_assets(interactable_animations)
