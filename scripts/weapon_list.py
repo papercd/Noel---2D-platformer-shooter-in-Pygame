@@ -90,6 +90,9 @@ class ambientNode:
         self.prev = None
         self.next = None
         self.default = default
+        self.hull_y_range = (0,0)
+        self.hulls = []
+
 
     def return_values(self):
         return (self.range,self.colorValue,self.default)
@@ -115,6 +118,30 @@ class ambientNodeList:
         
         return None
     
+    
+    def create_hull_lists(self,tilemap):
+        # Iterate over the nodes, and create the hull lists. 
+        current = self.head 
+
+        # Traverse to the leftmost node
+        while current.prev:
+            current = current.prev
+
+        while current: 
+            if not current.default: 
+                for x in range(int(current.range[0] // tilemap.tile_size),int(current.range[1] // tilemap.tile_size) ):
+                    for y in range(int(current.hull_y_range[0] // tilemap.tile_size),int(current.hull_y_range[1] // tilemap.tile_size)):
+                        key = f"{x};{y}"
+                        if key in tilemap.tilemap and not tilemap.tilemap[key].enclosed and tilemap.tilemap[key].hull: 
+                            tile = tilemap.tilemap[key]
+                            for hull in tile.hull: 
+                                current.hulls.append(hull)
+            current = current.next 
+
+
+        
+
+
 
     def set_ptr(self,pos_x): 
         temp = self.head
@@ -134,7 +161,7 @@ class ambientNodeList:
         
         while current: 
             if not current.default: 
-                data.append({'range': current.range, 'colorValue': current.colorValue})
+                data.append({'range': current.range, 'hull_range': current.hull_y_range, 'colorValue': current.colorValue})
             current = current.next 
         
         return data 
@@ -225,7 +252,7 @@ class ambientNodeList:
          
 
     
-    def insert_node(self, new_range, colorValue):
+    def insert_node(self, new_range, hull_range, colorValue):
         overlapping_node = self.find_overlapping_node(new_range)
         if overlapping_node:
             print("Range overlaps with an existing non-default node. Please enter a different range.")
@@ -241,7 +268,9 @@ class ambientNodeList:
             current = current.next
         
         new_node = ambientNode(new_range, colorValue, default=False)
-        
+        new_node.hull_y_range = hull_range
+
+
         # Adjust default node ranges and insert the new node
         if current.default:
             if new_range[0] <= current.range[0]:

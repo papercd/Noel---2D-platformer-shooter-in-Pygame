@@ -80,20 +80,25 @@ class Editor:
             'lights' : load_tile_images('tiles/lights',background='transparent'), 
             'building_stairs' : load_tile_images('tiles/building_stairs',background='transparent'), 
             'live_grass': load_tile_images('tiles/live_grass',background='black'),
+            
+            'dungeon_back' : load_tile_images('tiles/dungeon_back',background = 'transparent'),
 
             'building_door': load_tile_images('interactables/building_door_edit',background = 'transparent'),
             #'large_decor' : load_tile_images('tiles/large_decor'),
             'spawners' : load_tile_images('tiles/spawners',background='transparent'),
+            'trap_door' : load_tile_images('interactables/trap_door_edit' ,background= 'transparent')
         } 
 
         
         self.interactables = {
-            'building_door_0' : Animation(load_images('interactables/building_door/0',background='transparent'),5,True,False)
+            'building_door_0' : Animation(load_images('interactables/building_door/0',background='transparent'),5,True,False),
+            'trap_door':  Animation(load_images('interactables/trap_door',background='transparent'),5,True,False)
         }
 
         self.backgrounds = {
             #'start' : Background(self,load_images('backgrounds/start',background='transparent')),
             'building' : Background(self,load_images('backgrounds/building',background= 'transparent')),
+
         }
 
         self.movement = [False,False,False,False]
@@ -189,6 +194,7 @@ class Editor:
 
 
         self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.native_res[0]//2)
+        
         self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
 
         self.center_ind_x = numbers(0)
@@ -217,7 +223,7 @@ class Editor:
             render_scroll = (int(self.scroll[0]),int(self.scroll[1]))
 
             #render the tilemap on the editor window 
-            self.backgrounds['building'].render(self.background_surf,render_scroll)
+            #self.backgrounds['building'].render(self.background_surf,render_scroll)
             self.Tilemap.render(self.background_surf, offset = render_scroll,editor= True)
 
             self.gm.update_render(self.background_surf,self.dt,offset=render_scroll)
@@ -238,10 +244,12 @@ class Editor:
             if self.center_ind_x.number < self.ambient_node_ptr.range[0]:
                 if self.ambient_node_ptr.prev: 
                     self.ambient_node_ptr = self.ambient_node_ptr.prev
+                    
                     self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
             elif self.center_ind_x.number > self.ambient_node_ptr.range[1]:
                 if self.ambient_node_ptr.next: 
                     self.ambient_node_ptr = self.ambient_node_ptr.next
+
                     self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
 
             #draw vertical lines for rangew of current ambient light
@@ -251,7 +259,7 @@ class Editor:
             if self.ambient_node_ptr.range[1] != float('inf'):
                 pygame.draw.line(self.background_surf,(25,255,20), (self.ambient_node_ptr.range[1]-render_scroll[0],0), (self.ambient_node_ptr.range[1]-render_scroll[0],self.screen_res[1]))
 
-            if self.ambient_override: 
+            if self.ambient_override:   
                 self.lights_engine.set_ambient(255,255,255,255)
             else: 
                 self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
@@ -442,7 +450,8 @@ class Editor:
                                 del self.Tilemap.tilemap[click_loc]
                             
                             else: 
-                                if self.Tilemap.tilemap[click_loc].type.endswith('door'): 
+                                if self.Tilemap.tilemap[click_loc].type.endswith('door') and self.Tilemap.tilemap[click_loc].type.split('_')[0] != 'trap': 
+                                    
                                     # Check the location below: 
                                     check_loc = str(tile_pos[0]) + ';' + str(tile_pos[1]+1)
                                     if check_loc in self.Tilemap.tilemap and self.Tilemap.tilemap[check_loc].type.endswith('door'):
@@ -833,6 +842,7 @@ class Editor:
             
 
             #main tile_panel blit
+            #print(mpos[0]+ render_scroll[0],mpos[1]+render_scroll[1])
         
             self.main_tile_panel.update_indicator_panels(self.auto_random,self.stick_to_grid,self.selection_box_button,self.on_grid,self.selection_box_del_option,self.flip_tile,self.mark)
             self.main_tile_panel.check_mouse_int(mpos)
@@ -1037,7 +1047,7 @@ class Editor:
                             
 
 
-                            #self.lights_engine.lights.clear()
+                            #self.lights_engine.lights.clear()p
                             #self.lights_engine.lights = self.Tilemap.load('map.json')
                             """
                             for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
@@ -1071,8 +1081,10 @@ class Editor:
                         if range_ == 'n' or range == 'N':
                             self.Tilemap.ambientNodes.update_default_colors(self.ambient_rgba)                             
                         else: 
+                            hulls_range =  input("y range for hull optimization: ")
+                            hull_nums = hulls_range.split()
                             nums = range_.split()
-                            if self.Tilemap.ambientNodes.insert_node((int(nums[0]),int(nums[1])),self.ambient_rgba):
+                            if self.Tilemap.ambientNodes.insert_node((int(nums[0]),int(nums[1])),(int(hull_nums[0]),int(hull_nums[1])) ,self.ambient_rgba):
                                 self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(int(render_scroll[0] + self.native_res[0]//2))
                                 print("Node added successfully.")
                             
@@ -1085,6 +1097,7 @@ class Editor:
                     if event.key == pygame.K_k:
                         self.ambient_override = not self.ambient_override 
                     if event.key == pygame.K_7: 
+                        #print(len(self.lights_engine.hulls))
                         self.Tilemap.ambientNodes.print_list()
                     if event.key == pygame.K_a: 
                         self.movement[0] = True 

@@ -1,7 +1,7 @@
 
 from .tilemap import Tilemap
 from .utils import load_image, load_images, load_tile_images, Animation, load_sounds
-from .entities import PlayerEntity,  Wheel_bot, Ball_slinger, Bullet
+from .entities import PlayerEntity,  Wheel_bot, Ball_slinger, Bullet,Canine
 from .clouds import Clouds
 from .particles import Particle
 from .cursor import Cursor

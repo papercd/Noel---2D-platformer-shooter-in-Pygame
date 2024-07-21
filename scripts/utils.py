@@ -74,7 +74,8 @@ def load_sounds(path):
 
 class Animation: 
     def __init__(self, images, img_dur = 5, halt = False, loop = True):
-        self.images = images 
+        self.images = images
+        self.count = len(self.images) 
         self.loop = loop 
         self.halt = halt
         self.img_dur = img_dur 
@@ -95,6 +96,9 @@ class Animation:
                 if self.frame >= self.img_dur *len(self.images) -1:
                     self.done = True 
 
+
+    def reverse(self):
+        pass 
 
     def img(self):
         return self.images[int(self.frame / self.img_dur)]
