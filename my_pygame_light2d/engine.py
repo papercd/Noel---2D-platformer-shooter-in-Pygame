@@ -502,7 +502,7 @@ class LightingEngine:
             if math.dist(light.position,offset) > light.radius + self._diagonal:
                 continue
             
-            if light.position[0] < range[0] or light.position[0] > range[1]:
+            if not light.illuminator and (light.position[0] < range[0] or light.position[0] > range[1]):
                 #decrease power of light 
                 dec = light.power/10
                 light.cur_power = max(0.0,light.cur_power - dec)

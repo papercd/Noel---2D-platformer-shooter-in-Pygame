@@ -1,0 +1,17 @@
+ak 47 fire particle looks bad when changing fire direction. The angle of the particle needs to change even after 
+a bullet has been fired. 
+
+when instantiating an ak 47 you need to think of a way to use less memory, because right now it is storing each bullet object 
+in a container list. 
+
+Instead of that just have a bullet count unsigned int and decrement it and create a bullet object 
+
+
+1. let's add more weapons 
+
+
+2. let's add more enemies 
+
+
+3. let's add item builds - to build weapons and items ( crafting system ) 
+

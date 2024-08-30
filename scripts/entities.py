@@ -8,7 +8,6 @@ from scripts.particles import Particle,non_animated_particle,bullet_collide_part
 from scripts.health import HealthBar,StaminaBar
 from scripts.indicator import indicator 
 from scripts.tilemap import Node,Tile
-from scripts.weapons import Wheelbot_weapon
 from scripts.spark import Spark 
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
 from scripts.weapon_list import DoublyLinkedList
@@ -1138,6 +1137,7 @@ class PlayerEntity(PhysicsEntity):
         self.slide = False 
         self.on_wall = self.collisions['left'] or self.collisions['right']
         self.air_time = 0
+        self.on_ladder = False 
       
         
 
@@ -1158,7 +1158,8 @@ class PlayerEntity(PhysicsEntity):
         
 
         
-        
+    def rect(self):
+        return pygame.Rect(self.pos[0]+3,self.pos[1]+1,10,15)
        
     def set_state(self,action):
         if action != self.state: 
@@ -1198,7 +1199,7 @@ class PlayerEntity(PhysicsEntity):
             new_movement[1] *= (20 - self.hard_land_recovery_time)/20 
             self.hard_land_recovery_time -= 1
             
-        self.interactables = super().update_pos(tile_map, new_movement)
+        self.interactables = super().update_pos(tile_map, new_movement,anim_offset= (3,1))
 
         
 
@@ -1409,7 +1410,7 @@ class PlayerEntity(PhysicsEntity):
                     min_distance = distance
                     closest_interactable = interactable
 
-            closest_interactable[1].interact()
+            closest_interactable[1].interact(self)
 
     
     
@@ -1439,57 +1440,59 @@ class PlayerEntity(PhysicsEntity):
             self.game.particles.append(dust)
         
     def player_jump(self):
-     
-        if self.wall_slide: 
-            self.jump_count = 1
-            
-            if self.collisions['left']:
+        if self.on_ladder:
+            pass 
+        else: 
+            if self.wall_slide: 
+                self.jump_count = 1
                 
-                self.velocity[0] =  4.2
-            if self.collisions['right']:
-                
-                self.velocity[0] = -4.2
-            #self.accel_up() 
-            
-            self.velocity[1] =-4.4
-            
-
-            air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
-            self.game.particles.append(air)
-
-        if self.jump_count == 2:
-            if self.state == 'jump_down':
-                self.jump_count -=2
+                if self.collisions['left']:
+                    
+                    self.velocity[0] =  4.2
+                if self.collisions['right']:
+                    
+                    self.velocity[0] = -4.2
                 #self.accel_up() 
-
-                self.velocity[1] = -4.4
                 
+                self.velocity[1] =-4.4
+                
+
                 air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
                 self.game.particles.append(air)
-            else: 
+
+            if self.jump_count == 2:
+                if self.state == 'jump_down':
+                    self.jump_count -=2
+                    #self.accel_up() 
+
+                    self.velocity[1] = -4.4
+                    
+                    air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
+                    self.game.particles.append(air)
+                else: 
+                    self.jump_count -=1
+                    #self.accel_up() 
+
+                    self.velocity[1] = -4.4    
+                
+            elif self.jump_count ==1: 
                 self.jump_count -=1
                 #self.accel_up() 
-
-                self.velocity[1] = -4.4    
-            
-        elif self.jump_count ==1: 
-            self.jump_count -=1
-            #self.accel_up() 
-            self.velocity[1] = -4.4  
-            air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
-            self.game.particles.append(air)
+                self.velocity[1] = -4.4  
+                air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
+                self.game.particles.append(air)
             
     
 
     def jump_cut(self):
         #called when the player releases the jump key before maximum height. 
-
-        if self.velocity[1] < 0: 
-            if self.velocity[1] > -4.2:
-                if self.air_time >0 and self.air_time <= 8:
-                    self.velocity[1] = -1.2
-                if self.air_time >8 and self.air_time <=11 :
-                    self.velocity[1] = -2.2
+        if not self.on_ladder: 
+            if self.velocity[1] < 0: 
+                if self.velocity[1] > -4.2:
+                    if self.air_time >0 and self.air_time <= 8:
+                        self.velocity[1] = -1.2
+                    if self.air_time >8 and self.air_time <=11 :
+                        self.velocity[1] = -2.2
 
     
     def change_weapon(self,scroll):
@@ -1635,6 +1638,7 @@ class Bullet(PhysicsEntity):
         self.bullet_type = bullet_type
         self.center = [sprite.get_width() / 2, sprite.get_height() / 2]
         self.set_state('in_place')
+        self.life = 50
         self.frames_flown = 50
         self.test_tile = None
         self.dead = False
@@ -1751,6 +1755,22 @@ class Bullet(PhysicsEntity):
     
 
 
+
+class shotgun_Bullet(Bullet):
+    def __init__(self, game, pos, size, sprite, bullet_type):
+        super().__init__(game, pos, size, sprite, bullet_type)
+        self.frames_flown = 15
+
+
+    def update_pos(self, tile_map, offset=(0, 0)):
+        
+        return super().update_pos(tile_map, offset)
+
+    def render(self, surf, offset= (0,0)):
+        self.sprite.set_alpha(int(0* (self.frames_flown/self.life)))
+       
+        surf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD)
+
 class tile_ign_Bullet(Bullet):
 
     def __init__(self,game,pos,size,sprite,type):
@@ -1793,7 +1813,7 @@ class Wheelbot_bullet(tile_ign_Bullet):
         self.flip = False 
         self.dead = False
 
-        self.light = LIGHT(40,pixel_shader(40,(137,31,227),1,False))
+        #self.light = LIGHT(40,pixel_shader(40,(137,31,227),1,False))
         self.center = [self.pos[0]+self.animation.img().get_width()/2, self.pos[1] + self.animation.img().get_height()/2]
 
     def rect(self):
@@ -1852,7 +1872,7 @@ class Wheelbot_bullet(tile_ign_Bullet):
             
 
             self.game.particles.append(collide_particle)
-            self.game.temp_lights.append([LIGHT(40,pixel_shader(40,(137,31,227),1,False)),4,end_point])
+            #self.game.temp_lights.append([LIGHT(40,pixel_shader(40,(137,31,227),1,False)),4,end_point])
             del self 
             return True 
             

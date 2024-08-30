@@ -42,7 +42,7 @@ class inven_panel:
             surf.blit(self.player.cur_weapon_node.weapon.weapon_img,(self.topleft[0] - offset[0] ,self.topleft[1] - offset[1]))
   
             
-            new_mag_count = len(self.player.cur_weapon_node.weapon.magazine)
+            new_mag_count = self.player.cur_weapon_node.weapon.magazine
         
             shot = new_mag_count != self.ammo_indicator.number
             self.ammo_indicator.change_number(new_mag_count)

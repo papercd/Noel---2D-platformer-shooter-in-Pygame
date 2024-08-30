@@ -92,6 +92,7 @@ class GameAssets:
             'particle/shot_muzzle/laser_weapon': ('particles/shot_muzzle/laser_weapon', 'transparent', 3, False, False),
             'particle/smoke/ak_47': ('particles/shoot/rifle', 'transparent', 3, False, False),
             'particle/smoke/rifle_small': ('particles/bullet_collide_smoke/rifle/small', 'black', 2, False, False),
+            'particle/smoke/shotgun' : ('particles/shoot/shotgun', 'transparent',3,False,False),
             'particle/smoke/laser_weapon': ('particles/shoot/laser_weapon', 'transparent', 3, False, False),
             'particle/bullet_collide/laser_weapon': ('particles/bullet_collide/laser_weapon', 'transparent', 2, False, False),
             'particle/bullet_collide/rifle': ('particles/bullet_collide/rifle', 'transparent', 2, False, False),

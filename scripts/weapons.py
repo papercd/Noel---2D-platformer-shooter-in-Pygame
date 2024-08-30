@@ -5,6 +5,7 @@ import math
 from scripts.fire import Flame_particle
 from scripts.particles import Particle,non_animated_particle
 from scripts.Pygame_Lights import LIGHT ,pixel_shader
+from scripts.entities import Bullet, shotgun_Bullet
 from my_pygame_light2d.light import PointLight
 
 WEAPONS_WITH_KNOCKBACK = {'rifle'}
@@ -29,9 +30,9 @@ class Weapon:
         self.power=power
         self.knockback = [0,0]
         self.fire_rate = fire_rate
-        self.magazine = []
+        self.magazine = 0
         
-        
+        self.angle_opening = 0
         self.opening_pos = [0,0]
 
         #testing 
@@ -252,12 +253,48 @@ class AK_47(Weapon):
 
     def copy(self):
         new_ak = AK_47(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
-        new_ak.magazine = self.magazine.copy()
+        new_ak.magazine = self.magazine
         return new_ak
 
     def shoot(self,j= 0,d_mouse_pos = [0,0]):
-        bullet = super().shoot()
-        if bullet:
+        if self.magazine > 0: 
+            self.magazine -= 1 
+            bullet_image = self.game.bullets['rifle_small'].copy()
+            bullet = Bullet(self.game,[0,0],bullet_image.get_size(),bullet_image,'rifle_small')
+    
+            #then you shoot the bullet.
+            bullet.damage = self.power // 2 
+            bullet.angle= self.angle_opening
+            #rotate the bullet sprite around the center
+            """
+            bulletdisplay = pygame.Surface((bullet.sprite.get_width(),bullet.sprite.get_height()),pygame.SRCALPHA)
+            bulletdisplay,bullet_rect = self.rotate(bulletdisplay,self.angle_opening,bullet.center,self.render_offset)
+            """
+            bullet.sprite = pygame.transform.rotate(bullet.sprite,bullet.angle)
+            bullet.velocity = [math.cos(math.radians(-bullet.angle)) * self.power ,math.sin(math.radians(-bullet.angle))*self.power]  
+
+            
+
+            if bullet.velocity[0] > 0 :
+                
+                bullet.pos = self.opening_pos.copy()
+                bullet.pos[0] -= bullet.velocity[0]
+                bullet.pos[1] += (0 if bullet.velocity[1] <0 else -bullet.velocity[1])
+                bullet.flip = False 
+            else: 
+                bullet.pos = self.opening_pos.copy()
+                if bullet.velocity[1] > 0 :
+                    bullet.pos[1] -= bullet.velocity[1]
+                bullet.flip = True 
+
+
+
+            self.game.bullets_on_screen.append(bullet)
+            
+            self.knockback = [-bullet.velocity[0]/2,-bullet.velocity[1]/2]
+            
+            #append the shooting particles here instead of doing it in the entity class 
+            
             """
             self.game.temp_lights.append([LIGHT(30,pixel_shader(30,(253,178,50),1,False)),3,self.opening_pos])
             self.game.temp_lights.append([LIGHT(60,pixel_shader(60,(248,229,153),1,True,self.angle_opening,360)),3,self.opening_pos])
@@ -304,10 +341,10 @@ class Flamethrower(Weapon):
     def __init__(self,game,sprite,weapon_img,shrunk_weapon_img,description):
         super().__init__(game,'weapon', 'flamethrower' ,sprite,1,5,weapon_img,shrunk_weapon_img,(2,2),description)
         self.rapid_firing = True
-    
+        self.size = self.sprite.get_size()
     def copy(self):
         new_flamethrower =  Flamethrower(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
-        new_flamethrower.magazine = self.magazine.copy()
+        new_flamethrower.magazine = self.magazine
         return new_flamethrower
     
     def toggle_rapid_fire(self):
@@ -315,49 +352,152 @@ class Flamethrower(Weapon):
         
 
     def shoot(self,j= 0,d_mouse_pos = [0,0]):
-        if self.magazine:
-            if self.magazine: 
+        if self.magazine > 0 :
+            self.magazine -= 1 
             # -------------   predetermined particle parameters 
-                size = 6
-                density = 4
-                rise = 2.9
-                spread = 1.4
-                wind = 0
-                #---------------
-                ox,oy = self.mpos[0],self.mpos[1]
-                mx,my = d_mouse_pos[0],d_mouse_pos[1]
+            size = 6
+            density = 4
+            rise = 3.1
+            spread = 1.8
+            wind = 0
+            #---------------
+            ox,oy = self.mpos[0],self.mpos[1]
+            mx,my = d_mouse_pos[0],d_mouse_pos[1]
 
-                dist = math.sqrt((mx-ox)**2+(my-oy)**2)
-                #a = math.atan2(my-oy, mx-ox)
-                for d in range(0, int(dist), 10):
-                    #_x = mx+math.cos(a)*d
-                    #_y = my+math.sin(a)*d
+            dist = math.sqrt((mx-ox)**2+(my-oy)**2)
+            #a = math.atan2(my-oy, mx-ox)
+            for d in range(0, int(dist), 10):
+                #_x = mx+math.cos(a)*d
+                #_y = my+math.sin(a)*d
+                
+                for _ in range(round(density)): 
+                    flame_particle= Flame_particle(self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power)
                     
-                    for _ in range(round(density)): 
-                        flame_particle= Flame_particle(self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power)
-                      
-                        light = PointLight((self.opening_pos[0], self.opening_pos[1]),power = 0.12,radius = 42,illuminator=flame_particle,life = flame_particle.maxlife)
-                        light.set_color(255,35,19)
-                        light.cast_shadows = False
-                        self.game.lights_engine.lights.append(light)
-                        
-                        self.game.physical_particles.append(flame_particle)
-                else:
-                    for _ in range(round(density)): 
-                        flame_particle= Flame_particle(self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power)
+                    light = PointLight((self.opening_pos[0], self.opening_pos[1]),power = 0.12,radius = 42,illuminator=flame_particle,life = flame_particle.maxlife)
+                    light.set_color(255,35,19)
+                    light.cast_shadows = False
+                    self.game.lights_engine.lights.append(light)
+                    
+                    self.game.physical_particles.append(flame_particle)
+            else:
+                for _ in range(round(density)): 
+                    flame_particle= Flame_particle(self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power)
 
-                        light = PointLight((self.opening_pos[0], self.opening_pos[1]),power = 0.11,radius = 42,illuminator=flame_particle,life = flame_particle.maxlife)
-                        light.set_color(255,35,19)
-                        light.cast_shadows = False
+                    light = PointLight((self.opening_pos[0], self.opening_pos[1]),power = 0.11,radius = 42,illuminator=flame_particle,life = flame_particle.maxlife)
+                    light.set_color(255,35,19)
+                    light.cast_shadows = False
 
-                        self.game.lights_engine.lights.append(light)
+                    self.game.lights_engine.lights.append(light)
 
 
-                        self.game.physical_particles.append(flame_particle)
-            self.magazine.pop()
+                    self.game.physical_particles.append(flame_particle)
+
+            self.knockback = [ - 4 * math.cos(math.radians(self.angle_opening)), 4* math.sin(math.radians(self.angle_opening))]
+        
+        
            
             
+class Rocket_launcher(Weapon):
+    def __init__(self,game,sprite,weapon_img,shrunk_weapon_img,description):
+        super().__init__(game,'weapon','rocket_launcher',sprite,120,30,weapon_img,shrunk_weapon_img,(6,6),description)
+        self.rapid_firing = False
+
+    def copy(self):
+        new_rocket_launcher = Rocket_launcher(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
+        new_rocket_launcher.magazine = self.magazine
         
+        return new_rocket_launcher
+
+    def toggle_rapid_fire(self):
+        pass 
+
+    def shoot(self,j= 0,d_mouse_pos = [0,0]):
+        pass 
+
+
+
+class Shotgun(Weapon):
+    def __init__(self,game,sprite,weapon_img,shrunk_weapon_img,description):
+        super().__init__(game,'weapon','shotgun',sprite,50,14,weapon_img,shrunk_weapon_img,(3,0),description)
+        self.rapid_firing = False
+
+    def copy(self):
+        new_shotgun = Shotgun(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
+        new_shotgun.magazine = self.magazine
+
+        return new_shotgun 
+
+    def toggle_rapid_fire(self):
+        pass 
+
+    def shoot(self,j= 0,d_mouse_pos = [0,0]):
+        if self.magazine > 0:
+            self.magazine -= 0
+            bullet_image = self.game.bullets['shotgun'].copy()  
+            knockback = [0,0]
+            for i in range(-2,3):
+                
+                bullet = shotgun_Bullet(self.game, [0,0], bullet_image.get_size(), bullet_image,'shotgun')
+                bullet.damage = self.power//2
+                bullet.angle = self.angle_opening - i*3
+                bullet.sprite = pygame.transform.rotate(bullet.sprite, bullet.angle)
+                bullet.velocity =  bullet.velocity = [math.cos(math.radians(-bullet.angle)) * self.power ,math.sin(math.radians(-bullet.angle))*self.power ]  
+                if i == 0:
+                    knockback = [-bullet.velocity[0] * 1.5/2 , -bullet.velocity[1]* 1.5/2]
+                if bullet.velocity[0] > 0 :
+                
+                    bullet.pos = self.opening_pos.copy()
+                    bullet.pos[0] -= bullet.velocity[0]
+                    bullet.pos[1] += (0 if bullet.velocity[1] <0 else -bullet.velocity[1])
+                    bullet.flip = False 
+                else: 
+                    bullet.pos = self.opening_pos.copy()
+                    if bullet.velocity[1] > 0 :
+                        bullet.pos[1] -= bullet.velocity[1]
+                    bullet.flip = True 
+
+                
+                light = PointLight(self.opening_pos,power = 0.5, radius = 20, illuminator= bullet, life = bullet.frames_flown)
+                light.cast_shadows = False
+                self.game.lights_engine.lights.append(light)
+
+                self.game.bullets_on_screen.append(bullet)
+            self.knockback = knockback
+            
+            """"""
+            light =  PointLight(self.opening_pos,power = 1.1,radius = 12,life = 2)
+            light.set_color(253,108,50)
+            light.cast_shadows = False
+            self.game.lights_engine.lights.append(light)
+            
+            light = PointLight(self.opening_pos,power = 0.8 ,radius = 28,life = 2)
+            light.set_color(248,129,153)
+            light.cast_shadows = False
+            self.game.lights_engine.lights.append(light)
+
+            light = PointLight(self.opening_pos,power = 0.7,radius = 44,life = 2)
+            light.set_color(248,129,153)
+            light.cast_shadows = False
+            self.game.lights_engine.lights.append(light)
+
+            shot_particle = Particle(self.game,'smoke'+'/'+self.name,self.opening_pos.copy(),self.holder.type,velocity=[0,0],frame=0)
+            rotated_shot_particle_images = [pygame.transform.rotate(image,bullet.angle) for image in shot_particle.animation.copy().images]
+            shot_particle.animation.images = rotated_shot_particle_images
+
+            self.game.particles.append(shot_particle)
+
+            colors = [(253,245,216),(117,116,115),(30,30,30)]
+            for i in range(random.randint(8,15)):
+                normal =[-bullet.velocity[1],bullet.velocity[0]] 
+                factor = random.random()
+                up_down = random.randint(-10,10)
+                
+                shot_muzzle_particle = non_animated_particle(self.opening_pos.copy(),random.choice(colors),[bullet.velocity[0]*20*factor + normal[0]* factor*up_down,bullet.velocity[1]*20*factor +normal[1]* factor*up_down],self.game.Tilemap,life = random.randint(1,5))
+                self.game.non_animated_particles.append(shot_muzzle_particle)
+                
+           
+        pass 
+    
 
     
 class Wheelbot_weapon(Weapon):

@@ -89,12 +89,15 @@ class myGame:
             'laser_weapon': Wheelbot_weapon(self,Animation(load_images('entities/enemy/Wheel_bot/charge_weapon',background='transparent'),img_dur=5,loop=True),"A Laser weapon."),
             'ak' : AK_47(self,load_image('weapons/ak_holding.png',background='transparent'),load_image('weapons/ak_47_img.png',background='transparent'),load_image('weapons/shrunk/ak_47.png',background='transparent'),"The staple AK-47."),
             'flamethrower' : Flamethrower(self,load_image('weapons/flamethrower_holding.png',background='transparent'),load_image('weapons/flamethrower_img.png',background='transparent'),load_image('weapons/shrunk/flamethrower_img.png',background='transparent'),"Splits powerful flames."),
+            'rocket_launcher' : Rocket_launcher(self,load_image('weapons/rocket_launcher_holding.png',background='transparent'),load_image('weapons/rocket_launcher_img.png',background='transparent'),load_image('weapons/shrunk/rocket_launcher.png',background='transparent')," "),
+            'shotgun' : Shotgun(self,load_image('weapons/shotgun_holding.png',background='transparent'),load_image('weapons/shotgun_img.png',background='transparent'),load_image('weapons/shrunk/shotgun.png',background='transparent')," ")
         }
 
         
         self.bullets = {
             'rifle_small' : load_image('bullets/rifle/small.png',background='transparent'),
-            'laser_weapon' : Animation(load_images('bullets/laser_weapon/new',background='transparent'),img_dur= 5, loop = True)
+            'laser_weapon' : Animation(load_images('bullets/laser_weapon/new',background='transparent'),img_dur= 5, loop = True),
+            'shotgun' : load_image('bullets/shotgun/small.png',background='transparent'),
         }
 
         self.backgrounds = {
@@ -520,7 +523,7 @@ class myGame:
            #lighting ------------------
 
             """
-            for key in self.lights: 
+            for key in self.lights: e
                 if  (key[0] >= render_scroll[0] - 200 and key[0] <= self.display.get_width() + render_scroll[0] + 200)  and (key[1] >= render_scroll[1] - 200 and key[1] <= self.display.get_height() + render_scroll[1]+ 200 ):
                     light = self.lights[key]
 
@@ -607,27 +610,40 @@ class myGame:
                     if event.key == pygame.K_SPACE: 
                         self.player.interact()
 
+                    if event.key == pygame.K_x:
+                        new_shotgun =  self.weapons['shotgun'].copy()
+                        new_shotgun.magazine = 100
+
+                        self.HUD.Items_list[2][1].add_item(new_shotgun)
+
+                    if event.key == pygame.K_b: 
+                        new_rocket_launcher = self.weapons['rocket_launcher'].copy()
+                        new_rocket_launcher.magazine = 100
+
+                        self.HUD.Items_list[2][1].add_item(new_rocket_launcher) 
+
                     if event.key == pygame.K_v: 
                         new_flamethrower = self.weapons['flamethrower'].copy()
-                        i = 0
-                        while i < 1000:
-                            new_flamethrower.magazine.append(0)
-                            i += 1
+                        new_flamethrower.magazine = 1000 
+
                         self.HUD.Items_list[2][1].add_item(new_flamethrower)
 
                     if event.key == pygame.K_f:
                         new_ak = self.weapons['ak'].copy()
+                        """
                         i = 0
                         while i <1000:
                             test_shell_image = self.bullets['rifle_small'].copy()
                             test_shell = Bullet(self,[0,0],test_shell_image.get_size(),test_shell_image,'rifle_small')
                             new_ak.load(test_shell)
                             i+=1 
-
+                        """
+                        new_ak.magazine = 1000
                         self.HUD.Items_list[2][1].add_item(new_ak)
 
 
                     if event.key == pygame.K_c:
+                        #self.HUD.Items_list[0][1].add_item(Item("glass",1))
                         self.HUD.Items_list[0][1].add_item(  Item(random.choice(list(ITEMS.keys())), 1))
                     if event.key == pygame.K_e:
                         self.inven_on = not self.inven_on
@@ -730,7 +746,7 @@ class myGame:
             pygame.display.flip()
             #pygame.display.update()
             fps = self.clock.get_fps()
-            pygame.display.set_caption(f'Custom Engine - FPS: {fps:.2f}')
+            pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
             self.clock.tick(60)
 
 myGame().run()

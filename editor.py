@@ -86,7 +86,9 @@ class Editor:
             'building_door': load_tile_images('interactables/building_door_edit',background = 'transparent'),
             #'large_decor' : load_tile_images('tiles/large_decor'),
             'spawners' : load_tile_images('tiles/spawners',background='transparent'),
-            'trap_door' : load_tile_images('interactables/trap_door_edit' ,background= 'transparent')
+            'trap_door' : load_tile_images('interactables/trap_door_edit' ,background= 'transparent'),
+            #'ladder' : load_tile_images('tiles/ladder' ,background= 'transparent'),
+            'crafting_bench' : load_tile_images('interactables/crafting_bench_edit',background= 'transparent')
         } 
 
         

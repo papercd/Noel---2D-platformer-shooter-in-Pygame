@@ -8,7 +8,8 @@ from my_pygame_light2d.light import PointLight
 from scripts.weapon_list import ambientNodeList
 
 
-PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs','building_door','trap_door'}
+PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs','building_door','trap_door',\
+                              'ladder'}
 AUTOTILE_TYPES = {'grass','stone','building_0','building_1','building_2','building_3','building_4'}
 SMOOTH_TRANS_TILES = {'building_0'}
 BULLET_TILE_OFFSET = [(1,0),(1,-1),(0,-1),(-1,-1),(-1,0),(-1,1),(0,1),(1,1)]
@@ -248,13 +249,17 @@ class Tilemap:
                 self.tilemap[str(tile_pos[0]) + ';' + str(tile_pos[1])] = tile
                 self.tilemap[str(tile_pos[0]) + ';' + str(tile_pos[1]+1)] = tile
         else: 
-
-            enclosed = self.check_enclosure(tile_pos,self.tilemap)
-            tile = Tile(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos,enclosed = enclosed)
-            self.create_hull_tile_ver(tile)
+            if tile_info[3] == 'crafting_bench':
+                tile = CraftingBench(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos)
+                self.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = tile 
+            else:
+                enclosed = self.check_enclosure(tile_pos,self.tilemap)
+                tile = Tile(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos,enclosed = enclosed)
+                self.create_hull_tile_ver(tile)
             
-            self.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = tile
-            self.update_enclosure(tile)
+                self.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = tile
+                self.update_enclosure(tile)
+        
         
 
     
@@ -587,12 +592,11 @@ class Tilemap:
                             split_key = tile_key.split(';')
                             self.tilemap[split_key[0]+';'+ str(int(split_key[1]) + 1)] = door 
                 else: 
-
                     Hull = self.create_hull(tilemap_data['tilemap'][tile_key]) 
-
                     enclosed = self.check_enclosure(tilemap_data['tilemap'][tile_key]['pos'],tilemap_data['tilemap'])
 
                     self.tilemap[tile_key] = Tile(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],tilemap_data['tilemap'][tile_key]["pos"],hull= Hull,enclosed = enclosed)
+                    
             else: 
                 self.tilemap[tile_key] = Light(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],\
                                                  tilemap_data['tilemap'][tile_key]["pos"],radius =tilemap_data['tilemap'][tile_key]["radius"], power = tilemap_data['tilemap'][tile_key]["power"],\
@@ -1054,6 +1058,7 @@ class Tilemap:
                     surrounding_rects_tiles.append((pygame.Rect(*rect),tile))
 
                 else:  
+                    
                     rect = (
                         tile.pos[0] * self.tile_size,         # left
                         tile.pos[1] * self.tile_size,         # top
@@ -1286,9 +1291,29 @@ class Tile:
             print('item_dropped')
 
 
+
+class CraftingBench(Tile):
+    def __init__(self, type, variant, pos, dirty=False, hull=None, enclosed=False):
+        super().__init__(type, variant, pos, dirty, hull, enclosed)
+
+    def interact(self,player_entity):
+        pass 
+
+
+class Slab(Tile):
+    def __init__(self, type, variant, pos, dirty=False, hull=None, enclosed=False):
+        super().__init__(type, variant, pos, dirty, hull, enclosed)
+
+
+
 class Ladder(Tile):
     def __init__(self, type, variant, pos, dirty=False, hull=None, enclosed=False):
         super().__init__(type, variant, pos, dirty, hull, enclosed)
+
+    
+    def interact(self,player_entity):
+        player_entity.on_ladder = not player_entity.on_ladder
+
 
 
 class Trapdoor(Tile):
@@ -1300,7 +1325,7 @@ class Trapdoor(Tile):
         self.size = size
         self.trap = True 
 
-    def interact(self):
+    def interact(self,player_entity):
         self.open = not self.open 
 
 class Door(Tile):
@@ -1312,7 +1337,7 @@ class Door(Tile):
         self.size = size
         self.trap = False 
 
-    def interact(self):
+    def interact(self,player_entity):
         self.open = not self.open 
         
          
@@ -1330,11 +1355,6 @@ class Light(Tile):
         self.radius = radius
         self.power = power
         self.color_value = color_value 
-
-class Slab(Tile):
-    def __init__(self,type,variant,pos):
-        super().__init__(type,variant,pos)
-        self.y_factor = 0.5
 
 class stair(Tile):
     def __init__(self,type,variant,pos,dir):
