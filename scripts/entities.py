@@ -1752,9 +1752,30 @@ class Bullet(PhysicsEntity):
         #bullet_glow_mask = pygame.mask.from_surface(self.sprite)
         surf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD)
 
+
+class rocket_shell():
+    def __init__(self):
+        self.velocity = [0,0]
+        self.pos = [0,0]
+        self.sprite = None
+        self.angle = 0
+        self.frames_flown = 100
+        self.dead = False
+        
+
+    def update_pos(self):
+        self.frames_flown -= 1
+        if self.frames_flown == 0 :
+             self.dead = True 
+             return True 
+        
+        self.velocity = None
+
+    def render(self,surf, offset = (0,0)):
+        surf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD) 
+
+
     
-
-
 
 class shotgun_Bullet(Bullet):
     def __init__(self, game, pos, size, sprite, bullet_type):
