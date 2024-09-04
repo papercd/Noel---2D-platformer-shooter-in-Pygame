@@ -899,11 +899,11 @@ class Search_Bar():
                 surf, (255, 255, 255), (self.position[0] + 4 * self.scale + 3 * self.scale + self.text_pos * 4 * self.scale, self.position[1] + 16 * self.scale + 13 * self.scale, 4 * self.scale, self.scale))
             self.blink += 1
 
-        if cursor.pressed is None:
+        if not cursor.pressed:
             self.clicked = 0
-        elif cursor.box.colliderect(search_box) and cursor.pressed[0]:
+        elif cursor.box.colliderect(search_box) and cursor.pressed:
             self.clicked = 1
-        elif cursor.pressed[0]:
+        elif cursor.pressed:
             self.clicked = 0
     
     def handle_event(self, event) -> None:

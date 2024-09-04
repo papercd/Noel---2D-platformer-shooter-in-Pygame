@@ -39,12 +39,12 @@ class Cursor:
     def set_cooldown(self) -> None:
         self.cooldown = 10
 
-    def update(self,keys,surf):
+    def update(self,surf):
         self.pos = pygame.mouse.get_pos()
         self.pos = ((self.pos[0]/2),(self.pos[1]/2))
-
         self.box = pygame.Rect(*self.pos, 1, 1)
-        self.pressed = pygame.mouse.get_pressed()
+
+        self.pressed = self.game.mouse_pressed
 
 
         if self.item is not None:
@@ -53,8 +53,15 @@ class Cursor:
             self.cooldown -= 1
 
                   # Colliding with search box changes cursor to text
+
+        self.magnet = self.game.shift_pressed and self. item is not None 
+        self.move = self.game.shift_pressed and not self.magnet 
+
+
+        """
         self.magnet = keys[K_LSHIFT] and self.item is not None
         self.move = keys[K_LSHIFT] and not self.magnet
+        """
 
         if self.context is not None:
             self.context.update(*self.pos,surf,1)

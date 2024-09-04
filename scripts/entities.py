@@ -1594,7 +1594,7 @@ class PlayerEntity(PhysicsEntity):
             self.cur_weapon_node.weapon.toggle_rapid_fire()
 
 
-    def weapon_toggle_state(self):
+    def return_weapon_toggle_state(self):
         if self.equipped:
             return self.cur_weapon_node.weapon.rapid_firing 
     
