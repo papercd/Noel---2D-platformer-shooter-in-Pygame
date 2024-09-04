@@ -18,6 +18,16 @@ from assets import GameAssets
 from my_pygame_light2d.engine import LightingEngine, Layer_
 from my_pygame_light2d.light import PointLight
 from my_pygame_light2d.hull import Hull
+from enum import Enum
+
+
+class GameState(Enum):
+    MainMenu = 1
+    MainMenuSettings = 2
+    GameLoop = 3
+    PauseMenu = 4
+    PauseMenuSettings =5 
+
 
 class myGame:
     def __init__(self):
@@ -28,7 +38,8 @@ class myGame:
         self.screen_shake = 0 
         self.clock = pygame.time.Clock()
 
-        self.screen_size = (1440,900)
+        #self.screen_size = (1440,900)
+        self.screen_size = (960,540)
         self.native_res = (int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5))
 
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
@@ -48,12 +59,14 @@ class myGame:
         self.background_surf = pygame.Surface((int(self.screen_size[0]//2.5),int(self.screen_size[1]/2.5)),pygame.SRCALPHA)
         self.foreground_surf = pygame.Surface((int(self.screen_size[0]//2.5),int(self.screen_size[1]//2.5)),pygame.SRCALPHA)
 
+        """
         self.test_shader = self.lights_engine.load_shader_from_path('vertex.glsl','fog_fragment.glsl')
         self.pixel_exp_shader = self.lights_engine.load_shader_from_path('vertex.glsl','exp_fragment.glsl')
         self.sparks_shader = self.lights_engine.load_shader_from_path('vertex.glsl','sparks.glsl')
         self.dithering_shader = self.lights_engine.load_shader_from_path('vertex.glsl','dithering.glsl')
 
-        
+        """
+
         self.NODE_CAPACITY = 4
         self.qtree_x_slack = 300
         self.qtree_y_slack = 300
@@ -274,8 +287,45 @@ class myGame:
         
         self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
         self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
+
+        self.curr_gameState = GameState.MainMenu
+
         #self.lights_display = pygame.Surface(self.background_surf.get_size()) 
         
+
+    def start_game(self):
+        
+        while(True):
+            self.handle_events()
+            self.update()
+            self.render()
+
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.quit_game() 
+            
+            elif event.type == pygame.MOUSEWHEEL:
+                pass 
+
+            elif event.type == pygame.KEYDOWN:
+                pass 
+
+            elif event.type == pygame.KEYUP: 
+                pass 
+            
+    
+    def update(self):
+        if self.curr_gameState == GameState.GameLoop:
+            pass 
+
+
+    def render(self):
+        pass 
+
+    def quit_game(self): 
+        pygame.quit()
+        quit()
 
     def run(self):
         pygame.mixer.music.load('data/music/Abstraction - Patreon Goal Reward Loops/Patreon Goal Reward Loops - Track 05.wav')
@@ -714,7 +764,8 @@ class myGame:
            
 
             
-            self.test_shader['iTime'] = self.running_time -time.time()
+            #self.test_shader['iTime'] = self.running_time -time.time()
+
             self.lights_engine.render_texture_with_trans(
                 tex, Layer_.BACKGROUND,
                 position= (-screenshake_offset[0],-screenshake_offset[1])
@@ -749,4 +800,5 @@ class myGame:
             pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
             self.clock.tick(60)
 
-myGame().run()
+game = myGame()
+game.start_game()
