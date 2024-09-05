@@ -39,7 +39,7 @@ class myGame:
         self.clock = pygame.time.Clock()
 
         #self.screen_size = (1440,900)
-        self.screen_size = (1060,640)
+        self.screen_size = (1360,840)
         self.native_res = (int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5))
 
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
@@ -291,7 +291,7 @@ class myGame:
         self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
         self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
 
-        self.curr_gameState = GameState.MainMenu
+        self.curr_gameState = GameState.GameLoop
 
         #self.lights_display = pygame.Surface(self.background_surf.get_size()) 
         
@@ -831,7 +831,20 @@ class myGame:
             self.clock.tick(60)
 
         if self.curr_gameState == GameState.MainMenu:
-            pass 
+            """ 
+            In here you need to create an actual main menu for the game. 
+            So what to do: make something similar to animal well: where you have a semi - animated 
+            background, and you have options to choose from. also have like a selection indicator that you can navigate using 
+            the wasd keys.
+            """
+
+            #blit the select options to the foreground layer, the background layer is going to have your sem - animated 
+            #background. 
+
+            
+            
+
+            
 
     def quit_game(self): 
         pygame.quit()
