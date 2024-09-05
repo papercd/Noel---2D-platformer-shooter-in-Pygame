@@ -38,8 +38,8 @@ class myGame:
         self.screen_shake = 0 
         self.clock = pygame.time.Clock()
 
-        #self.screen_size = (1440,900)
-        self.screen_size = (1060,640)
+        self.screen_size = (1440,900)
+        #self.screen_size = (1260,640)
         self.native_res = (int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5))
 
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
@@ -203,7 +203,7 @@ class myGame:
         #weapon equip
         
         self.frame_count = 0
-        self.mouse_pressed = False 
+        self.mouse_pressed = [False,False] 
         self.shift_pressed = False
         self.reset = True 
         
@@ -291,7 +291,7 @@ class myGame:
         self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
         self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
 
-        self.curr_gameState = GameState.MainMenu
+        self.curr_gameState = GameState.GameLoop
 
         #self.lights_display = pygame.Surface(self.background_surf.get_size()) 
         
@@ -312,10 +312,16 @@ class myGame:
                     self.player.change_weapon(event.y)
                     
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                self.mouse_pressed = True 
+                if event.button == 1:
+                    self.mouse_pressed[0] = True
+                elif event.button == 3:
+                    self.mouse_pressed[1] = True  
 
             elif event.type == pygame.MOUSEBUTTONUP: 
-                self.mouse_pressed = False 
+                if event.button == 1:
+                    self.mouse_pressed[0] = False
+                elif event.button == 3:
+                    self.mouse_pressed[1] = False 
 
             elif event.type == pygame.KEYDOWN:
                 if self.curr_gameState == GameState.GameLoop:
@@ -456,20 +462,21 @@ class myGame:
     def update_render(self):
         if self.curr_gameState == GameState.GameLoop:
             
+        
             pygame.mixer.music.load('data/music/Abstraction - Patreon Goal Reward Loops/Patreon Goal Reward Loops - Track 05.wav')
             pygame.mixer.music.set_volume(0.3)
             #pygame.mixer.music.play(loops=-1)
              
-            if self.mouse_pressed:
+            if self.mouse_pressed[0]:
                 if not self.cursor.interacting:
                     if self.player.return_weapon_toggle_state():
                         self.player.shoot_weapon(self.frame_count)
                     else: 
-                        if self.reset: 
+                        if self.reset:  
                             self.player.shoot_weapon(self.frame_count)
                             self.reset = False
-                else: 
-                    self.reset = True 
+            else: 
+                self.reset = True 
             """
             keys = pygame.key.get_pressed()
             if keys[pygame.K_LSHIFT]:

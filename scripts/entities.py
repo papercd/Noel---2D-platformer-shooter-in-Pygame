@@ -1502,10 +1502,12 @@ class PlayerEntity(PhysicsEntity):
                 self.change_weapon_inc = True 
                 if self.changing_done == 6:
                     if scroll ==1:
-                        self.cur_weapon_node = self.cur_weapon_node.next 
+                        self.cur_weapon_node = self.cur_weapon_node.next
+                        self.weapon_inven.curr = self.cur_weapon_node 
                         self.cur_weapon_node.weapon.equip(self)
                     else: 
                         self.cur_weapon_node = self.cur_weapon_node.prev
+                        self.weapon_inven.curr = self.cur_weapon_node
                         self.cur_weapon_node.weapon.equip(self)
                          
                     self.changing_done = 0
@@ -1515,7 +1517,7 @@ class PlayerEntity(PhysicsEntity):
 
             
         """
-        if self.cur_weapon:
+        if self.cur_weapon:         
             #first check if scrolling in that direction is valid. 
             if 0 <= self.cur_weapon_index + scroll <= len(self.weapon_inven) -1 :
                 self.change_scroll = scroll
@@ -1534,10 +1536,11 @@ class PlayerEntity(PhysicsEntity):
         
         
         
-        if self.weapon_inven.head:
+        if self.weapon_inven.curr:
             self.equipped = True 
-            self.animation = self.game.assets[self.type + '/holding_gun/' + self.state].copy() 
-            self.cur_weapon_node = self.weapon_inven.head
+            self.animation = self.game.assets[self.type + '/holding_gun/' + self.state]
+            #self.cur_weapon_node = self.weapon_inven.head
+            self.cur_weapon_node = self.weapon_inven.curr 
             self.cur_weapon_node.weapon.equip(self)
             
             

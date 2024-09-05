@@ -376,6 +376,10 @@ class Cell():
 
             else: image = self.draw(scale, 0)
 
+        if self.type == "weapon" and player.weapon_inven.curr and player.weapon_inven.curr.cell_ind == self.ind:
+            surf.blit(ITEM_TEXTURES["bone"],(x,y))
+            
+
         image.set_alpha(opacity)
         surf.blit(image, position)
 
@@ -454,7 +458,7 @@ class Cell():
                             if self.type == 'weapon':
                                 
                                 player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
-                                player.equip()
+                                #player.equip()
                             
                         
                             inventory_list[index][1].add_item(temp)
@@ -473,7 +477,7 @@ class Cell():
                                 player.equip()
                             self.particles.append(Dust())
                             cursor.set_cooldown()
-                        elif cursor.pressed[2] and self.item.count_display.number > 1:
+                        elif self.type != 'weapon' and cursor.pressed[1] and self.item.count_display.number > 1:
                             half = self.item.count_display.number // 2
                             cursor.item = self.item.copy()
                             
@@ -546,7 +550,7 @@ class Cell():
                         cursor.item = None
                         self.particles.append(Dust())
                         cursor.set_cooldown()
-                    elif cursor.pressed[2] and cursor.item.stackable:
+                    elif cursor.pressed[1] and cursor.item.stackable:
                         if not (cursor.item.type == self.type ):
                                 return
                         if cursor.item.count_display.number > 1:

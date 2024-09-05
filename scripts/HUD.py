@@ -41,8 +41,8 @@ class HUD:
 
        #create the inventories
        self.Items_list = [
-           (False,Inventory("item", 1, 5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -22 , 1, 16, bin_active=False)), 
-           (True,Inventory("item", 2,5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -68, 1, 16, bin_active= False,sorting_active=False)),
+           (False,Inventory("item", 1, 5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -22 , 1, 16, bin_active=False,player= self.player_entity)), 
+           (True,Inventory("item", 2,5, self.inven_panel.topleft[0] + 50, self.inven_panel.topleft[1] -68, 1, 16, bin_active= False,sorting_active=False,player= self.player_entity)),
            (True,Inventory("weapon",1,4,self.health_bar_render_position[0] +87  , self.inven_panel.topleft[1] - 43,1,1,bin_active=False,sorting_active=False , player= self.player_entity))
        ]
        

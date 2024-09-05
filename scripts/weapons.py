@@ -22,6 +22,7 @@ class Weapon:
         self.img_pivot = img_pivot
         self.weapon_img = weapon_img
         self.shrunk_weapon_img = shrunk_weapon_img
+        self.mpos = [0,0]
 
 
 
