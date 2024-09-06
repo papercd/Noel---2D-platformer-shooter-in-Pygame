@@ -1209,8 +1209,8 @@ class PlayerEntity(PhysicsEntity):
         self.air_time +=1
         
         
-        self.changing_done = min(6,self.change_weapon_inc + self.changing_done)
-        if self.changing_done == 6:
+        self.changing_done = min(2,self.change_weapon_inc + self.changing_done)
+        if self.changing_done == 2:
              
             self.change_weapon(self.change_scroll)
         
@@ -1384,18 +1384,19 @@ class PlayerEntity(PhysicsEntity):
         """
         #print(self.changing_done)
         if self.equipped: 
-            
+            """
             if self.changing_done == 0:
                 self.cur_weapon_node.weapon.render(surf,offset,set_angle = None)
             else: 
                 if self.cur_weapon_node.weapon.flipped: 
-                    angles = [angle for angle in range(0,-121,-20)]  
+                    angles = [angle for angle in range(0,-121,-40)]  
                     
                 else: 
-                    angles = [angle for angle in range(120,-1,-20)]      
+                    angles = [angle for angle in range(120,-1,-40)]      
                         
                 arm_pos_angle = angles[self.changing_done]
-                self.cur_weapon_node.weapon.render(surf,offset,set_angle = arm_pos_angle) 
+            """
+            self.cur_weapon_node.weapon.render(surf,offset) 
             
     
     def interact(self):
@@ -1500,7 +1501,7 @@ class PlayerEntity(PhysicsEntity):
             if (self.cur_weapon_node.next and scroll ==1) or (self.cur_weapon_node.prev and scroll ==-1):
                 self.change_scroll = scroll
                 self.change_weapon_inc = True 
-                if self.changing_done == 6:
+                if self.changing_done == 2:
                     if scroll ==1:
                         self.cur_weapon_node = self.cur_weapon_node.next
                         self.weapon_inven.curr = self.cur_weapon_node 

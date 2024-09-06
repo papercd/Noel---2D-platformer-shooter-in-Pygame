@@ -36,7 +36,7 @@ class inven_panel:
                 org_image_size = self.player.cur_weapon_node.prev.weapon.weapon_img.get_size()
                 display_img = self.player.cur_weapon_node.prev.weapon.shrunk_weapon_img
                 display_img.set_alpha(185* (self.done_expanding/4))
-                display_offset = (org_image_size[0]/2 - display_img.get_width()/2,-14* ((6-self.player.changing_done)/6) +org_image_size[1]/2 - display_img.get_height()/2  )
+                display_offset = (org_image_size[0]/2 - display_img.get_width()/2,-14* ((2-self.player.changing_done)/2) +org_image_size[1]/2 - display_img.get_height()/2  )
                 surf.blit(display_img,(self.topleft[0] - offset[0] + display_offset[0],self.topleft[1] - offset[1] + display_offset[1]))
 
             surf.blit(self.player.cur_weapon_node.weapon.weapon_img,(self.topleft[0] - offset[0] ,self.topleft[1] - offset[1]))
@@ -52,12 +52,12 @@ class inven_panel:
                 org_image_size = self.player.cur_weapon_node.next.weapon.weapon_img.get_size()
                 display_img = self.player.cur_weapon_node.next.weapon.shrunk_weapon_img
                 display_img.set_alpha(185* (self.done_expanding/4))
-                display_offset = (org_image_size[0]/2 - display_img.get_width()/2,14* ((6-self.player.changing_done)/6) +org_image_size[1]/2 - display_img.get_height()/2  )
+                display_offset = (org_image_size[0]/2 - display_img.get_width()/2,14* ((2-self.player.changing_done)/2) +org_image_size[1]/2 - display_img.get_height()/2  )
                 surf.blit(display_img,(self.topleft[0] - offset[0] + display_offset[0],self.topleft[1] - offset[1] + display_offset[1]))
 
 
         change_offset = [(0,0),(-1,-1),(-2,-2)]
-        surf.blit(self.TL_cur_weapon_frame[self.player.changing_done//3],(self.topleft[0] - offset[0] + change_offset[self.player.changing_done//3][0]-1,self.topleft[1] - offset[1]+change_offset[self.player.changing_done//3][1] -3 ))
+        surf.blit(self.TL_cur_weapon_frame[self.player.changing_done],(self.topleft[0] - offset[0] + change_offset[self.player.changing_done][0]-1,self.topleft[1] - offset[1]+change_offset[self.player.changing_done][1] -3 ))
 
 
 

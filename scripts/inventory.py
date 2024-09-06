@@ -9,6 +9,7 @@ import os
 
 WEAPON_CELL = load_image("ui/inventory/weapon_tile.png",background="transparent")  
 WEAPON_CELL_SELECTED = load_image("ui/inventory/weapon_tile_selected.png",background="transparent") 
+WEAPON_CELL_ACTUALLY_SELECTED = load_image("ui/inventory/weapon_actually_selected.png",background="transparent")
 
 CELL = load_image("ui/inventory/tile.png",background="transparent")
 CELL_SELECTED = load_image("ui/inventory/tile_selected.png",background="transparent")
@@ -344,6 +345,7 @@ class Cell():
 
     def draw(self, scale, selected):
         match selected:
+            
             case 3: 
                 image = WEAPON_CELL_SELECTED
             case 2: 
@@ -372,13 +374,18 @@ class Cell():
             if self.type== "weapon": image = self.draw(scale,3)
             else: image = self.draw(scale, 1)
         else:
-            if self.type == "weapon" : image = self.draw(scale,2)
+            if self.type == "weapon" :
+                if player.weapon_inven.curr and player.weapon_inven.curr.cell_ind == self.ind: 
+                    position[0] -= 1
+                    position[1] -= 1
+                    image = self.draw(scale,3) 
+                else: 
+                    image = self.draw(scale,2)
 
             else: image = self.draw(scale, 0)
 
-        if self.type == "weapon" and player.weapon_inven.curr and player.weapon_inven.curr.cell_ind == self.ind:
-            surf.blit(ITEM_TEXTURES["bone"],(x,y))
-            
+
+      
 
         image.set_alpha(opacity)
         surf.blit(image, position)
@@ -652,7 +659,7 @@ class Inventory():
         self.player.weapon_inven = filtered 
 
 
-    def add_item(self, item) -> None:
+    def add_item(self, item ) -> None:
 
         for row in self.cells:
             for cell in row:
