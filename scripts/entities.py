@@ -38,6 +38,7 @@ class interactable:
 
 
 
+
 class PhysicsEntity:
     def __init__(self, game, e_type, pos, size):
         self.game = game
@@ -1112,7 +1113,7 @@ class Canine(Enemy):
 class PlayerEntity(PhysicsEntity):
     def __init__(self,game,pos,size):
         #attributes required to implement weapon 
-        self.equipped = False 
+        #self.equipped = False 
 
         self.cur_weapon_node = None 
 
@@ -1164,7 +1165,11 @@ class PlayerEntity(PhysicsEntity):
     def set_state(self,action):
         if action != self.state: 
             self.state = action 
-            self.animation = self.game.assets[self.type + '/' + ('holding_gun/' if self.equipped else '') + self.state].copy() 
+            self.animation = self.game.assets[self.type + '/' + ('holding_gun/' if self.cur_weapon_node else '') + self.state]
+
+    def change_gun_holding_state(self):
+        self.animation = self.game.assets[self.type + '/' + ('holding_gun/' if self.cur_weapon_node else '') + self.state ]
+
 
     def update_pos(self, tile_map,cursor_pos,frame_count,movement=(0, 0)):
         
@@ -1327,7 +1332,7 @@ class PlayerEntity(PhysicsEntity):
         
         
         #print(self.changing_done)
-        if self.equipped:
+        if self.cur_weapon_node:
             self.cur_weapon_node.weapon.update(self.d_cursor_pos)
         
         #update the health and stamina bars 
@@ -1354,7 +1359,7 @@ class PlayerEntity(PhysicsEntity):
     
     def render(self,surf,offset):
         
-        knockback = (0,0) if not self.equipped else (self.cur_weapon_node.weapon.knockback[0]/5,self.cur_weapon_node.weapon.knockback[1]/9)
+        knockback = (0,0) if not self.cur_weapon_node else (self.cur_weapon_node.weapon.knockback[0]/5,self.cur_weapon_node.weapon.knockback[1]/9)
 
         super().render(surf,(offset[0] - knockback[0],offset[1] - knockback[1]))
 
@@ -1383,7 +1388,7 @@ class PlayerEntity(PhysicsEntity):
         stamina_ind.render(self.stamina_bar.x+34,self.stamina_bar.y-1,surf)
         """
         #print(self.changing_done)
-        if self.equipped: 
+        if self.cur_weapon_node: 
             """
             if self.changing_done == 0:
                 self.cur_weapon_node.weapon.render(surf,offset,set_angle = None)
@@ -1538,7 +1543,7 @@ class PlayerEntity(PhysicsEntity):
         
         
         if self.weapon_inven.curr:
-            self.equipped = True 
+            #self.equipped = True 
             self.animation = self.game.assets[self.type + '/holding_gun/' + self.state]
             #self.cur_weapon_node = self.weapon_inven.head
             self.cur_weapon_node = self.weapon_inven.curr 
@@ -1560,7 +1565,7 @@ class PlayerEntity(PhysicsEntity):
 
     def shoot_weapon(self,frame):
         #testing bullet firing
-        if self.equipped: 
+        if self.cur_weapon_node: 
             if self.cur_weapon_node.weapon.rapid_firing:
                 if frame % self.cur_weapon_node.weapon.fire_rate == 0:
                     """
@@ -1590,16 +1595,19 @@ class PlayerEntity(PhysicsEntity):
             #add bullet drop particles and smoke particles 
                 
            
-            
+    def discard_current_weapon(self):
+        #here you are going to throw away your current weapon. 
+        
+        pass 
                     
                     
     def toggle_rapid_fire(self):
-        if self.equipped:
+        if self.cur_weapon_node:
             self.cur_weapon_node.weapon.toggle_rapid_fire()
 
 
     def return_weapon_toggle_state(self):
-        if self.equipped:
+        if self.cur_weapon_node:
             return self.cur_weapon_node.weapon.rapid_firing 
     
     def hit(self,hit_damage):

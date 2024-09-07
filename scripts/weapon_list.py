@@ -68,7 +68,7 @@ class DoublyLinkedList:
             elif node.next: 
                 self.curr = node.next  
             else: 
-                self.curr = self.head
+                self.curr = None 
         if node.prev:
             node.prev.next = node.next
         if node.next:

@@ -96,6 +96,7 @@ class myGame:
         self.assets = self.game_assets.assets
         self.interactables = self.game_assets.interactables
         self.enemies = self.game_assets.enemies
+        
 
 
         self.weapons = {
@@ -119,6 +120,7 @@ class myGame:
         }
         
 
+        self.discarded_items = []
         self.bullets_on_screen = []
         self.enemy_bullets = []
         self.particles = []
@@ -233,7 +235,6 @@ class myGame:
         #self.player.equip_weapon(ak_47)
         
         # ----------------------
-
 
 
         self.inven_on = True
@@ -370,6 +371,9 @@ class myGame:
                         self.HUD.Items_list[0][1].add_item(  Item(random.choice(list(ITEMS.keys())), 1))
                     if event.key == pygame.K_e:
                         self.inven_on = not self.inven_on
+
+                    if event.key == pygame.K_q: 
+                        self.HUD.Items_list[2][1].remove_current_item() 
 
                     if event.key == pygame.K_a: 
                         """

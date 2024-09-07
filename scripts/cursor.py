@@ -82,7 +82,7 @@ class Cursor:
                 self.image = pygame.transform.scale(
                     CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))    
         else: 
-            if self.game.player.equipped:
+            if self.game.player.cur_weapon_node:
                 self.image = CURSOR_ICONS["rifle_crosshair"]
             else: 
                 self.image = pygame.transform.scale(
