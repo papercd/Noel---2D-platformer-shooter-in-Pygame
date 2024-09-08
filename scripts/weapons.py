@@ -12,7 +12,7 @@ WEAPONS_WITH_KNOCKBACK = {'rifle'}
 WEAPONS_THAT_CAN_RAPID_FIRE = {'rifle','weapon'}
 
 class Weapon:
-    def __init__(self,game,type,name,sprite,fire_rate,power,weapon_img,shrunk_weapon_img,img_pivot,description):  
+    def __init__(self,game,type,name,sprite,fire_rate,power,image,shrunk_image,img_pivot,description):  
         self.game = game
         self.type = type 
 
@@ -20,8 +20,8 @@ class Weapon:
         self.sprite_buffer = sprite
 
         self.img_pivot = img_pivot
-        self.weapon_img = weapon_img
-        self.shrunk_weapon_img = shrunk_weapon_img
+        self.image = image
+        self.shrunk_image = shrunk_image
         self.mpos = [0,0]
 
 
@@ -46,9 +46,9 @@ class Weapon:
 
 
     def draw(self,x,y,surf,scale):
-        offset = (17- self.weapon_img.get_width()//2, 7 - self.weapon_img.get_height()//2 )
-        #image = pygame.transform.scale(self.weapon_img,(16 * scale,16*scale))
-        surf.blit(self.weapon_img,(x+offset[0],y+offset[1]))
+        offset = (17- self.image.get_width()//2, 7 - self.image.get_height()//2 )
+        #image = pygame.transform.scale(self.image,(16 * scale,16*scale))
+        surf.blit(self.image,(x+offset[0],y+offset[1]))
 
     def get_description(self):
         return self.description
@@ -122,7 +122,7 @@ class Weapon:
 
         
     def copy(self):
-        new_weapon = Weapon(self.game,self.type,self.name,self.sprite,self.fire_rate,self.power,self.weapon_img,self.shrunk_weapon_img,self.img_pivot,self.description)
+        new_weapon = Weapon(self.game,self.type,self.name,self.sprite,self.fire_rate,self.power,self.image,self.shrunk_image,self.img_pivot,self.description)
         new_weapon.magazine = self.magazine.copy()
         return new_weapon
         
@@ -139,10 +139,12 @@ class Weapon:
         left_and_right_anchors = {  True: {"idle": {"left": (2,6), "right": (13,6)}, "walk": {"left": (2,6), "right": (13,6)},'run' :{"left": (1,6), "right": (8,5)} 
                                            ,'jump_up' :{"left": (0,4), "right": (9,4)},'jump_down' :{"left": (3,5), "right": (10,4)}
                                            ,'slide' :{ "left" : (11,9) ,"right": (11,9)} , 'wall_slide' : {"left": (4,5), "right": (8,5)},'land' :{ "left" : (2,6) ,"right": (8,5)} , 
+                                           'crouch' :{ "left" : (2,8) ,"right": (13,8)}
                                            },
                                     False: {"idle": {"left": (2,6), "right": (13,6)},"walk": {"left": (2,6), "right": (13,6)}, 'run' :{"left": (7,5), "right": (14,6)} 
                                            ,'jump_up' :{"left": (6,4), "right": (15,5)},'jump_down' :{"left": (2,4), "right": (7,5)}
-                                           ,'slide' :{ "left": (4,9), "right": (4,9) }, 'wall_slide': {'left' : (7,5), 'right' : (11,5)},'land' :{ "left" : (6,5) ,"right": (13,6)} , 
+                                           ,'slide' :{ "left": (4,9), "right": (4,9) }, 'wall_slide': {'left' : (7,5), 'right' : (11,5)},'land' :{ "left" : (6,5) ,"right": (13,6)} ,
+                                           'crouch' :{ "left" : (2,8) ,"right": (14,8)} 
                                            },
         }
 
@@ -249,11 +251,11 @@ class Weapon:
          
 
 class AK_47(Weapon):
-    def __init__(self,game,sprite,weapon_img,shrunk_weapon_img,description): 
-        super().__init__(game,'weapon','ak_47',sprite,5,15,weapon_img,shrunk_weapon_img,(2,2),description)
+    def __init__(self,game,sprite,image,shrunk_image,description): 
+        super().__init__(game,'weapon','ak_47',sprite,5,15,image,shrunk_image,(2,2),description)
 
     def copy(self):
-        new_ak = AK_47(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
+        new_ak = AK_47(self.game,self.sprite,self.image,self.shrunk_image,self.description)
         new_ak.magazine = self.magazine
         return new_ak
 
@@ -339,12 +341,12 @@ class AK_47(Weapon):
                 
 
 class Flamethrower(Weapon):
-    def __init__(self,game,sprite,weapon_img,shrunk_weapon_img,description):
-        super().__init__(game,'weapon', 'flamethrower' ,sprite,1,5,weapon_img,shrunk_weapon_img,(2,2),description)
+    def __init__(self,game,sprite,image,shrunk_image,description):
+        super().__init__(game,'weapon', 'flamethrower' ,sprite,1,5,image,shrunk_image,(2,2),description)
         self.rapid_firing = True
         self.size = self.sprite.get_size()
     def copy(self):
-        new_flamethrower =  Flamethrower(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
+        new_flamethrower =  Flamethrower(self.game,self.sprite,self.image,self.shrunk_image,self.description)
         new_flamethrower.magazine = self.magazine
         return new_flamethrower
     
@@ -399,12 +401,12 @@ class Flamethrower(Weapon):
            
             
 class Rocket_launcher(Weapon):
-    def __init__(self,game,sprite,weapon_img,shrunk_weapon_img,description):
-        super().__init__(game,'weapon','rocket_launcher',sprite,120,30,weapon_img,shrunk_weapon_img,(6,6),description)
+    def __init__(self,game,sprite,image,shrunk_image,description):
+        super().__init__(game,'weapon','rocket_launcher',sprite,120,30,image,shrunk_image,(6,6),description)
         self.rapid_firing = False
 
     def copy(self):
-        new_rocket_launcher = Rocket_launcher(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
+        new_rocket_launcher = Rocket_launcher(self.game,self.sprite,self.image,self.shrunk_image,self.description)
         new_rocket_launcher.magazine = self.magazine
         
         return new_rocket_launcher
@@ -418,12 +420,12 @@ class Rocket_launcher(Weapon):
 
 
 class Shotgun(Weapon):
-    def __init__(self,game,sprite,weapon_img,shrunk_weapon_img,description):
-        super().__init__(game,'weapon','shotgun',sprite,50,14,weapon_img,shrunk_weapon_img,(3,0),description)
+    def __init__(self,game,sprite,image,shrunk_image,description):
+        super().__init__(game,'weapon','shotgun',sprite,50,14,image,shrunk_image,(3,0),description)
         self.rapid_firing = False
 
     def copy(self):
-        new_shotgun = Shotgun(self.game,self.sprite,self.weapon_img,self.shrunk_weapon_img,self.description)
+        new_shotgun = Shotgun(self.game,self.sprite,self.image,self.shrunk_image,self.description)
         new_shotgun.magazine = self.magazine
 
         return new_shotgun 

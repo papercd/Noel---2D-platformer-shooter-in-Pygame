@@ -120,7 +120,7 @@ class myGame:
         }
         
 
-        self.discarded_items = []
+        self.collectable_items = []
         self.bullets_on_screen = []
         self.enemy_bullets = []
         self.particles = []
@@ -328,7 +328,7 @@ class myGame:
                 if self.curr_gameState == GameState.GameLoop:
                     if event.key == pygame.K_LSHIFT:
                         self.shift_pressed = True 
-                        if not self.inven_on: 
+                        if self.inven_on: 
                             self.player.running = True 
 
                     if event.key == pygame.K_SPACE: 
@@ -413,7 +413,7 @@ class myGame:
                         
                         self.player.player_jump() 
                     if event.key == pygame.K_s: 
-                        self.player.slide = True 
+                        self.player.crouch = True  
                     if event.key == pygame.K_g: 
                         self.player.toggle_rapid_fire()
                 
@@ -444,7 +444,7 @@ class myGame:
                     if event.key == pygame.K_d:
                         self.player_movement[1] = False 
                     if event.key == pygame.K_s: 
-                        self.player.slide =False 
+                        self.player.crouch =False 
 
                 elif self.curr_gameState == GameState.MainMenu:
                     if event.key == pygame.K_w: 
@@ -609,6 +609,20 @@ class myGame:
                     if kill:
                         self.existing_enemies.remove(enemy)
             
+
+
+            for collectable_item in self.collectable_items.copy():
+                if collectable_item.life <= 0 or (collectable_item.pos[0] + collectable_item.size[0] <= x_lower or \
+                                                  collectable_item.pos[0] >= x_higher) or (collectable_item.pos[1] + collectable_item.size[1] <= y_lower or \
+                                                  collectable_item.pos[1] >= y_higher)  :
+                    self.collectable_items.remove(collectable_item)
+                    continue 
+                collectable_item.update_pos(self.Tilemap)
+                
+                collectable_item.render(self.background_surf,offset = render_scroll)
+
+                
+            
             
             for bullet in self.bullets_on_screen.copy():
                 #if (bullet.pos[0] >= x_lower and bullet.pos[0] <= x_higher) and (bullet.pos[1] >= y_lower and bullet.pos[1] <= y_higher) :
@@ -671,7 +685,8 @@ class myGame:
                     if particle.type =='leaf':
                         particle.pos[0] += math.sin(particle.animation.frame * 0.035) * 0.3
                     if particle.source =='player' and particle.type[0:5] == 'smoke':
-                        particle.pos = self.player.cur_weapon_node.weapon.opening_pos
+                        if self.player.cur_weapon_node:
+                            particle.pos = self.player.cur_weapon_node.weapon.opening_pos
                     if kill: 
                         self.particles.remove(particle)
             

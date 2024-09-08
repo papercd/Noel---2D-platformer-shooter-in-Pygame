@@ -201,6 +201,151 @@ class PhysicsEntity:
                   (int(self.pos[0] - offset[0] + self.anim_offset[0]), int(self.pos[1] - offset[1] + self.anim_offset[1])))
 
 
+"""
+when you drop an item into the environment, you would need to know 
+the following things: 
+
+1. the position (it is going to be udpated, physics is applied to it)
+2. the image of the weapon 
+3. the 'life' of the item, as if enough time has passed the item is going to be deleted. 
+
+when you drop an item, I guess you would have to create an item object inerited from the physics entity class  
+with much simpler properties 
+
+"""
+
+class CollectableItem:
+    def __init__(self,game,pos,item):
+        self.game = game 
+        self.Item = item
+        self.pos = pos
+
+        self.image = item.image
+        self.size = [self.image.get_width()//2, self.image.get_height()//2]
+
+        self.life = 1800
+        self.velocity = [0,0]
+
+    def rect(self):
+        return pygame.Rect(self.pos[0] + self.size[0]/2 ,  self.pos[1] + self.size[1] / 2 , self.size[0] , self.size[1]) 
+
+    def update_pos(self,tile_map):
+        self.life -=1
+        self.velocity[1] = min(3, self.velocity[1] +0.11)
+
+        if self.velocity[0] < 0:
+            self.velocity[0] = min(self.velocity[0] + 0.21, 0)
+        elif self.velocity[0] > 0:
+            self.velocity[0] = max(self.velocity[0] - 0.21, 0)
+
+        self.pos[0] += self.velocity[0]
+        entity_rect  = self.rect()
+        
+
+        for rect_tile in tile_map.physics_rects_around((self.pos[0] + self.size[0] /2 ,  self.pos[1] + self.size[1] / 2), self.size):
+            
+            tile_type = rect_tile[1].type
+        
+
+            if entity_rect.colliderect(rect_tile[0]) and tile_type.split('_')[1] != 'stairs':
+                if tile_type.split('_')[1] == 'door':
+                    if  rect_tile[1].open:
+                        continue
+                    else:
+                        # if you close the door on youself (trap door and vertical door)
+                        if rect_tile[1].trap: 
+                            continue 
+                        else: 
+                            if self.velocity[0] > 0 :
+                            
+                                entity_rect.right = rect_tile[0].left
+                            elif self.velocity[0] < 0:
+                                
+                                entity_rect.left = rect_tile[0].right
+                            else: 
+                                if entity_rect.centerx - rect_tile[0].centerx <0:
+                                    
+                                    entity_rect.right = rect_tile[0].left
+                                    
+                                else:
+                                     
+                                    entity_rect.left = rect_tile[0].right 
+                                
+                            self.pos[0] = entity_rect.x - self.size[0] /2
+                            
+                else:
+                    if self.velocity[0] > 0:
+                    
+                        entity_rect.right = rect_tile[0].left
+                    elif self.velocity[0] < 0:
+                        
+                        entity_rect.left = rect_tile[0].right
+                    else: 
+                        if entity_rect.centerx -rect_tile[0].centerx <0:
+                        
+                            entity_rect.right = rect_tile[0].left
+                            
+                        else:
+                 
+                            entity_rect.left = rect_tile[0].right 
+
+                    self.pos[0] = entity_rect.x - self.size[0]/2
+
+        
+        self.pos[1] += self.velocity[1]
+        entity_rect = self.rect()
+
+
+        for rect_tile in tile_map.physics_rects_around((self.pos[0] + self.size[0] / 2 ,  self.pos[1] + self.size[1] / 2), self.size):
+            tile_type = rect_tile[1].type
+            if entity_rect.colliderect(rect_tile[0]):
+                if tile_type.split('_')[1] != 'stairs':
+                    if tile_type.split('_')[1] == 'door' and  rect_tile[1].open:
+                        continue 
+
+                    if self.velocity[1] > 0:
+                        self.on_ramp = 0
+                        entity_rect.bottom = rect_tile[0].top
+                    elif self.velocity[1] < 0:
+                
+                        entity_rect.top = rect_tile[0].bottom
+                    self.velocity[1] = 0
+                    self.pos[1] = entity_rect.y - self.size[1]/2
+                else:
+                    variant = rect_tile[1].variant.split(';')[0]
+                    pos_height = 0
+                    rel_x = rect_tile[0].x - entity_rect.right if variant in ('0', '2') else rect_tile[0].right - entity_rect.left
+
+                    if variant == '0':
+                        if -16 <= rel_x < 0:
+                            pos_height = max(0, -rel_x - (self.size[0]/2) // 4)
+                    elif variant == '2':
+                        if rel_x < 0:
+                            pos_height = min(tile_map.tile_size, -rel_x + (tile_map.tile_size - (self.size[0]/2) // 4))
+                    elif variant == '1':
+                        if rel_x > 0:
+                            pos_height = max(0, rel_x - (self.size[0]/2) // 4)
+                    elif variant == '3':
+                        if 0 < rel_x <= tile_map.tile_size:
+                            pos_height = min(tile_map.tile_size, rel_x + (tile_map.tile_size - (self.size[0]/2) // 4))
+
+                    target_y = rect_tile[0].y + tile_map.tile_size - pos_height
+                    if entity_rect.bottom > target_y:
+                        self.on_ramp = 1 if variant == '0' else -1
+                        entity_rect.bottom = target_y
+                        self.pos[1] = entity_rect.y - self.size[1]/2
+
+    
+
+
+
+    def render(self,surf,offset = (0,0)):
+        surf.blit(self.image, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
+         
+
+
+    
+
 class Enemy(PhysicsEntity):
     def __init__(self, game, pos, size, variant, hp):
         super().__init__(game, variant, pos, size)
@@ -1135,7 +1280,7 @@ class PlayerEntity(PhysicsEntity):
 
         self.jump_count = 2
         self.wall_slide = False
-        self.slide = False 
+        self.crouch = False 
         self.on_wall = self.collisions['left'] or self.collisions['right']
         self.air_time = 0
         self.on_ladder = False 
@@ -1316,7 +1461,7 @@ class PlayerEntity(PhysicsEntity):
                     if anim_frame == 0 or anim_frame == 3:
                         self.game.player_sfx['run'][str(random.randint(0,7))].play()
                     """
-                if self.slide:
+                if self.crouch and (self.game.player_movement[0] or self.game.player_movement[1]) :
                     self.cut_movement_input = True
                     self.set_state('slide')
                 self.y_inertia = 0
@@ -1327,7 +1472,11 @@ class PlayerEntity(PhysicsEntity):
                     if self.animation.done == True: 
                         self.set_state('idle') 
                 else: 
-                    self.set_state('idle')
+                    if self.crouch: 
+                        self.set_state('crouch')
+                        pass 
+                    else: 
+                        self.set_state('idle')
                 
         
         
@@ -1597,8 +1746,13 @@ class PlayerEntity(PhysicsEntity):
            
     def discard_current_weapon(self):
         #here you are going to throw away your current weapon. 
+        discard_pos = self.pos.copy()
+        discard_pos[0] += self.size[0] // 2
+        discard_pos[0] -= self.cur_weapon_node.weapon.image.get_width() if self.flip else 0
+        item = CollectableItem(self.game,discard_pos,self.cur_weapon_node.weapon)
+        item.velocity = [-1.5,-1.5] if self.flip else [1.5,-1.5] 
+        self.game.collectable_items.append(item)
         
-        pass 
                     
                     
     def toggle_rapid_fire(self):

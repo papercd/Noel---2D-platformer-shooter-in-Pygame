@@ -41,6 +41,8 @@ class GameAssets:
             'player/holding_gun/slide': ('entities/player/slide', 'transparent', 5, True, False),
             'player/holding_gun/wall_slide': ('entities/player/wall_slide', 'transparent', 4, True, False),
             'player/holding_gun/walk': ('entities/player/holding_gun/walk', 'transparent', 7, True, False),
+            'player/holding_gun/crouch': ('entities/player/holding_gun/crouch', 'transparent', 4, True, False),
+            
             'player/idle': ('entities/player/idle', 'transparent', 6, True, False),
             'player/run': ('entities/player/run', 'transparent', 4, True, False),
             'player/jump_up': ('entities/player/jump/up', 'transparent', 5, True, False),
@@ -48,6 +50,8 @@ class GameAssets:
             'player/land': ('entities/player/land', 'transparent', 2, False, False),
             'player/slide': ('entities/player/slide', 'transparent', 5, True, True),
             'player/wall_slide': ('entities/player/wall_slide', 'transparent', 4, True, False),
+            'player/crouch': ('entities/player/crouch', 'transparent', 7, False, False),
+            
         }
         return {
             'player': load_image('entities/player.png'),
