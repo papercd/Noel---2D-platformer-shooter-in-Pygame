@@ -3,6 +3,8 @@
 import random
 import pygame 
 import math
+
+from pygame.math import Vector2
 from scripts.los import line_of_sight
 from scripts.particles import Particle,non_animated_particle,bullet_collide_particle,bullet_trail_particle_wheelbot
 from scripts.health import HealthBar,StaminaBar
@@ -11,6 +13,7 @@ from scripts.tilemap import Node,Tile
 from scripts.spark import Spark 
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
 from scripts.weapon_list import DoublyLinkedList
+from scripts.range import Rectangle
 from my_pygame_light2d.light import PointLight
 
 
@@ -219,12 +222,14 @@ class CollectableItem:
         self.game = game 
         self.Item = item
         self.pos = pos
-
-        self.image = item.image
+        self.e_type = 'item'
+        self.state = 'inanimate'
+        self.image = item.image.copy()
         self.size = [self.image.get_width()//2, self.image.get_height()//2]
 
-        self.life = 1800
+        self.life = 180
         self.velocity = [0,0]
+
 
     def rect(self):
         return pygame.Rect(self.pos[0] + self.size[0]/2 ,  self.pos[1] + self.size[1] / 2 , self.size[0] , self.size[1]) 
@@ -340,6 +345,8 @@ class CollectableItem:
 
 
     def render(self,surf,offset = (0,0)):
+        if self.life < 60:
+            self.image.set_alpha(255 * (self.life/60))
         surf.blit(self.image, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
          
 
@@ -349,6 +356,7 @@ class CollectableItem:
 class Enemy(PhysicsEntity):
     def __init__(self, game, pos, size, variant, hp):
         super().__init__(game, variant, pos, size)
+        self.e_type = "enemy"
         self.walking = 0
         self.air_time = 0
         self.aggro = False
@@ -1259,7 +1267,7 @@ class PlayerEntity(PhysicsEntity):
     def __init__(self,game,pos,size):
         #attributes required to implement weapon 
         #self.equipped = False 
-
+        self.e_type = 'player'
         self.cur_weapon_node = None 
 
         self.weapon_inven = DoublyLinkedList()
@@ -1284,7 +1292,6 @@ class PlayerEntity(PhysicsEntity):
         self.on_wall = self.collisions['left'] or self.collisions['right']
         self.air_time = 0
         self.on_ladder = False 
-      
         
 
         #attributes required to implement double tap 
@@ -1301,6 +1308,7 @@ class PlayerEntity(PhysicsEntity):
         self.time = 0
         
         self.interactables = None
+        self.nearest_collectable_item = None
         
 
         
@@ -1316,7 +1324,7 @@ class PlayerEntity(PhysicsEntity):
         self.animation = self.game.assets[self.type + '/' + ('holding_gun/' if self.cur_weapon_node else '') + self.state ]
 
 
-    def update_pos(self, tile_map,cursor_pos,frame_count,movement=(0, 0)):
+    def update_pos(self, tile_map,quadtree,cursor_pos,frame_count,movement=(0, 0)):
         
         #print(self.velocity[0])
         self.time = frame_count
@@ -1350,8 +1358,11 @@ class PlayerEntity(PhysicsEntity):
             self.hard_land_recovery_time -= 1
             
         self.interactables = super().update_pos(tile_map, new_movement,anim_offset= (3,1))
+        r = max(self.size) * 2
 
-        
+        rangeRect = Rectangle(Vector2(self.pos[0] - self.size[0]//2 - r /2 ,self.pos[1]  - r /2 ), Vector2(r,r))
+
+        self.nearest_collectable_item = quadtree.queryRange(rangeRect,"item")
 
         #every frame, the stamina is increased by 0.7
        
@@ -1555,6 +1566,16 @@ class PlayerEntity(PhysicsEntity):
     
     def interact(self):
         # find the interactable that is closest to the player's center position. 
+        if self.nearest_collectable_item and self.state =='crouch':
+            
+            #now make it so that you can pick the item up. 
+            
+            inven_is_full = self.game.HUD.Items_list[2][1].add_item(self.nearest_collectable_item[0].Item)
+            if not inven_is_full: 
+                self.nearest_collectable_item[0].life =0
+
+            
+            
         if self.interactables: 
             min_distance = float('inf')
             closest_interactable = None 
@@ -1722,6 +1743,7 @@ class PlayerEntity(PhysicsEntity):
                     test_shell = Bullet(self.game,self.cur_weapon.opening_pos,test_shell_image.get_size(),test_shell_image,'rifle_small').copy()
                     self.cur_weapon.load(test_shell)
                     """
+                    
                     self.cur_weapon_node.weapon.shoot(self.time,self.d_cursor_pos) 
                    
                     #self.game.Tilemap.bullets.append(shot_bullet)
@@ -1735,6 +1757,7 @@ class PlayerEntity(PhysicsEntity):
                 test_shell = Bullet(self.game,self.cur_weapon.opening_pos,test_shell_image.get_size(),test_shell_image,'rifle_small').copy()
                 self.cur_weapon.load(test_shell)
                 """
+                
           
                 self.cur_weapon_node.weapon.shoot(self.time,self.d_cursor_pos) 
                
@@ -1774,6 +1797,7 @@ class Item(PhysicsEntity):
     def __init__(self, game,size,sprite):
         super().__init__(game, 'item', [0,0], size)
         self.sprite = sprite 
+        self.e_type = 'item'
 
     """ what would you need for an item class to have? """
 
@@ -1798,6 +1822,7 @@ class Grenade(Item):
 class Bullet(PhysicsEntity): 
     def __init__(self, game, pos, size, sprite, bullet_type):
         super().__init__(game, 'bullet', pos, size)
+        self.e_type = "bullet"
         self.damage = 1
         self.angle = 0
         self.sprite = sprite
@@ -1919,23 +1944,28 @@ class Bullet(PhysicsEntity):
         surf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD)
 
 
-class rocket_shell():
-    def __init__(self):
+class RocketShell():
+    def __init__(self,game,pos,size,sprite,bullet_type):
+        self.game = game
         self.velocity = [0,0]
-        self.pos = [0,0]
-        self.sprite = None
+        self.pos = pos
+        self.sprite = sprite
         self.angle = 0
         self.frames_flown = 100
         self.dead = False
+        self.size = size
+        self.damage = 20
+        self.bullet_type = bullet_type 
         
 
-    def update_pos(self):
+    def update_pos(self,tile_map):
         self.frames_flown -= 1
         if self.frames_flown == 0 :
              self.dead = True 
              return True 
         
-        self.velocity = None
+        self.pos[0] += self.velocity[0] 
+        self.pos[1] += self.velocity[1] 
 
     def render(self,surf, offset = (0,0)):
         surf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD) 
@@ -1984,9 +2014,7 @@ class tile_ign_Bullet(Bullet):
             return True 
        
         
-class Dropped_item(PhysicsEntity):
-    def __init__(self, game, e_type, pos, size):
-        super().__init__(game, e_type, pos, size)        
+
        
 class Wheelbot_bullet(tile_ign_Bullet):
     def __init__(self,game,animation,pos,size,type):

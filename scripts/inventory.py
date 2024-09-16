@@ -660,7 +660,9 @@ class Inventory():
 
 
     def add_item(self, item ) -> None:
-
+        if self.item_count == self.rows*self.columns:
+            
+            return True  
         for row in self.cells:
             for cell in row:
                 if cell.item is None:
@@ -670,14 +672,14 @@ class Inventory():
                         self.player.weapon_inven.add_weapon(cell.ind,cell.item)
                         self.player.equip()
 
-                    return
+                    return False
                 elif item.stackable and cell.item.name == item.name:
                     if cell.item.count_display.number + item.count_display.number <= self.stack_limit:
 
                         cell.item.count_display.change_number(cell.item.count_display.number + item.count_display.number)
                         
 
-                        return
+                        return False
                     elif self.stack_limit - cell.item.count_display.number > 0:
                         amount = self.stack_limit - cell.item.count_display.number
                         cell.item.count_display.change_number(cell.item.count_display.number+ amount)
@@ -686,7 +688,7 @@ class Inventory():
                         
                         if item.count_display.number > 0:
                             self.add_item(item.copy())
-                        return
+                        return False
 
     def get_item_list(self) -> list:
         item_list = []
@@ -708,7 +710,7 @@ class Inventory():
     def remove_current_item(self):
         if self.player.cur_weapon_node:
             #get rid of the currently selected weapon from the inventory 
-            
+            self.player.disable_shooting = True 
             #throw the weapon onto the env. 
             self.player.discard_current_weapon()
 
@@ -717,6 +719,7 @@ class Inventory():
             
             self.player.cur_weapon_node = self.player.weapon_inven.curr  
             self.player.change_gun_holding_state()
+            self.player.disable_shooting = False 
             #print(self.cells[0][self.player.cur_weapon_node.cell_ind])
             
 

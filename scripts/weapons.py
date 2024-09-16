@@ -5,14 +5,14 @@ import math
 from scripts.fire import Flame_particle
 from scripts.particles import Particle,non_animated_particle
 from scripts.Pygame_Lights import LIGHT ,pixel_shader
-from scripts.entities import Bullet, shotgun_Bullet
+from scripts.entities import Bullet, shotgun_Bullet, RocketShell
 from my_pygame_light2d.light import PointLight
 
 WEAPONS_WITH_KNOCKBACK = {'rifle'}
 WEAPONS_THAT_CAN_RAPID_FIRE = {'rifle','weapon'}
 
 class Weapon:
-    def __init__(self,game,type,name,sprite,fire_rate,power,image,shrunk_image,img_pivot,description):  
+    def __init__(self,game,type,name,sprite,fire_rate,power,image,shrunk_image,img_pivot,description,pivot_to_opening_offset = (0,0)):  
         self.game = game
         self.type = type 
 
@@ -23,7 +23,8 @@ class Weapon:
         self.image = image
         self.shrunk_image = shrunk_image
         self.mpos = [0,0]
-
+        self.pivot_to_opening_offset =  pivot_to_opening_offset
+        self.sprite_width_discrepency = 0
 
 
         self.flipped = False 
@@ -173,9 +174,11 @@ class Weapon:
             self.pivot = [self.holder.pos[0]+self.left_anchor[0]-offset[0]+1,self.holder.pos[1]+self.left_anchor[1] -offset[1]]
             self.render_offset = pygame.math.Vector2(self.sprite_buffer.get_rect().centerx - self.img_pivot[0], self.sprite_buffer.get_rect().centery - self.img_pivot[1])
 
-        dx,dy = self.mpos[0] - self.pivot[0], self.mpos[1]- self.pivot[1]
+       
+        dx, dy = self.mpos[0] - (self.pivot[0] + self.pivot_to_opening_offset[0]), self.mpos[1]- (self.pivot[1] +self.pivot_to_opening_offset[1]) 
+      
         angle = math.degrees(math.atan2(-dy,dx)) 
-        sprite_width = self.sprite_buffer.get_width()
+        sprite_width = self.sprite_buffer.get_width() - self.sprite_width_discrepency
         
         #separate angle varialble for the gun's opening - to apply angle cap and to pass onto firing bullet 
         self.angle_opening = angle 
@@ -229,8 +232,8 @@ class Weapon:
         #self.opening_pos[0] = self.pivot[0] + math.cos(math.radians(-self.angle_opening)) * sprite_width
         #self.opening_pos[1] = self.pivot[1] + math.sin(math.radians(-self.angle_opening)) * sprite_width
        
-        self.opening_pos[0] = self.pivot[0] + offset[0]+ math.cos(math.radians(-self.angle_opening)) * sprite_width
-        self.opening_pos[1] = self.pivot[1] + offset[1]+ math.sin(math.radians(-self.angle_opening)) * sprite_width
+        self.opening_pos[0] = self.pivot[0] + self.pivot_to_opening_offset[0] + offset[0]+ math.cos(math.radians(-self.angle_opening)) * sprite_width
+        self.opening_pos[1] = self.pivot[1] + self.pivot_to_opening_offset[1] + offset[1]+ math.sin(math.radians(-self.angle_opening)) * sprite_width
         
         #if self.type in WEAPONS_WITH_KNOCKBACK:
         if self.knockback[0] < 0: 
@@ -243,10 +246,10 @@ class Weapon:
         if self.knockback[1] > 0 :
             self.knockback[1] = max(self.knockback[1] -1.45, 0)
 
-        #testSurf = pygame.Surface((2,2))
+        testSurf = pygame.Surface((2,2))
 
         if not blitz: 
-            #surf.blit(testSurf,(self.opening_pos[0]-offset[0],self.opening_pos[1]-offset[1]))
+            surf.blit(testSurf,(self.opening_pos[0]-offset[0],self.opening_pos[1]-offset[1]))
             surf.blit(rotated_image,(rect.topleft[0] + self.knockback[0],rect.topleft[1] + self.knockback[1]))
          
 
@@ -260,7 +263,7 @@ class AK_47(Weapon):
         return new_ak
 
     def shoot(self,j= 0,d_mouse_pos = [0,0]):
-        if self.magazine > 0: 
+        if self.magazine: 
             self.magazine -= 1 
             bullet_image = self.game.bullets['rifle_small'].copy()
             bullet = Bullet(self.game,[0,0],bullet_image.get_size(),bullet_image,'rifle_small')
@@ -404,6 +407,10 @@ class Rocket_launcher(Weapon):
     def __init__(self,game,sprite,image,shrunk_image,description):
         super().__init__(game,'weapon','rocket_launcher',sprite,120,30,image,shrunk_image,(6,6),description)
         self.rapid_firing = False
+        self.pivot_to_opening_offset = (0,-3)
+        self.sprite_width_discrepency = 4
+        self.prev_shot_time = 0
+        self.cooldown = 45
 
     def copy(self):
         new_rocket_launcher = Rocket_launcher(self.game,self.sprite,self.image,self.shrunk_image,self.description)
@@ -415,7 +422,50 @@ class Rocket_launcher(Weapon):
         pass 
 
     def shoot(self,j= 0,d_mouse_pos = [0,0]):
-        pass 
+        if j >= self.prev_shot_time:
+            if self.prev_shot_time + self.cooldown < j: 
+                can_shoot = True 
+            else: 
+                can_shoot = False 
+            
+        else: 
+            if 360 - self.prev_shot_time + j > self.cooldown:
+                can_shoot = True 
+            else: 
+                can_shoot = False 
+
+        if self.magazine > 0 and can_shoot:
+            self.prev_shot_time = j
+            self.magazine -= 1
+            bullet_image = self.game.bullets['rocket_launcher'].copy()
+            bullet = RocketShell(self.game,self.opening_pos.copy(),bullet_image.get_size(),bullet_image,'rocket_launcher')
+
+            bullet.angle = self.angle_opening 
+            bullet.sprite = pygame.transform.rotate(bullet.sprite,bullet.angle)
+            bullet.velocity =  [math.cos(math.radians(-bullet.angle)) * self.power ,math.sin(math.radians(-bullet.angle))*self.power]  
+            
+            
+            if bullet.velocity[0] > 0 :
+                
+                bullet.pos = self.opening_pos.copy()
+                bullet.pos[0] -= bullet.velocity[0]
+                bullet.pos[1] += (0 if bullet.velocity[1] <0 else -bullet.velocity[1])
+                bullet.flip = False 
+            else: 
+                bullet.pos = self.opening_pos.copy()
+                
+                if bullet.velocity[1] > 0 :
+                    bullet.pos[1] -= bullet.velocity[1]
+                bullet.flip = True 
+            
+
+            self.game.bullets_on_screen.append(bullet)
+
+            self.knockback = [-bullet.velocity[0]/2,-bullet.velocity[1]/2]
+
+
+            
+            
 
 
 
@@ -423,6 +473,8 @@ class Shotgun(Weapon):
     def __init__(self,game,sprite,image,shrunk_image,description):
         super().__init__(game,'weapon','shotgun',sprite,50,14,image,shrunk_image,(3,0),description)
         self.rapid_firing = False
+        self.cooldown = 14
+        self.prev_shot_time = 0
 
     def copy(self):
         new_shotgun = Shotgun(self.game,self.sprite,self.image,self.shrunk_image,self.description)
@@ -434,8 +486,23 @@ class Shotgun(Weapon):
         pass 
 
     def shoot(self,j= 0,d_mouse_pos = [0,0]):
-        if self.magazine > 0:
-            self.magazine -= 0
+        if j >= self.prev_shot_time:
+            if self.prev_shot_time + self.cooldown < j: 
+                can_shoot = True 
+            else: 
+                can_shoot = False 
+            
+        else: 
+            if 360 - self.prev_shot_time + j > self.cooldown:
+                can_shoot = True 
+            else: 
+                can_shoot = False 
+
+
+        if self.magazine > 0 and can_shoot:
+
+            self.prev_shot_time = j
+            self.magazine -= 1
             bullet_image = self.game.bullets['shotgun'].copy()  
             knockback = [0,0]
             for i in range(-2,3):

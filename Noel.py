@@ -112,6 +112,7 @@ class myGame:
             'rifle_small' : load_image('bullets/rifle/small.png',background='transparent'),
             'laser_weapon' : Animation(load_images('bullets/laser_weapon/new',background='transparent'),img_dur= 5, loop = True),
             'shotgun' : load_image('bullets/shotgun/small.png',background='transparent'),
+            'rocket_launcher' : load_image('bullets/rocket_launcher/0.png',background='transparent'),
         }
 
         self.backgrounds = {
@@ -166,7 +167,7 @@ class myGame:
                             ((tile.pos[0]+1) *2.5*self.Tilemap.tile_size,tile.pos[1] *2.5*self.Tilemap.tile_size ) , 
                             ((tile.pos[0]+1) *2.5*self.Tilemap.tile_size,(tile.pos[1]+1) *2.5*self.Tilemap.tile_size ) ,
                             ((tile.pos[0]) *2.5*self.Tilemap.tile_size,tile.pos[1] *2.5*self.Tilemap.tile_size ) ,
-                            ]
+                            ]d
                 self.lights_engine.hulls.append(Hull(vertices))
                 print("added")
                 print(i)
@@ -204,6 +205,7 @@ class myGame:
 
         #weapon equip
         
+         
         self.frame_count = 0
         self.mouse_pressed = [False,False] 
         self.shift_pressed = False
@@ -474,9 +476,11 @@ class myGame:
             if self.mouse_pressed[0]:
                 if not self.cursor.interacting:
                     if self.player.return_weapon_toggle_state():
+                        
                         self.player.shoot_weapon(self.frame_count)
                     else: 
                         if self.reset:  
+                            
                             self.player.shoot_weapon(self.frame_count)
                             self.reset = False
             else: 
@@ -618,7 +622,7 @@ class myGame:
                     self.collectable_items.remove(collectable_item)
                     continue 
                 collectable_item.update_pos(self.Tilemap)
-                
+                quadtree.insert(collectable_item)
                 collectable_item.render(self.background_surf,offset = render_scroll)
 
                 
@@ -646,7 +650,7 @@ class myGame:
 
                             rangeRect = Rectangle(Vector2(xx - r / 2, yy - r / 2), Vector2(r, r))
                             
-                            nearby_entities = quadtree.queryRange(rangeRect)
+                            nearby_entities = quadtree.queryRange(rangeRect,"enemy")
                             for entity in nearby_entities:
                                 
                                 #if bullet != entity and entity.type != "bullet" and entity.state != 'death':
@@ -707,7 +711,7 @@ class myGame:
                         
                         rangeCircle = Circle(Vector2(xx, yy), r)
 
-                        nearby_entities = quadtree.queryRange(rangeCircle)
+                        nearby_entities = quadtree.queryRange(rangeCircle,"enemy")
 
                         for entity in nearby_entities:
                             if  entity.state != 'death' and particle.collide(entity):
@@ -728,7 +732,7 @@ class myGame:
 
         
 
-            self.player.update_pos(self.Tilemap,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
+            self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
             self.player.render(self.background_surf,render_scroll)
 
             #------------------------grass renderer stuff

@@ -77,7 +77,7 @@ class QuadTree:
                 return True
             return False
 
-    def queryRange(self, _range):
+    def queryRange(self, _range , e_type = None):
         entitiesInRange = []
         
         if type(_range) == Circle:
@@ -88,13 +88,18 @@ class QuadTree:
                 return entitiesInRange
 
         for entity in self.entities:
-            if _range.containsEntity(entity):
-                entitiesInRange.append(entity)
+            if e_type == None: 
+                if _range.containsEntity(entity):
+                    entitiesInRange.append(entity)
+            else: 
+                if entity.e_type == e_type and _range.containsEntity(entity):
+                    entitiesInRange.append(entity) 
+                
         if self.northWest != None:
-            entitiesInRange += self.northWest.queryRange(_range)
-            entitiesInRange += self.northEast.queryRange(_range)
-            entitiesInRange += self.southWest.queryRange(_range)
-            entitiesInRange += self.southEast.queryRange(_range)
+            entitiesInRange += self.northWest.queryRange(_range,e_type)
+            entitiesInRange += self.northEast.queryRange(_range,e_type)
+            entitiesInRange += self.southWest.queryRange(_range,e_type)
+            entitiesInRange += self.southEast.queryRange(_range,e_type)
 
         # if self.boundary.intersects(_range):
         #     return elementsInRange
