@@ -1,3 +1,72 @@
+"""
+Noel: game made in pygame, a module for 2d game development in python.
+
+pygame is definitely too slow to make a high-end, sophisticated game. Reasons?
+
+Firstly, python itself is too slow compared to C++ or C#, which are the main languages 
+
+used for game development. Interpreted languges in general have issues with performance which is a tradeoff for
+
+their flexibility. It is definitely easier to code game mechanics in python, but performnace does lack a lot. 
+
+another reason for why pygame is slow is because it does not support gpu processing. If you want to integrate gpu processing
+
+for rendering, you need to use other libraraaaies from graphics API's like opengl. 
+
+
+I've found a lighting module for pygame that uses rayCasting, and integrated it into my game's system.
+
+The lighting module also has its own method for rendering sprites, as it utilizes moderngl's functions which are separate from 
+
+pygame. This has required me to restructure the game's rendering system completely during the midst of development, but it turned 
+
+out to be a good investment of my time as the game's aesthetics has improved alot with the implementation of lights and shadows. 
+
+It's not a complex lighting system, but it does its job well. 
+
+
+the game itself started as an extension from a tutorial video I've watched on youtube made by a pygame specialist named 
+
+"DafluffyPotato". it was a 6 hour tutorial that showed how to create the most basic framework for a platformer game 
+
+that included a collision detection method, a rendering system, and an entities handling system. He had his own way of creating a game 
+
+loop that can handle collision detection between entities, how to create camera movement, how to create an animation system, and so
+
+on. He also had an editor script that was used to save and read information onto a json file. After following through his tutorial 
+
+and understanding how it works together, I wanted to try and create a more sophisticated game with more core game mechanics, that was 
+
+visually pleasing. 
+
+The things that I've implemented or added onto his code is as follows: 
+
+1. a resource management system (a gameassets class) to manage assets such as sprites or animations 
+
+2. a weapons system 
+
+3. an inventory system to hold weapons and items 
+
+4. the lighting system (not implemented by me, more of an integration)
+
+5. the new editor script with a tileset viewing panel, and extra options such as creating different sections with different ambient lighting
+
+6. improved? collision detection system with the usage of a quadtree instead of brute-force collision detection with simple for-loops
+
+7. numbers and characters are rendering with sprites to replace pygame's inconvienient conventional methods 
+
+8. gameStateManager system to handle different game states.
+
+
+I don't know what kind of game this is going to end up to be, I'm either thinking of making in a pvp shooter, 
+
+or a wave-based survival game with different and stronger enemies that spawn each wave. 
+
+
+"""
+
+
+
 
 import pygame
 import random
@@ -39,7 +108,7 @@ class myGame:
         self.clock = pygame.time.Clock()
 
         #self.screen_size = (1440,900)
-        self.screen_size = (1360,840)
+        self.screen_size = (1020,700)
         self.native_res = (int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5))
 
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
@@ -129,6 +198,8 @@ class myGame:
         self.sparks = []
 
         self.Tilemap = Tilemap(self,tile_size=16,offgrid_layers=2)
+
+        
         
 
         #self.quadtree_ = a
@@ -139,7 +210,7 @@ class myGame:
         self.shadow_objects = [] 
 
         """"""
-        self.lights_engine.lights = self.Tilemap.load('test.json')
+        self.lights_engine.lights = self.Tilemap.load('main_menu.json')
 
         """
         for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
@@ -291,16 +362,61 @@ class myGame:
         self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
         self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
 
-        self.curr_gameState = GameState.GameLoop
+        self.curr_gameState = GameState.MainMenu
 
         #self.lights_display = pygame.Surface(self.background_surf.get_size()) 
         
 
     def start_game(self):
-        
+        self.show_start_sequence()
         while(True):
             self.handle_events()
             self.update_render()
+
+    def show_start_sequence(self):
+        time = 255 
+        while time > 0: 
+            time -= 1
+            self.lights_engine.clear(0,0,0,255)
+            self.background_surf.fill((155,155,time))
+            self.foreground_surf.fill((0,0,0,0))
+            self.bsurf.fill((0,0,0,0))
+            self.cursor.update(self.foreground_surf)
+
+
+
+            tex = self.lights_engine.surface_to_texture(self.background_surf)
+
+            self.lights_engine.render_texture_with_trans(
+                tex, Layer_.BACKGROUND,
+                position= (0,0)
+            )
+            """
+            self.lights_engine.render_texture(
+                tex, Layer_.BACKGROUND,
+                pygame.Rect(-screenshake_offset[0] ,-screenshake_offset[1],tex.width ,tex.height),
+                pygame.Rect(0,0,tex.width,tex.height)
+            )"""
+            tex.release()
+
+            tex = self.lights_engine.surface_to_texture(self.foreground_surf)
+            self.lights_engine.render_texture(
+                tex, Layer_.FOREGROUND,
+                pygame.Rect(0,0,tex.width ,tex.height),
+                pygame.Rect(0,0,tex.width,tex.height)
+            )
+            tex.release()
+
+            self.lights_engine.render(self.ambient_node_ptr.range,(0,0), (0,0))
+
+
+            pygame.display.flip()
+            #pygame.display.update()
+            fps = self.clock.get_fps()
+            pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
+            self.clock.tick(60)
+
+         
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -437,6 +553,8 @@ class myGame:
                         self.player.slide =False 
 
                 elif self.curr_gameState == GameState.MainMenu:
+                    if event.key == pygame.K_p: 
+                        self.curr_gameState = GameState.GameLoop
                     if event.key == pygame.K_w: 
                         self.menu_scroll_up = False
                     if event.key == pygame.K_UP: 
@@ -454,6 +572,7 @@ class myGame:
             
     
     def update_render(self):
+        
         if self.curr_gameState == GameState.GameLoop:
             
             pygame.mixer.music.load('data/music/Abstraction - Patreon Goal Reward Loops/Patreon Goal Reward Loops - Track 05.wav')
@@ -836,13 +955,68 @@ class myGame:
             So what to do: make something similar to animal well: where you have a semi - animated 
             background, and you have options to choose from. also have like a selection indicator that you can navigate using 
             the wasd keys.
+
+
             """
+            self.scroll[0] += (self.player.rect().centerx - self.background_surf.get_width() /2 - self.scroll[0])/20
+            self.scroll[1] += (self.player.rect().centery - self.background_surf.get_height() /2 - self.scroll[1])/20
+            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+
+            self.lights_engine.clear(0,0,0,255)
+            self.background_surf.fill((155,155,155))
+            self.foreground_surf.fill((0,0,0,0))
+            self.bsurf.fill((0,0,0,0))
+            
+
+
+            self.backgrounds['building'].render(self.background_surf,render_scroll)
+            self.Tilemap.render(self.background_surf,render_scroll)
+
+            self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
+
+            self.player.update_pos(self.Tilemap,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
+            self.player.render(self.background_surf,render_scroll)
+
+            self.cursor.update(self.foreground_surf)
+
+            tex = self.lights_engine.surface_to_texture(self.background_surf)
+
+            self.lights_engine.render_texture_with_trans(
+                tex, Layer_.BACKGROUND,
+                position= (0,0)
+            )
+            """
+            self.lights_engine.render_texture(
+                tex, Layer_.BACKGROUND,
+                pygame.Rect(-screenshake_offset[0] ,-screenshake_offset[1],tex.width ,tex.height),
+                pygame.Rect(0,0,tex.width,tex.height)
+            )"""
+            tex.release()
+
+            tex = self.lights_engine.surface_to_texture(self.foreground_surf)
+            self.lights_engine.render_texture(
+                tex, Layer_.FOREGROUND,
+                pygame.Rect(0,0,tex.width ,tex.height),
+                pygame.Rect(0,0,tex.width,tex.height)
+            )
+            tex.release()
+
+            self.lights_engine.render(self.ambient_node_ptr.range,render_scroll, (0,0))
+
+
+            pygame.display.flip()
+            #pygame.display.update()
+            fps = self.clock.get_fps()
+            pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
+            self.clock.tick(60)
+        
+
 
             #blit the select options to the foreground layer, the background layer is going to have your sem - animated 
             #background. 
 
             
-            
+
 
             
 

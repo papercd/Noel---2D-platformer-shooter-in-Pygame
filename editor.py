@@ -30,12 +30,12 @@ class Editor:
         pygame.init() 
         pygame.display.set_caption('editor')
 
-        
+    
         self.RENDER_SCALE = 2.5
         self.DEFAULT_LIGHT_RADIUS = 356
 
 
-        self.screen_res = [1640,1000]
+        self.screen_res = [940,700]
         self.native_res = [int(self.screen_res[0] / self.RENDER_SCALE) ,int(self.screen_res[1] / self.RENDER_SCALE)]
 
 
@@ -110,7 +110,7 @@ class Editor:
 
         self.cur_offgrid_layer = 0
 
-        self.json_file = 'test.json'
+        self.json_file = 'main_menu.json'
 
         self.offgrid_layer_ind = alphabets('cur_off_layer')
         self.offgrid_layer_num = numbers(self.cur_offgrid_layer)

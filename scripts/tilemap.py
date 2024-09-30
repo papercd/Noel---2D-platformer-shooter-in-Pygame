@@ -549,7 +549,13 @@ class Tilemap:
         f = open(path,'r')
         tilemap_data = json.load(f)
         lights = []
- 
+
+        self.tilemap = {}
+        self.grass = {}
+        self.offgrid_tiles = [{} for i in range(0,self.offgrid_layers)]
+        self.decorations = []
+        self.path_graph = {}
+         
         for tile_key in tilemap_data['tilemap']:
             """
             tile_type = tilemap_data['tilemap'][tile_key]["type"] 
@@ -602,11 +608,13 @@ class Tilemap:
                                                  tilemap_data['tilemap'][tile_key]["pos"],radius =tilemap_data['tilemap'][tile_key]["radius"], power = tilemap_data['tilemap'][tile_key]["power"],\
                                                      color_value= tilemap_data['tilemap'][tile_key]["colorValue"] )
                 if isinstance(tilemap_data['tilemap'][tile_key]["pos"][0],int):
+                    
                     light = PointLight(position = (tilemap_data['tilemap'][tile_key]["pos"][0]*self.tile_size+7,tilemap_data['tilemap'][tile_key]["pos"][1]*self.tile_size+3),\
                                          power= tilemap_data['tilemap'][tile_key]["power"],radius = tilemap_data['tilemap'][tile_key]["radius"] )
                     light.set_color(*tilemap_data['tilemap'][tile_key]["colorValue"])
                     lights.append(light)
                 else: 
+                    
                     light = PointLight(position = (tilemap_data['tilemap'][tile_key]["pos"][0]+7,tilemap_data['tilemap'][tile_key]["pos"][1]+3),\
                                          power= tilemap_data['tilemap'][tile_key]["power"],radius = tilemap_data['tilemap'][tile_key]["radius"] )
                     light.set_color(*tilemap_data['tilemap'][tile_key]["colorValue"])
@@ -624,6 +632,7 @@ class Tilemap:
         for i in range(0,self.offgrid_layers):
             for tile_key in tilemap_data['offgrid_'+ str(i)]:
                 if tilemap_data['offgrid_' + str(i)][tile_key]["type"] == "lights":
+                    print("check")
                     if isinstance(tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][0],int):
                         light = PointLight(position = (tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][0]*self.tile_size+7,tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][1]*self.tile_size+3),\
                                          power= tilemap_data['offgrid_'+ str(i)][tile_key]["power"],radius = tilemap_data['offgrid_'+ str(i)][tile_key]["radius"] )
@@ -1185,6 +1194,8 @@ class Tilemap:
 
     def render(self, surf, offset = (0,0),editor = False):
         
+        
+
         for x_cor in range(offset[0] // self.tile_size, (offset[0] + surf.get_width()) // self.tile_size +1):
             for y_cor in range(offset[1] // self.tile_size, (offset[1] + surf.get_height()) // self.tile_size +1): 
                 coor = str(x_cor) + ';' + str(y_cor)
@@ -1200,7 +1211,7 @@ class Tilemap:
                         else: 
                             if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
                             #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
-                        
+                                
                                 surf.blit(self.game.assets[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
                             else: 
                                 surf.blit(self.game.assets[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
