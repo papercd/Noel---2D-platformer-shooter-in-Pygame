@@ -165,6 +165,27 @@ class ambientNodeList:
             current = current.next 
         
         return data 
+    
+
+    def find_node(self,x):
+        current = self.head
+        
+        while current.prev:
+            current=  current.prev 
+
+        while current: 
+            if current.range[0] <= x <= current.range[1]:
+                return current 
+            current = current.next 
+
+        
+        
+        return None  
+
+
+    def change_node_color(self,x):
+        
+        pass 
 
 
     def delete_node(self, x,cur_node_ptr):

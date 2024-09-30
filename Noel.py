@@ -91,6 +91,7 @@ from enum import Enum
 
 
 class GameState(Enum):
+    StartSequence = 0
     MainMenu = 1
     MainMenuSettings = 2
     GameLoop = 3
@@ -210,7 +211,7 @@ class myGame:
         self.shadow_objects = [] 
 
         """"""
-        self.lights_engine.lights = self.Tilemap.load('main_menu.json')
+        self.lights_engine.lights = self.Tilemap.load('start_screen.json')
 
         """
         for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
@@ -362,7 +363,7 @@ class myGame:
         self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
         self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
 
-        self.curr_gameState = GameState.MainMenu
+        self.curr_gameState = GameState.StartSequence
 
         #self.lights_display = pygame.Surface(self.background_surf.get_size()) 
         
@@ -377,12 +378,25 @@ class myGame:
         time = 255 
         while time > 0: 
             time -= 1
-            self.lights_engine.clear(0,0,0,255)
-            self.background_surf.fill((155,155,time))
-            self.foreground_surf.fill((0,0,0,0))
-            self.bsurf.fill((0,0,0,0))
-            self.cursor.update(self.foreground_surf)
 
+            self.handle_events()
+
+            self.lights_engine.clear(0,0,0,255)
+            self.background_surf.fill((155,155,155))
+            self.foreground_surf.fill((0,0,0,0))
+
+            blackout_surf = pygame.Surface(self.screen_size)
+            blackout_surf = blackout_surf.convert()
+            blackout_surf.fill((0,0,0,0))
+            blackout_surf.set_alpha(time)
+
+            self.backgrounds['building'].render(self.background_surf,(0,0))
+
+            self.Tilemap.render(self.background_surf,(0,0))
+            self.background_surf.blit(blackout_surf,(0,0))
+            
+            self.cursor.update(self.foreground_surf)
+            
 
 
             tex = self.lights_engine.surface_to_texture(self.background_surf)
@@ -415,6 +429,8 @@ class myGame:
             fps = self.clock.get_fps()
             pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
             self.clock.tick(60)
+
+        self.curr_gameState = GameState.MainMenu
 
          
 
@@ -958,9 +974,10 @@ class myGame:
 
 
             """
-            self.scroll[0] += (self.player.rect().centerx - self.background_surf.get_width() /2 - self.scroll[0])/20
-            self.scroll[1] += (self.player.rect().centery - self.background_surf.get_height() /2 - self.scroll[1])/20
-            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+
+            
+
+            render_scroll = (int(self.player.rect().centerx- self.background_surf.get_width() /2),int(self.player.rect().centery -self.background_surf.get_height() /2 ))
 
             self.lights_engine.clear(0,0,0,255)
             self.background_surf.fill((155,155,155))
