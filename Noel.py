@@ -363,7 +363,17 @@ class myGame:
         self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
         self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
 
+        self.start_sequence_time = 255 
         self.curr_gameState = GameState.StartSequence
+        self.start_screen_ui = startScreenUI(self.screen_size)
+
+
+        # currently you have two ways to use image assets in other scripts. 
+        # either you use the load image function from the utils module, 
+        # or you use the reference to the game to gain access to the assets attribute to load the image that has already been loaded. 
+        # now, you need to use only one method to keep things consistent. 
+        
+        
 
         #self.lights_display = pygame.Surface(self.background_surf.get_size()) 
         
@@ -375,9 +385,9 @@ class myGame:
             self.update_render()
 
     def show_start_sequence(self):
-        time = 255 
-        while time > 0: 
-            time -= 1
+        self.start_sequence_time = 255 
+        while self.start_sequence_time > 0: 
+            self.start_sequence_time -= 1
 
             self.handle_events()
 
@@ -388,11 +398,16 @@ class myGame:
             blackout_surf = pygame.Surface(self.screen_size)
             blackout_surf = blackout_surf.convert()
             blackout_surf.fill((0,0,0,0))
-            blackout_surf.set_alpha(time)
+            blackout_surf.set_alpha(self.start_sequence_time)
 
             self.backgrounds['building'].render(self.background_surf,(0,0))
 
             self.Tilemap.render(self.background_surf,(0,0))
+            self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,(0,0))
+
+
+            self.player.update_pos(self.Tilemap,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
+            self.player.render(self.background_surf,(0,0))
             self.background_surf.blit(blackout_surf,(0,0))
             
             self.cursor.update(self.foreground_surf)
@@ -554,6 +569,12 @@ class myGame:
                     if event.key == pygame.K_KP_ENTER:
                         self.menu_select = True 
 
+                elif self.curr_gameState == GameState.StartSequence: 
+                    if event.key ==pygame.K_RETURN:
+                        self.start_sequence_time = 0
+                    
+                
+
             elif event.type == pygame.KEYUP: 
                 if self.curr_gameState == GameState.GameLoop:
                     if event.key == pygame.K_LSHIFT:
@@ -599,12 +620,12 @@ class myGame:
                 if not self.cursor.interacting:
                     if self.player.return_weapon_toggle_state():
                         self.player.shoot_weapon(self.frame_count)
-                    else: 
+                    else:
                         if self.reset: 
                             self.player.shoot_weapon(self.frame_count)
                             self.reset = False
-                else: 
-                    self.reset = True 
+            else: 
+                self.reset = True 
             """
             keys = pygame.key.get_pressed()
             if keys[pygame.K_LSHIFT]:
@@ -977,8 +998,10 @@ class myGame:
 
             
 
-            render_scroll = (int(self.player.rect().centerx- self.background_surf.get_width() /2),int(self.player.rect().centery -self.background_surf.get_height() /2 ))
-
+            self.scroll[0] += (self.player.rect().centerx - self.background_surf.get_width() /2 - self.scroll[0])/20
+            self.scroll[1] += (self.player.rect().centery - self.background_surf.get_height() /2 - self.scroll[1])/20
+            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+            
             self.lights_engine.clear(0,0,0,255)
             self.background_surf.fill((155,155,155))
             self.foreground_surf.fill((0,0,0,0))
@@ -988,6 +1011,10 @@ class myGame:
 
             self.backgrounds['building'].render(self.background_surf,render_scroll)
             self.Tilemap.render(self.background_surf,render_scroll)
+
+            
+
+            self.start_screen_ui.render(self.foreground_surf,(0,0))
 
             self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
 

@@ -40,7 +40,7 @@ class Cursor:
         self.cooldown = 10
 
     def update(self,surf):
-        print(self.pos)
+        
         self.pos = pygame.mouse.get_pos()
         self.pos = ((self.pos[0]/2),(self.pos[1]/2))
         self.box = pygame.Rect(*self.pos, 1, 1)
