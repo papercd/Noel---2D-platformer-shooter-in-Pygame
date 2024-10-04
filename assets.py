@@ -2,23 +2,23 @@ from scripts.utils import *
 
 class GameAssets:
     def __init__(self):
-        self.assets = {}
+        self.general_sprites = {}
         self.enemies = {}
 
-        self.interactables = {}
+        self.interactable_obj_sprites = {}
         self.load_assets()
 
     def load_assets(self):
-        self.assets.update(self.load_grass_assets())
-        self.assets.update(self.load_building_assets())
-        self.assets.update(self.load_entity_assets())
-        self.assets.update(self.load_cursor_assets())
-        self.assets.update(self.load_cloud_assets())
-        self.assets.update(self.load_ui_assets())
-        self.assets.update(self.load_particle_assets())
+        self.general_sprites.update(self.load_grass_assets())
+        self.general_sprites.update(self.load_building_assets())
+        self.general_sprites.update(self.load_entity_assets())
+        self.general_sprites.update(self.load_cursor_assets())
+        self.general_sprites.update(self.load_cloud_assets())
+        self.general_sprites.update(self.load_ui_assets())
+        self.general_sprites.update(self.load_particle_assets())
         self.enemies.update(self.load_enemy_assets())
 
-        self.interactables.update(self.load_interactable_assets())
+        self.interactable_obj_sprites.update(self.load_interactable_assets())
 
     def load_grass_assets(self):
         return load_tile_assets(['grass', 'live_grass'], background='transparent')
@@ -41,6 +41,8 @@ class GameAssets:
             'player/holding_gun/slide': ('entities/player/slide', 'transparent', 5, True, False),
             'player/holding_gun/wall_slide': ('entities/player/wall_slide', 'transparent', 4, True, False),
             'player/holding_gun/walk': ('entities/player/holding_gun/walk', 'transparent', 7, True, False),
+            'player/holding_gun/crouch': ('entities/player/holding_gun/crouch', 'transparent', 4, True, False),
+            
             'player/idle': ('entities/player/idle', 'transparent', 6, True, False),
             'player/run': ('entities/player/run', 'transparent', 4, True, False),
             'player/jump_up': ('entities/player/jump/up', 'transparent', 5, True, False),
@@ -48,6 +50,8 @@ class GameAssets:
             'player/land': ('entities/player/land', 'transparent', 2, False, False),
             'player/slide': ('entities/player/slide', 'transparent', 5, True, True),
             'player/wall_slide': ('entities/player/wall_slide', 'transparent', 4, True, False),
+            'player/crouch': ('entities/player/crouch', 'transparent', 7, False, False),
+            
         }
         return {
             'player': load_image('entities/player.png'),
@@ -93,11 +97,13 @@ class GameAssets:
             'particle/big_land': ('particles/big_land', 'transparent', 2, False, False),
             'particle/shot_muzzle/laser_weapon': ('particles/shot_muzzle/laser_weapon', 'transparent', 3, False, False),
             'particle/smoke/ak_47': ('particles/shoot/rifle', 'transparent', 3, False, False),
+            'particle/smoke/rocket_launcher' : ('particles/shoot/rocket_launcher','transparent',1,False,False),
             'particle/smoke/rifle_small': ('particles/bullet_collide_smoke/rifle/small', 'black', 2, False, False),
             'particle/smoke/shotgun' : ('particles/shoot/shotgun', 'transparent',3,False,False),
             'particle/smoke/laser_weapon': ('particles/shoot/laser_weapon', 'transparent', 3, False, False),
             'particle/bullet_collide/laser_weapon': ('particles/bullet_collide/laser_weapon', 'transparent', 2, False, False),
             'particle/bullet_collide/rifle': ('particles/bullet_collide/rifle', 'transparent', 2, False, False),
+            'particle/rocket_launcher_smoke' : ('particles/rocket_launcher_smoke','transparent',2,False,False),
         }
 
         

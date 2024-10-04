@@ -3,14 +3,18 @@
 import random
 import pygame 
 import math
+
+from pygame.math import Vector2
 from scripts.los import line_of_sight
 from scripts.particles import Particle,non_animated_particle,bullet_collide_particle,bullet_trail_particle_wheelbot
 from scripts.health import HealthBar,StaminaBar
 from scripts.indicator import indicator 
 from scripts.tilemap import Node,Tile
+from scripts.fire import Flame_particle
 from scripts.spark import Spark 
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
 from scripts.weapon_list import DoublyLinkedList
+from scripts.range import Rectangle
 from my_pygame_light2d.light import PointLight
 
 
@@ -38,6 +42,7 @@ class interactable:
 
 
 
+
 class PhysicsEntity:
     def __init__(self, game, e_type, pos, size):
         self.game = game
@@ -56,7 +61,7 @@ class PhysicsEntity:
     def set_state(self, action):
         if action != self.state:
             self.state = action
-            self.animation = self.game.assets[self.type + '/' + self.state].copy()
+            self.animation = self.game.general_sprites[self.type + '/' + self.state].copy()
 
     def collide(self, other):
         return self.collision_rect().colliderect(other.collision_rect())
@@ -200,9 +205,159 @@ class PhysicsEntity:
                   (int(self.pos[0] - offset[0] + self.anim_offset[0]), int(self.pos[1] - offset[1] + self.anim_offset[1])))
 
 
+"""
+when you drop an item into the environment, you would need to know 
+the following things: 
+
+1. the position (it is going to be udpated, physics is applied to it)
+2. the image of the weapon 
+3. the 'life' of the item, as if enough time has passed the item is going to be deleted. 
+
+when you drop an item, I guess you would have to create an item object inerited from the physics entity class  
+with much simpler properties 
+
+"""
+
+class CollectableItem:
+    def __init__(self,game,pos,item):
+        self.game = game 
+        self.Item = item
+        self.pos = pos
+        self.e_type = 'item'
+        self.state = 'inanimate'
+        self.image = item.image.copy()
+        self.size = [self.image.get_width()//2, self.image.get_height()//2]
+
+        self.life = 100000
+        self.velocity = [0,0]
+
+
+    def rect(self):
+        return pygame.Rect(self.pos[0] + self.size[0]/2 ,  self.pos[1] + self.size[1] / 2 , self.size[0] , self.size[1]) 
+
+    def update_pos(self,tile_map):
+        self.life -=1
+        self.velocity[1] = min(3, self.velocity[1] +0.11)
+
+        if self.velocity[0] < 0:
+            self.velocity[0] = min(self.velocity[0] + 0.21, 0)
+        elif self.velocity[0] > 0:
+            self.velocity[0] = max(self.velocity[0] - 0.21, 0)
+
+        self.pos[0] += self.velocity[0]
+        entity_rect  = self.rect()
+        
+
+        for rect_tile in tile_map.physics_rects_around((self.pos[0] + self.size[0] /2 ,  self.pos[1] + self.size[1] / 2), self.size):
+            
+            tile_type = rect_tile[1].type
+        
+
+            if entity_rect.colliderect(rect_tile[0]) and tile_type.split('_')[1] != 'stairs':
+                if tile_type.split('_')[1] == 'door':
+                    if  rect_tile[1].open:
+                        continue
+                    else:
+                        # if you close the door on youself (trap door and vertical door)
+                        if rect_tile[1].trap: 
+                            continue 
+                        else: 
+                            if self.velocity[0] > 0 :
+                            
+                                entity_rect.right = rect_tile[0].left
+                            elif self.velocity[0] < 0:
+                                
+                                entity_rect.left = rect_tile[0].right
+                            else: 
+                                if entity_rect.centerx - rect_tile[0].centerx <0:
+                                    
+                                    entity_rect.right = rect_tile[0].left
+                                    
+                                else:
+                                     
+                                    entity_rect.left = rect_tile[0].right 
+                                
+                            self.pos[0] = entity_rect.x - self.size[0] /2
+                            
+                else:
+                    if self.velocity[0] > 0:
+                    
+                        entity_rect.right = rect_tile[0].left
+                    elif self.velocity[0] < 0:
+                        
+                        entity_rect.left = rect_tile[0].right
+                    else: 
+                        if entity_rect.centerx -rect_tile[0].centerx <0:
+                        
+                            entity_rect.right = rect_tile[0].left
+                            
+                        else:
+                 
+                            entity_rect.left = rect_tile[0].right 
+
+                    self.pos[0] = entity_rect.x - self.size[0]/2
+
+        
+        self.pos[1] += self.velocity[1]
+        entity_rect = self.rect()
+
+
+        for rect_tile in tile_map.physics_rects_around((self.pos[0] + self.size[0] / 2 ,  self.pos[1] + self.size[1] / 2), self.size):
+            tile_type = rect_tile[1].type
+            if entity_rect.colliderect(rect_tile[0]):
+                if tile_type.split('_')[1] != 'stairs':
+                    if tile_type.split('_')[1] == 'door' and  rect_tile[1].open:
+                        continue 
+
+                    if self.velocity[1] > 0:
+                        self.on_ramp = 0
+                        entity_rect.bottom = rect_tile[0].top
+                    elif self.velocity[1] < 0:
+                
+                        entity_rect.top = rect_tile[0].bottom
+                    self.velocity[1] = 0
+                    self.pos[1] = entity_rect.y - self.size[1]/2
+                else:
+                    variant = rect_tile[1].variant.split(';')[0]
+                    pos_height = 0
+                    rel_x = rect_tile[0].x - entity_rect.right if variant in ('0', '2') else rect_tile[0].right - entity_rect.left
+
+                    if variant == '0':
+                        if -16 <= rel_x < 0:
+                            pos_height = max(0, -rel_x - (self.size[0]/2) // 4)
+                    elif variant == '2':
+                        if rel_x < 0:
+                            pos_height = min(tile_map.tile_size, -rel_x + (tile_map.tile_size - (self.size[0]/2) // 4))
+                    elif variant == '1':
+                        if rel_x > 0:
+                            pos_height = max(0, rel_x - (self.size[0]/2) // 4)
+                    elif variant == '3':
+                        if 0 < rel_x <= tile_map.tile_size:
+                            pos_height = min(tile_map.tile_size, rel_x + (tile_map.tile_size - (self.size[0]/2) // 4))
+
+                    target_y = rect_tile[0].y + tile_map.tile_size - pos_height
+                    if entity_rect.bottom > target_y:
+                        self.on_ramp = 1 if variant == '0' else -1
+                        entity_rect.bottom = target_y
+                        self.pos[1] = entity_rect.y - self.size[1]/2
+
+    
+
+
+
+    def render(self,surf,offset = (0,0)):
+        if self.life < 60:
+            self.image.set_alpha(255 * (self.life/60))
+        surf.blit(self.image, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
+         
+
+
+    
+
 class Enemy(PhysicsEntity):
     def __init__(self, game, pos, size, variant, hp):
         super().__init__(game, variant, pos, size)
+        self.e_type = "enemy"
         self.walking = 0
         self.air_time = 0
         self.aggro = False
@@ -1112,8 +1267,8 @@ class Canine(Enemy):
 class PlayerEntity(PhysicsEntity):
     def __init__(self,game,pos,size):
         #attributes required to implement weapon 
-        self.equipped = False 
-
+        #self.equipped = False 
+        self.e_type = 'player'
         self.cur_weapon_node = None 
 
         self.weapon_inven = DoublyLinkedList()
@@ -1134,11 +1289,10 @@ class PlayerEntity(PhysicsEntity):
 
         self.jump_count = 2
         self.wall_slide = False
-        self.slide = False 
+        self.crouch = False 
         self.on_wall = self.collisions['left'] or self.collisions['right']
         self.air_time = 0
         self.on_ladder = False 
-      
         
 
         #attributes required to implement double tap 
@@ -1155,6 +1309,7 @@ class PlayerEntity(PhysicsEntity):
         self.time = 0
         
         self.interactables = None
+        self.nearest_collectable_item = None
         
 
         
@@ -1164,9 +1319,13 @@ class PlayerEntity(PhysicsEntity):
     def set_state(self,action):
         if action != self.state: 
             self.state = action 
-            self.animation = self.game.assets[self.type + '/' + ('holding_gun/' if self.equipped else '') + self.state].copy() 
+            self.animation = self.game.general_sprites[self.type + '/' + ('holding_gun/' if self.cur_weapon_node else '') + self.state]
 
-    def update_pos(self, tile_map,cursor_pos,frame_count,movement=(0, 0)):
+    def change_gun_holding_state(self):
+        self.animation = self.game.general_sprites[self.type + '/' + ('holding_gun/' if self.cur_weapon_node else '') + self.state ]
+
+
+    def update_pos(self, tile_map,quadtree,cursor_pos,frame_count,movement=(0, 0)):
         
         #print(self.velocity[0])
         self.time = frame_count
@@ -1200,8 +1359,11 @@ class PlayerEntity(PhysicsEntity):
             self.hard_land_recovery_time -= 1
             
         self.interactables = super().update_pos(tile_map, new_movement,anim_offset= (3,1))
+        r = max(self.size) * 2
 
-        
+        rangeRect = Rectangle(Vector2(self.pos[0] - self.size[0]//2 - r /2 ,self.pos[1]  - r /2 ), Vector2(r,r))
+
+        self.nearest_collectable_item = quadtree.queryRange(rangeRect,"item")
 
         #every frame, the stamina is increased by 0.7
        
@@ -1209,8 +1371,8 @@ class PlayerEntity(PhysicsEntity):
         self.air_time +=1
         
         
-        self.changing_done = min(6,self.change_weapon_inc + self.changing_done)
-        if self.changing_done == 6:
+        self.changing_done = min(2,self.change_weapon_inc + self.changing_done)
+        if self.changing_done == 2:
              
             self.change_weapon(self.change_scroll)
         
@@ -1311,7 +1473,7 @@ class PlayerEntity(PhysicsEntity):
                     if anim_frame == 0 or anim_frame == 3:
                         self.game.player_sfx['run'][str(random.randint(0,7))].play()
                     """
-                if self.slide:
+                if self.crouch and (self.game.player_movement[0] or self.game.player_movement[1]) :
                     self.cut_movement_input = True
                     self.set_state('slide')
                 self.y_inertia = 0
@@ -1322,12 +1484,16 @@ class PlayerEntity(PhysicsEntity):
                     if self.animation.done == True: 
                         self.set_state('idle') 
                 else: 
-                    self.set_state('idle')
+                    if self.crouch: 
+                        self.set_state('crouch')
+                        pass 
+                    else: 
+                        self.set_state('idle')
                 
         
         
         #print(self.changing_done)
-        if self.equipped:
+        if self.cur_weapon_node:
             self.cur_weapon_node.weapon.update(self.d_cursor_pos)
         
         #update the health and stamina bars 
@@ -1354,7 +1520,7 @@ class PlayerEntity(PhysicsEntity):
     
     def render(self,surf,offset):
         
-        knockback = (0,0) if not self.equipped else (self.cur_weapon_node.weapon.knockback[0]/5,self.cur_weapon_node.weapon.knockback[1]/9)
+        knockback = (0,0) if not self.cur_weapon_node else (self.cur_weapon_node.weapon.knockback[0]/5,self.cur_weapon_node.weapon.knockback[1]/9)
 
         super().render(surf,(offset[0] - knockback[0],offset[1] - knockback[1]))
 
@@ -1383,23 +1549,34 @@ class PlayerEntity(PhysicsEntity):
         stamina_ind.render(self.stamina_bar.x+34,self.stamina_bar.y-1,surf)
         """
         #print(self.changing_done)
-        if self.equipped: 
-            
+        if self.cur_weapon_node: 
+            """
             if self.changing_done == 0:
                 self.cur_weapon_node.weapon.render(surf,offset,set_angle = None)
             else: 
                 if self.cur_weapon_node.weapon.flipped: 
-                    angles = [angle for angle in range(0,-121,-20)]  
+                    angles = [angle for angle in range(0,-121,-40)]  
                     
                 else: 
-                    angles = [angle for angle in range(120,-1,-20)]      
+                    angles = [angle for angle in range(120,-1,-40)]      
                         
                 arm_pos_angle = angles[self.changing_done]
-                self.cur_weapon_node.weapon.render(surf,offset,set_angle = arm_pos_angle) 
+            """
+            self.cur_weapon_node.weapon.render(surf,offset) 
             
     
     def interact(self):
         # find the interactable that is closest to the player's center position. 
+        if self.nearest_collectable_item and self.state =='crouch':
+            
+            #now make it so that you can pick the item up. 
+            
+            inven_is_full = self.game.HUD.Items_list[2][1].add_item(self.nearest_collectable_item[0].Item)
+            if not inven_is_full: 
+                self.nearest_collectable_item[0].life =0
+
+            
+            
         if self.interactables: 
             min_distance = float('inf')
             closest_interactable = None 
@@ -1500,12 +1677,14 @@ class PlayerEntity(PhysicsEntity):
             if (self.cur_weapon_node.next and scroll ==1) or (self.cur_weapon_node.prev and scroll ==-1):
                 self.change_scroll = scroll
                 self.change_weapon_inc = True 
-                if self.changing_done == 6:
+                if self.changing_done == 2:
                     if scroll ==1:
-                        self.cur_weapon_node = self.cur_weapon_node.next 
+                        self.cur_weapon_node = self.cur_weapon_node.next
+                        self.weapon_inven.curr = self.cur_weapon_node 
                         self.cur_weapon_node.weapon.equip(self)
                     else: 
                         self.cur_weapon_node = self.cur_weapon_node.prev
+                        self.weapon_inven.curr = self.cur_weapon_node
                         self.cur_weapon_node.weapon.equip(self)
                          
                     self.changing_done = 0
@@ -1515,7 +1694,7 @@ class PlayerEntity(PhysicsEntity):
 
             
         """
-        if self.cur_weapon:
+        if self.cur_weapon:         
             #first check if scrolling in that direction is valid. 
             if 0 <= self.cur_weapon_index + scroll <= len(self.weapon_inven) -1 :
                 self.change_scroll = scroll
@@ -1534,10 +1713,11 @@ class PlayerEntity(PhysicsEntity):
         
         
         
-        if self.weapon_inven.head:
-            self.equipped = True 
-            self.animation = self.game.assets[self.type + '/holding_gun/' + self.state].copy() 
-            self.cur_weapon_node = self.weapon_inven.head
+        if self.weapon_inven.curr:
+            #self.equipped = True 
+            self.animation = self.game.general_sprites[self.type + '/holding_gun/' + self.state]
+            #self.cur_weapon_node = self.weapon_inven.head
+            self.cur_weapon_node = self.weapon_inven.curr 
             self.cur_weapon_node.weapon.equip(self)
             
             
@@ -1556,7 +1736,7 @@ class PlayerEntity(PhysicsEntity):
 
     def shoot_weapon(self,frame):
         #testing bullet firing
-        if self.equipped: 
+        if self.cur_weapon_node: 
             if self.cur_weapon_node.weapon.rapid_firing:
                 if frame % self.cur_weapon_node.weapon.fire_rate == 0:
                     """
@@ -1564,6 +1744,7 @@ class PlayerEntity(PhysicsEntity):
                     test_shell = Bullet(self.game,self.cur_weapon.opening_pos,test_shell_image.get_size(),test_shell_image,'rifle_small').copy()
                     self.cur_weapon.load(test_shell)
                     """
+                    
                     self.cur_weapon_node.weapon.shoot(self.time,self.d_cursor_pos) 
                    
                     #self.game.Tilemap.bullets.append(shot_bullet)
@@ -1577,6 +1758,7 @@ class PlayerEntity(PhysicsEntity):
                 test_shell = Bullet(self.game,self.cur_weapon.opening_pos,test_shell_image.get_size(),test_shell_image,'rifle_small').copy()
                 self.cur_weapon.load(test_shell)
                 """
+                
           
                 self.cur_weapon_node.weapon.shoot(self.time,self.d_cursor_pos) 
                
@@ -1586,16 +1768,24 @@ class PlayerEntity(PhysicsEntity):
             #add bullet drop particles and smoke particles 
                 
            
-            
+    def discard_current_weapon(self):
+        #here you are going to throw away your current weapon. 
+        discard_pos = self.pos.copy()
+        discard_pos[0] += self.size[0] // 2
+        discard_pos[0] -= self.cur_weapon_node.weapon.image.get_width() if self.flip else 0
+        item = CollectableItem(self.game,discard_pos,self.cur_weapon_node.weapon)
+        item.velocity = [-1.5,-1.5] if self.flip else [1.5,-1.5] 
+        self.game.collectable_items.append(item)
+        
                     
                     
     def toggle_rapid_fire(self):
-        if self.equipped:
+        if self.cur_weapon_node:
             self.cur_weapon_node.weapon.toggle_rapid_fire()
 
 
     def return_weapon_toggle_state(self):
-        if self.equipped:
+        if self.cur_weapon_node:
             return self.cur_weapon_node.weapon.rapid_firing 
     
     def hit(self,hit_damage):
@@ -1608,6 +1798,7 @@ class Item(PhysicsEntity):
     def __init__(self, game,size,sprite):
         super().__init__(game, 'item', [0,0], size)
         self.sprite = sprite 
+        self.e_type = 'item'
 
     """ what would you need for an item class to have? """
 
@@ -1632,6 +1823,7 @@ class Grenade(Item):
 class Bullet(PhysicsEntity): 
     def __init__(self, game, pos, size, sprite, bullet_type):
         super().__init__(game, 'bullet', pos, size)
+        self.e_type = "bullet"
         self.damage = 1
         self.angle = 0
         self.sprite = sprite
@@ -1753,23 +1945,47 @@ class Bullet(PhysicsEntity):
         surf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD)
 
 
-class rocket_shell():
-    def __init__(self):
+class RocketShell():
+    def __init__(self,game,pos,size,sprite,bullet_type):
+        self.game = game
         self.velocity = [0,0]
-        self.pos = [0,0]
-        self.sprite = None
+        self.pos = pos
+        self.sprite = sprite
         self.angle = 0
         self.frames_flown = 100
         self.dead = False
+        self.size = size
+        self.damage = 20
+        self.bullet_type = bullet_type 
+
+        # flame particle parameters---------------------------------
+        self.flame_size = 3
+        self.flame_density = 1
+        self.flame_rise = 1.6
+        self.flame_spread = 1
+        self.flame_wind = 0
+        # --------------------------------
+
+        self.flame_spawn_pos_offsets = [(-7,0),(-7,-1),(-7,-2),(-7,1),
+                                         (-8,0),(-8,-1),(-9,0),(-9,-1)]
+
+
         
 
-    def update_pos(self):
+    def update_pos(self,tile_map):
         self.frames_flown -= 1
+        if self.frames_flown%2 ==0 :
+            #every three frames leave a smoke particle behind - like metal slug 
+            #particle = Particle(self.game,'rocket_launcher_smoke',(self.pos[0] + self.size[0] //2 , self.pos[1]+ self.size[1]//2) , 'rocket_launcher')
+            self.game.particles.append(Particle(self.game,'rocket_launcher_smoke',(self.pos[0] + self.size[0] //2 , self.pos[1]+ self.size[1]//2) , 'rocket_launcher') ) 
         if self.frames_flown == 0 :
              self.dead = True 
              return True 
         
-        self.velocity = None
+       
+        
+        self.pos[0] += self.velocity[0] 
+        self.pos[1] += self.velocity[1] 
 
     def render(self,surf, offset = (0,0)):
         surf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD) 
@@ -1818,9 +2034,7 @@ class tile_ign_Bullet(Bullet):
             return True 
        
         
-class Dropped_item(PhysicsEntity):
-    def __init__(self, game, e_type, pos, size):
-        super().__init__(game, e_type, pos, size)        
+
        
 class Wheelbot_bullet(tile_ign_Bullet):
     def __init__(self,game,animation,pos,size,type):

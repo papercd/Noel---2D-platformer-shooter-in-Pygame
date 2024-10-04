@@ -9,6 +9,7 @@ import os
 
 WEAPON_CELL = load_image("ui/inventory/weapon_tile.png",background="transparent")  
 WEAPON_CELL_SELECTED = load_image("ui/inventory/weapon_tile_selected.png",background="transparent") 
+WEAPON_CELL_ACTUALLY_SELECTED = load_image("ui/inventory/weapon_actually_selected.png",background="transparent")
 
 CELL = load_image("ui/inventory/tile.png",background="transparent")
 CELL_SELECTED = load_image("ui/inventory/tile_selected.png",background="transparent")
@@ -344,6 +345,7 @@ class Cell():
 
     def draw(self, scale, selected):
         match selected:
+            
             case 3: 
                 image = WEAPON_CELL_SELECTED
             case 2: 
@@ -372,9 +374,18 @@ class Cell():
             if self.type== "weapon": image = self.draw(scale,3)
             else: image = self.draw(scale, 1)
         else:
-            if self.type == "weapon" : image = self.draw(scale,2)
+            if self.type == "weapon" :
+                if player.weapon_inven.curr and player.weapon_inven.curr.cell_ind == self.ind: 
+                    position[0] -= 1
+                    position[1] -= 1
+                    image = self.draw(scale,3) 
+                else: 
+                    image = self.draw(scale,2)
 
             else: image = self.draw(scale, 0)
+
+
+      
 
         image.set_alpha(opacity)
         surf.blit(image, position)
@@ -454,7 +465,7 @@ class Cell():
                             if self.type == 'weapon':
                                 
                                 player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
-                                player.equip()
+                                #player.equip()
                             
                         
                             inventory_list[index][1].add_item(temp)
@@ -473,7 +484,7 @@ class Cell():
                                 player.equip()
                             self.particles.append(Dust())
                             cursor.set_cooldown()
-                        elif cursor.pressed[2] and self.item.count_display.number > 1:
+                        elif self.type != 'weapon' and cursor.pressed[1] and self.item.count_display.number > 1:
                             half = self.item.count_display.number // 2
                             cursor.item = self.item.copy()
                             
@@ -546,7 +557,7 @@ class Cell():
                         cursor.item = None
                         self.particles.append(Dust())
                         cursor.set_cooldown()
-                    elif cursor.pressed[2] and cursor.item.stackable:
+                    elif cursor.pressed[1] and cursor.item.stackable:
                         if not (cursor.item.type == self.type ):
                                 return
                         if cursor.item.count_display.number > 1:
@@ -648,8 +659,10 @@ class Inventory():
         self.player.weapon_inven = filtered 
 
 
-    def add_item(self, item) -> None:
-
+    def add_item(self, item ) -> None:
+        if self.item_count == self.rows*self.columns:
+            
+            return True  
         for row in self.cells:
             for cell in row:
                 if cell.item is None:
@@ -659,14 +672,14 @@ class Inventory():
                         self.player.weapon_inven.add_weapon(cell.ind,cell.item)
                         self.player.equip()
 
-                    return
+                    return False
                 elif item.stackable and cell.item.name == item.name:
                     if cell.item.count_display.number + item.count_display.number <= self.stack_limit:
 
                         cell.item.count_display.change_number(cell.item.count_display.number + item.count_display.number)
                         
 
-                        return
+                        return False
                     elif self.stack_limit - cell.item.count_display.number > 0:
                         amount = self.stack_limit - cell.item.count_display.number
                         cell.item.count_display.change_number(cell.item.count_display.number+ amount)
@@ -675,7 +688,7 @@ class Inventory():
                         
                         if item.count_display.number > 0:
                             self.add_item(item.copy())
-                        return
+                        return False
 
     def get_item_list(self) -> list:
         item_list = []
@@ -692,6 +705,24 @@ class Inventory():
                 if cell.item is not None:
                     item_count += 1
         return item_count
+    
+    
+    def remove_current_item(self):
+        if self.player.cur_weapon_node:
+            #get rid of the currently selected weapon from the inventory 
+            self.player.disable_shooting = True 
+            #throw the weapon onto the env. 
+            self.player.discard_current_weapon()
+
+            self.cells[0][self.player.cur_weapon_node.cell_ind].item = None 
+            self.player.weapon_inven.delete_node(self.player.weapon_inven.curr)
+            
+            self.player.cur_weapon_node = self.player.weapon_inven.curr  
+            self.player.change_gun_holding_state()
+            self.player.disable_shooting = False 
+            #print(self.cells[0][self.player.cur_weapon_node.cell_ind])
+            
+
 
     def clear_inventory(self) -> None:
         for row in self.cells:
