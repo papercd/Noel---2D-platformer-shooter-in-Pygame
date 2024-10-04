@@ -211,7 +211,7 @@ class myGame:
         self.shadow_objects = [] 
 
         """"""
-        self.lights_engine.lights = self.Tilemap.load('start_screen.json')
+        
 
         """
         for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
@@ -385,6 +385,44 @@ class myGame:
             self.update_render()
 
     def show_start_sequence(self):
+        self.logo_time = 6000
+        logo = self.assets['start_logo']
+        logo_dim = logo.get_size()
+
+        while self.logo_time >0 :
+            
+            self.logo_time -= 1
+            
+            self.lights_engine.clear(0,0,0,255)
+            self.background_surf.fill((0,0,0))
+        
+            #(self.screen_size[0] // 2 - logo_dim[0]//2, self.screen_size[1] // 2 - logo_dim[1]//2)
+            self.background_surf.blit(logo,(0,0))
+            tex = self.lights_engine.surface_to_texture(self.background_surf)
+
+            self.lights_engine.render_texture_with_trans(
+                tex, Layer_.BACKGROUND,
+                position= (0,0)
+            )
+            """
+            self.lights_engine.render_texture(
+                tex, Layer_.BACKGROUND,
+                pygame.Rect(-screenshake_offset[0] ,-screenshake_offset[1],tex.width ,tex.height),
+                pygame.Rect(0,0,tex.width,tex.height)
+            )"""
+
+
+            tex.release()
+            self.lights_engine.render(self.ambient_node_ptr.range,(0,0), (0,0))
+            
+            
+            pygame.display.flip()
+            #pygame.display.update()
+            fps = self.clock.get_fps()
+            pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
+            self.clock.tick(60)
+
+        self.lights_engine.lights = self.Tilemap.load('start_screen.json')
         self.start_sequence_time = 255 
         while self.start_sequence_time > 0: 
             self.start_sequence_time -= 1
