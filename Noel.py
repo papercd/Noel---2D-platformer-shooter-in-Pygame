@@ -67,7 +67,7 @@ or a wave-based survival game with different and stronger enemies that spawn eac
 
 
 
-
+import numpy as np 
 import pygame
 import random
 import math
@@ -106,7 +106,7 @@ class myGame:
 
         
         self.clock = pygame.time.Clock()
-        self.screen_size = (1440,900)
+        self.screen_size = (1200,750)
         self.native_res = (int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5))
        
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
@@ -154,8 +154,7 @@ class myGame:
 
         #tile map 
         self.Tilemap = Tilemap(self,tile_size=16,offgrid_layers=2)
-
-        
+    
         
         #cursor object 
         pygame.mouse.set_visible(False)
@@ -228,89 +227,148 @@ class myGame:
 
         self.curr_gameState = GameState.MainMenu
         self.start_screen_ui = startScreenUI(self.screen_size)
+        self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
 
+
+    
+    def load_map_init_game_env(self,map_file_name):
+
+        self.collectable_items = []
+        self.bullets_on_screen = []
+        self.enemy_bullets = []
+        self.particles = []
+        self.physical_particles = []
+        self.non_animated_particles = []
+        self.leaf_spawners = []
+        self.existing_enemies = []
+        self.sparks = []
+        self.grass_locations = []
+
+        self.lights_engine.lights = self.Tilemap.load(map_file_name)
         
-        self.lights_engine.lights = self.Tilemap.load('test.json')
-        
+        #locate grass tiles from map and extract them into the grass obj
+        #container
+
         for grass in self.Tilemap.extract([('live_grass','0;0'),('live_grass','1;0'),('live_grass','2;0'),('live_grass','3;0'),('live_grass','4;0'),('live_grass','5;0')]):
             self.grass_locations.append((grass.pos[0], grass.pos[1]))
-
+        
         for loc in self.grass_locations:
             self.gm.place_tile(loc,14,[0,3,4])
-    
 
-    
-        #spawner order: 0 : player, 1: canine: 2: wheel bot 
-        
+        #extract enemies from tilemap and add them into the enemy container 
+
         for spawner in self.Tilemap.extract([('spawners','0;0'),('spawners','1;0'),('spawners','2;0'),('spawners','3;0'),('spawners','4;0')]):   
             if spawner.variant == '0;0':
                 
                 self.player.pos = [spawner.pos[0] * self.Tilemap.tile_size, spawner.pos[1] * self.Tilemap.tile_size]
                 
             elif spawner.variant == '1;0': 
-
-                    #canine wwww
                 self.existing_enemies.append(Canine(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(34,23),'black'))
                 
         
             elif spawner.variant == '2;0':
                 
-                #wheelbot 
-                #print("check")
                 self.existing_enemies.append(Wheel_bot(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(20,22)))
-                """
-                elif spawner.variant == '3;0':
-                    self.existing_enemies.append(Sabre(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(30,27)))
-                """
+
             elif spawner.variant == "4;0":
-                #ball slinger 
-                print("check")
                 self.existing_enemies.append(Ball_slinger(self,(spawner.pos[0] *self.Tilemap.tile_size,spawner.pos[1] *self.Tilemap.tile_size), (13,19)))
 
-       
-        
-
-        
         self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
         self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
+       
 
-        
-        #self.lights_display = pygame.Surface(self.background_surf.get_size()) 
+    def start_game(self):
+        self.show_start_sequence()
+        while(True):
+            self.handle_events()
+            self.update_render()
     
 
-    def initialize_game_environment(self):
+    def smoothclamp(self,x, mi, mx): 
+        return mi + (mx-mi)*(lambda t: np.where(t < 0 , 0, np.where( t <= 1 , 3*t**2-2*t**3, 1 ) ) )( (x-mi)/(mx-mi) )
+
+    def smoothclamp_decreasing(self, x, mi, mx):
+        def smoothstep(t):
+            return np.where(t < 0, 1, np.where(t <= 1, 1 - (3*t**2 - 2*t**3), 0))
         
+        t = (x - mi) / (mx - mi)
         
-        
-        pass 
+        return mi + (mx - mi) * smoothstep(t)
+
 
     def show_start_sequence(self):
+        self.logo_time = 0
+        logo = self.general_sprites['start_logo']
+        logo_dim = logo.get_size()
+        logo_dim_ratio = logo_dim[0] / logo_dim[1]
+        
+        scaled_logo = pygame.transform.smoothscale(logo.convert_alpha(),(self.native_res[0]//2,  (self.native_res[0]//2) / logo_dim_ratio))
+        print(self.native_res)
 
-        self.start_sequence_time = 255
-        while self.start_sequence_time > 0:
-            self.start_sequence_time -= 1
-             
-    
 
-
-
-        self.start_sequence_time = 255
-        scroll_increment_x = (self.player.rect().centerx - self.background_surf.get_width() /2) 
-        scroll_increment_y = (self.player.rect().centery - self.background_surf.get_height() /2)
-        while self.start_sequence_time > 0:
-
-            self.start_sequence_time  -= 1
-
+        while self.logo_time <600 :
             
+            
+            self.logo_time += 1
+            
+            self.lights_engine.clear(0,0,0,255)
+            self.background_surf.fill((0,0,0))
+        
+            #(self.screen_size[0] // 2 - logo_dim[0]//2, self.screen_size[1] // 2 - logo_dim[1]//2)
 
-            self.scroll[0] += scroll_increment_x/260
-            self.scroll[1] += scroll_increment_y/260
+            blackout_surf = pygame.Surface(self.screen_size)
+            blackout_surf = blackout_surf.convert()
+            blackout_surf.fill((0,0,0,0))
+
+
+            if self.logo_time <= 300 :
+                blackout_surf.set_alpha(self.smoothclamp(255-self.logo_time,0,255))
+            else: 
+                blackout_surf.set_alpha(min(255,self.smoothclamp_decreasing(self.logo_time,0,600)))
+
+            #self.foreground_surf.blit(logo,(0,0))
+            self.foreground_surf.blit(scaled_logo,(self.native_res[0]//4, self.native_res[1]//2 - scaled_logo.get_height()//2))
+            self.foreground_surf.blit(blackout_surf,(0,0))
+
+            tex = self.lights_engine.surface_to_texture(self.foreground_surf)
+
+            tex = self.lights_engine.surface_to_texture(self.foreground_surf)
+            
+            self.lights_engine.render_texture(
+                tex, Layer_.FOREGROUND,
+                pygame.Rect(0,0,tex.width ,tex.height),
+                pygame.Rect(0,0,tex.width,tex.height)
+            )
+            tex.release()
+
+
+            tex.release()
+            self.lights_engine.render(self.ambient_node_ptr.range,(0,0), (0,0))
+            
+            
+            pygame.display.flip()
+            #pygame.display.update()
+            fps = self.clock.get_fps()
+            pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
+            self.clock.tick(60)
+
+        
+        self.start_sequence_time = 255 
+
+        self.load_map_init_game_env('start_screen.json')
+        scroll_increment_x = (self.player.rect().centerx - self.background_surf.get_width() /2)
+        scroll_increment_y =  (self.player.rect().centery - self.background_surf.get_height() /2)
+        while self.start_sequence_time > 0: 
+            self.start_sequence_time -= 1
+            self.handle_events()
+
+            self.scroll[0] += scroll_increment_x /255
+            self.scroll[1] += scroll_increment_y /255
             render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+        
 
             boundary = Rectangle(Vector2(render_scroll[0]- self.qtree_x_slack,render_scroll[1]- self.qtree_y_slack),Vector2(self.background_surf.get_width() +self.qtree_x_slack*2,self.background_surf.get_height() +self.qtree_y_slack*2))
             quadtree = QuadTree(self.NODE_CAPACITY, boundary)
-
-            self.handle_events()
 
             self.lights_engine.clear(0,0,0,255)
             self.background_surf.fill((155,155,155))
@@ -324,19 +382,18 @@ class myGame:
             self.backgrounds['building'].render(self.background_surf,render_scroll)
 
             self.Tilemap.render(self.background_surf,render_scroll)
-
             self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
+
+
             self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
             self.player.render(self.background_surf,render_scroll)
-
-            self.background_surf.blit(blackout_surf,(0,0))
-            self.cursor.update(self.foreground_surf)
- 
-            tex = self.lights_engine.surface_to_texture(self.background_surf)
-        
-
+            self.background_surf.blit(blackout_surf,render_scroll)
             
-            #self.test_shader['iTime'] = self.running_time -time.time()
+            self.cursor.update(self.foreground_surf)
+            
+
+
+            tex = self.lights_engine.surface_to_texture(self.background_surf)
 
             self.lights_engine.render_texture_with_trans(
                 tex, Layer_.BACKGROUND,
@@ -351,119 +408,15 @@ class myGame:
             tex.release()
 
             tex = self.lights_engine.surface_to_texture(self.foreground_surf)
+        
             self.lights_engine.render_texture(
                 tex, Layer_.FOREGROUND,
                 pygame.Rect(0,0,tex.width ,tex.height),
                 pygame.Rect(0,0,tex.width,tex.height)
             )
             tex.release()
-            
+
             self.lights_engine.render(self.ambient_node_ptr.range,render_scroll, (0,0))
-
-            pygame.display.flip()
-            #pygame.display.update()
-            fps = self.clock.get_fps()
-            pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
-            self.clock.tick(60)
-
-
-    def start_game(self):
-        self.show_start_sequence()
-        while(True):
-            self.handle_events()
-            self.update_render()
-
-    def show_start_sequence(self):
-        self.logo_time = 6000
-        logo = self.assets['start_logo']
-        logo_dim = logo.get_size()
-
-        while self.logo_time >0 :
-            
-            self.logo_time -= 1
-            
-            self.lights_engine.clear(0,0,0,255)
-            self.background_surf.fill((0,0,0))
-        
-            #(self.screen_size[0] // 2 - logo_dim[0]//2, self.screen_size[1] // 2 - logo_dim[1]//2)
-            self.background_surf.blit(logo,(0,0))
-            tex = self.lights_engine.surface_to_texture(self.background_surf)
-
-            self.lights_engine.render_texture_with_trans(
-                tex, Layer_.BACKGROUND,
-                position= (0,0)
-            )
-            """
-            self.lights_engine.render_texture(
-                tex, Layer_.BACKGROUND,
-                pygame.Rect(-screenshake_offset[0] ,-screenshake_offset[1],tex.width ,tex.height),
-                pygame.Rect(0,0,tex.width,tex.height)
-            )"""
-
-
-            tex.release()
-            self.lights_engine.render(self.ambient_node_ptr.range,(0,0), (0,0))
-            
-            
-            pygame.display.flip()
-            #pygame.display.update()
-            fps = self.clock.get_fps()
-            pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
-            self.clock.tick(60)
-
-        self.lights_engine.lights = self.Tilemap.load('start_screen.json')
-        self.start_sequence_time = 255 
-        while self.start_sequence_time > 0: 
-            self.start_sequence_time -= 1
-
-            self.handle_events()
-
-            self.lights_engine.clear(0,0,0,255)
-            self.background_surf.fill((155,155,155))
-            self.foreground_surf.fill((0,0,0,0))
-
-            blackout_surf = pygame.Surface(self.screen_size)
-            blackout_surf = blackout_surf.convert()
-            blackout_surf.fill((0,0,0,0))
-            blackout_surf.set_alpha(self.start_sequence_time)
-
-            self.backgrounds['building'].render(self.background_surf,(0,0))
-
-            self.Tilemap.render(self.background_surf,(0,0))
-            self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,(0,0))
-
-
-            self.player.update_pos(self.Tilemap,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
-            self.player.render(self.background_surf,(0,0))
-            self.background_surf.blit(blackout_surf,(0,0))
-            
-            self.cursor.update(self.foreground_surf)
-            
-
-
-            tex = self.lights_engine.surface_to_texture(self.background_surf)
-
-            self.lights_engine.render_texture_with_trans(
-                tex, Layer_.BACKGROUND,
-                position= (0,0)
-            )
-            """
-            self.lights_engine.render_texture(
-                tex, Layer_.BACKGROUND,
-                pygame.Rect(-screenshake_offset[0] ,-screenshake_offset[1],tex.width ,tex.height),
-                pygame.Rect(0,0,tex.width,tex.height)
-            )"""
-            tex.release()
-
-            tex = self.lights_engine.surface_to_texture(self.foreground_surf)
-            self.lights_engine.render_texture(
-                tex, Layer_.FOREGROUND,
-                pygame.Rect(0,0,tex.width ,tex.height),
-                pygame.Rect(0,0,tex.width,tex.height)
-            )
-            tex.release()
-
-            self.lights_engine.render(self.ambient_node_ptr.range,(0,0), (0,0))
 
 
             pygame.display.flip()
@@ -596,68 +549,7 @@ class myGame:
                         self.start_sequence_time = 0
                     if event.key == pygame.K_p:
 
-                        self.collectable_items = []
-                        self.bullets_on_screen = []
-                        self.enemy_bullets = []
-                        self.particles = []
-                        self.physical_particles = []
-                        self.non_animated_particles = []
-                        self.leaf_spawners = []
-                        self.existing_enemies = []
-                        self.sparks = []
-                        self.lights_engine.lights = self.Tilemap.load('test.json')
-
-
-                        self.grass_locations = []
-
-
-                        "refactor this"
-        
-                        for grass in self.Tilemap.extract([('live_grass','0;0'),('live_grass','1;0'),('live_grass','2;0'),('live_grass','3;0'),('live_grass','4;0'),('live_grass','5;0')]):
-                            self.grass_locations.append((grass.pos[0], grass.pos[1]))
-
-                        for loc in self.grass_locations:
-                            self.gm.place_tile(loc,14,[0,3,4])
-                    
-
-                    
-                        #spawner order: 0 : player, 1: canine: 2: wheel bot 
-                        
-                        for spawner in self.Tilemap.extract([('spawners','0;0'),('spawners','1;0'),('spawners','2;0'),('spawners','3;0'),('spawners','4;0')]):   
-                            if spawner.variant == '0;0':
-                                
-                                self.player.pos = [spawner.pos[0] * self.Tilemap.tile_size, spawner.pos[1] * self.Tilemap.tile_size]
-                                
-                            elif spawner.variant == '1;0': 
-
-                                    #canine wwww
-                                self.existing_enemies.append(Canine(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(34,23),'black'))
-                                
-                        
-                            elif spawner.variant == '2;0':
-                                
-                                #wheelbot 
-                                #print("check")
-                                self.existing_enemies.append(Wheel_bot(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(20,22)))
-                                """
-                                elif spawner.variant == '3;0':
-                                    self.existing_enemies.append(Sabre(self,(spawner.pos[0] * self.Tilemap.tile_size,spawner.pos[1] * self.Tilemap.tile_size),(30,27)))
-                                """
-                            elif spawner.variant == "4;0":
-                                #ball slinger 
-                                print("check")
-                                self.existing_enemies.append(Ball_slinger(self,(spawner.pos[0] *self.Tilemap.tile_size,spawner.pos[1] *self.Tilemap.tile_size), (13,19)))
-
-                        self.dt = 0
-                        self.start = time.time()
-                        self.running_time = time.time()
-                        self.rot_func_t = 0
-                        self.main_offset = None 
-                        
-
-                        
-                        self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
-                        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
+                        self.load_map_init_game_env('start_screen.json')
 
                         self.curr_gameState = GameState.GameLoop
 
@@ -1127,7 +1019,7 @@ class myGame:
 
             self.Tilemap.render(self.background_surf,render_scroll)
 
-            self.start_screen_ui.update(self.cursor)
+            #self.start_screen_ui.update(self.cursor)
             self.start_screen_ui.render(self.foreground_surf,(0,0))
 
             self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
