@@ -1,1 +1,2 @@
-o
+
+                    if event.key == pygame.K_g: 

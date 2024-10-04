@@ -246,10 +246,10 @@ class Weapon:
         if self.knockback[1] > 0 :
             self.knockback[1] = max(self.knockback[1] -1.45, 0)
 
-        testSurf = pygame.Surface((2,2))
+        #testSurf = pygame.Surface((2,2))
 
         if not blitz: 
-            surf.blit(testSurf,(self.opening_pos[0]-offset[0],self.opening_pos[1]-offset[1]))
+            #surf.blit(testSurf,(self.opening_pos[0]-offset[0],self.opening_pos[1]-offset[1]))
             surf.blit(rotated_image,(rect.topleft[0] + self.knockback[0],rect.topleft[1] + self.knockback[1]))
          
 
@@ -442,7 +442,7 @@ class Rocket_launcher(Weapon):
 
             bullet.angle = self.angle_opening 
             bullet.sprite = pygame.transform.rotate(bullet.sprite,bullet.angle)
-            bullet.velocity =  [math.cos(math.radians(-bullet.angle)) * self.power ,math.sin(math.radians(-bullet.angle))*self.power]  
+            bullet.velocity =  [math.cos(math.radians(-bullet.angle)) * self.power/1.3 ,math.sin(math.radians(-bullet.angle))*self.power/1.3]  
             
             
             if bullet.velocity[0] > 0 :

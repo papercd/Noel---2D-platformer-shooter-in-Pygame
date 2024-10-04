@@ -10,6 +10,7 @@ from scripts.particles import Particle,non_animated_particle,bullet_collide_part
 from scripts.health import HealthBar,StaminaBar
 from scripts.indicator import indicator 
 from scripts.tilemap import Node,Tile
+from scripts.fire import Flame_particle
 from scripts.spark import Spark 
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
 from scripts.weapon_list import DoublyLinkedList
@@ -60,7 +61,7 @@ class PhysicsEntity:
     def set_state(self, action):
         if action != self.state:
             self.state = action
-            self.animation = self.game.assets[self.type + '/' + self.state].copy()
+            self.animation = self.game.general_sprites[self.type + '/' + self.state].copy()
 
     def collide(self, other):
         return self.collision_rect().colliderect(other.collision_rect())
@@ -227,7 +228,7 @@ class CollectableItem:
         self.image = item.image.copy()
         self.size = [self.image.get_width()//2, self.image.get_height()//2]
 
-        self.life = 180
+        self.life = 100000
         self.velocity = [0,0]
 
 
@@ -1318,10 +1319,10 @@ class PlayerEntity(PhysicsEntity):
     def set_state(self,action):
         if action != self.state: 
             self.state = action 
-            self.animation = self.game.assets[self.type + '/' + ('holding_gun/' if self.cur_weapon_node else '') + self.state]
+            self.animation = self.game.general_sprites[self.type + '/' + ('holding_gun/' if self.cur_weapon_node else '') + self.state]
 
     def change_gun_holding_state(self):
-        self.animation = self.game.assets[self.type + '/' + ('holding_gun/' if self.cur_weapon_node else '') + self.state ]
+        self.animation = self.game.general_sprites[self.type + '/' + ('holding_gun/' if self.cur_weapon_node else '') + self.state ]
 
 
     def update_pos(self, tile_map,quadtree,cursor_pos,frame_count,movement=(0, 0)):
@@ -1714,7 +1715,7 @@ class PlayerEntity(PhysicsEntity):
         
         if self.weapon_inven.curr:
             #self.equipped = True 
-            self.animation = self.game.assets[self.type + '/holding_gun/' + self.state]
+            self.animation = self.game.general_sprites[self.type + '/holding_gun/' + self.state]
             #self.cur_weapon_node = self.weapon_inven.head
             self.cur_weapon_node = self.weapon_inven.curr 
             self.cur_weapon_node.weapon.equip(self)
@@ -1956,13 +1957,32 @@ class RocketShell():
         self.size = size
         self.damage = 20
         self.bullet_type = bullet_type 
+
+        # flame particle parameters---------------------------------
+        self.flame_size = 3
+        self.flame_density = 1
+        self.flame_rise = 1.6
+        self.flame_spread = 1
+        self.flame_wind = 0
+        # --------------------------------
+
+        self.flame_spawn_pos_offsets = [(-7,0),(-7,-1),(-7,-2),(-7,1),
+                                         (-8,0),(-8,-1),(-9,0),(-9,-1)]
+
+
         
 
     def update_pos(self,tile_map):
         self.frames_flown -= 1
+        if self.frames_flown%2 ==0 :
+            #every three frames leave a smoke particle behind - like metal slug 
+            #particle = Particle(self.game,'rocket_launcher_smoke',(self.pos[0] + self.size[0] //2 , self.pos[1]+ self.size[1]//2) , 'rocket_launcher')
+            self.game.particles.append(Particle(self.game,'rocket_launcher_smoke',(self.pos[0] + self.size[0] //2 , self.pos[1]+ self.size[1]//2) , 'rocket_launcher') ) 
         if self.frames_flown == 0 :
              self.dead = True 
              return True 
+        
+       
         
         self.pos[0] += self.velocity[0] 
         self.pos[1] += self.velocity[1] 

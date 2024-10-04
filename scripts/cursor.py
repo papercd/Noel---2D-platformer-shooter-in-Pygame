@@ -18,7 +18,7 @@ class Cursor:
         self.type = type
         self.pos = list(pos)
         self.aim_offset = list(aim_offset)
-        self.sprite = self.game.assets['cursor' + '/' + self.type]
+        self.sprite = self.game.general_sprites['cursor' + '/' + self.type]
 
 
         #attributes to use with new inventory module 
