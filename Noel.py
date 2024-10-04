@@ -105,13 +105,7 @@ class myGame:
 
         
         self.clock = pygame.time.Clock()
-<<<<<<< HEAD
         self.screen_size = (1440,900)
-=======
-
-        #self.screen_size = (1440,900)
-        self.screen_size = (1020,700)
->>>>>>> 8018f08b92bf3155573c7372cf6fd17f82dc684c
         self.native_res = (int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5))
        
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
@@ -159,68 +153,12 @@ class myGame:
 
         #tile map 
         self.Tilemap = Tilemap(self,tile_size=16,offgrid_layers=2)
-
-        
         
         #cursor object 
         pygame.mouse.set_visible(False)
         self.cursor = Cursor(self,(50,50),(4,4),'default')
 
-<<<<<<< HEAD
         #player 
-=======
-        #self.quadtree_ = a
-
-
-        self.lights = {}
-        self.temp_lights = []
-        self.shadow_objects = [] 
-
-        """"""
-        self.lights_engine.lights = self.Tilemap.load('main_menu.json')
-
-        """
-        for light in self.Tilemap.extract([('lights','0;0'),('lights','1;0'),('lights','2;0'),('lights','3;0'),('lights','4;0')],keep=True):
-            light = PointLight(position=((light.pos[0]*self.Tilemap.tile_size + 8), (light.pos[1]*self.Tilemap.tile_size)), power=1., radius=356)
-            light.set_color(255, 255, 255, 200)
-            self.lights_engine.lights.append(light)
-            #self.lights_engine.lights.append([(light.pos[0]*self.Tilemap.tile_size + 8,light.pos[1]*self.Tilemap.tile_size)] =LIGHT(200,pixel_shader(200,(255,255,255),1.0,True, 270, 90)) 
-        """
-
-        """
-        light = PointLight(position=(100, 100), power=1., radius=250)
-        light.set_color(50, 100, 200, 200)
-        self.lights_engine.lights.append(light)
-        #
-        """
-        """
-        for i, key in enumerate(self.Tilemap.tilemap):
-            tile = self.Tilemap.tilemap[key] 
-            if tile.type != "spawners" and tile.type != "lights":
-                
-                vertices = [(tile.pos[0] * 2.5 * self.Tilemap.tile_size,tile.pos[1] * 2.5 * self.Tilemap.tile_size) , 
-                            ((tile.pos[0]+1) *2.5*self.Tilemap.tile_size,tile.pos[1] *2.5*self.Tilemap.tile_size ) , 
-                            ((tile.pos[0]+1) *2.5*self.Tilemap.tile_size,(tile.pos[1]+1) *2.5*self.Tilemap.tile_size ) ,
-                            ((tile.pos[0]) *2.5*self.Tilemap.tile_size,tile.pos[1] *2.5*self.Tilemap.tile_size ) ,
-                            ]
-                self.lights_engine.hulls.append(Hull(vertices))
-                print("added")
-                print(i)
-        """
-        
-        
-
-        """
-        for key in self.Tilemap.tilemap:
-            split_key = key.split(";")
-            tile = self.Tilemap.tilemap[key]
-
-            if tile.type != "spawners" and tile.type != "lights":
-                print(tile.type)
-                self.shadow_objects.append(pygame.Rect(int(split_key[0]) * self.Tilemap.tile_size,int(split_key[1]) * self.Tilemap.tile_size,16,16))
-        """
-
->>>>>>> 8018f08b92bf3155573c7372cf6fd17f82dc684c
         self.PLAYER_DEFAULT_SPEED = 2.2
         self.player_cur_vel = 0
         self.accel_decel_rate = 0.7
@@ -439,7 +377,7 @@ class myGame:
             self.lights_engine.clear(0,0,0,255)
             self.background_surf.fill((155,155,time))
             self.foreground_surf.fill((0,0,0,0))
-            self.bsurf.fill((0,0,0,0))
+            self.buffer_surf.fill((0,0,0,0))
             self.cursor.update(self.foreground_surf)
 
 
@@ -1106,31 +1044,16 @@ class myGame:
             self.clock.tick(60)
 
         if self.curr_gameState == GameState.MainMenu:
-<<<<<<< HEAD
             self.scroll[0] += (self.player.rect().centerx - self.background_surf.get_width() /2 - self.scroll[0])/20
             self.scroll[1] += (self.player.rect().centery - self.background_surf.get_height() /2 - self.scroll[1])/20
             render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
             
             boundary = Rectangle(Vector2(render_scroll[0]- self.qtree_x_slack,render_scroll[1]- self.qtree_y_slack),Vector2(self.background_surf.get_width() +self.qtree_x_slack*2,self.background_surf.get_height() +self.qtree_y_slack*2))
             quadtree = QuadTree(self.NODE_CAPACITY, boundary)
-=======
-            """ 
-            In here you need to create an actual main menu for the game. 
-            So what to do: make something similar to animal well: where you have a semi - animated 
-            background, and you have options to choose from. also have like a selection indicator that you can navigate using 
-            the wasd keys.
-
-
-            """
-            self.scroll[0] += (self.player.rect().centerx - self.background_surf.get_width() /2 - self.scroll[0])/20
-            self.scroll[1] += (self.player.rect().centery - self.background_surf.get_height() /2 - self.scroll[1])/20
-            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
->>>>>>> 8018f08b92bf3155573c7372cf6fd17f82dc684c
 
             self.lights_engine.clear(0,0,0,255)
             self.background_surf.fill((155,155,155))
             self.foreground_surf.fill((0,0,0,0))
-<<<<<<< HEAD
             self.buffer_surf.fill((0,0,0,0))
 
             self.backgrounds['building'].render(self.background_surf,render_scroll)
@@ -1146,41 +1069,16 @@ class myGame:
             self.player.render(self.background_surf,render_scroll)
 
 
-=======
-            self.bsurf.fill((0,0,0,0))
-            
-
-
-            self.backgrounds['building'].render(self.background_surf,render_scroll)
-            self.Tilemap.render(self.background_surf,render_scroll)
-
-            self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
-
-            self.player.update_pos(self.Tilemap,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
-            self.player.render(self.background_surf,render_scroll)
-
->>>>>>> 8018f08b92bf3155573c7372cf6fd17f82dc684c
             self.cursor.update(self.foreground_surf)
 
             tex = self.lights_engine.surface_to_texture(self.background_surf)
 
             self.lights_engine.render_texture_with_trans(
                 tex, Layer_.BACKGROUND,
-<<<<<<< HEAD
                 position= (0,0) 
             
             )
 
-=======
-                position= (0,0)
-            )
-            """
-            self.lights_engine.render_texture(
-                tex, Layer_.BACKGROUND,
-                pygame.Rect(-screenshake_offset[0] ,-screenshake_offset[1],tex.width ,tex.height),
-                pygame.Rect(0,0,tex.width,tex.height)
-            )"""
->>>>>>> 8018f08b92bf3155573c7372cf6fd17f82dc684c
             tex.release()
 
             tex = self.lights_engine.surface_to_texture(self.foreground_surf)
@@ -1190,35 +1088,16 @@ class myGame:
                 pygame.Rect(0,0,tex.width,tex.height)
             )
             tex.release()
-<<<<<<< HEAD
             
             self.lights_engine.render(self.ambient_node_ptr.range,render_scroll, (0,0))
             
-=======
-
-            self.lights_engine.render(self.ambient_node_ptr.range,render_scroll, (0,0))
-
->>>>>>> 8018f08b92bf3155573c7372cf6fd17f82dc684c
 
             pygame.display.flip()
             #pygame.display.update()
             fps = self.clock.get_fps()
             pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
             self.clock.tick(60)
-<<<<<<< HEAD
             pass
-=======
-        
-
-
-            #blit the select options to the foreground layer, the background layer is going to have your sem - animated 
-            #background. 
-
-            
-
-
-            
->>>>>>> 8018f08b92bf3155573c7372cf6fd17f82dc684c
 
     def quit_game(self): 
         pygame.quit()
