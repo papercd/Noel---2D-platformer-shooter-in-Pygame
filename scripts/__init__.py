@@ -1,4 +1,5 @@
-from .ui import * 
+
+from .ui import startScreenUI 
 from .tilemap import Tilemap
 from .utils import load_image, load_images, load_tile_images, Animation, load_sounds
 from .entities import PlayerEntity,  Wheel_bot, Ball_slinger, Bullet,Canine
@@ -12,6 +13,7 @@ from .indicator import indicator
 from .HUD import HUD
 from .grass import *
 from .inventory import Item, ITEMS
+
 
 
 from .quadtree import *

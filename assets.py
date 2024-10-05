@@ -77,6 +77,8 @@ class GameAssets:
         ui_paths = {
             'health_UI': ('ui/health/0.png', 'transparent'),
             'stamina_UI': ('ui/stamina/0.png', 'transparent'),
+            'start_element' : ('ui/start_ui/start_element.png','transparent'),
+            'start_logo' : ('ui/start_logo/logo.png','transparent'),
         }
         return load_image_assets(ui_paths)
 
