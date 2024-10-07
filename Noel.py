@@ -310,8 +310,11 @@ class myGame:
             
             self.logo_time += 1
             
+            self.handle_events()
+
             self.lights_engine.clear(0,0,0,255)
             self.background_surf.fill((0,0,0))
+            self.foreground_surf.fill((0,0,0))
         
             #(self.screen_size[0] // 2 - logo_dim[0]//2, self.screen_size[1] // 2 - logo_dim[1]//2)
 
@@ -321,13 +324,19 @@ class myGame:
 
 
             if self.logo_time <= 300 :
+                
                 blackout_surf.set_alpha(self.smoothclamp(255-self.logo_time,0,255))
             else: 
-                blackout_surf.set_alpha(min(255,self.smoothclamp_decreasing(self.logo_time,0,600)))
-
+               
+                blackout_surf.set_alpha(255-min(255,self.smoothclamp_decreasing(self.logo_time,0,600)))
+            
+            
+            
             #self.foreground_surf.blit(logo,(0,0))
             self.foreground_surf.blit(scaled_logo,(self.native_res[0]//4, self.native_res[1]//2 - scaled_logo.get_height()//2))
+            
             self.foreground_surf.blit(blackout_surf,(0,0))
+            self.cursor.update(self.foreground_surf)
 
             tex = self.lights_engine.surface_to_texture(self.foreground_surf)
 
