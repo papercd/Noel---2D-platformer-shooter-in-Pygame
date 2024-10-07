@@ -224,7 +224,7 @@ class myGame:
         self.qtree_y_slack = 300
 
 
-        self.curr_gameState = GameState.MainMenu
+        self.curr_gameState = GameState.GameLoop
         self.start_screen_ui = startScreenUI(self.screen_size)
         self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
 
@@ -277,7 +277,8 @@ class myGame:
        
 
     def start_game(self):
-        self.show_start_sequence()
+        self.load_map_init_game_env('start_screen.json')
+        #self.show_start_sequence()
         while(True):
             self.handle_events()
             self.update_render()
@@ -433,7 +434,7 @@ class myGame:
             pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
             self.clock.tick(60)
 
-        self.curr_gameState = GameState.MainMenu
+        self.curr_gameState = GameState.GameLoop
 
          
 
@@ -693,7 +694,6 @@ class myGame:
             #-------------------------------
 
 
-
             #print(self.player.interactables)
 
 
@@ -866,6 +866,16 @@ class myGame:
                         for entity in nearby_entities:
                             if  entity.state != 'death' and particle.collide(entity):
                                 entity.hit(particle.damage)
+                        
+            for spark in self.sparks.copy():
+                kill = spark.update(self.dt)
+                if kill: 
+                    self.sparks.remove(spark)
+                    continue 
+                
+                spark.render(self.background_surf,render_scroll)
+
+                 
 
                     
             self.background_surf.blit(self.buffer_surf,(0,0))
@@ -1028,6 +1038,7 @@ class myGame:
             self.Tilemap.render(self.background_surf,render_scroll)
 
             #self.start_screen_ui.update(self.cursor)
+            self.start_screen_ui.update(self.cursor)
             self.start_screen_ui.render(self.foreground_surf,(0,0))
 
             self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)

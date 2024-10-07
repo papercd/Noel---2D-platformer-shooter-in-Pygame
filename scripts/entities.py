@@ -5,6 +5,7 @@ import pygame
 import math
 
 from pygame.math import Vector2
+from scripts.spark import Spark
 from scripts.los import line_of_sight
 from scripts.particles import Particle,non_animated_particle,bullet_collide_particle,bullet_trail_particle_wheelbot
 from scripts.health import HealthBar,StaminaBar
@@ -1969,8 +1970,51 @@ class RocketShell():
         self.flame_spawn_pos_offsets = [(-7,0),(-7,-1),(-7,-2),(-7,1),
                                          (-8,0),(-8,-1),(-9,0),(-9,-1)]
 
-
+    def rect(self):
+        return pygame.Rect(self.pos[0], self.pos[1], self.sprite.get_width(), self.sprite.get_height())
         
+
+    
+    def collision_handler(self, tilemap, rect_tile, ent_rect, dir, axis):
+        rect_tile = rect_tile if isinstance(rect_tile, pygame.Rect) else rect_tile[0]
+
+        og_end_point_vec = pygame.math.Vector2(6, 0).rotate(self.angle)
+        end_point = [self.center[0] + og_end_point_vec[0] - (self.sprite.get_width() / 2 if self.velocity[0] >= 0 else 0),
+                     self.center[1] + og_end_point_vec[1]]
+        entry_pos = (rect_tile.left if dir else rect_tile.right, end_point[1]) if axis else (end_point[0], rect_tile.top if dir else rect_tile.bottom)
+        sample_side = {(True, True): 'left', (False, True): 'right', (True, False): 'top', (False, False): 'bottom'}
+        color = tilemap.return_color(rect_tile, sample_side[(dir, axis)])
+
+        offsets = [(-1, 0), (0, 0), (1, 0)]
+        for _ in range(random.randint(6, 11)):
+            offset = random.choice(offsets)
+            self.game.non_animated_particles.append(bullet_collide_particle(random.choice([(1, 1), (2, 1), (1, 2), (3, 1), (1, 3), (2, 2)]),
+                                                                             entry_pos, (180 - self.angle) + random.randint(-88, 88), 3 + random.random(), color, tilemap))
+
+        bullet_mask = pygame.mask.from_surface(self.sprite)
+        tile_mask = pygame.mask.Mask((rect_tile.width, rect_tile.height))
+        tile_mask.fill()
+        offset = (ent_rect[0] - rect_tile[0], ent_rect[1] - rect_tile[1])
+
+        if tile_mask.overlap_area(bullet_mask, offset) > 2:
+            collided_tile = tilemap.return_tile(rect_tile)
+            collide_particle = Particle(self.game, 'bullet_collide/rifle', end_point, 'player')
+            collide_particle.animation.images = [pygame.transform.rotate(img, 180 + self.angle) for img in collide_particle.animation.copy().images]
+            self.game.particles.append(collide_particle)
+
+            if collided_tile.type != 'box':
+                pass
+            else:
+                tilemap.tilemap.pop(f'{collided_tile.pos[0]};{collided_tile.pos[1]}')
+                destroy_box_smoke = Particle(self.game, 'box_smoke', rect_tile.center, 'tile', velocity=[0, 0], frame=10)
+                self.game.particles.append(destroy_box_smoke)
+                collided_tile.drop_item()
+            return True
+        return False
+    
+
+
+    #change the collision particle effects on the shells 
 
     def update_pos(self,tile_map):
         self.frames_flown -= 1
@@ -1982,10 +2026,71 @@ class RocketShell():
              self.dead = True 
              return True 
         
-       
+        self.pos[0] += self.velocity[0]
+        self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
+        entity_rect = self.rect()
+
+        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+            if entity_rect.colliderect(rect_tile[0]):
+                if rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
+                    check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
+                                   pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),
+                                   pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \
+                                  [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
+                                   pygame.Rect(rect_tile[0].left, rect_tile[0].top, 4, 12),
+                                   pygame.Rect(rect_tile[0].left + 4, rect_tile[0].top + 6, 6, 6)]
+                    for check_rect in check_rects:
+                        if entity_rect.colliderect(check_rect):
+                            if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[0] > 0, True):
+                                #collision sparks get appended here 
+                                for i in range(20):
+                                    self.game.sparks.append(Spark(self.center,math.radians(random.randint(0,360)),\
+                                                                random.randint(10,12),(255,255,255),1))
+                                self.dead = True 
+                                return True
+                else:
+                    if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
+                        #collision sparks get appended here
+                        for i in range(20):
+                            self.game.sparks.append(Spark(self.center,math.radians(random.randint(0,360)),\
+                                                        random.randint(10,12),(255,255,255),1))
+                        self.dead = True 
+                        return True
+
+        self.pos[1] += self.velocity[1]
+        self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
+        entity_rect = self.rect()
+
+        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+            if entity_rect.colliderect(rect_tile[0]):
+                if rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
+                    check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
+                                   pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),
+                                   pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \
+                                  [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
+                                   pygame.Rect(rect_tile[0].left, rect_tile[0].top, 4, 12),
+                                   pygame.Rect(rect_tile[0].left + 4, rect_tile[0].top + 6, 6, 6)]
+                    for check_rect in check_rects:
+                        if entity_rect.colliderect(check_rect):
+                            if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[1] > 0, False):
+                                #collision sparks get appended here 
+                                for i in range(20):
+                                    self.game.sparks.append(Spark(self.center,math.radians(random.randint(0,360)),\
+                                                                random.randint(10,12),(255,255,255),1))
+                                self.dead = True 
+                                return True
+                else:
+                    if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[1] > 0, False):
+                        #collision sparks get appended here 
+                        for i in range(20):
+                            self.game.sparks.append(Spark(self.center,math.radians(random.randint(0,360)),\
+                                                        random.randint(10,12),(255,255,255),1))
+                        self.dead = True 
+                        return True
+        return False
+
         
-        self.pos[0] += self.velocity[0] 
-        self.pos[1] += self.velocity[1] 
+        #collision detection for rocket shells 
 
     def render(self,surf, offset = (0,0)):
         surf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD) 

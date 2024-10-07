@@ -13,14 +13,20 @@ class UIElement:
         #a UI needs a sprite, and a position value. We also may need 
         #a separate sprite to blit behind the original sprite to give it an interactive
         #effect on mouse hover.
+        self.hover = False 
         self.pos = pos
         self.image = image
         self.image_dim = self.image.get_size()
 
     def rect(self):
         #we need this to do rect collision between the ui element and the cursor.
-        return pygame.Rect(self.pos[0] - self.image_dim[0] //2, self.pos[1], *self.image_dim)
+        return pygame.Rect(self.pos[0] - self.image_dim[0] //2, self.pos[1] - (0 if not self.hover else 3), *self.image_dim)
     
+    def update(self,cursor):
+        if cursor.box.colliderect(self.rect()):
+            self.hover = True 
+        else: 
+            self.hover  = False 
 
     def render(self,surf):
         surf.blit(self.image,self.pos)
@@ -51,7 +57,10 @@ class startScreenUI:
                             optionsUI((self.screen_res[0]//4,self.screen_res[1]//4 + OPTIONS_UI_IMAGE.get_height() + 2)),
                             exitUI((self.screen_res[0]//4,self.screen_res[1]//4 + OPTIONS_UI_IMAGE.get_height() + EXIT_UI_IMAGE.get_height() +4))]
         
-        pass 
+        
+    def update(self,cursor):
+        for ui_element in self.ui_elements:
+            ui_element.update(cursor)
 
     def render(self,surf,offset = (0,0)):
         for ui_element in self.ui_elements:
