@@ -14,7 +14,7 @@ another reason for why pygame is slow is because it does not support gpu process
 for rendering, you need to use other libraraaaies from graphics API's like opengl. 
 
 
-I've found a lighting module for pygame that uses rayCasting, and integrated it into my game's system.
+I've found a lighting module for pygame that uses shadow Casting, and integrated it into my game's system.
 
 The lighting module also has its own method for rendering sprites, as it utilizes moderngl's functions which are separate from 
 
@@ -303,7 +303,7 @@ class myGame:
         logo_dim_ratio = logo_dim[0] / logo_dim[1]
         
         scaled_logo = pygame.transform.smoothscale(logo.convert_alpha(),(self.native_res[0]//2,  (self.native_res[0]//2) / logo_dim_ratio))
-        print(self.native_res)
+        
 
 
         while self.logo_time <600 :
@@ -868,8 +868,9 @@ class myGame:
                                 entity.hit(particle.damage)
                         
             for spark in self.sparks.copy():
-                kill = spark.update(self.dt)
+                kill = spark.update(self.dt*30)
                 if kill: 
+
                     self.sparks.remove(spark)
                     continue 
                 
@@ -885,7 +886,7 @@ class myGame:
                 if particle == None: 
                     self.non_animated_particles.remove(particle)
                 else: 
-                    kill = particle.update(self.dt)
+                    kill = particle.update(self.dt* 60)
                     particle.render(self.background_surf,offset =render_scroll)
                     if kill:
                         self.non_animated_particles.remove(particle)
