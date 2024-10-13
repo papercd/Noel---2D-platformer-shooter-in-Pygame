@@ -106,7 +106,7 @@ class myGame:
 
         
         self.clock = pygame.time.Clock()
-        self.screen_size = (1440,900)
+        self.screen_size = (1200,750)
         self.native_res = (int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5))
        
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)

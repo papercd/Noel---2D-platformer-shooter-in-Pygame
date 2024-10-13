@@ -1910,6 +1910,7 @@ class Bullet(PhysicsEntity):
                     for check_rect in check_rects:
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[0] > 0, True):
+
                                 for i in range(6):
                                     self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
                                                                 random.randint(1,3),(255,255,255),0.4))
@@ -1917,9 +1918,10 @@ class Bullet(PhysicsEntity):
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
+
                         for i in range(6):
-                                    self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                                                random.randint(1,3),(255,255,255),0.4))
+                            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
+                                                        random.randint(1,3),(255,255,255),0.4))
                         self.dead = True 
                         return True
 
@@ -1947,8 +1949,8 @@ class Bullet(PhysicsEntity):
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[1] > 0, False):
                         for i in range(6):
-                                    self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                                                random.randint(1,3),(255,255,255),0.4))
+                            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
+                                                        random.randint(1,3),(255,255,255),0.4))
                         self.dead = True 
                         return True
         return False
@@ -2055,7 +2057,9 @@ class RocketShell():
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[0] > 0, True):
                                 #collision sparks get appended here 
+                                
                                 for i in range(20):
+                                    
                                     self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
                                                                 random.randint(3,6),(255,255,255),1,3))
                                 self.dead = True 
@@ -2063,6 +2067,7 @@ class RocketShell():
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
                         #collision sparks get appended here
+                        
                         for i in range(20):
                             self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
                                                         random.randint(3,6),(255,255,255),1,3))
@@ -2086,6 +2091,7 @@ class RocketShell():
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[1] > 0, False):
                                 #collision sparks get appended here 
+                                
                                 for i in range(20):
                                     self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
                                                                 random.randint(3,6),(255,255,255),1,3))
@@ -2094,6 +2100,7 @@ class RocketShell():
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[1] > 0, False):
                         #collision sparks get appended here 
+                        
                         for i in range(20):
                             self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
                                                         random.randint(3,6),(255,255,255),1,3))
