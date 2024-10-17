@@ -1910,6 +1910,7 @@ class Bullet(PhysicsEntity):
                     for check_rect in check_rects:
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[0] > 0, True):
+
                                 for i in range(6):
                                     self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
                                                                 random.randint(1,3),(255,255,255),0.4))
@@ -1917,9 +1918,10 @@ class Bullet(PhysicsEntity):
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
+
                         for i in range(6):
-                                    self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                                                random.randint(1,3),(255,255,255),0.4))
+                            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
+                                                        random.randint(1,3),(255,255,255),0.4))
                         self.dead = True 
                         return True
 
@@ -1947,8 +1949,8 @@ class Bullet(PhysicsEntity):
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[1] > 0, False):
                         for i in range(6):
-                                    self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                                                random.randint(1,3),(255,255,255),0.4))
+                            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
+                                                        random.randint(1,3),(255,255,255),0.4))
                         self.dead = True 
                         return True
         return False
@@ -2024,6 +2026,32 @@ class RocketShell():
             return True
         return False
     
+    def create_collision_effects(self):
+
+        position = self.center.copy()
+        light =  PointLight(position,power = 1.0,radius = 40,life = 2)
+        light.set_color(253,108,50)
+        light.cast_shadows = False
+        self.game.lights_engine.lights.append(light)
+        
+        light = PointLight(position,power = 0.7 ,radius = 70,life = 2)
+        light.set_color(248,129,153)
+        light.cast_shadows = False
+        self.game.lights_engine.lights.append(light)
+
+        light = PointLight(position,power = 0.6,radius = 85,life = 2)
+        light.set_color(248,129,153)
+        light.cast_shadows = False
+        self.game.lights_engine.lights.append(light)
+
+        shot_particle = Particle(self.game,'rocket_launcher_collide',position,self)
+        self.game.particles.append(shot_particle)        
+
+
+        for i in range(20):       
+            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
+                                        random.randint(3,6),(255,255,255),1,3))
+        
 
 
     #change the collision particle effects on the shells 
@@ -2055,25 +2083,14 @@ class RocketShell():
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[0] > 0, True):
                                 #collision sparks get appended here 
-                                
-                                for i in range(20):
-                                    flame_particle = Flame_particle(*self.center.copy(),self.flame_size,self.flame_density,self.flame_rise,random.randint(0,360),\
-                                                                    self.flame_spread,self.flame_wind,self.damage)
-                                    self.game.physical_particles.append(flame_particle)
-                                    self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                                                random.randint(3,6),(255,255,255),1,3))
+                                self.create_collision_effects()
                                 self.dead = True 
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
                         #collision sparks get appended here
-                        
-                        for i in range(20):
-                            flame_particle = Flame_particle(*self.center.copy(),self.flame_size,self.flame_density,self.flame_rise,random.randint(0,360),\
-                                                            self.flame_spread,self.flame_wind,self.damage)
-                            self.game.physical_particles.append(flame_particle)
-                            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                                        random.randint(3,6),(255,255,255),1,3))
+                        self.create_collision_effects()
+
                         self.dead = True 
                         return True
 
@@ -2094,24 +2111,15 @@ class RocketShell():
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[1] > 0, False):
                                 #collision sparks get appended here 
+                                self.create_collision_effects()
                                 
-                                for i in range(20):
-                                    flame_particle = Flame_particle(*self.center.copy(),self.flame_size,self.flame_density,self.flame_rise,random.randint(0,360),\
-                                                                    self.flame_spread,self.flame_wind,self.damage)
-                                    self.game.physical_particles.append(flame_particle)
-                                    self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                                                random.randint(3,6),(255,255,255),1,3))
                                 self.dead = True 
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[1] > 0, False):
                         #collision sparks get appended here 
-                        for i in range(20):
-                            flame_particle = Flame_particle(*self.center.copy(),self.flame_size,self.flame_density,self.flame_rise,random.randint(0,360),\
-                                                            self.flame_spread,self.flame_wind,self.damage)
-                            self.game.physical_particles.append(flame_particle)
-                            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                                        random.randint(3,6),(255,255,255),1,3))
+                        
+                        self.create_collision_effects()
                         self.dead = True 
                         return True
         return False
