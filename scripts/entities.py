@@ -35,14 +35,6 @@ class Accurate_Rect_Body():
     def render(self,surf,offset= [0,0]):
         pass 
 
-class interactable:
-    # a class that defines interactable objects, like doors, which physics don't apply constantly, but 
-    # should still be recognized as a tile.
-    pass 
-
-
-
-
 
 class PhysicsEntity:
     def __init__(self, game, e_type, pos, size):
@@ -1848,6 +1840,11 @@ class Bullet(PhysicsEntity):
 
     def rect(self):
         return pygame.Rect(self.pos[0], self.pos[1], self.sprite.get_width(), self.sprite.get_height())
+    
+    def create_collision_effects(self,tilemap):
+        for i in range(6):
+            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
+                                        random.randint(1,3),(255,255,255),0.4)) 
 
     def collision_handler(self, tilemap, rect_tile, ent_rect, dir, axis):
         rect_tile = rect_tile if isinstance(rect_tile, pygame.Rect) else rect_tile[0]
@@ -1910,18 +1907,14 @@ class Bullet(PhysicsEntity):
                     for check_rect in check_rects:
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[0] > 0, True):
-
-                                for i in range(6):
-                                    self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                                                random.randint(1,3),(255,255,255),0.4))
+                                self.create_collision_effects(tile_map)
+                                
                                 self.dead = True 
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
 
-                        for i in range(6):
-                            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                                        random.randint(1,3),(255,255,255),0.4))
+                        self.create_collision_effects(tile_map)
                         self.dead = True 
                         return True
 
@@ -1941,16 +1934,13 @@ class Bullet(PhysicsEntity):
                     for check_rect in check_rects:
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[1] > 0, False):
-                                for i in range(6):
-                                    self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                                                random.randint(1,3),(255,255,255),0.4))
+                                self.create_collision_effects(tile_map)
                                 self.dead = True 
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[1] > 0, False):
                         for i in range(6):
-                            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                                        random.randint(1,3),(255,255,255),0.4))
+                            self.create_collision_effects(tile_map)
                         self.dead = True 
                         return True
         return False
@@ -2026,8 +2016,10 @@ class RocketShell():
             return True
         return False
     
-    def create_collision_effects(self):
+    def create_collision_effects(self,tilemap):
 
+        self.game.screen_shake = max(8,self.game.screen_shake)
+        
         position = self.center.copy()
         light =  PointLight(position,power = 1.0,radius = 40,life = 2)
         light.set_color(253,108,50)
@@ -2048,9 +2040,16 @@ class RocketShell():
         self.game.particles.append(shot_particle)        
 
 
-        for i in range(20):       
-            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                        random.randint(3,6),(255,255,255),1,3))
+        for i in range(20):
+            spark = Spark(self.center.copy(),math.radians(random.randint(0,360)),\
+                                        random.randint(3,6),(250, 118, 101),1,3)
+            
+            light = PointLight([0,0],power = 1,radius = 8,illuminator=spark,life = 70)
+            light.set_color(250, 118, 101)
+            light.cast_shadows = False
+
+            self.game.lights_engine.lights.append(light)
+            self.game.sparks.append(spark)
         
 
 
@@ -2083,13 +2082,13 @@ class RocketShell():
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[0] > 0, True):
                                 #collision sparks get appended here 
-                                self.create_collision_effects()
+                                self.create_collision_effects(tile_map)
                                 self.dead = True 
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
                         #collision sparks get appended here
-                        self.create_collision_effects()
+                        self.create_collision_effects(tile_map)
 
                         self.dead = True 
                         return True
@@ -2111,7 +2110,7 @@ class RocketShell():
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[1] > 0, False):
                                 #collision sparks get appended here 
-                                self.create_collision_effects()
+                                self.create_collision_effects(tile_map)
                                 
                                 self.dead = True 
                                 return True
@@ -2119,7 +2118,7 @@ class RocketShell():
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[1] > 0, False):
                         #collision sparks get appended here 
                         
-                        self.create_collision_effects()
+                        self.create_collision_effects(tile_map)
                         self.dead = True 
                         return True
         return False

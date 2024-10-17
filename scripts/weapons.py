@@ -48,7 +48,6 @@ class Weapon:
 
     def draw(self,x,y,surf,scale):
         offset = (17- self.image.get_width()//2, 7 - self.image.get_height()//2 )
-        #image = pygame.transform.scale(self.image,(16 * scale,16*scale))
         surf.blit(self.image,(x+offset[0],y+offset[1]))
 
     def get_description(self):

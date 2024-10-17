@@ -104,7 +104,9 @@ class myGame:
         pygame.init() 
         pygame.mixer.pre_init(44100, -16, 2, 512)
 
-        
+        self.screen_info_obj = pygame.display.Info()
+       
+
         self.clock = pygame.time.Clock()
         self.screen_size = (1200,750)
         self.native_res = (int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5))
@@ -224,7 +226,7 @@ class myGame:
         self.qtree_y_slack = 300
 
 
-        self.curr_gameState = GameState.GameLoop
+        self.curr_gameState = GameState.MainMenu
         self.start_screen_ui = startScreenUI(self.screen_size)
         self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
 
@@ -364,9 +366,9 @@ class myGame:
         
         self.start_sequence_time = 255 
 
-        self.load_map_init_game_env('start_screen.json')
         scroll_increment_x = (self.player.rect().centerx - self.background_surf.get_width() /2)
         scroll_increment_y =  (self.player.rect().centery - self.background_surf.get_height() /2)
+
         while self.start_sequence_time > 0: 
             self.start_sequence_time -= 1
             self.handle_events()
@@ -396,7 +398,7 @@ class myGame:
 
             self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
             self.player.render(self.background_surf,render_scroll)
-            self.background_surf.blit(blackout_surf,render_scroll)
+            self.background_surf.blit(blackout_surf,(0,0))
             
             self.cursor.update(self.foreground_surf)
             
@@ -434,7 +436,7 @@ class myGame:
             pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
             self.clock.tick(60)
 
-        self.curr_gameState = GameState.GameLoop
+        
 
          
 
@@ -558,7 +560,7 @@ class myGame:
                         self.start_sequence_time = 0
                     if event.key == pygame.K_p:
 
-                        self.load_map_init_game_env('start_screen.json')
+                        self.load_map_init_game_env('test.json')
 
                         self.curr_gameState = GameState.GameLoop
 

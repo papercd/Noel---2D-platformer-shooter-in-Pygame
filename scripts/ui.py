@@ -20,10 +20,11 @@ class UIElement:
 
     def rect(self):
         #we need this to do rect collision between the ui element and the cursor.
-        return pygame.Rect(self.pos[0] - self.image_dim[0] //2, self.pos[1] - (0 if not self.hover else 3), *self.image_dim)
+        return pygame.Rect(self.pos[0], self.pos[1] , *self.image_dim)
     
     def update(self,cursor):
         if cursor.box.colliderect(self.rect()):
+            print("check")
             self.hover = True 
         else: 
             self.hover  = False 

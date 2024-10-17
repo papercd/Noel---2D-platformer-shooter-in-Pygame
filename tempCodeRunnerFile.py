@@ -1,2 +1,2 @@
 
-        pygame.init() 
+    def start_game(self):

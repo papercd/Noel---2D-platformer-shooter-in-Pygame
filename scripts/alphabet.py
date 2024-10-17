@@ -8,9 +8,10 @@ UNDERSCORE = load_image('text/underscore.png',background='transparent')
 SPACE = load_image('text/space.png',background="transparent")
 
 class alphabets: 
-    def __init__(self,text):
+    def __init__(self,text,scale =1):
         self.text= text
         self.length = 0
+        self.scale = scale 
         
         self.display_text = self.transform()
 
