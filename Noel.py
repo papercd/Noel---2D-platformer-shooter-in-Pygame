@@ -886,7 +886,7 @@ class myGame:
                 if particle == None: 
                     self.non_animated_particles.remove(particle)
                 else: 
-                    kill = particle.update(self.dt* 60)
+                    kill = particle.update(self.dt)
                     particle.render(self.background_surf,offset =render_scroll)
                     if kill:
                         self.non_animated_particles.remove(particle)

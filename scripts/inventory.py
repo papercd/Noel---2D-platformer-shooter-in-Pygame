@@ -710,7 +710,7 @@ class Inventory():
     def remove_current_item(self):
         if self.player.cur_weapon_node:
             #get rid of the currently selected weapon from the inventory 
-            self.player.disable_shooting = True 
+             
             #throw the weapon onto the env. 
             self.player.discard_current_weapon()
 
@@ -719,7 +719,7 @@ class Inventory():
             
             self.player.cur_weapon_node = self.player.weapon_inven.curr  
             self.player.change_gun_holding_state()
-            self.player.disable_shooting = False 
+            
             #print(self.cells[0][self.player.cur_weapon_node.cell_ind])
             
 
