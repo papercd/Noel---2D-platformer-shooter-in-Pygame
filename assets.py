@@ -104,6 +104,7 @@ class GameAssets:
             'particle/bullet_collide/laser_weapon': ('particles/bullet_collide/laser_weapon', 'transparent', 2, False, False),
             'particle/bullet_collide/rifle': ('particles/bullet_collide/rifle', 'transparent', 2, False, False),
             'particle/rocket_launcher_smoke' : ('particles/rocket_launcher_smoke','transparent',2,False,False),
+            'particle/rocket_launcher_collide' : ('particles/rocket_launcher_collide','transparent',1,False,False),
         }
 
         
