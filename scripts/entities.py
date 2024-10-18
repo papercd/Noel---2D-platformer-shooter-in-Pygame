@@ -1841,10 +1841,10 @@ class Bullet(PhysicsEntity):
     def rect(self):
         return pygame.Rect(self.pos[0], self.pos[1], self.sprite.get_width(), self.sprite.get_height())
     
-    def create_collision_effects(self,tilemap):
-        for i in range(6):
-            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                        random.randint(1,3),(255,255,255),0.4)) 
+    def create_collision_effects(self):
+        for i in range(4):
+            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(int(180 - self.angle - 30),int(180 - self.angle + 30))),\
+                                        random.randint(1,3),(255,255,255),0.5,speed_factor=6)) 
 
     def collision_handler(self, tilemap, rect_tile, ent_rect, dir, axis):
         rect_tile = rect_tile if isinstance(rect_tile, pygame.Rect) else rect_tile[0]
@@ -1907,14 +1907,14 @@ class Bullet(PhysicsEntity):
                     for check_rect in check_rects:
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[0] > 0, True):
-                                self.create_collision_effects(tile_map)
+                                self.create_collision_effects()
                                 
                                 self.dead = True 
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
 
-                        self.create_collision_effects(tile_map)
+                        self.create_collision_effects()
                         self.dead = True 
                         return True
 
@@ -1934,13 +1934,13 @@ class Bullet(PhysicsEntity):
                     for check_rect in check_rects:
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[1] > 0, False):
-                                self.create_collision_effects(tile_map)
+                                self.create_collision_effects()
                                 self.dead = True 
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[1] > 0, False):
                         for i in range(6):
-                            self.create_collision_effects(tile_map)
+                            self.create_collision_effects()
                         self.dead = True 
                         return True
         return False
@@ -1971,6 +1971,7 @@ class RocketShell():
         self.flame_wind = 0
         # --------------------------------
 
+        self.spark_colors = ((253,128,70),(244,160,86) ,(189,84,55))
         self.flame_spawn_pos_offsets = [(-7,0),(-7,-1),(-7,-2),(-7,1),
                                          (-8,0),(-8,-1),(-9,0),(-9,-1)]
 
@@ -2016,36 +2017,59 @@ class RocketShell():
             return True
         return False
     
-    def create_collision_effects(self,tilemap):
-
+    def create_collision_effects(self,collided_tile_rect,dir,axis):
+        print(self.angle)
         self.game.screen_shake = max(8,self.game.screen_shake)
-        
-        position = self.center.copy()
-        light =  PointLight(position,power = 1.0,radius = 40,life = 2)
+        collision_pos = None
+        angle_range = (int(180 - self.angle - 40),int(180 - self.angle + 40))
+
+        if axis:
+            #create effects for collision by x movement 
+            if dir: 
+                #postive movement
+                print("spawned left side")
+                collision_pos = [collided_tile_rect.left-1,self.center[1]]
+            else:
+                print("spawned right side")
+                collision_pos = [collided_tile_rect.right,self.center[1]]
+        else: 
+            #y movement
+            if dir: 
+                #postive movement
+                print("spawned top side")
+
+                collision_pos =[self.center[0],collided_tile_rect.top-1]
+            else:
+                print("spawned bottom side")
+                collision_pos = [self.center[0],collided_tile_rect.bottom +1]
+    
+
+
+        light =  PointLight(collision_pos.copy(),power = 1.0,radius = 40,life = 2)
         light.set_color(253,108,50)
         light.cast_shadows = False
         self.game.lights_engine.lights.append(light)
         
-        light = PointLight(position,power = 0.7 ,radius = 70,life = 2)
+        light = PointLight(collision_pos.copy(),power = 0.7 ,radius = 70,life = 2)
         light.set_color(248,129,153)
         light.cast_shadows = False
         self.game.lights_engine.lights.append(light)
 
-        light = PointLight(position,power = 0.6,radius = 85,life = 2)
+        light = PointLight(collision_pos.copy(),power = 0.6,radius = 85,life = 2)
         light.set_color(248,129,153)
         light.cast_shadows = False
         self.game.lights_engine.lights.append(light)
 
-        shot_particle = Particle(self.game,'rocket_launcher_collide',position,self)
+        shot_particle = Particle(self.game,'rocket_launcher_collide',collision_pos.copy(),self)
         self.game.particles.append(shot_particle)        
 
 
         for i in range(20):
-            spark = Spark(self.center.copy(),math.radians(random.randint(0,360)),\
-                                        random.randint(3,6),(250, 118, 101),1,3)
+            spark = Spark(collision_pos.copy(),math.radians(random.randint(*angle_range)),\
+                                        random.randint(3,6),random.choice(self.spark_colors),0.8,5)
             
-            light = PointLight([0,0],power = 1,radius = 8,illuminator=spark,life = 70)
-            light.set_color(250, 118, 101)
+            light = PointLight(collision_pos.copy(),power = 1,radius = 8,illuminator=spark,life = 70)
+            light.set_color(149,46,17)
             light.cast_shadows = False
 
             self.game.lights_engine.lights.append(light)
@@ -2055,72 +2079,70 @@ class RocketShell():
 
     #change the collision particle effects on the shells 
 
-    def update_pos(self,tile_map):
+    def update_pos(self, tile_map):
         self.frames_flown -= 1
-        if self.frames_flown%2 ==0 :
-            #every three frames leave a smoke particle behind - like metal slug 
-            #particle = Particle(self.game,'rocket_launcher_smoke',(self.pos[0] + self.size[0] //2 , self.pos[1]+ self.size[1]//2) , 'rocket_launcher')
-            self.game.particles.append(Particle(self.game,'rocket_launcher_smoke',(self.pos[0] + self.size[0] //2 , self.pos[1]+ self.size[1]//2) , 'rocket_launcher') ) 
-        if self.frames_flown == 0 :
-             self.dead = True 
-             return True 
-        
-        self.pos[0] += self.velocity[0]
-        self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
-        entity_rect = self.rect()
+        if self.frames_flown % 2 == 0:
+            # Spawn a smoke particle every two frames
+            self.game.particles.append(Particle(self.game, 'rocket_launcher_smoke', (self.pos[0] + self.size[0] // 2, self.pos[1] + self.size[1] // 2), 'rocket_launcher'))
 
-        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
-            if entity_rect.colliderect(rect_tile[0]):
-                if rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
-                    check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
-                                   pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),
-                                   pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \
-                                  [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
-                                   pygame.Rect(rect_tile[0].left, rect_tile[0].top, 4, 12),
-                                   pygame.Rect(rect_tile[0].left + 4, rect_tile[0].top + 6, 6, 6)]
-                    for check_rect in check_rects:
-                        if entity_rect.colliderect(check_rect):
-                            if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[0] > 0, True):
-                                #collision sparks get appended here 
-                                self.create_collision_effects(tile_map)
-                                self.dead = True 
-                                return True
-                else:
-                    if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
-                        #collision sparks get appended here
-                        self.create_collision_effects(tile_map)
+        if self.frames_flown == 0:
+            self.dead = True
+            return True
 
-                        self.dead = True 
+        # Maximum steps to ensure precision (adjust as needed)
+        steps = 2
+        if steps == 0:
+            return False
+
+        for step in range(steps):
+            # Interpolating movement over each step (fractional movement)
+            self.pos[0] += self.velocity[0] / steps
+            self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
+            entity_rect = self.rect()
+
+            # Check for collisions in X direction
+            for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+                if entity_rect.colliderect(rect_tile[0]):
+                    if self.handle_tile_collision(tile_map, rect_tile, entity_rect, axis="x"):
                         return True
 
-        self.pos[1] += self.velocity[1]
-        self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
-        entity_rect = self.rect()
+            self.pos[1] += self.velocity[1] / steps
+            self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
+            entity_rect = self.rect()
 
-        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
-            if entity_rect.colliderect(rect_tile[0]):
-                if rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
-                    check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
-                                   pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),
-                                   pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \
-                                  [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
-                                   pygame.Rect(rect_tile[0].left, rect_tile[0].top, 4, 12),
-                                   pygame.Rect(rect_tile[0].left + 4, rect_tile[0].top + 6, 6, 6)]
-                    for check_rect in check_rects:
-                        if entity_rect.colliderect(check_rect):
-                            if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[1] > 0, False):
-                                #collision sparks get appended here 
-                                self.create_collision_effects(tile_map)
-                                
-                                self.dead = True 
-                                return True
-                else:
-                    if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[1] > 0, False):
-                        #collision sparks get appended here 
-                        
-                        self.create_collision_effects(tile_map)
-                        self.dead = True 
+            # Check for collisions in Y direction
+            for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+                if entity_rect.colliderect(rect_tile[0]):
+                    if self.handle_tile_collision(tile_map, rect_tile, entity_rect, axis="y"):
                         return True
+
+        return False
+
+    def handle_tile_collision(self, tile_map, rect_tile, entity_rect, axis):
+        """Helper function to handle collisions based on tile type."""
+        is_horizontal = axis == "x"
+        velocity_check = self.velocity[0] > 0 if is_horizontal else self.velocity[1] > 0
+
+        if rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
+            check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
+                        pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),
+                        pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \
+                        [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom - 4, rect_tile[0].width, 4),
+                        pygame.Rect(rect_tile[0].left, rect_tile[0].top, 4, 12),
+                        pygame.Rect(rect_tile[0].left + 4, rect_tile[0].top + 6, 6, 6)]
+
+            for check_rect in check_rects:
+                if entity_rect.colliderect(check_rect):
+                    if self.collision_handler(tile_map, check_rect, entity_rect, velocity_check, is_horizontal):
+                        self.create_collision_effects(check_rect, velocity_check, is_horizontal)
+                        self.dead = True
+                        return True
+        else:
+            if self.collision_handler(tile_map, rect_tile, entity_rect, velocity_check, is_horizontal):
+                self.create_collision_effects(rect_tile[0], velocity_check, is_horizontal)
+                self.dead = True
+                return True
+
         return False
 
         

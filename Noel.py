@@ -870,7 +870,7 @@ class myGame:
                                 entity.hit(particle.damage)
                         
             for spark in self.sparks.copy():
-                kill = spark.update(self.dt*30)
+                kill = spark.update(self.Tilemap,self.dt*30)
                 if kill: 
 
                     self.sparks.remove(spark)

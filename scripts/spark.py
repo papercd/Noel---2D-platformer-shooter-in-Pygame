@@ -46,21 +46,52 @@ class Spark():
         self.angle = math.atan2(movement[1], movement[0])
         # if you want to get more realistic, the speed should be adjusted here
 
-    def update(self, dt):
+    def update(self, tilemap, dt):
+        if self.speed <= 0:
+            self.dead = True
+            return True
+        tile_loc = (int(self.loc[0])//tilemap.tile_size,int(self.loc[1])//tilemap.tile_size)
+        key = f"{tile_loc[0]};{tile_loc[1]}" 
+        
+        if  key in tilemap.tilemap:
+            """
+            tile = tilemap.tilemap[key]
+            if tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
+                check_rects = [pygame.Rect(tile_loc[0], rect_tile[0].bottom + 4, rect_tile[0].width, 4),
+                                pygame.Rect(tile_loc[0] + 12, rect_tile[0].top, 4, 12),
+                                pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \
+                                [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
+                                pygame.Rect(rect_tile[0].left, rect_tile[0].top, 4, 12),
+                                pygame.Rect(rect_tile[0].left + 4, rect_tile[0].top + 6, 6, 6)]
+                for check_rect in check_rects:
+                    if entity_rect.colliderect(check_rect):
+                        if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[0] > 0, True):
+                            #collision sparks get appended here 
+                            self.create_collision_effects()
+                            self.dead = True 
+                            return True
+            else:
+                if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
+                    #collision sparks get appended here
+                    self.create_collision_effects(c)
+            """
+            self.dead = True 
+            return True
+        
+            
+
         self.movement = self.calculate_movement(dt)
         self.loc[0] += self.movement[0] * self.speed_factor
         self.loc[1] += self.movement[1] * self.speed_factor
 
         # a bunch of options to mess around with relating to angles...
         self.point_towards(math.pi / 2, 0.02)
-        #self.velocity_adjust(0.975, 0.2, 8, dt)
+        self.velocity_adjust(0.975, 0.05, 8, dt)
         self.angle += 0.02
 
         self.speed -= 0.1
 
-        if self.speed <= 0:
-            self.dead = True
-            return True 
+         
         return False
 
     def render(self, surf, offset=[0, 0]):
