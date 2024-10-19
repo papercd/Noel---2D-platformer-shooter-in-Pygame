@@ -53,8 +53,8 @@ class Spark():
         if axis == 'x':
             reflected_angle = math.pi - angle 
         else:
-            
-            reflected_angle = -180 + angle 
+            reflected_angle =  angle
+            #reflected_angle = -180 + angle 
 
         return reflected_angle
 
@@ -83,13 +83,13 @@ class Spark():
                     if check_rect.collidepoint(self.center): 
 
                         self.angle = self.calculate_bounce_angle(self.angle,'x')
-                        self.speed *= 0.7  
+                        self.speed *= 0.8  
                         #self.dead = True 
                         #return True
                     
 
             self.angle = self.calculate_bounce_angle(self.angle,'x')
-            self.speed *= 0.7  #
+            self.speed *= 0.8  #
             #self.dead = True 
             #return True
 
@@ -111,13 +111,13 @@ class Spark():
                     if check_rect.collidepoint(self.center): 
 
                         self.angle = self.calculate_bounce_angle(self.angle,'y')
-                        self.speed *= 0.7  
+                        self.speed *= 0.8  
                         #self.dead = True 
                         #return True
                     
 
             self.angle = self.calculate_bounce_angle(self.angle,'y')
-            self.speed *= 0.7  #
+            self.speed *= 0.8  #
             #self.dead = True 
             #return True
         
@@ -127,7 +127,7 @@ class Spark():
         
         # a bunch of options to mess around with relating to angles...
         self.point_towards(math.pi / 2, 0.02)
-        #self.velocity_adjust(0.975, 0.05, 8, dt)
+        self.velocity_adjust(0.975, 0.05, 8, dt)
         #self.angle += 0.02
 
         self.speed -= 0.1

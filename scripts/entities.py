@@ -1828,6 +1828,7 @@ class Bullet(PhysicsEntity):
         self.test_tile = None
         self.dead = False
         self.light = LIGHT(20, pixel_shader(20, (255, 255, 255), 1, False))
+        self.spark_colors = ((253,128,70),(244,160,86) ,(189,84,55))
         
         
         
@@ -1842,9 +1843,105 @@ class Bullet(PhysicsEntity):
         return pygame.Rect(self.pos[0], self.pos[1], self.sprite.get_width(), self.sprite.get_height())
     
     def create_collision_effects(self):
+        for i in range(2):
+            
+            spark = Spark(self.center.copy(),math.radians(random.randint(int(180 - self.angle - 30),int(180 - self.angle + 30))),\
+                                        random.randint(1,3),random.choice(self.spark_colors),0.4,speed_factor=8)
+            
+            light = PointLight(self.center.copy(),power = 1,radius = 6,illuminator=spark,life = 70)
+            light.set_color(149,46,17)
+            light.cast_shadows = False
+
+            self.game.sparks.append(spark) 
+            self.game.lights_engine.lights.append(light)
+            
+
+    
+
+    def rect_corners(self,rect, angle):
+        """Returns the four corners of a rotated rectangle."""
+        cx, cy = rect.center
+        w, h = rect.size
+        angle_rad = math.radians(angle)
+
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+
+        # Define the rectangle's corners (relative to the center)
+        corners = [
+            pygame.math.Vector2(-w / 2, -h / 2),
+            pygame.math.Vector2(w / 2, -h / 2),
+            pygame.math.Vector2(w / 2, h / 2),
+            pygame.math.Vector2(-w / 2, h / 2)
+        ]
+
+        # Rotate the corners around the center
+        rotated_corners = [pygame.math.Vector2(
+            cx + corner.x * cos_a - corner.y * sin_a,
+            cy + corner.x * sin_a + corner.y * cos_a
+        ) for corner in corners]
+
+        return rotated_corners
+
+    def project_polygon(self,corners, axis):
+        """Projects the corners of a polygon onto an axis."""
+        dots = [corner.dot(axis) for corner in corners]
+        return min(dots), max(dots)
+
+    def obb_collision(self,rect1_corners, rect2):
+        """Detects collision between a rotated rectangle and an axis-aligned rectangle."""
+        rect2_corners = [
+            pygame.math.Vector2(rect2.topleft),
+            pygame.math.Vector2(rect2.topright),
+            pygame.math.Vector2(rect2.bottomright),
+            pygame.math.Vector2(rect2.bottomleft)
+        ]
+
+        axes = []
         for i in range(4):
-            self.game.sparks.append(Spark(self.center.copy(),math.radians(random.randint(int(180 - self.angle - 30),int(180 - self.angle + 30))),\
-                                        random.randint(1,3),(255,255,255),0.5,speed_factor=6)) 
+            edge = rect1_corners[i] - rect1_corners[(i + 1) % 4]
+            normal = pygame.math.Vector2(-edge.y, edge.x)
+            axes.append(normal.normalize())
+
+        for i in range(2):  # We only need 2 axes for the AABB rectangle (rect2)
+            edge = rect2_corners[i] - rect2_corners[(i + 1) % 4]
+            normal = pygame.math.Vector2(-edge.y, edge.x)
+            axes.append(normal.normalize())
+
+        for axis in axes:
+            proj1 = self.project_polygon(rect1_corners, axis)
+            proj2 = self.project_polygon(rect2_corners, axis)
+            if proj1[1] < proj2[0] or proj2[1] < proj1[0]:
+                return False  # No overlap on this axis, so no collision
+        return True
+
+    def collision_handler(self, tilemap, rect_tile, ent_rect, dir, axis):
+        rect_tile = rect_tile if isinstance(rect_tile, pygame.Rect) else rect_tile[0]
+
+        # Create a rotated rectangle (OBB) for the bullet
+        bullet_rect = pygame.Rect(self.center[0] - self.sprite.get_width() / 2, 
+                                self.center[1] - self.sprite.get_height() / 2, 
+                                self.sprite.get_width(), 
+                                self.sprite.get_height())
+        bullet_corners = self.rect_corners(bullet_rect, self.angle)
+
+        # Check for collision between the rotated bullet and the axis-aligned tile
+        if self.obb_collision(bullet_corners, rect_tile):
+            # Handle collision logic here (e.g., particle effects, destroy tile, etc.)
+            collided_tile = tilemap.return_tile(rect_tile)
+            collide_particle = Particle(self.game, 'bullet_collide/rifle', self.center, 'player')
+            collide_particle.animation.images = [pygame.transform.rotate(img, 180 + self.angle) for img in collide_particle.animation.copy().images]
+            self.game.particles.append(collide_particle)
+
+            if collided_tile.type == 'box':
+                tilemap.tilemap.pop(f'{collided_tile.pos[0]};{collided_tile.pos[1]}')
+                destroy_box_smoke = Particle(self.game, 'box_smoke', rect_tile.center, 'tile', velocity=[0, 0], frame=10)
+                self.game.particles.append(destroy_box_smoke)
+                collided_tile.drop_item()
+
+            return True
+        return False
+    """
 
     def collision_handler(self, tilemap, rect_tile, ent_rect, dir, axis):
         rect_tile = rect_tile if isinstance(rect_tile, pygame.Rect) else rect_tile[0]
@@ -1882,6 +1979,7 @@ class Bullet(PhysicsEntity):
                 collided_tile.drop_item()
             return True
         return False
+    """
 
     def update_pos(self, tile_map, offset=(0, 0)):
         self.collisions = {'up': False, 'down': False, 'left': False, 'right': False}
