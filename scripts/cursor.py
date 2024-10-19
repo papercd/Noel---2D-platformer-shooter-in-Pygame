@@ -18,7 +18,7 @@ class Cursor:
         self.type = type
         self.pos = list(pos)
         self.aim_offset = list(aim_offset)
-        self.sprite = self.game.assets['cursor' + '/' + self.type]
+        self.sprite = self.game.general_sprites['cursor' + '/' + self.type]
 
 
         #attributes to use with new inventory module 
@@ -39,12 +39,13 @@ class Cursor:
     def set_cooldown(self) -> None:
         self.cooldown = 10
 
-    def update(self,keys,surf):
+    def update(self,surf):
+        
         self.pos = pygame.mouse.get_pos()
         self.pos = ((self.pos[0]/2),(self.pos[1]/2))
-
         self.box = pygame.Rect(*self.pos, 1, 1)
-        self.pressed = pygame.mouse.get_pressed()
+
+        self.pressed = self.game.mouse_pressed
 
 
         if self.item is not None:
@@ -53,8 +54,15 @@ class Cursor:
             self.cooldown -= 1
 
                   # Colliding with search box changes cursor to text
+
+        self.magnet = self.game.shift_pressed and self. item is not None 
+        self.move = self.game.shift_pressed and not self.magnet 
+
+
+        """
         self.magnet = keys[K_LSHIFT] and self.item is not None
         self.move = keys[K_LSHIFT] and not self.magnet
+        """
 
         if self.context is not None:
             self.context.update(*self.pos,surf,1)
@@ -75,7 +83,7 @@ class Cursor:
                 self.image = pygame.transform.scale(
                     CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))    
         else: 
-            if self.game.player.equipped:
+            if self.game.player.cur_weapon_node:
                 self.image = CURSOR_ICONS["rifle_crosshair"]
             else: 
                 self.image = pygame.transform.scale(

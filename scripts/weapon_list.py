@@ -13,6 +13,7 @@ class Node:
 class DoublyLinkedList:
     def __init__(self):
         self.head = None
+        self.curr = None 
         self.tail = None
 
     def add_weapon(self, cell_ind, weapon):
@@ -21,6 +22,7 @@ class DoublyLinkedList:
         # If the list is empty, make the new node the head and the tail
         if self.head is None:
             self.head = self.tail = new_node
+            self.curr = new_node
             return
         
         # Compare cell_ind values and find the correct spot
@@ -31,11 +33,13 @@ class DoublyLinkedList:
                 self._insert_before(current, new_node)
                 if current == self.head:
                     self.head = new_node
+                self.curr = new_node
                 return
             elif new_node.cell_ind > current.cell_ind:
                 if current.next is None:
                     # Insert at the end of the list
                     self._insert_after(current, new_node)
+                    self.curr = new_node
                     return
             current = current.next
 
@@ -58,6 +62,13 @@ class DoublyLinkedList:
     def delete_node(self, node):
         if node is None:
             return
+        if node == self.curr: 
+            if node.prev:
+                self.curr = node.prev 
+            elif node.next: 
+                self.curr = node.next  
+            else: 
+                self.curr = None 
         if node.prev:
             node.prev.next = node.next
         if node.next:
@@ -66,6 +77,10 @@ class DoublyLinkedList:
             self.head = node.next
         if node == self.tail:
             self.tail = node.prev
+
+
+        if node == self.curr:
+            pass 
         node.next = node.prev = None
 
     def change_head(self, cell_ind):
@@ -165,6 +180,27 @@ class ambientNodeList:
             current = current.next 
         
         return data 
+    
+
+    def find_node(self,x):
+        current = self.head
+        
+        while current.prev:
+            current=  current.prev 
+
+        while current: 
+            if current.range[0] <= x <= current.range[1]:
+                return current 
+            current = current.next 
+
+        
+        
+        return None  
+
+
+    def change_node_color(self,x):
+        
+        pass 
 
 
     def delete_node(self, x,cur_node_ptr):

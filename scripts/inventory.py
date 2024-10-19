@@ -3,10 +3,13 @@ import pygame
 import random 
 from scripts.utils import load_images,load_image
 from scripts.alphabet import alphabets,new_alphabets
+from scripts.numbers import new_numbers 
+
 import os 
 
 WEAPON_CELL = load_image("ui/inventory/weapon_tile.png",background="transparent")  
 WEAPON_CELL_SELECTED = load_image("ui/inventory/weapon_tile_selected.png",background="transparent") 
+WEAPON_CELL_ACTUALLY_SELECTED = load_image("ui/inventory/weapon_actually_selected.png",background="transparent")
 
 CELL = load_image("ui/inventory/tile.png",background="transparent")
 CELL_SELECTED = load_image("ui/inventory/tile_selected.png",background="transparent")
@@ -62,46 +65,46 @@ ITEM_TEXTURES = {
 }
 
 ITEMS = {
-    "grass": {"name": "Grass", "description": "It's some grass."},
-    "string": {"name": "String", "description": ""},
-    "silver_arrow": {"name": "Silver Arrow", "description": "A stronger arrow made from silver. Suitable for hunting the supernatural."},
-    "amethyst_clump": {"name": "Amethyst Clump", "description": ""},
-    "iron_bar": {"name": "Iron Bar", "description": ""},
-    "silver_bar": {"name": "Silver Bar", "description": ""},
-    "gold_bar": {"name": "Gold Bar", "description": ""},
-    "stick": {"name": "Stick", "description": ""},
-    "diamond_clump": {"name": "Diamond Clump", "description": ""},
-    "bone": {"name": "Bone", "description": ""},
-    "flint": {"name": "Flint", "description": ""},
-    "arrow": {"name": "Arrow", "description": ""},
-    "book": {"name": "Book", "description": ""},
-    "poison": {"name": "Poison", "description": ""},
-    "poison_arrow": {"name": "Poison Arrow", "description": ""},
-    "health_potion": {"name": "Health Potion", "description": ""},
-    "bronze_bar": {"name": "Bronze Bar", "description": ""},
-    "glass": {"name": "Glass", "description": ""},
-    "glass_bottle": {"name": "Glass Bottle", "description": ""},
-    "paper": {"name": "Paper", "description": ""},
-    "rose": {"name": "Rose", "description": ""},
-    "daisy": {"name": "Daisy", "description": ""},
-    "amethyst_arrow": {"name": "Amethyst Arrow", "description": ""},
-    "feather": {"name": "Feather", "description": ""},
-    "bone_arrow": {"name": "Bone Arrow", "description": ""},
+    "grass": {"name": "grass", "description": "It's some grass."},
+    "string": {"name": "string", "description": ""},
+    "silver_arrow": {"name": "silver srrow", "description": "A stronger arrow made from silver. Suitable for hunting the supernatural."},
+    "amethyst_clump": {"name": "amethyst clump", "description": ""},
+    "iron_bar": {"name": "iron bar", "description": ""},
+    "silver_bar": {"name": "silver bar", "description": ""},
+    "gold_bar": {"name": "gold bar", "description": ""},
+    "stick": {"name": "stick", "description": ""},
+    "diamond_clump": {"name": "diamond clump", "description": ""},
+    "bone": {"name": "bone", "description": ""},
+    "flint": {"name": "flint", "description": ""},
+    "arrow": {"name": "arrow", "description": ""},
+    "book": {"name": "book", "description": ""},
+    "poison": {"name": "poison", "description": ""},
+    "poison_arrow": {"name": "poison arrow", "description": ""},
+    "health_potion": {"name": "health potion", "description": ""},
+    "bronze_bar": {"name": "bronze bar", "description": ""},
+    "glass": {"name": "glass", "description": ""},
+    "glass_bottle": {"name": "glass bottle", "description": ""},
+    "paper": {"name": "paper", "description": ""},
+    "rose": {"name": "rose", "description": ""},
+    "daisy": {"name": "daisy", "description": ""},
+    "amethyst_arrow": {"name": "amethyst arrow", "description": ""},
+    "feather": {"name": "feather", "description": ""},
+    "bone_arrow": {"name": "bone arrow", "description": ""},
 }
 
 WEAPONS = {
-    "gold_sword": {"name": "Gold Sword", "description": ""},
-    "iron_sword": {"name": "Iron Sword", "description": ""},
-    "bow": {"name": "Bone Arrow", "description": ""},
-    "gold_bow": {"name": "Gold Bow", "description": ""},
-    "scythe": {"name": "Scythe", "description": "Used for farming and combat!"},
-    "bronze_sword": {"name": "Bronze Sword", "description": ""},
+    "gold_sword": {"name": "gold sword", "description": ""},
+    "iron_sword": {"name": "iron sword", "description": ""},
+    "bow": {"name": "bone arrow", "description": ""},
+    "gold_bow": {"name": "gold bow", "description": ""},
+    "scythe": {"name": "scythe", "description": "Used for farming and combat!"},
+    "bronze_sword": {"name": "bronze sword", "description": ""},
 
 }
 
 FONT = {
-    "16": pygame.font.Font("data/fonts/DTM-Sans.otf", 16),
-    "24": pygame.font.Font("data/fonts/DTM-Sans.otf", 10)
+    "8": pygame.font.Font("data/fonts/DTM-Sans.otf", 8),
+    "12": pygame.font.Font("data/fonts/DTM-Sans.otf", 12)
 }
 
 
@@ -153,6 +156,7 @@ class Dust():
 class Cursor_Context_Box():
     def __init__(self, name, description, flip) -> None:
         self.name = name
+        self.name_display = new_alphabets(self.name)
         self.description = description
         self.flip = flip
 
@@ -161,7 +165,8 @@ class Cursor_Context_Box():
 
         footer = False
         height = 0.55 * 20 * scale
-        width = 4 * 20 * scale
+        #width = 4 * 20 * scale
+        width = self.name_display.length + 7
         offset = {"x": 0, "y": 0}
 
         if x > surf.get_width() - width:
@@ -173,10 +178,14 @@ class Cursor_Context_Box():
         desc = [""]
         line = 0
 
+        """
         words = self.description.split(' ')
         if len(words) > 1:
             height += 0.26 * 20 * scale
             footer = True
+        """
+
+        """
 
         for i, word in enumerate(words):
             if not len(word) + len(desc[line]) > 30:
@@ -190,23 +199,32 @@ class Cursor_Context_Box():
         if footer:
             height += 0.2 * 20 * scale
 
+        """
         pygame.draw.rect(
-            surf, (255, 255, 255), (x+12 + offset["x"], y+12 + offset["y"], width, height))
-        pygame.draw.rect(
-            surf, (31, 31, 31), (x+15 + offset["x"], y+15 + offset["y"], width - 6, height - 6))
+            surf, (255, 255, 255), (x - width/2 + offset["x"], y - height-5 + offset["y"], width, height),1)
+        pygame.draw.rect( 
+            surf, (31, 31, 31), (x-width/2+1 + offset["x"], y-height-4 + offset["y"], width - 2, height - 2))
 
-        inventory_title = FONT["24"].render(
+        
+        self.name_display.render(surf, x- width/2 + 5*1 +offset["x"], y - height-5  +2 +offset["y"])
+
+        """
+        
+        inventory_title = FONT["12"].render(
             self.name, 1, (255, 255, 255))
+        
+
         surf.blit(inventory_title,
                  (x + 7 * 3 + offset["x"], y + 4 * 3 + offset["y"]))
-
+        """
+        """
         line = 0
         for d in desc:
-            description = FONT["16"].render(d, 1, (180, 180, 180))
+            description = FONT["8"].render(d, 1, (180, 180, 180))
             surf.blit(description, (x + 7 * 3 + offset["x"],
                      y + 1.5 * 20 + 4 * 3 + line * 5 + offset["y"]))
             line += 3
-
+        """
 
 
 class Cursor():
@@ -265,35 +283,34 @@ class Cursor():
 class Item():
     def __init__(self, name, amount) -> None:
         self.name = name
-        self.amount = amount
+        self.count_display = new_numbers(amount)
         self.stackable = True
         self.type = "item"
 
     def draw(self, x, y, surf, scale) -> None:
         image = pygame.transform.scale(
             ITEM_TEXTURES[self.name], (16 * scale, 16 * scale))
-        if self.amount > 1:
+        if self.count_display.number > 1:
             image2 = pygame.transform.rotate(image, 10)
             surf.blit(image2, (x + 3 *
                               scale, y))
-        if self.amount > 24:
+        if self.count_display.number> 24:
             image2 = pygame.transform.rotate(image, -20)
             surf.blit(image2, (x + 1 *
                               scale, y))
-        if self.amount > 50:
+        if self.count_display.number > 50:
             image2 = pygame.transform.rotate(image, 30)
             surf.blit(image2, (x - 2 *
                               scale, y - 1 * scale))
 
         surf.blit(image, (x + 2 * scale, y + 2 * scale))
-
-        if self.amount > 1:
-            item_count = FONT["24"].render(
-                str(self.amount), 1, (255, 255, 255))
-            surf.blit(item_count, (x + 12 * scale, y + 10 * scale))
+        
+        
+        if self.count_display.number > 1:
+            self.count_display.render(x,y,surf,(-1*scale,-1*scale)) 
 
     def copy(self):
-        return Item(self.name, self.amount)
+        return Item(self.name, self.count_display.number)
 
     def get_name(self):
         return ITEMS[self.name]["name"]
@@ -328,6 +345,7 @@ class Cell():
 
     def draw(self, scale, selected):
         match selected:
+            
             case 3: 
                 image = WEAPON_CELL_SELECTED
             case 2: 
@@ -356,9 +374,18 @@ class Cell():
             if self.type== "weapon": image = self.draw(scale,3)
             else: image = self.draw(scale, 1)
         else:
-            if self.type == "weapon" : image = self.draw(scale,2)
+            if self.type == "weapon" :
+                if player.weapon_inven.curr and player.weapon_inven.curr.cell_ind == self.ind: 
+                    position[0] -= 1
+                    position[1] -= 1
+                    image = self.draw(scale,3) 
+                else: 
+                    image = self.draw(scale,2)
 
             else: image = self.draw(scale, 0)
+
+
+      
 
         image.set_alpha(opacity)
         surf.blit(image, position)
@@ -393,13 +420,18 @@ class Cell():
                     if cursor.magnet and cursor.item.name == self.item.name and self.item.stackable:
                         if not (cursor.item.type == self.type ):
                             return
-                        amount = stack_limit - cursor.item.amount
-                        if self.item.amount + cursor.item.amount <= stack_limit:
-                            cursor.item.amount += self.item.amount
+                        amount = stack_limit - cursor.item.count_display.number 
+                        if self.item.count_display.number + cursor.item.count_display.number <= stack_limit:
+                            
+                            cursor.item.count_display.change_number(cursor.item.count_display.number + self.item.count_display.number)
+                            
+
                             self.item = None
                         else:
-                            cursor.item.amount += amount
-                            self.item.amount -= amount
+                            cursor.item.count_display.change_number(cursor.item.count_display.number + amount)
+
+                            self.item.count_display.change_number(self.item.count_display.number - amount)
+                    
 
                         self.particles.append(Dust())
                         cursor.set_cooldown()
@@ -422,7 +454,7 @@ class Cell():
                                     for row in inventory_list[index][1].cells:
                                         for cell in row: 
                                             if cell.item.name == self.item.name and cell.item.stackable:
-                                                if cell.item.amount + self.item.amount <= inventory_list[index][1].stack_limit:
+                                                if cell.item.count_display.number + self.item.count_display.number <= inventory_list[index][1].stack_limit:
                                                     break
                             
                                                                 
@@ -433,7 +465,7 @@ class Cell():
                             if self.type == 'weapon':
                                 
                                 player.weapon_inven.delete_node(player.weapon_inven.find_node(self.ind))
-                                player.equip()
+                                #player.equip()
                             
                         
                             inventory_list[index][1].add_item(temp)
@@ -452,29 +484,39 @@ class Cell():
                                 player.equip()
                             self.particles.append(Dust())
                             cursor.set_cooldown()
-                        elif cursor.pressed[2] and self.item.amount > 1:
-                            half = self.item.amount // 2
+                        elif self.type != 'weapon' and cursor.pressed[1] and self.item.count_display.number > 1:
+                            half = self.item.count_display.number // 2
                             cursor.item = self.item.copy()
-                            cursor.item.amount = half
-                            self.item.amount -= half
+                            
+                            cursor.item.count_display.change_number(half)
+                            
+                            self.item.count_display.change_number(self.item.count_display.number - half )
+                            
+                        
                             self.particles.append(Dust())
                             cursor.set_cooldown()
                     else:
                         if cursor.cooldown != 0:
                             return
-                        if cursor.pressed[0] and cursor.item.name == self.item.name and self.item.amount + cursor.item.amount <= stack_limit and self.item.stackable:
+                        if self.type == 'item' and cursor.pressed[0] and cursor.item.name == self.item.name and self.item.count_display.number + cursor.item.count_display.number <= stack_limit and self.item.stackable:
                             if not (cursor.item.type == self.type ):
                                 return
-                            self.item.amount += cursor.item.amount
+                            
+                            self.item.count_display.change_number(self.item.count_display.number + cursor.item.count_display.number)
+
                             cursor.item = None
                             self.particles.append(Dust())
                             cursor.set_cooldown()
                         elif cursor.pressed[0] and cursor.item.name == self.item.name and self.item.stackable:
                             if not (cursor.item.type == self.type ):
                                 return
-                            amount = stack_limit - self.item.amount
-                            self.item.amount += amount
-                            cursor.item.amount -= amount
+                            amount = stack_limit - self.item.count_display.number
+                            
+                            self.item.count_display.change_number(self.item.count_display.number + amount) 
+
+                            cursor.item.count_display.change_number(cursor.item.count_display.number - amount)
+
+    
                             self.particles.append(Dust())
                             cursor.set_cooldown()
 
@@ -515,14 +557,17 @@ class Cell():
                         cursor.item = None
                         self.particles.append(Dust())
                         cursor.set_cooldown()
-                    elif cursor.pressed[2] and cursor.item.stackable:
+                    elif cursor.pressed[1] and cursor.item.stackable:
                         if not (cursor.item.type == self.type ):
                                 return
-                        if cursor.item.amount > 1:
-                            half = cursor.item.amount // 2
+                        if cursor.item.count_display.number > 1:
+                            half = cursor.item.count_display.number // 2
                             self.item = cursor.item.copy()
-                            self.item.amount = half
-                            cursor.item.amount -= half
+
+                            self.item.count_display.change_number(half)
+                                                        
+                            cursor.item.count_display.change_number( cursor.item.count_display.number - half)                                                        
+                            
                         else:
                             self.item = cursor.item
                             cursor.item = None
@@ -614,8 +659,10 @@ class Inventory():
         self.player.weapon_inven = filtered 
 
 
-    def add_item(self, item) -> None:
-
+    def add_item(self, item ) -> None:
+        if self.item_count == self.rows*self.columns:
+            
+            return True  
         for row in self.cells:
             for cell in row:
                 if cell.item is None:
@@ -625,18 +672,23 @@ class Inventory():
                         self.player.weapon_inven.add_weapon(cell.ind,cell.item)
                         self.player.equip()
 
-                    return
+                    return False
                 elif item.stackable and cell.item.name == item.name:
-                    if cell.item.amount + item.amount <= self.stack_limit:
-                        cell.item.amount += item.amount
-                        return
-                    elif self.stack_limit - cell.item.amount > 0:
-                        amount = self.stack_limit - cell.item.amount
-                        cell.item.amount += amount
-                        item.amount -= amount
-                        if item.amount > 0:
+                    if cell.item.count_display.number + item.count_display.number <= self.stack_limit:
+
+                        cell.item.count_display.change_number(cell.item.count_display.number + item.count_display.number)
+                        
+
+                        return False
+                    elif self.stack_limit - cell.item.count_display.number > 0:
+                        amount = self.stack_limit - cell.item.count_display.number
+                        cell.item.count_display.change_number(cell.item.count_display.number+ amount)
+                        
+                        item.count_display.change_number(item.count_display.number - amount)
+                        
+                        if item.count_display.number > 0:
                             self.add_item(item.copy())
-                        return
+                        return False
 
     def get_item_list(self) -> list:
         item_list = []
@@ -653,6 +705,24 @@ class Inventory():
                 if cell.item is not None:
                     item_count += 1
         return item_count
+    
+    
+    def remove_current_item(self):
+        if self.player.cur_weapon_node:
+            #get rid of the currently selected weapon from the inventory 
+             
+            #throw the weapon onto the env. 
+            self.player.discard_current_weapon()
+
+            self.cells[0][self.player.cur_weapon_node.cell_ind].item = None 
+            self.player.weapon_inven.delete_node(self.player.weapon_inven.curr)
+            
+            self.player.cur_weapon_node = self.player.weapon_inven.curr  
+            self.player.change_gun_holding_state()
+            
+            #print(self.cells[0][self.player.cur_weapon_node.cell_ind])
+            
+
 
     def clear_inventory(self) -> None:
         for row in self.cells:
@@ -668,7 +738,7 @@ class Inventory():
 
     def sort_item_amount(self) -> None:
         item_list = self.get_item_list()
-        item_list.sort(key=lambda x: x.amount)
+        item_list.sort(key=lambda x: x.count_display.number)
         self.clear_inventory()
         for item in item_list:
             self.add_item(item)
@@ -707,8 +777,9 @@ class Inventory():
             cur_opacity =  255* (self.done_open/4 )# a function of the current state, which is self.done_open
                                                    # the bounding box of the inventory is going to be blitted with an opacity that is a function of the self.done_open value. 
 
-            offset = 10  * (self.done_open/4)
+            offset = 20  * (self.done_open/4)
 
+            
 
 
 
@@ -716,10 +787,10 @@ class Inventory():
             image.set_alpha(cur_opacity)
 
         
-            surf.blit(image,(self.position[0]-1,self.position[1] -10+ offset+13*self.scale))
+            surf.blit(image,(self.position[0]-1,self.position[1] -20+ offset+13*self.scale))
 
             #render name display 
-            self.inven_name_display.render(surf,self.position[0]-1,self.position[1] +3,opacity=cur_opacity)
+            self.inven_name_display.render(surf,self.position[0]-1,self.position[1] +5 ,opacity=cur_opacity)
 
             """+ offset+13*self.scale """
             """
@@ -831,7 +902,7 @@ class Search_Bar():
         pygame.draw.rect(
             surf, (31, 31, 31), (*self.position, self.width * 20 * self.scale + 4 * self.scale, 20 * self.scale + 18 * self.scale))
 
-        search_bar_title = FONT["24"].render(
+        search_bar_title = FONT["12"].render(
             "Search:", 1, (255, 255, 255))
         surf.blit(search_bar_title, (self.position[0] + 4 * self.scale, self.position[1] + 4 * self.scale))
 
@@ -846,7 +917,7 @@ class Search_Bar():
         for i in range(len(images)):
             surf.blit(images[i], (self.position[0] + (i * 20 * self.scale) + 2 * self.scale, self.position[1] + 16 * self.scale))
         
-        text = FONT["24"].render(
+        text = FONT["12"].render(
             self.text, 1, (255, 255, 255))
         surf.blit(text, (self.position[0] + 4 * self.scale + 3 * self.scale, self.position[1] + 16 * self.scale + 4 * self.scale, 4 * self.scale, self.scale))
 
@@ -859,11 +930,11 @@ class Search_Bar():
                 surf, (255, 255, 255), (self.position[0] + 4 * self.scale + 3 * self.scale + self.text_pos * 4 * self.scale, self.position[1] + 16 * self.scale + 13 * self.scale, 4 * self.scale, self.scale))
             self.blink += 1
 
-        if cursor.pressed is None:
+        if not cursor.pressed:
             self.clicked = 0
-        elif cursor.box.colliderect(search_box) and cursor.pressed[0]:
+        elif cursor.box.colliderect(search_box) and cursor.pressed:
             self.clicked = 1
-        elif cursor.pressed[0]:
+        elif cursor.pressed:
             self.clicked = 0
     
     def handle_event(self, event) -> None:

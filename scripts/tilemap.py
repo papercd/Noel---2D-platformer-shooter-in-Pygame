@@ -8,7 +8,8 @@ from my_pygame_light2d.light import PointLight
 from scripts.weapon_list import ambientNodeList
 
 
-PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs','building_door','trap_door'}
+PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs','building_door','trap_door',\
+                              'ladder'}
 AUTOTILE_TYPES = {'grass','stone','building_0','building_1','building_2','building_3','building_4'}
 SMOOTH_TRANS_TILES = {'building_0'}
 BULLET_TILE_OFFSET = [(1,0),(1,-1),(0,-1),(-1,-1),(-1,0),(-1,1),(0,1),(1,1)]
@@ -237,24 +238,28 @@ class Tilemap:
         if tile_info[3].endswith('door'):
             if tile_info[3].split('_')[0] == 'trap':
                 # if it is a trapdoor
-                tile = Trapdoor(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos, (16,5) , self.game.interactables[tile_info[3]]) 
+                tile = Trapdoor(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos, (16,5) , self.game.interactable_obj_sprites[tile_info[3]]) 
                 self.create_hull_tile_ver(tile)
 
                 self.tilemap[str(tile_pos[0]) + ';' + str(tile_pos[1])] = tile 
             else: 
-                tile = Door(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos, (4,32), self.game.interactables[tile_info[3] +'_'+ tile_info[5][0]])
+                tile = Door(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos, (4,32), self.game.interactable_obj_sprites[tile_info[3] +'_'+ tile_info[5][0]])
                 self.create_hull_tile_ver(tile)
 
                 self.tilemap[str(tile_pos[0]) + ';' + str(tile_pos[1])] = tile
                 self.tilemap[str(tile_pos[0]) + ';' + str(tile_pos[1]+1)] = tile
         else: 
-
-            enclosed = self.check_enclosure(tile_pos,self.tilemap)
-            tile = Tile(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos,enclosed = enclosed)
-            self.create_hull_tile_ver(tile)
+            if tile_info[3] == 'crafting_bench':
+                tile = CraftingBench(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos)
+                self.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = tile 
+            else:
+                enclosed = self.check_enclosure(tile_pos,self.tilemap)
+                tile = Tile(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos,enclosed = enclosed)
+                self.create_hull_tile_ver(tile)
             
-            self.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = tile
-            self.update_enclosure(tile)
+                self.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = tile
+                self.update_enclosure(tile)
+        
         
 
     
@@ -543,8 +548,24 @@ class Tilemap:
     def load(self,path):
         f = open(path,'r')
         tilemap_data = json.load(f)
+        
+        
         lights = []
+        self.tilemap = {}
+        self.grass = {}
+        self.offgrid_tiles = [{} for i in range(0,self.offgrid_layers)]
+        self.decorations = []
+        self.path_graph = {}
+        self.ambientNodes = ambientNodeList()
+
  
+
+        self.tilemap = {}
+        self.grass = {}
+        self.offgrid_tiles = [{} for i in range(0,self.offgrid_layers)]
+        self.decorations = []
+        self.path_graph = {}
+         
         for tile_key in tilemap_data['tilemap']:
             """
             tile_type = tilemap_data['tilemap'][tile_key]["type"] 
@@ -575,34 +596,35 @@ class Tilemap:
                         # trap door 
                         Hull = self.create_hull(tilemap_data['tilemap'][tile_key]) 
                         trap_door = Trapdoor(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],tilemap_data['tilemap'][tile_key]["pos"],(16,5) ,\
-                                             self.game.interactables[tilemap_data['tilemap'][tile_key]["type"]] , hull = Hull)
+                                             self.game.interactable_obj_sprites[tilemap_data['tilemap'][tile_key]["type"]] , hull = Hull)
                         self.tilemap[tile_key] = trap_door
                     else: 
                         if tile_key in self.tilemap: continue 
                         else: 
                             Hull = self.create_hull(tilemap_data['tilemap'][tile_key])
                             door = Door(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],tilemap_data['tilemap'][tile_key]["pos"],(4,32),\
-                                        self.game.interactables[tilemap_data['tilemap'][tile_key]["type"] + '_' + tilemap_data['tilemap'][tile_key]["variant"].split(';')[0]],hull = Hull)
+                                        self.game.interactable_obj_sprites[tilemap_data['tilemap'][tile_key]["type"] + '_' + tilemap_data['tilemap'][tile_key]["variant"].split(';')[0]],hull = Hull)
                             self.tilemap[tile_key] = door 
                             split_key = tile_key.split(';')
                             self.tilemap[split_key[0]+';'+ str(int(split_key[1]) + 1)] = door 
                 else: 
-
                     Hull = self.create_hull(tilemap_data['tilemap'][tile_key]) 
-
                     enclosed = self.check_enclosure(tilemap_data['tilemap'][tile_key]['pos'],tilemap_data['tilemap'])
 
                     self.tilemap[tile_key] = Tile(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],tilemap_data['tilemap'][tile_key]["pos"],hull= Hull,enclosed = enclosed)
+                    
             else: 
                 self.tilemap[tile_key] = Light(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],\
                                                  tilemap_data['tilemap'][tile_key]["pos"],radius =tilemap_data['tilemap'][tile_key]["radius"], power = tilemap_data['tilemap'][tile_key]["power"],\
                                                      color_value= tilemap_data['tilemap'][tile_key]["colorValue"] )
                 if isinstance(tilemap_data['tilemap'][tile_key]["pos"][0],int):
+                    
                     light = PointLight(position = (tilemap_data['tilemap'][tile_key]["pos"][0]*self.tile_size+7,tilemap_data['tilemap'][tile_key]["pos"][1]*self.tile_size+3),\
                                          power= tilemap_data['tilemap'][tile_key]["power"],radius = tilemap_data['tilemap'][tile_key]["radius"] )
                     light.set_color(*tilemap_data['tilemap'][tile_key]["colorValue"])
                     lights.append(light)
                 else: 
+                    
                     light = PointLight(position = (tilemap_data['tilemap'][tile_key]["pos"][0]+7,tilemap_data['tilemap'][tile_key]["pos"][1]+3),\
                                          power= tilemap_data['tilemap'][tile_key]["power"],radius = tilemap_data['tilemap'][tile_key]["radius"] )
                     light.set_color(*tilemap_data['tilemap'][tile_key]["colorValue"])
@@ -620,6 +642,7 @@ class Tilemap:
         for i in range(0,self.offgrid_layers):
             for tile_key in tilemap_data['offgrid_'+ str(i)]:
                 if tilemap_data['offgrid_' + str(i)][tile_key]["type"] == "lights":
+                    print("check")
                     if isinstance(tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][0],int):
                         light = PointLight(position = (tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][0]*self.tile_size+7,tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][1]*self.tile_size+3),\
                                          power= tilemap_data['offgrid_'+ str(i)][tile_key]["power"],radius = tilemap_data['offgrid_'+ str(i)][tile_key]["radius"] )
@@ -1054,6 +1077,7 @@ class Tilemap:
                     surrounding_rects_tiles.append((pygame.Rect(*rect),tile))
 
                 else:  
+                    
                     rect = (
                         tile.pos[0] * self.tile_size,         # left
                         tile.pos[1] * self.tile_size,         # top
@@ -1102,30 +1126,30 @@ class Tilemap:
         variant_sub = tile.variant.split(';')
         if tile.type.endswith('door'):
             if tile.trap: 
-                if  isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
+                if  isinstance(self.game.general_sprites[tile.type][int(variant_sub[0])],list):
                 #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
-                    tile_img = self.game.assets[tile.type][int(variant_sub[0])][int(variant_sub[1])]
+                    tile_img = self.game.general_sprites[tile.type][int(variant_sub[0])][int(variant_sub[1])]
                 else: 
-                    tile_img = self.game.assets[tile.type][int(variant_sub[0])] 
+                    tile_img = self.game.general_sprites[tile.type][int(variant_sub[0])] 
                 return tile_img.get_at((8,2))
 
             else: 
-                if  isinstance(self.game.assets[tile.type + '_' + variant_sub[0]][int(variant_sub[0])],list):
+                if  isinstance(self.game.general_sprites[tile.type + '_' + variant_sub[0]][int(variant_sub[0])],list):
                 #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
-                    tile_img = self.game.assets[tile.type + '_' + variant_sub[0]][int(variant_sub[0])][int(variant_sub[1])]
+                    tile_img = self.game.general_sprites[tile.type + '_' + variant_sub[0]][int(variant_sub[0])][int(variant_sub[1])]
                 else: 
-                    tile_img = self.game.assets[tile.type + '_' + variant_sub[0]][int(variant_sub[0])] 
+                    tile_img = self.game.general_sprites[tile.type + '_' + variant_sub[0]][int(variant_sub[0])] 
                 
                 
                 # sample position for door is different than that of other tiles. 
                 return tile_img.get_at((4,5))
         else: 
             
-            if  isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
+            if  isinstance(self.game.general_sprites[tile.type][int(variant_sub[0])],list):
             #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
-                tile_img = self.game.assets[tile.type][int(variant_sub[0])][int(variant_sub[1])]
+                tile_img = self.game.general_sprites[tile.type][int(variant_sub[0])][int(variant_sub[1])]
             else: 
-                tile_img = self.game.assets[tile.type][int(variant_sub[0])]
+                tile_img = self.game.general_sprites[tile.type][int(variant_sub[0])]
 
             return tile_img.get_at(sample_loc[side] )
 
@@ -1153,7 +1177,7 @@ class Tilemap:
                         auto_map = BUILDING_AUTOTILE[building_type]
                         if neighbors in auto_map:
                             variant_sub_0 = auto_map[neighbors]
-                            asset = self.game.assets[tile.type][int(variant_sub_0)]
+                            asset = self.game.general_sprites[tile.type][int(variant_sub_0)]
                             if isinstance(asset, list):
                                 variant_sub_1 = random.randint(0, len(asset) - 1) if random_ else 0
                                 tile.variant = f"{variant_sub_0};{variant_sub_1}"
@@ -1165,7 +1189,7 @@ class Tilemap:
                     else:
                         if neighbors in AUTOTILE_MAP:
                             variant_sub_0 = AUTOTILE_MAP[neighbors]
-                            asset = self.game.assets[tile.type][int(variant_sub_0)]
+                            asset = self.game.general_sprites[tile.type][int(variant_sub_0)]
                             if isinstance(asset, list):
                                 variant_sub_1 = random.randint(0, len(asset) - 1) if random_ else 0
                                 tile.variant = f"{variant_sub_0};{variant_sub_1}"
@@ -1180,6 +1204,14 @@ class Tilemap:
 
     def render(self, surf, offset = (0,0),editor = False):
         
+        sprite_source = None
+        if editor:  
+            sprite_source = self.game.assets 
+        else: 
+            sprite_source = self.game.general_sprites 
+            
+
+
         for x_cor in range(offset[0] // self.tile_size, (offset[0] + surf.get_width()) // self.tile_size +1):
             for y_cor in range(offset[1] // self.tile_size, (offset[1] + surf.get_height()) // self.tile_size +1): 
                 coor = str(x_cor) + ';' + str(y_cor)
@@ -1190,15 +1222,15 @@ class Tilemap:
                         variant_sub = tile.variant.split(';')
 
                         if tile.type.endswith('door') and tile.type.split('_')[0] != 'trap':
-                            surf.blit(self.game.assets[tile.type + '_' + variant_sub[0]][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])) 
+                            surf.blit(sprite_source[tile.type + '_' + variant_sub[0]][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])) 
 
                         else: 
-                            if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
+                            if isinstance(sprite_source[tile.type][int(variant_sub[0])],list):
                             #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
                         
-                                surf.blit(self.game.assets[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                                surf.blit(sprite_source[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
                             else: 
-                                surf.blit(self.game.assets[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                                surf.blit(sprite_source[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
     
 
                                                 
@@ -1227,12 +1259,12 @@ class Tilemap:
                         #surf.blit(self.game.interactables[tile.type + '_' +variant_sub[0]].images[tile.cur_frame],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))  
 
                     else: 
-                        if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
+                        if isinstance(sprite_source[tile.type][int(variant_sub[0])],list):
                         #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
                             
-                            surf.blit(self.game.assets[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                            surf.blit(sprite_source[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
                         else: 
-                            surf.blit(self.game.assets[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                            surf.blit(sprite_source[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
 
                         if editor and tile.type in PHYSICS_APPLIED_TILE_TYPES and tile.dirty: 
                             pygame.draw.rect(surf,(255,12,12), (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1],self.tile_size,self.tile_size),width = 1)
@@ -1247,8 +1279,6 @@ class Tilemap:
                             decal[1] += 1
                             if decal[1] >= 40:
                                 tile.decals.remove(decal)
-
-                        
                          
 
         #decorations rendering 
@@ -1256,13 +1286,13 @@ class Tilemap:
         for tile in self.decorations: 
             
                 variant_sub = tile.variant.split(';')
-                if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
+                if isinstance(sprite_source[tile.type][int(variant_sub[0])],list):
                 #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
                     
-                    surf.blit(self.game.assets[tile.type][int(variant_sub[0])][int(variant_sub[1])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
+                    surf.blit(sprite_source[tile.type][int(variant_sub[0])][int(variant_sub[1])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
                 else: 
                     
-                    surf.blit(self.game.assets[tile.type][int(variant_sub[0])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
+                    surf.blit(sprite_source[tile.type][int(variant_sub[0])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
         
 
 
@@ -1286,9 +1316,29 @@ class Tile:
             print('item_dropped')
 
 
+
+class CraftingBench(Tile):
+    def __init__(self, type, variant, pos, dirty=False, hull=None, enclosed=False):
+        super().__init__(type, variant, pos, dirty, hull, enclosed)
+
+    def interact(self,player_entity):
+        pass 
+
+
+class Slab(Tile):
+    def __init__(self, type, variant, pos, dirty=False, hull=None, enclosed=False):
+        super().__init__(type, variant, pos, dirty, hull, enclosed)
+
+
+
 class Ladder(Tile):
     def __init__(self, type, variant, pos, dirty=False, hull=None, enclosed=False):
         super().__init__(type, variant, pos, dirty, hull, enclosed)
+
+    
+    def interact(self,player_entity):
+        player_entity.on_ladder = not player_entity.on_ladder
+
 
 
 class Trapdoor(Tile):
@@ -1300,7 +1350,7 @@ class Trapdoor(Tile):
         self.size = size
         self.trap = True 
 
-    def interact(self):
+    def interact(self,player_entity):
         self.open = not self.open 
 
 class Door(Tile):
@@ -1312,7 +1362,7 @@ class Door(Tile):
         self.size = size
         self.trap = False 
 
-    def interact(self):
+    def interact(self,player_entity):
         self.open = not self.open 
         
          
@@ -1330,11 +1380,6 @@ class Light(Tile):
         self.radius = radius
         self.power = power
         self.color_value = color_value 
-
-class Slab(Tile):
-    def __init__(self,type,variant,pos):
-        super().__init__(type,variant,pos)
-        self.y_factor = 0.5
 
 class stair(Tile):
     def __init__(self,type,variant,pos,dir):

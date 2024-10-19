@@ -502,7 +502,7 @@ class LightingEngine:
             if math.dist(light.position,offset) > light.radius + self._diagonal:
                 continue
             
-            if light.position[0] < range[0] or light.position[0] > range[1]:
+            if not light.illuminator and (light.position[0] < range[0] or light.position[0] > range[1]):
                 #decrease power of light 
                 dec = light.power/10
                 light.cur_power = max(0.0,light.cur_power - dec)
@@ -524,9 +524,10 @@ class LightingEngine:
             self._buf_lt.fbo.use()
 
             if light.illuminator: 
-
+                dec = light.power/light.life
+                light.cur_power = max(0.0,light.cur_power -dec)
                 light.position = (int(light.illuminator.center[0]) , int(light.illuminator.center[1]))    
-                #print(light.position)
+                
             elif light.life > 0: 
                 if light.maxlife-1 == light.life: 
                     light.position = (int(light.position[0]) , int(light.position[1]))

@@ -1,93 +1,99 @@
-import pygame
-import random
-import time
-import math
 
-# Initialize Pygame
+import pygame, sys, math, random
+
+# Setup pygame/window ---------------------------------------- #
+mainClock = pygame.time.Clock()
+from pygame.locals import *
 pygame.init()
-screen = pygame.display.set_mode((800, 600))
-clock = pygame.time.Clock()
+pygame.display.set_caption('game base')
+screen = pygame.display.set_mode((500, 500), 0, 32)
 
-# Particle class with glow effect
-class Particle:
-    def __init__(self, pos, spawn_time,index):
-        self.pos = pos
-        self.index = index
-        self.start_time = spawn_time
-        self.lifetime = 1.4  # Particle lifetime in seconds
-        self.velocity = [random.uniform(-2, 2), random.uniform(-2, 2)]
-        #self.seed = 0.32
+sparks = []
 
-    def update(self, current_time):
-        elapsed_time = current_time - self.start_time
-        if elapsed_time > self.lifetime:
-            return False  # Particle should be removed
+class Spark():
+    def __init__(self, loc, angle, speed, color, scale=1):
+        self.loc = loc
+        self.angle = angle
+        self.speed = speed
+        self.scale = scale
+        self.color = color
+        self.alive = True
 
-        timecycle = elapsed_time / self.lifetime
-        #self.seed += timecycle + math.tan(self.seed)
-        #tPos = (math.cos(self.seed), math.sin(self.seed))
-        invparticles = 1.0 / 30.0  # Hardcoded particles count from shader
-        #tPos = [tPos[0] * invparticles, tPos[1] * invparticles]
+    def point_towards(self, angle, rate):
+        rotate_direction = ((angle - self.angle + math.pi * 3) % (math.pi * 2)) - math.pi
+        try:
+            rotate_sign = abs(rotate_direction) / rotate_direction
+        except ZeroDivisionError:
+            rotate_sing = 1
+        if abs(rotate_direction) < rate:
+            self.angle = angle
+        else:
+            self.angle += rate * rotate_sign
 
-        self.pos[0] += self.velocity[0] 
-        self.pos[1] += self.velocity[1] # Using gravity from shader
+    def calculate_movement(self, dt):
+        return [math.cos(self.angle) * self.speed * dt, -math.sin(self.angle) * self.speed * dt]
 
-        return True
 
-    def draw(self, surface, current_time):
-        elapsed_time = current_time - self.start_time
-        timecycle = elapsed_time / self.lifetime
+    # gravity and friction
+    def velocity_adjust(self, friction, force, terminal_velocity, dt):
+        movement = self.calculate_movement(dt)
+        movement[1] = min(terminal_velocity, movement[1] + force * dt)
+        movement[0] *= friction
+        self.angle = math.atan2(movement[1], movement[0])
+        # if you want to get more realistic, the speed should be adjusted here
 
-        # Calculate base color based on the fragment shader logic
-        clr = math.sin(1.4 * self.index)*(1.0 - timecycle)
-        red = min(255, int(clr * 4 * 255))
-        green = min(255, int(clr * 0.5 * 255))
-        blue = min(255, int(clr * 0.1 * 255))
+    def move(self, dt):
+        movement = self.calculate_movement(dt)
+        print(movement)
+        self.loc[0] += movement[0]
+        self.loc[1] += movement[1]
 
-        # Draw glow effect
-        glow_radius = 10  # Radius for the glow
-        max_alpha = 128   # Maximum alpha for the glow
+        # a bunch of options to mess around with relating to angles...
+        #self.point_towards(math.pi / 2, 0.02)
+        #self.velocity_adjust(0.975, 0.2, 8, dt)
+        #self.angle += 0.1
 
-        for i in range(glow_radius, 0, -1):
-            alpha = int(max_alpha * (i / glow_radius))
-            color = (red, green, blue, alpha)
-            print(color)
-            s = pygame.Surface((i * 2, i * 2), pygame.SRCALPHA)
-            pygame.draw.circle(s, color, (i, i), i)
-            surface.blit(s, (int(self.pos[0] - i), int(self.pos[1] - i)), special_flags=pygame.BLEND_RGBA_ADD)
+        self.speed -= 0.1
 
-        # Draw the main particle
-        pygame.draw.circle(surface, (red, green, blue), (int(self.pos[0]), int(self.pos[1])), 5)
+        if self.speed <= 0:
+            self.alive = False
 
-particles = []
+    def draw(self, surf, offset=[0, 0]):
+        if self.alive:
+            points = [
+                [self.loc[0] + math.cos(self.angle) * self.speed * self.scale, self.loc[1] + math.sin(self.angle) * self.speed * self.scale],
+                [self.loc[0] + math.cos(self.angle + math.pi / 2) * self.speed * self.scale * 0.3, self.loc[1] + math.sin(self.angle + math.pi / 2) * self.speed * self.scale * 0.3],
+                [self.loc[0] - math.cos(self.angle) * self.speed * self.scale * 3.5, self.loc[1] - math.sin(self.angle) * self.speed * self.scale * 3.5],
+                [self.loc[0] + math.cos(self.angle - math.pi / 2) * self.speed * self.scale * 0.3, self.loc[1] - math.sin(self.angle + math.pi / 2) * self.speed * self.scale * 0.3],
+                ]
+            pygame.draw.polygon(surf, self.color, points)
 
-# Main loop
-running = True
-start_time = time.time()
+# Loop ------------------------------------------------------- #
+while True:
 
-while running:
-    current_time = time.time() - start_time
+    # Background --------------------------------------------- #
+    screen.fill((0,0,0))
+
+    for i, spark in sorted(enumerate(sparks), reverse=True):
+        spark.move(1)
+        spark.draw(screen)
+        if not spark.alive:
+            sparks.pop(i)
+
+
+    mx, my = pygame.mouse.get_pos()
+    sparks.append(Spark([mx, my], math.radians(random.randint(0, 360)), random.randint(3, 6), (255, 255, 255), 2))
+
+    # Buttons ------------------------------------------------ #
     for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:  # Left mouse button
-                # Spawn 20 particles at the click position
-                for _ in range(20):
-                    particles.append(Particle(list(event.pos), current_time,_))
+        if event.type == QUIT:
+            pygame.quit()
+            sys.exit()
+        if event.type == KEYDOWN:
+            if event.key == K_ESCAPE:
+                pygame.quit()
+                sys.exit()
 
-    # Update particles
-    particles = [p for p in particles if p.update(current_time)]
-
-    # Clear the screen
-    screen.fill((0, 0, 0))
-
-    # Draw particles
-    for particle in particles:
-        particle.draw(screen, current_time)
-
-    # Swap buffers
-    pygame.display.flip()
-    clock.tick(60)
-
-pygame.quit()
+    # Update ------------------------------------------------- #
+    pygame.display.update()
+    mainClock.tick(60)

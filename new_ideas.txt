@@ -1,0 +1,12 @@
+bug  - something critically wrong is happening when you shoot the weapons and throw / collect another item. 
+
+
+
+1. let's add more weapons 
+
+
+2. let's add more enemies 
+
+
+3. let's add item builds - to build weapons and items ( crafting system ) 
+

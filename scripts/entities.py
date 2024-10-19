@@ -3,15 +3,19 @@
 import random
 import pygame 
 import math
+
+from pygame.math import Vector2
+from scripts.spark import Spark
 from scripts.los import line_of_sight
 from scripts.particles import Particle,non_animated_particle,bullet_collide_particle,bullet_trail_particle_wheelbot
 from scripts.health import HealthBar,StaminaBar
 from scripts.indicator import indicator 
 from scripts.tilemap import Node,Tile
-from scripts.weapons import Wheelbot_weapon
+from scripts.fire import Flame_particle
 from scripts.spark import Spark 
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
 from scripts.weapon_list import DoublyLinkedList
+from scripts.range import Rectangle
 from my_pygame_light2d.light import PointLight
 
 
@@ -30,13 +34,6 @@ class Accurate_Rect_Body():
 
     def render(self,surf,offset= [0,0]):
         pass 
-
-class interactable:
-    # a class that defines interactable objects, like doors, which physics don't apply constantly, but 
-    # should still be recognized as a tile.
-    pass 
-
-
 
 
 class PhysicsEntity:
@@ -57,7 +54,7 @@ class PhysicsEntity:
     def set_state(self, action):
         if action != self.state:
             self.state = action
-            self.animation = self.game.assets[self.type + '/' + self.state].copy()
+            self.animation = self.game.general_sprites[self.type + '/' + self.state].copy()
 
     def collide(self, other):
         return self.collision_rect().colliderect(other.collision_rect())
@@ -201,9 +198,159 @@ class PhysicsEntity:
                   (int(self.pos[0] - offset[0] + self.anim_offset[0]), int(self.pos[1] - offset[1] + self.anim_offset[1])))
 
 
+"""
+when you drop an item into the environment, you would need to know 
+the following things: 
+
+1. the position (it is going to be udpated, physics is applied to it)
+2. the image of the weapon 
+3. the 'life' of the item, as if enough time has passed the item is going to be deleted. 
+
+when you drop an item, I guess you would have to create an item object inerited from the physics entity class  
+with much simpler properties 
+
+"""
+
+class CollectableItem:
+    def __init__(self,game,pos,item):
+        self.game = game 
+        self.Item = item
+        self.pos = pos
+        self.e_type = 'item'
+        self.state = 'inanimate'
+        self.image = item.image.copy()
+        self.size = [self.image.get_width()//2, self.image.get_height()//2]
+
+        self.life = 100000
+        self.velocity = [0,0]
+
+
+    def rect(self):
+        return pygame.Rect(self.pos[0] + self.size[0]/2 ,  self.pos[1] + self.size[1] / 2 , self.size[0] , self.size[1]) 
+
+    def update_pos(self,tile_map):
+        self.life -=1
+        self.velocity[1] = min(3, self.velocity[1] +0.11)
+
+        if self.velocity[0] < 0:
+            self.velocity[0] = min(self.velocity[0] + 0.21, 0)
+        elif self.velocity[0] > 0:
+            self.velocity[0] = max(self.velocity[0] - 0.21, 0)
+
+        self.pos[0] += self.velocity[0]
+        entity_rect  = self.rect()
+        
+
+        for rect_tile in tile_map.physics_rects_around((self.pos[0] + self.size[0] /2 ,  self.pos[1] + self.size[1] / 2), self.size):
+            
+            tile_type = rect_tile[1].type
+        
+
+            if entity_rect.colliderect(rect_tile[0]) and tile_type.split('_')[1] != 'stairs':
+                if tile_type.split('_')[1] == 'door':
+                    if  rect_tile[1].open:
+                        continue
+                    else:
+                        # if you close the door on youself (trap door and vertical door)
+                        if rect_tile[1].trap: 
+                            continue 
+                        else: 
+                            if self.velocity[0] > 0 :
+                            
+                                entity_rect.right = rect_tile[0].left
+                            elif self.velocity[0] < 0:
+                                
+                                entity_rect.left = rect_tile[0].right
+                            else: 
+                                if entity_rect.centerx - rect_tile[0].centerx <0:
+                                    
+                                    entity_rect.right = rect_tile[0].left
+                                    
+                                else:
+                                     
+                                    entity_rect.left = rect_tile[0].right 
+                                
+                            self.pos[0] = entity_rect.x - self.size[0] /2
+                            
+                else:
+                    if self.velocity[0] > 0:
+                    
+                        entity_rect.right = rect_tile[0].left
+                    elif self.velocity[0] < 0:
+                        
+                        entity_rect.left = rect_tile[0].right
+                    else: 
+                        if entity_rect.centerx -rect_tile[0].centerx <0:
+                        
+                            entity_rect.right = rect_tile[0].left
+                            
+                        else:
+                 
+                            entity_rect.left = rect_tile[0].right 
+
+                    self.pos[0] = entity_rect.x - self.size[0]/2
+
+        
+        self.pos[1] += self.velocity[1]
+        entity_rect = self.rect()
+
+
+        for rect_tile in tile_map.physics_rects_around((self.pos[0] + self.size[0] / 2 ,  self.pos[1] + self.size[1] / 2), self.size):
+            tile_type = rect_tile[1].type
+            if entity_rect.colliderect(rect_tile[0]):
+                if tile_type.split('_')[1] != 'stairs':
+                    if tile_type.split('_')[1] == 'door' and  rect_tile[1].open:
+                        continue 
+
+                    if self.velocity[1] > 0:
+                        self.on_ramp = 0
+                        entity_rect.bottom = rect_tile[0].top
+                    elif self.velocity[1] < 0:
+                
+                        entity_rect.top = rect_tile[0].bottom
+                    self.velocity[1] = 0
+                    self.pos[1] = entity_rect.y - self.size[1]/2
+                else:
+                    variant = rect_tile[1].variant.split(';')[0]
+                    pos_height = 0
+                    rel_x = rect_tile[0].x - entity_rect.right if variant in ('0', '2') else rect_tile[0].right - entity_rect.left
+
+                    if variant == '0':
+                        if -16 <= rel_x < 0:
+                            pos_height = max(0, -rel_x - (self.size[0]/2) // 4)
+                    elif variant == '2':
+                        if rel_x < 0:
+                            pos_height = min(tile_map.tile_size, -rel_x + (tile_map.tile_size - (self.size[0]/2) // 4))
+                    elif variant == '1':
+                        if rel_x > 0:
+                            pos_height = max(0, rel_x - (self.size[0]/2) // 4)
+                    elif variant == '3':
+                        if 0 < rel_x <= tile_map.tile_size:
+                            pos_height = min(tile_map.tile_size, rel_x + (tile_map.tile_size - (self.size[0]/2) // 4))
+
+                    target_y = rect_tile[0].y + tile_map.tile_size - pos_height
+                    if entity_rect.bottom > target_y:
+                        self.on_ramp = 1 if variant == '0' else -1
+                        entity_rect.bottom = target_y
+                        self.pos[1] = entity_rect.y - self.size[1]/2
+
+    
+
+
+
+    def render(self,surf,offset = (0,0)):
+        if self.life < 60:
+            self.image.set_alpha(255 * (self.life/60))
+        surf.blit(self.image, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
+         
+
+
+    
+
 class Enemy(PhysicsEntity):
     def __init__(self, game, pos, size, variant, hp):
         super().__init__(game, variant, pos, size)
+        self.e_type = "enemy"
         self.walking = 0
         self.air_time = 0
         self.aggro = False
@@ -1113,8 +1260,8 @@ class Canine(Enemy):
 class PlayerEntity(PhysicsEntity):
     def __init__(self,game,pos,size):
         #attributes required to implement weapon 
-        self.equipped = False 
-
+        #self.equipped = False 
+        self.e_type = 'player'
         self.cur_weapon_node = None 
 
         self.weapon_inven = DoublyLinkedList()
@@ -1135,10 +1282,10 @@ class PlayerEntity(PhysicsEntity):
 
         self.jump_count = 2
         self.wall_slide = False
-        self.slide = False 
+        self.crouch = False 
         self.on_wall = self.collisions['left'] or self.collisions['right']
         self.air_time = 0
-      
+        self.on_ladder = False 
         
 
         #attributes required to implement double tap 
@@ -1155,17 +1302,23 @@ class PlayerEntity(PhysicsEntity):
         self.time = 0
         
         self.interactables = None
+        self.nearest_collectable_item = None
         
 
         
-        
+    def rect(self):
+        return pygame.Rect(self.pos[0]+3,self.pos[1]+1,10,15)
        
     def set_state(self,action):
         if action != self.state: 
             self.state = action 
-            self.animation = self.game.assets[self.type + '/' + ('holding_gun/' if self.equipped else '') + self.state].copy() 
+            self.animation = self.game.general_sprites[self.type + '/' + ('holding_gun/' if self.cur_weapon_node else '') + self.state]
 
-    def update_pos(self, tile_map,cursor_pos,frame_count,movement=(0, 0)):
+    def change_gun_holding_state(self):
+        self.animation = self.game.general_sprites[self.type + '/' + ('holding_gun/' if self.cur_weapon_node else '') + self.state ]
+
+
+    def update_pos(self, tile_map,quadtree,cursor_pos,frame_count,movement=(0, 0)):
         
         #print(self.velocity[0])
         self.time = frame_count
@@ -1198,9 +1351,12 @@ class PlayerEntity(PhysicsEntity):
             new_movement[1] *= (20 - self.hard_land_recovery_time)/20 
             self.hard_land_recovery_time -= 1
             
-        self.interactables = super().update_pos(tile_map, new_movement)
+        self.interactables = super().update_pos(tile_map, new_movement,anim_offset= (3,1))
+        r = max(self.size) * 2
 
-        
+        rangeRect = Rectangle(Vector2(self.pos[0] - self.size[0]//2 - r /2 ,self.pos[1]  - r /2 ), Vector2(r,r))
+
+        self.nearest_collectable_item = quadtree.queryRange(rangeRect,"item")
 
         #every frame, the stamina is increased by 0.7
        
@@ -1208,8 +1364,8 @@ class PlayerEntity(PhysicsEntity):
         self.air_time +=1
         
         
-        self.changing_done = min(6,self.change_weapon_inc + self.changing_done)
-        if self.changing_done == 6:
+        self.changing_done = min(2,self.change_weapon_inc + self.changing_done)
+        if self.changing_done == 2:
              
             self.change_weapon(self.change_scroll)
         
@@ -1310,7 +1466,7 @@ class PlayerEntity(PhysicsEntity):
                     if anim_frame == 0 or anim_frame == 3:
                         self.game.player_sfx['run'][str(random.randint(0,7))].play()
                     """
-                if self.slide:
+                if self.crouch and (self.game.player_movement[0] or self.game.player_movement[1]) :
                     self.cut_movement_input = True
                     self.set_state('slide')
                 self.y_inertia = 0
@@ -1321,12 +1477,16 @@ class PlayerEntity(PhysicsEntity):
                     if self.animation.done == True: 
                         self.set_state('idle') 
                 else: 
-                    self.set_state('idle')
+                    if self.crouch: 
+                        self.set_state('crouch')
+                        pass 
+                    else: 
+                        self.set_state('idle')
                 
         
         
         #print(self.changing_done)
-        if self.equipped:
+        if self.cur_weapon_node:
             self.cur_weapon_node.weapon.update(self.d_cursor_pos)
         
         #update the health and stamina bars 
@@ -1353,7 +1513,7 @@ class PlayerEntity(PhysicsEntity):
     
     def render(self,surf,offset):
         
-        knockback = (0,0) if not self.equipped else (self.cur_weapon_node.weapon.knockback[0]/5,self.cur_weapon_node.weapon.knockback[1]/9)
+        knockback = (0,0) if not self.cur_weapon_node else (self.cur_weapon_node.weapon.knockback[0]/5,self.cur_weapon_node.weapon.knockback[1]/9)
 
         super().render(surf,(offset[0] - knockback[0],offset[1] - knockback[1]))
 
@@ -1382,23 +1542,34 @@ class PlayerEntity(PhysicsEntity):
         stamina_ind.render(self.stamina_bar.x+34,self.stamina_bar.y-1,surf)
         """
         #print(self.changing_done)
-        if self.equipped: 
-            
+        if self.cur_weapon_node: 
+            """
             if self.changing_done == 0:
                 self.cur_weapon_node.weapon.render(surf,offset,set_angle = None)
             else: 
                 if self.cur_weapon_node.weapon.flipped: 
-                    angles = [angle for angle in range(0,-121,-20)]  
+                    angles = [angle for angle in range(0,-121,-40)]  
                     
                 else: 
-                    angles = [angle for angle in range(120,-1,-20)]      
+                    angles = [angle for angle in range(120,-1,-40)]      
                         
                 arm_pos_angle = angles[self.changing_done]
-                self.cur_weapon_node.weapon.render(surf,offset,set_angle = arm_pos_angle) 
+            """
+            self.cur_weapon_node.weapon.render(surf,offset) 
             
     
     def interact(self):
         # find the interactable that is closest to the player's center position. 
+        if self.nearest_collectable_item and self.state =='crouch':
+            
+            #now make it so that you can pick the item up. 
+            
+            inven_is_full = self.game.HUD.Items_list[2][1].add_item(self.nearest_collectable_item[0].Item)
+            if not inven_is_full: 
+                self.nearest_collectable_item[0].life =0
+
+            
+            
         if self.interactables: 
             min_distance = float('inf')
             closest_interactable = None 
@@ -1409,7 +1580,7 @@ class PlayerEntity(PhysicsEntity):
                     min_distance = distance
                     closest_interactable = interactable
 
-            closest_interactable[1].interact()
+            closest_interactable[1].interact(self)
 
     
     
@@ -1439,57 +1610,59 @@ class PlayerEntity(PhysicsEntity):
             self.game.particles.append(dust)
         
     def player_jump(self):
-     
-        if self.wall_slide: 
-            self.jump_count = 1
-            
-            if self.collisions['left']:
+        if self.on_ladder:
+            pass 
+        else: 
+            if self.wall_slide: 
+                self.jump_count = 1
                 
-                self.velocity[0] =  4.2
-            if self.collisions['right']:
-                
-                self.velocity[0] = -4.2
-            #self.accel_up() 
-            
-            self.velocity[1] =-4.4
-            
-
-            air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
-            self.game.particles.append(air)
-
-        if self.jump_count == 2:
-            if self.state == 'jump_down':
-                self.jump_count -=2
+                if self.collisions['left']:
+                    
+                    self.velocity[0] =  4.2
+                if self.collisions['right']:
+                    
+                    self.velocity[0] = -4.2
                 #self.accel_up() 
-
-                self.velocity[1] = -4.4
                 
+                self.velocity[1] =-4.4
+                
+
                 air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
                 self.game.particles.append(air)
-            else: 
+
+            if self.jump_count == 2:
+                if self.state == 'jump_down':
+                    self.jump_count -=2
+                    #self.accel_up() 
+
+                    self.velocity[1] = -4.4
+                    
+                    air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
+                    self.game.particles.append(air)
+                else: 
+                    self.jump_count -=1
+                    #self.accel_up() 
+
+                    self.velocity[1] = -4.4    
+                
+            elif self.jump_count ==1: 
                 self.jump_count -=1
                 #self.accel_up() 
-
-                self.velocity[1] = -4.4    
-            
-        elif self.jump_count ==1: 
-            self.jump_count -=1
-            #self.accel_up() 
-            self.velocity[1] = -4.4  
-            air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
-            self.game.particles.append(air)
+                self.velocity[1] = -4.4  
+                air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
+                self.game.particles.append(air)
             
     
 
     def jump_cut(self):
         #called when the player releases the jump key before maximum height. 
-
-        if self.velocity[1] < 0: 
-            if self.velocity[1] > -4.2:
-                if self.air_time >0 and self.air_time <= 8:
-                    self.velocity[1] = -1.2
-                if self.air_time >8 and self.air_time <=11 :
-                    self.velocity[1] = -2.2
+        if not self.on_ladder: 
+            if self.velocity[1] < 0: 
+                if self.velocity[1] > -4.2:
+                    if self.air_time >0 and self.air_time <= 8:
+                        self.velocity[1] = -1.2
+                    if self.air_time >8 and self.air_time <=11 :
+                        self.velocity[1] = -2.2
 
     
     def change_weapon(self,scroll):
@@ -1497,12 +1670,14 @@ class PlayerEntity(PhysicsEntity):
             if (self.cur_weapon_node.next and scroll ==1) or (self.cur_weapon_node.prev and scroll ==-1):
                 self.change_scroll = scroll
                 self.change_weapon_inc = True 
-                if self.changing_done == 6:
+                if self.changing_done == 2:
                     if scroll ==1:
-                        self.cur_weapon_node = self.cur_weapon_node.next 
+                        self.cur_weapon_node = self.cur_weapon_node.next
+                        self.weapon_inven.curr = self.cur_weapon_node 
                         self.cur_weapon_node.weapon.equip(self)
                     else: 
                         self.cur_weapon_node = self.cur_weapon_node.prev
+                        self.weapon_inven.curr = self.cur_weapon_node
                         self.cur_weapon_node.weapon.equip(self)
                          
                     self.changing_done = 0
@@ -1512,7 +1687,7 @@ class PlayerEntity(PhysicsEntity):
 
             
         """
-        if self.cur_weapon:
+        if self.cur_weapon:         
             #first check if scrolling in that direction is valid. 
             if 0 <= self.cur_weapon_index + scroll <= len(self.weapon_inven) -1 :
                 self.change_scroll = scroll
@@ -1531,10 +1706,11 @@ class PlayerEntity(PhysicsEntity):
         
         
         
-        if self.weapon_inven.head:
-            self.equipped = True 
-            self.animation = self.game.assets[self.type + '/holding_gun/' + self.state].copy() 
-            self.cur_weapon_node = self.weapon_inven.head
+        if self.weapon_inven.curr:
+            #self.equipped = True 
+            self.animation = self.game.general_sprites[self.type + '/holding_gun/' + self.state]
+            #self.cur_weapon_node = self.weapon_inven.head
+            self.cur_weapon_node = self.weapon_inven.curr 
             self.cur_weapon_node.weapon.equip(self)
             
             
@@ -1553,7 +1729,7 @@ class PlayerEntity(PhysicsEntity):
 
     def shoot_weapon(self,frame):
         #testing bullet firing
-        if self.equipped: 
+        if self.cur_weapon_node: 
             if self.cur_weapon_node.weapon.rapid_firing:
                 if frame % self.cur_weapon_node.weapon.fire_rate == 0:
                     """
@@ -1561,6 +1737,7 @@ class PlayerEntity(PhysicsEntity):
                     test_shell = Bullet(self.game,self.cur_weapon.opening_pos,test_shell_image.get_size(),test_shell_image,'rifle_small').copy()
                     self.cur_weapon.load(test_shell)
                     """
+                    
                     self.cur_weapon_node.weapon.shoot(self.time,self.d_cursor_pos) 
                    
                     #self.game.Tilemap.bullets.append(shot_bullet)
@@ -1574,6 +1751,7 @@ class PlayerEntity(PhysicsEntity):
                 test_shell = Bullet(self.game,self.cur_weapon.opening_pos,test_shell_image.get_size(),test_shell_image,'rifle_small').copy()
                 self.cur_weapon.load(test_shell)
                 """
+                
           
                 self.cur_weapon_node.weapon.shoot(self.time,self.d_cursor_pos) 
                
@@ -1583,16 +1761,24 @@ class PlayerEntity(PhysicsEntity):
             #add bullet drop particles and smoke particles 
                 
            
-            
+    def discard_current_weapon(self):
+        #here you are going to throw away your current weapon. 
+        discard_pos = self.pos.copy()
+        discard_pos[0] += self.size[0] // 2
+        discard_pos[0] -= self.cur_weapon_node.weapon.image.get_width() if self.flip else 0
+        item = CollectableItem(self.game,discard_pos,self.cur_weapon_node.weapon)
+        item.velocity = [-1.5,-1.5] if self.flip else [1.5,-1.5] 
+        self.game.collectable_items.append(item)
+        
                     
                     
     def toggle_rapid_fire(self):
-        if self.equipped:
+        if self.cur_weapon_node:
             self.cur_weapon_node.weapon.toggle_rapid_fire()
 
 
-    def weapon_toggle_state(self):
-        if self.equipped:
+    def return_weapon_toggle_state(self):
+        if self.cur_weapon_node:
             return self.cur_weapon_node.weapon.rapid_firing 
     
     def hit(self,hit_damage):
@@ -1605,6 +1791,7 @@ class Item(PhysicsEntity):
     def __init__(self, game,size,sprite):
         super().__init__(game, 'item', [0,0], size)
         self.sprite = sprite 
+        self.e_type = 'item'
 
     """ what would you need for an item class to have? """
 
@@ -1629,16 +1816,19 @@ class Grenade(Item):
 class Bullet(PhysicsEntity): 
     def __init__(self, game, pos, size, sprite, bullet_type):
         super().__init__(game, 'bullet', pos, size)
+        self.e_type = "bullet"
         self.damage = 1
         self.angle = 0
         self.sprite = sprite
         self.bullet_type = bullet_type
         self.center = [sprite.get_width() / 2, sprite.get_height() / 2]
         self.set_state('in_place')
+        self.life = 50
         self.frames_flown = 50
         self.test_tile = None
         self.dead = False
         self.light = LIGHT(20, pixel_shader(20, (255, 255, 255), 1, False))
+        self.spark_colors = ((253,128,70),(244,160,86) ,(189,84,55))
         
         
         
@@ -1651,6 +1841,107 @@ class Bullet(PhysicsEntity):
 
     def rect(self):
         return pygame.Rect(self.pos[0], self.pos[1], self.sprite.get_width(), self.sprite.get_height())
+    
+    def create_collision_effects(self):
+        for i in range(2):
+            
+            spark = Spark(self.center.copy(),math.radians(random.randint(int(180 - self.angle - 30),int(180 - self.angle + 30))),\
+                                        random.randint(1,3),random.choice(self.spark_colors),0.4,speed_factor=8)
+            
+            light = PointLight(self.center.copy(),power = 1,radius = 6,illuminator=spark,life = 70)
+            light.set_color(149,46,17)
+            light.cast_shadows = False
+
+            self.game.sparks.append(spark) 
+            self.game.lights_engine.lights.append(light)
+            
+
+    
+
+    def rect_corners(self,rect, angle):
+        """Returns the four corners of a rotated rectangle."""
+        cx, cy = rect.center
+        w, h = rect.size
+        angle_rad = math.radians(angle)
+
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+
+        # Define the rectangle's corners (relative to the center)
+        corners = [
+            pygame.math.Vector2(-w / 2, -h / 2),
+            pygame.math.Vector2(w / 2, -h / 2),
+            pygame.math.Vector2(w / 2, h / 2),
+            pygame.math.Vector2(-w / 2, h / 2)
+        ]
+
+        # Rotate the corners around the center
+        rotated_corners = [pygame.math.Vector2(
+            cx + corner.x * cos_a - corner.y * sin_a,
+            cy + corner.x * sin_a + corner.y * cos_a
+        ) for corner in corners]
+
+        return rotated_corners
+
+    def project_polygon(self,corners, axis):
+        """Projects the corners of a polygon onto an axis."""
+        dots = [corner.dot(axis) for corner in corners]
+        return min(dots), max(dots)
+
+    def obb_collision(self,rect1_corners, rect2):
+        """Detects collision between a rotated rectangle and an axis-aligned rectangle."""
+        rect2_corners = [
+            pygame.math.Vector2(rect2.topleft),
+            pygame.math.Vector2(rect2.topright),
+            pygame.math.Vector2(rect2.bottomright),
+            pygame.math.Vector2(rect2.bottomleft)
+        ]
+
+        axes = []
+        for i in range(4):
+            edge = rect1_corners[i] - rect1_corners[(i + 1) % 4]
+            normal = pygame.math.Vector2(-edge.y, edge.x)
+            axes.append(normal.normalize())
+
+        for i in range(2):  # We only need 2 axes for the AABB rectangle (rect2)
+            edge = rect2_corners[i] - rect2_corners[(i + 1) % 4]
+            normal = pygame.math.Vector2(-edge.y, edge.x)
+            axes.append(normal.normalize())
+
+        for axis in axes:
+            proj1 = self.project_polygon(rect1_corners, axis)
+            proj2 = self.project_polygon(rect2_corners, axis)
+            if proj1[1] < proj2[0] or proj2[1] < proj1[0]:
+                return False  # No overlap on this axis, so no collision
+        return True
+
+    def collision_handler(self, tilemap, rect_tile, ent_rect, dir, axis):
+        rect_tile = rect_tile if isinstance(rect_tile, pygame.Rect) else rect_tile[0]
+
+        # Create a rotated rectangle (OBB) for the bullet
+        bullet_rect = pygame.Rect(self.center[0] - self.sprite.get_width() / 2, 
+                                self.center[1] - self.sprite.get_height() / 2, 
+                                self.sprite.get_width(), 
+                                self.sprite.get_height())
+        bullet_corners = self.rect_corners(bullet_rect, self.angle)
+
+        # Check for collision between the rotated bullet and the axis-aligned tile
+        if self.obb_collision(bullet_corners, rect_tile):
+            # Handle collision logic here (e.g., particle effects, destroy tile, etc.)
+            collided_tile = tilemap.return_tile(rect_tile)
+            collide_particle = Particle(self.game, 'bullet_collide/rifle', self.center, 'player')
+            collide_particle.animation.images = [pygame.transform.rotate(img, 180 + self.angle) for img in collide_particle.animation.copy().images]
+            self.game.particles.append(collide_particle)
+
+            if collided_tile.type == 'box':
+                tilemap.tilemap.pop(f'{collided_tile.pos[0]};{collided_tile.pos[1]}')
+                destroy_box_smoke = Particle(self.game, 'box_smoke', rect_tile.center, 'tile', velocity=[0, 0], frame=10)
+                self.game.particles.append(destroy_box_smoke)
+                collided_tile.drop_item()
+
+            return True
+        return False
+    """
 
     def collision_handler(self, tilemap, rect_tile, ent_rect, dir, axis):
         rect_tile = rect_tile if isinstance(rect_tile, pygame.Rect) else rect_tile[0]
@@ -1688,6 +1979,7 @@ class Bullet(PhysicsEntity):
                 collided_tile.drop_item()
             return True
         return False
+    """
 
     def update_pos(self, tile_map, offset=(0, 0)):
         self.collisions = {'up': False, 'down': False, 'left': False, 'right': False}
@@ -1713,10 +2005,14 @@ class Bullet(PhysicsEntity):
                     for check_rect in check_rects:
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[0] > 0, True):
+                                self.create_collision_effects()
+                                
                                 self.dead = True 
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
+
+                        self.create_collision_effects()
                         self.dead = True 
                         return True
 
@@ -1736,10 +2032,13 @@ class Bullet(PhysicsEntity):
                     for check_rect in check_rects:
                         if entity_rect.colliderect(check_rect):
                             if self.collision_handler(tile_map, check_rect, entity_rect, self.velocity[1] > 0, False):
+                                self.create_collision_effects()
                                 self.dead = True 
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[1] > 0, False):
+                        for i in range(6):
+                            self.create_collision_effects()
                         self.dead = True 
                         return True
         return False
@@ -1748,8 +2047,225 @@ class Bullet(PhysicsEntity):
         #bullet_glow_mask = pygame.mask.from_surface(self.sprite)
         surf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD)
 
+
+class RocketShell():
+    def __init__(self,game,pos,size,sprite,bullet_type):
+        self.game = game
+        self.velocity = [0,0]
+        self.pos = pos
+        self.sprite = sprite
+        self.angle = 0
+        self.frames_flown = 100
+        self.dead = False
+        self.size = size
+        self.damage = 20
+        self.bullet_type = bullet_type 
+
+        # flame particle parameters---------------------------------
+        self.flame_size = 3
+        self.flame_density = 1
+        self.flame_rise = 1.6
+        self.flame_spread = 1
+        self.flame_wind = 0
+        # --------------------------------
+
+        self.spark_colors = ((253,128,70),(244,160,86) ,(189,84,55))
+        self.flame_spawn_pos_offsets = [(-7,0),(-7,-1),(-7,-2),(-7,1),
+                                         (-8,0),(-8,-1),(-9,0),(-9,-1)]
+
+    def rect(self):
+        return pygame.Rect(self.pos[0], self.pos[1], self.sprite.get_width(), self.sprite.get_height())
+        
+
+    
+    def collision_handler(self, tilemap, rect_tile, ent_rect, dir, axis):
+        rect_tile = rect_tile if isinstance(rect_tile, pygame.Rect) else rect_tile[0]
+
+        og_end_point_vec = pygame.math.Vector2(6, 0).rotate(self.angle)
+        end_point = [self.center[0] + og_end_point_vec[0] - (self.sprite.get_width() / 2 if self.velocity[0] >= 0 else 0),
+                     self.center[1] + og_end_point_vec[1]]
+        entry_pos = (rect_tile.left if dir else rect_tile.right, end_point[1]) if axis else (end_point[0], rect_tile.top if dir else rect_tile.bottom)
+        sample_side = {(True, True): 'left', (False, True): 'right', (True, False): 'top', (False, False): 'bottom'}
+        color = tilemap.return_color(rect_tile, sample_side[(dir, axis)])
+
+        offsets = [(-1, 0), (0, 0), (1, 0)]
+        for _ in range(random.randint(6, 11)):
+            offset = random.choice(offsets)
+            self.game.non_animated_particles.append(bullet_collide_particle(random.choice([(1, 1), (2, 1), (1, 2), (3, 1), (1, 3), (2, 2)]),
+                                                                             entry_pos, (180 - self.angle) + random.randint(-88, 88), 3 + random.random(), color, tilemap))
+
+        bullet_mask = pygame.mask.from_surface(self.sprite)
+        tile_mask = pygame.mask.Mask((rect_tile.width, rect_tile.height))
+        tile_mask.fill()
+        offset = (ent_rect[0] - rect_tile[0], ent_rect[1] - rect_tile[1])
+
+        if tile_mask.overlap_area(bullet_mask, offset) > 2:
+            collided_tile = tilemap.return_tile(rect_tile)
+            collide_particle = Particle(self.game, 'bullet_collide/rifle', end_point, 'player')
+            collide_particle.animation.images = [pygame.transform.rotate(img, 180 + self.angle) for img in collide_particle.animation.copy().images]
+            self.game.particles.append(collide_particle)
+
+            if collided_tile.type != 'box':
+                pass
+            else:
+                tilemap.tilemap.pop(f'{collided_tile.pos[0]};{collided_tile.pos[1]}')
+                destroy_box_smoke = Particle(self.game, 'box_smoke', rect_tile.center, 'tile', velocity=[0, 0], frame=10)
+                self.game.particles.append(destroy_box_smoke)
+                collided_tile.drop_item()
+            return True
+        return False
+    
+    def create_collision_effects(self,collided_tile_rect,dir,axis):
+        
+        self.game.screen_shake = max(8,self.game.screen_shake)
+        collision_pos = None
+        angle_range = (int(180 - self.angle - 40),int(180 - self.angle + 40))
+
+        if axis:
+            #create effects for collision by x movement 
+            if dir: 
+                #postive movement
+                print("spawned left side")
+                collision_pos = [collided_tile_rect.left-1,self.center[1]]
+            else:
+                print("spawned right side")
+                collision_pos = [collided_tile_rect.right,self.center[1]]
+        else: 
+            #y movement
+            if dir: 
+                #postive movement
+                print("spawned top side")
+
+                collision_pos =[self.center[0],collided_tile_rect.top-1]
+            else:
+                print("spawned bottom side")
+                collision_pos = [self.center[0],collided_tile_rect.bottom +1]
     
 
+
+        light =  PointLight(collision_pos.copy(),power = 1.0,radius = 40,life = 2)
+        light.set_color(253,108,50)
+        light.cast_shadows = False
+        self.game.lights_engine.lights.append(light)
+        
+        light = PointLight(collision_pos.copy(),power = 0.7 ,radius = 70,life = 2)
+        light.set_color(248,129,153)
+        light.cast_shadows = False
+        self.game.lights_engine.lights.append(light)
+
+        light = PointLight(collision_pos.copy(),power = 0.6,radius = 85,life = 2)
+        light.set_color(248,129,153)
+        light.cast_shadows = False
+        self.game.lights_engine.lights.append(light)
+
+        shot_particle = Particle(self.game,'rocket_launcher_collide',collision_pos.copy(),self)
+        self.game.particles.append(shot_particle)        
+
+
+        for i in range(20):
+            spark = Spark(collision_pos.copy(),math.radians(random.randint(*angle_range)),\
+                                        random.randint(3,6),random.choice(self.spark_colors),0.8,5)
+            
+            light = PointLight(collision_pos.copy(),power = 1,radius = 8,illuminator=spark,life = 70)
+            light.set_color(149,46,17)
+            light.cast_shadows = False
+
+            self.game.lights_engine.lights.append(light)
+            self.game.sparks.append(spark)
+        
+
+
+    #change the collision particle effects on the shells 
+
+    def update_pos(self, tile_map):
+        self.frames_flown -= 1
+        if self.frames_flown % 2 == 0:
+            # Spawn a smoke particle every two frames
+            self.game.particles.append(Particle(self.game, 'rocket_launcher_smoke', (self.pos[0] + self.size[0] // 2, self.pos[1] + self.size[1] // 2), 'rocket_launcher'))
+
+        if self.frames_flown == 0:
+            self.dead = True
+            return True
+
+        # Maximum steps to ensure precision (adjust as needed)
+        steps = 2
+        if steps == 0:
+            return False
+
+        for step in range(steps):
+            # Interpolating movement over each step (fractional movement)
+            self.pos[0] += self.velocity[0] / steps
+            self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
+            entity_rect = self.rect()
+
+            # Check for collisions in X direction
+            for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+                if entity_rect.colliderect(rect_tile[0]):
+                    if self.handle_tile_collision(tile_map, rect_tile, entity_rect, axis="x"):
+                        return True
+
+            self.pos[1] += self.velocity[1] / steps
+            self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
+            entity_rect = self.rect()
+
+            # Check for collisions in Y direction
+            for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+                if entity_rect.colliderect(rect_tile[0]):
+                    if self.handle_tile_collision(tile_map, rect_tile, entity_rect, axis="y"):
+                        return True
+
+        return False
+
+    def handle_tile_collision(self, tile_map, rect_tile, entity_rect, axis):
+        """Helper function to handle collisions based on tile type."""
+        is_horizontal = axis == "x"
+        velocity_check = self.velocity[0] > 0 if is_horizontal else self.velocity[1] > 0
+
+        if rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
+            check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
+                        pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),
+                        pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \
+                        [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom - 4, rect_tile[0].width, 4),
+                        pygame.Rect(rect_tile[0].left, rect_tile[0].top, 4, 12),
+                        pygame.Rect(rect_tile[0].left + 4, rect_tile[0].top + 6, 6, 6)]
+
+            for check_rect in check_rects:
+                if entity_rect.colliderect(check_rect):
+                    if self.collision_handler(tile_map, check_rect, entity_rect, velocity_check, is_horizontal):
+                        self.create_collision_effects(check_rect, velocity_check, is_horizontal)
+                        self.dead = True
+                        return True
+        else:
+            if self.collision_handler(tile_map, rect_tile, entity_rect, velocity_check, is_horizontal):
+                self.create_collision_effects(rect_tile[0], velocity_check, is_horizontal)
+                self.dead = True
+                return True
+
+        return False
+
+        
+        #collision detection for rocket shells 
+
+    def render(self,surf, offset = (0,0)):
+        surf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD) 
+
+
+    
+
+class shotgun_Bullet(Bullet):
+    def __init__(self, game, pos, size, sprite, bullet_type):
+        super().__init__(game, pos, size, sprite, bullet_type)
+        self.frames_flown = 15
+
+
+    def update_pos(self, tile_map, offset=(0, 0)):
+        
+        return super().update_pos(tile_map, offset)
+
+    def render(self, surf, offset= (0,0)):
+        self.sprite.set_alpha(int(0* (self.frames_flown/self.life)))
+       
+        surf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD)
 
 class tile_ign_Bullet(Bullet):
 
@@ -1777,9 +2293,7 @@ class tile_ign_Bullet(Bullet):
             return True 
        
         
-class Dropped_item(PhysicsEntity):
-    def __init__(self, game, e_type, pos, size):
-        super().__init__(game, e_type, pos, size)        
+
        
 class Wheelbot_bullet(tile_ign_Bullet):
     def __init__(self,game,animation,pos,size,type):
@@ -1793,7 +2307,7 @@ class Wheelbot_bullet(tile_ign_Bullet):
         self.flip = False 
         self.dead = False
 
-        self.light = LIGHT(40,pixel_shader(40,(137,31,227),1,False))
+        #self.light = LIGHT(40,pixel_shader(40,(137,31,227),1,False))
         self.center = [self.pos[0]+self.animation.img().get_width()/2, self.pos[1] + self.animation.img().get_height()/2]
 
     def rect(self):
@@ -1852,7 +2366,7 @@ class Wheelbot_bullet(tile_ign_Bullet):
             
 
             self.game.particles.append(collide_particle)
-            self.game.temp_lights.append([LIGHT(40,pixel_shader(40,(137,31,227),1,False)),4,end_point])
+            #self.game.temp_lights.append([LIGHT(40,pixel_shader(40,(137,31,227),1,False)),4,end_point])
             del self 
             return True 
             

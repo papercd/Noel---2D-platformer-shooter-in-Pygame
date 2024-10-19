@@ -4,7 +4,7 @@ import sys
 import time
 
 
-
+from assets import GameAssets
 from scripts.tilemap import Tilemap,Tile,Light
 from scripts.utils import load_images,load_tile_images,Animation
 from scripts.panel import tile_panel 
@@ -30,12 +30,12 @@ class Editor:
         pygame.init() 
         pygame.display.set_caption('editor')
 
-        
+    
         self.RENDER_SCALE = 2.5
         self.DEFAULT_LIGHT_RADIUS = 356
 
 
-        self.screen_res = [1640,1000]
+        self.screen_res = [940,700]
         self.native_res = [int(self.screen_res[0] / self.RENDER_SCALE) ,int(self.screen_res[1] / self.RENDER_SCALE)]
 
 
@@ -62,7 +62,6 @@ class Editor:
         #Now that we have our load_image function defined, let's load the background into our assets 
         #and have that blitted onto our screen rather than just a gray screen. 
 
-
         self.assets = {
            
             
@@ -86,7 +85,9 @@ class Editor:
             'building_door': load_tile_images('interactables/building_door_edit',background = 'transparent'),
             #'large_decor' : load_tile_images('tiles/large_decor'),
             'spawners' : load_tile_images('tiles/spawners',background='transparent'),
-            'trap_door' : load_tile_images('interactables/trap_door_edit' ,background= 'transparent')
+            'trap_door' : load_tile_images('interactables/trap_door_edit' ,background= 'transparent'),
+            #'ladder' : load_tile_images('tiles/ladder' ,background= 'transparent'),
+            'crafting_bench' : load_tile_images('interactables/crafting_bench_edit',background= 'transparent')
         } 
 
         
@@ -108,7 +109,9 @@ class Editor:
 
         self.cur_offgrid_layer = 0
 
-        self.json_file = 'test.json'
+        self.json_file = 'start_screen.json'
+
+        #self.json_file = 'main_menu.json'
 
         self.offgrid_layer_ind = alphabets('cur_off_layer')
         self.offgrid_layer_num = numbers(self.cur_offgrid_layer)
@@ -1078,7 +1081,7 @@ class Editor:
                         
                         range_ = input("Range? : ")
                         
-                        if range_ == 'n' or range == 'N':
+                        if range_ == 'n' or range_ == 'N':
                             self.Tilemap.ambientNodes.update_default_colors(self.ambient_rgba)                             
                         else: 
                             hulls_range =  input("y range for hull optimization: ")
@@ -1093,6 +1096,41 @@ class Editor:
                         n = int(input("x? :" ))
                         if self.Tilemap.ambientNodes.delete_node(n,self.ambient_node_ptr):
                             print("node successfully deleted.")
+
+                    if event.key == pygame.K_QUOTE:
+                        n = int(input("x?: "))
+                        node_to_change_color = self.Tilemap.ambientNodes.find_node(n) 
+                        if node_to_change_color:
+                            #if you find the node, then ask for the color values that you want to change. 
+                            UI.init(self.foreground_surf)
+                            menu = Menu(self,mpos)
+                            running = True 
+                            while running: 
+                                running, self.ambient_rgba  =  menu.run_ambient_settings()
+                                self.lights_engine.set_ambient(*self.ambient_rgba)
+                                self.render_surfaces(render_scroll)
+
+                            if node_to_change_color.default:
+                                confirm = input("the node that you selected is a default node. changing the color will change the\
+                                                color of all default nodes to the selected color. Continue?")
+                                if confirm == 'y' or confirm == 'Y':
+                                    self.Tilemap.ambientNodes.update_default_colors(self.ambient_rgba)
+                                    print("colors applied to all default nodes.")
+                                                                
+
+                                else: 
+                                    print("process cancelled.")
+                            else: 
+                                node_to_change_color.colorValue = self.ambient_rgba
+                                print("node's lighting color changed successsfully.")
+                                
+
+
+                        else: 
+                            print("node not found.")
+                        
+
+
 
                     if event.key == pygame.K_k:
                         self.ambient_override = not self.ambient_override 
