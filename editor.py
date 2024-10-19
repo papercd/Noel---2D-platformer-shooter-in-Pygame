@@ -4,7 +4,7 @@ import sys
 import time
 
 
-
+from assets import GameAssets
 from scripts.tilemap import Tilemap,Tile,Light
 from scripts.utils import load_images,load_tile_images,Animation
 from scripts.panel import tile_panel 
@@ -61,7 +61,6 @@ class Editor:
 
         #Now that we have our load_image function defined, let's load the background into our assets 
         #and have that blitted onto our screen rather than just a gray screen. 
-
 
         self.assets = {
            

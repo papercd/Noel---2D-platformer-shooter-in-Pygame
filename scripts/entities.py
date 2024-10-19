@@ -2018,7 +2018,7 @@ class RocketShell():
         return False
     
     def create_collision_effects(self,collided_tile_rect,dir,axis):
-        print(self.angle)
+        
         self.game.screen_shake = max(8,self.game.screen_shake)
         collision_pos = None
         angle_range = (int(180 - self.angle - 40),int(180 - self.angle + 40))

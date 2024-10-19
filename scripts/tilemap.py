@@ -1204,7 +1204,13 @@ class Tilemap:
 
     def render(self, surf, offset = (0,0),editor = False):
         
-        
+        sprite_source = None
+        if editor:  
+            sprite_source = self.game.assets 
+        else: 
+            sprite_source = self.game.general_sprites 
+            
+
 
         for x_cor in range(offset[0] // self.tile_size, (offset[0] + surf.get_width()) // self.tile_size +1):
             for y_cor in range(offset[1] // self.tile_size, (offset[1] + surf.get_height()) // self.tile_size +1): 
@@ -1216,15 +1222,15 @@ class Tilemap:
                         variant_sub = tile.variant.split(';')
 
                         if tile.type.endswith('door') and tile.type.split('_')[0] != 'trap':
-                            surf.blit(self.game.general_sprites[tile.type + '_' + variant_sub[0]][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])) 
+                            surf.blit(sprite_source[tile.type + '_' + variant_sub[0]][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])) 
 
                         else: 
-                            if isinstance(self.game.general_sprites[tile.type][int(variant_sub[0])],list):
+                            if isinstance(sprite_source[tile.type][int(variant_sub[0])],list):
                             #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
                         
-                                surf.blit(self.game.general_sprites[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                                surf.blit(sprite_source[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
                             else: 
-                                surf.blit(self.game.general_sprites[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                                surf.blit(sprite_source[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
     
 
                                                 
@@ -1253,12 +1259,12 @@ class Tilemap:
                         #surf.blit(self.game.interactables[tile.type + '_' +variant_sub[0]].images[tile.cur_frame],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))  
 
                     else: 
-                        if isinstance(self.game.general_sprites[tile.type][int(variant_sub[0])],list):
+                        if isinstance(sprite_source[tile.type][int(variant_sub[0])],list):
                         #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
                             
-                            surf.blit(self.game.general_sprites[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                            surf.blit(sprite_source[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
                         else: 
-                            surf.blit(self.game.general_sprites[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                            surf.blit(sprite_source[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
 
                         if editor and tile.type in PHYSICS_APPLIED_TILE_TYPES and tile.dirty: 
                             pygame.draw.rect(surf,(255,12,12), (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1],self.tile_size,self.tile_size),width = 1)
@@ -1273,8 +1279,6 @@ class Tilemap:
                             decal[1] += 1
                             if decal[1] >= 40:
                                 tile.decals.remove(decal)
-
-                        
                          
 
         #decorations rendering 
@@ -1282,13 +1286,13 @@ class Tilemap:
         for tile in self.decorations: 
             
                 variant_sub = tile.variant.split(';')
-                if isinstance(self.game.general_sprites[tile.type][int(variant_sub[0])],list):
+                if isinstance(sprite_source[tile.type][int(variant_sub[0])],list):
                 #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
                     
-                    surf.blit(self.game.general_sprites[tile.type][int(variant_sub[0])][int(variant_sub[1])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
+                    surf.blit(sprite_source[tile.type][int(variant_sub[0])][int(variant_sub[1])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
                 else: 
                     
-                    surf.blit(self.game.general_sprites[tile.type][int(variant_sub[0])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
+                    surf.blit(sprite_source[tile.type][int(variant_sub[0])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
         
 
 
