@@ -280,6 +280,7 @@ class myGame:
 
     def start_game(self):
         self.load_map_init_game_env('start_screen.json')
+        
         #self.show_start_sequence()
         while(True):
             self.handle_events()
@@ -622,9 +623,7 @@ class myGame:
         if self.curr_gameState == GameState.GameLoop:
             
         
-            pygame.mixer.music.load('data/music/Abstraction - Patreon Goal Reward Loops/Patreon Goal Reward Loops - Track 05.wav')
-            pygame.mixer.music.set_volume(0.3)
-            #pygame.mixer.music.play(loops=-1)
+            
              
             if self.mouse_pressed[0]:
                 if not self.cursor.interacting:

@@ -53,8 +53,8 @@ class Spark():
         if axis == 'x':
             reflected_angle = math.pi - angle 
         else:
-            reflected_angle =  angle
-            #reflected_angle = -180 + angle 
+            #reflected_angle =  angle
+            reflected_angle = -angle 
 
         return reflected_angle
 
@@ -64,7 +64,6 @@ class Spark():
         if self.speed <= 0:
             self.dead = True
             return True
-        
         self.movement = self.calculate_movement(dt)
         self.loc[0] += self.movement[0] * self.speed_factor
         tile_loc = (int(self.loc[0])//tilemap.tile_size,int(self.loc[1])//tilemap.tile_size)
@@ -81,17 +80,24 @@ class Spark():
                                 pygame.Rect(tile_loc[0] + 4, tile_loc[1] + 6, 6, 6)]
                 for check_rect in check_rects:
                     if check_rect.collidepoint(self.center): 
+                        if self.movement[0] <0 :
+                            self.loc[0] =  check_rect.right
+                        else:
+                            self.loc[0] =  check_rect.left
 
                         self.angle = self.calculate_bounce_angle(self.angle,'x')
                         self.speed *= 0.8  
                         #self.dead = True 
                         #return True
-                    
-
-            self.angle = self.calculate_bounce_angle(self.angle,'x')
-            self.speed *= 0.8  #
-            #self.dead = True 
-            #return True
+            else: 
+                if self.movement[0] <0 :
+                    self.loc[0] =  tile_loc[0] * tilemap.tile_size + tilemap.tile_size
+                else:
+                    self.loc[0] =  tile_loc[0] * tilemap.tile_size - 1
+                self.angle = self.calculate_bounce_angle(self.angle,'x')
+                self.speed *= 0.8  #
+                #self.dead = True 
+                #return True
 
 
         self.loc[1] += self.movement[1] * self.speed_factor
@@ -109,17 +115,25 @@ class Spark():
                                 pygame.Rect(tile_loc[0] + 4, tile_loc[1] + 6, 6, 6)]
                 for check_rect in check_rects:
                     if check_rect.collidepoint(self.center): 
-
+                        if self.movement[0] <0 :
+                            self.loc[1] =  check_rect.bottom
+                        else:
+                            self.loc[1] =  check_rect.top
+                            
                         self.angle = self.calculate_bounce_angle(self.angle,'y')
                         self.speed *= 0.8  
                         #self.dead = True 
                         #return True
                     
-
-            self.angle = self.calculate_bounce_angle(self.angle,'y')
-            self.speed *= 0.8  #
-            #self.dead = True 
-            #return True
+            else:
+                if self.movement[1] <0 :
+                    self.loc[1] =  tile_loc[1]* tilemap.tile_size + tilemap.tile_size
+                else:
+                    self.loc[1] =  tile_loc[1]* tilemap.tile_size - 1
+                self.angle = self.calculate_bounce_angle(self.angle,'y')
+                self.speed *= 0.8
+                #self.dead = True 
+                #return True
         
        
 
