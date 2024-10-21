@@ -40,6 +40,9 @@ class Spark():
 
     # gravity and friction
     def velocity_adjust(self, friction, force, terminal_velocity, dt):
+        friction += random.uniform(-0.01, 0.01)
+        force += random.uniform(-0.05, 0.05)
+
         movement = self.calculate_movement(dt)
         movement[1] = min(terminal_velocity, movement[1] + force * dt)
         movement[0] *= friction
@@ -142,6 +145,9 @@ class Spark():
         # a bunch of options to mess around with relating to angles...
         self.point_towards(math.pi / 2, 0.02)
         self.velocity_adjust(0.975, 0.05, 8, dt)
+        
+        angle_jitter = random.uniform(-0.1, 0.1)  # Small jitter in angle
+        self.angle += angle_jitter
         #self.angle += 0.02
 
         self.speed -= 0.1
