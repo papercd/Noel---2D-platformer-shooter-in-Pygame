@@ -125,6 +125,7 @@ class myGame:
         self.dithering_shader = self.lights_engine.load_shader_from_path('vertex.glsl','dithering.glsl')
 
         """
+        self.pixel_exp_shader = self.lights_engine.load_shader_from_path('vertex.glsl','exp_fragment.glsl')
         
         self.game_assets = GameAssets()
         self.general_sprites = self.game_assets.general_sprites
@@ -1011,7 +1012,7 @@ class myGame:
 
 
 
-            self.lights_engine.render(self.ambient_node_ptr.range,render_scroll, screenshake_offset)
+            self.lights_engine.render(self.amb_node_pienttr.range,render_scroll, screenshake_offset)
             
             #self.screen.blit(pygame.transform.scale(self.display_2,self.screen.get_size()),screenshake_offset)
 

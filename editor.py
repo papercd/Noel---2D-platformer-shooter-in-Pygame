@@ -56,12 +56,8 @@ class Editor:
      
 
 
-        #so coming back to here, we will define an assets dictionary that contains all of the assets
-        #(sprites) that we are going to use to create our game. 
-
-        #Now that we have our load_image function defined, let's load the background into our assets 
-        #and have that blitted onto our screen rather than just a gray screen. 
-
+        self.interactable_obj_sprites = GameAssets().interactable_obj_sprites
+        
         self.assets = {
            
             
@@ -109,7 +105,7 @@ class Editor:
 
         self.cur_offgrid_layer = 0
 
-        self.json_file = 'start_screen.json'
+        self.json_file = 'test.json'
 
         #self.json_file = 'main_menu.json'
 
