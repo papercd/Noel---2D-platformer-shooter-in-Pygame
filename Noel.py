@@ -164,12 +164,10 @@ class myGame:
 
         #player 
         self.PLAYER_DEFAULT_SPEED = 2.2
-        self.player_cur_vel = 0
-        self.accel_decel_rate = 0.7
-        self.accelerated_movement = 0
+        self.accel_rate = 0.7
 
-        self.player = PlayerEntity(self,(50,50),(14,16))
-        self.player_movement = [False,False]
+        self.player = PlayerEntity(self,(50,50),(14,16),self.PLAYER_DEFAULT_SPEED,self.accel_rate)
+        self.player_movement_input = [False,False]
 
         #HUD
         self.inven_on = True
@@ -398,7 +396,7 @@ class myGame:
             self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
 
 
-            self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
+            self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count)
             self.player.render(self.background_surf,render_scroll)
             self.background_surf.blit(blackout_surf,(0,0))
             
@@ -529,7 +527,7 @@ class myGame:
                         self.time_increment = True
 
                         """
-                        self.player_movement[0] = True
+                        self.player_movement_input[0] = True
 
                     if event.key == pygame.K_d: 
                         """
@@ -546,7 +544,7 @@ class myGame:
                         self.time_increment = True 
 
                         """
-                        self.player_movement[1] = True
+                        self.player_movement_input[1] = True
                         
                     if event.key == pygame.K_w:
                         
@@ -562,7 +560,7 @@ class myGame:
                         self.start_sequence_time = 0
                     if event.key == pygame.K_p:
 
-                        self.load_map_init_game_env('test.json')
+                        self.load_map_init_game_env('start_screen.json')
 
                         self.curr_gameState = GameState.GameLoop
 
@@ -594,9 +592,9 @@ class myGame:
                     if event.key == pygame.K_w: 
                         self.player.jump_cut()
                     if event.key == pygame.K_a: 
-                        self.player_movement[0] = False
+                        self.player_movement_input[0] = False
                     if event.key == pygame.K_d:
-                        self.player_movement[1] = False 
+                        self.player_movement_input[1] = False 
                     if event.key == pygame.K_s: 
                         self.player.crouch =False 
 
@@ -895,7 +893,7 @@ class myGame:
 
         
 
-            self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
+            self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count)
             self.player.render(self.background_surf,render_scroll)
 
             #------------------------grass renderer stuff
@@ -944,22 +942,9 @@ class myGame:
 
         """
             #add decel and accel here 
-                        
-            if(self.player_movement[1]-self.player_movement[0])  >0 :
-                #means that the intent of the player movement is to the right.  
-                self.player_cur_vel = min( 1.3*self.PLAYER_DEFAULT_SPEED,self.accel_decel_rate + self.player_cur_vel)
-                
-            elif (self.player_movement[1]-self.player_movement[0]) <0 :
-                #means that the intent of the player movement is to the left.  
-                self.player_cur_vel = max( -1.3*self.PLAYER_DEFAULT_SPEED,self.player_cur_vel- self.accel_decel_rate )
-                
-            else: 
-                if self.player_cur_vel >= 0 :
-                    self.player_cur_vel = max(0,self.player_cur_vel - self.accel_decel_rate)
-                    
-                else:
-                    self.player_cur_vel = min(0,self.player_cur_vel + self.accel_decel_rate)
             
+            self.player.accelerate(self.player_movement_input)
+
             
             """
             self.HUD.render_expanded(self.cursor,self.display,(0,0),closing = not self.inven_on)
@@ -1046,7 +1031,7 @@ class myGame:
 
             self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
 
-            self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count,(self.player_cur_vel,0))
+            self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count)
             self.player.render(self.background_surf,render_scroll)
 
 
