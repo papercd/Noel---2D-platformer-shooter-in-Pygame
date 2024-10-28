@@ -129,12 +129,15 @@ class myGame:
         
         self.game_assets = GameAssets()
         self.general_sprites = self.game_assets.general_sprites
-        self.pygame_logo = self.general_sprites['start_logo']
-        self.pygame_logo_dim = self.pygame_logo.get_size()
-        self.pygame_logo_ratio = self.pygame_logo_dim[0] /self.pygame_logo_dim[1] 
         self.interactable_obj_sprites = self.game_assets.interactable_obj_sprites
         self.enemies = self.game_assets.enemies
         
+
+        self.pygame_logo = self.general_sprites['start_logo']
+        self.pygame_logo_dim = self.pygame_logo.get_size()
+        self.pygame_logo_ratio = self.pygame_logo_dim[0] /self.pygame_logo_dim[1]
+        self.pygame_logo = pygame.transform.smoothscale(self.pygame_logo.convert_alpha(),(self.native_res[0]//2,  (self.native_res[0]//2) / self.pygame_logo_ratio))
+        self.pygame_logo_dim = self.pygame_logo.get_size()
         #game objects using assets 
 
         self.weapons = {
@@ -283,7 +286,7 @@ class myGame:
     def start_game(self):
         self.load_map_init_game_env('start_screen.json')
         
-        #self.show_start_sequence()
+        self.show_start_sequence()
         while(True):
             self.handle_events()
             self.update_render()
@@ -297,13 +300,6 @@ class myGame:
     def show_start_sequence(self):
         
         self.logo_time = 0
-        logo = self.general_sprites['start_logo']
-        logo_dim = logo.get_size()
-        logo_dim_ratio = logo_dim[0] / logo_dim[1]
-        
-        scaled_logo = pygame.transform.smoothscale(logo.convert_alpha(),(self.native_res[0]//2,  (self.native_res[0]//2) / logo_dim_ratio))
-        
-
 
         while self.logo_time <600 :
             
@@ -333,7 +329,7 @@ class myGame:
             
             
             #self.foreground_surf.blit(logo,(0,0))
-            self.foreground_surf.blit(scaled_logo,(self.native_res[0]//4, self.native_res[1]//2 - scaled_logo.get_height()//2))
+            self.foreground_surf.blit(self.pygame_logo,(self.native_res[0]//4, self.native_res[1]//2 - self.pygame_logo_dim[1]//2))
             
             self.foreground_surf.blit(blackout_surf,(0,0))
             self.cursor.update(self.foreground_surf)
