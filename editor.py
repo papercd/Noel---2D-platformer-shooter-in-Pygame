@@ -105,7 +105,7 @@ class Editor:
 
         self.cur_offgrid_layer = 0
 
-        self.json_file = 'test.json'
+        self.json_file = 'start_screen.json'
 
         #self.json_file = 'main_menu.json'
 

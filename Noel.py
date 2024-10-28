@@ -29,7 +29,7 @@ the game itself started as an extension from a tutorial video I've watched on yo
 
 "DafluffyPotato". it was a 6 hour tutorial that showed how to create the most basic framework for a platformer game 
 
-that included a collision detection method, a rendering system, and an entities handling system. He had his own way of creating a game 
+that included a collision detection methpod, a rendering system, and an entities handling system. He had his own way of creating a game 
 
 loop that can handle collision detection between entities, how to create camera movement, how to create an animation system, and so
 
@@ -129,6 +129,9 @@ class myGame:
         
         self.game_assets = GameAssets()
         self.general_sprites = self.game_assets.general_sprites
+        self.pygame_logo = self.general_sprites['start_logo']
+        self.pygame_logo_dim = self.pygame_logo.get_size()
+        self.pygame_logo_ratio = self.pygame_logo_dim[0] /self.pygame_logo_dim[1] 
         self.interactable_obj_sprites = self.game_assets.interactable_obj_sprites
         self.enemies = self.game_assets.enemies
         
@@ -286,19 +289,13 @@ class myGame:
             self.update_render()
     
 
-    def smoothclamp(self,x, mi, mx): 
-        return mi + (mx-mi)*(lambda t: np.where(t < 0 , 0, np.where( t <= 1 , 3*t**2-2*t**3, 1 ) ) )( (x-mi)/(mx-mi) )
 
-    def smoothclamp_decreasing(self, x, mi, mx):
-        def smoothstep(t):
-            return np.where(t < 0, 1, np.where(t <= 1, 1 - (3*t**2 - 2*t**3), 0))
-        
-        t = (x - mi) / (mx - mi)
-        
-        return mi + (mx - mi) * smoothstep(t)
+    def resize_resolution(self):
+        pass
 
 
     def show_start_sequence(self):
+        
         self.logo_time = 0
         logo = self.general_sprites['start_logo']
         logo_dim = logo.get_size()
@@ -328,10 +325,10 @@ class myGame:
 
             if self.logo_time <= 300 :
                 
-                blackout_surf.set_alpha(self.smoothclamp(255-self.logo_time,0,255))
+                blackout_surf.set_alpha(smoothclamp(255-self.logo_time,0,255))
             else: 
                
-                blackout_surf.set_alpha(255-min(255,self.smoothclamp_decreasing(self.logo_time,0,600)))
+                blackout_surf.set_alpha(255-min(255,smoothclamp_decreasing(self.logo_time,0,600)))
             
             
             
@@ -997,7 +994,7 @@ class myGame:
 
 
 
-            self.lights_engine.render(self.amb_node_pienttr.range,render_scroll, screenshake_offset)
+            self.lights_engine.render(self.ambient_node_ptr.range,render_scroll, screenshake_offset)
             
             #self.screen.blit(pygame.transform.scale(self.display_2,self.screen.get_size()),screenshake_offset)
 

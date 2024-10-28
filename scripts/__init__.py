@@ -1,7 +1,7 @@
 
 from .ui import startScreenUI 
 from .tilemap import Tilemap
-from .utils import load_image, load_images, load_tile_images, Animation, load_sounds
+from .utils import load_image, load_images, load_tile_images, Animation, load_sounds,smoothclamp,smoothclamp_decreasing
 from .entities import PlayerEntity,  Wheel_bot, Ball_slinger, Bullet,Canine
 from .clouds import Clouds
 from .particles import Particle

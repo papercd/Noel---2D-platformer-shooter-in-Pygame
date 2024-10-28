@@ -74,6 +74,7 @@ class Spark():
         if  key in tilemap.tilemap:
             
             tile = tilemap.tilemap[key]
+            
             if tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
                 check_rects = [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
                                 pygame.Rect(tile_loc[0] + 12, tile_loc[1], 4, 12),
@@ -109,6 +110,7 @@ class Spark():
         
         if  key in tilemap.tilemap:
             tile = tilemap.tilemap[key]
+            
             if tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
                 check_rects = [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
                                 pygame.Rect(tile_loc[0] + 12, tile_loc[1], 4, 12),
