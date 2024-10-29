@@ -125,7 +125,7 @@ class myGame:
         self.dithering_shader = self.lights_engine.load_shader_from_path('vertex.glsl','dithering.glsl')
 
         """
-        self.pixel_exp_shader = self.lights_engine.load_shader_from_path('vertex.glsl','exp_fragment.glsl')
+        #self.pixel_exp_shader = self.lights_engine.load_shader_from_path('vertex.glsl','exp_fragment.glsl')
         
         self.game_assets = GameAssets()
         self.general_sprites = self.game_assets.general_sprites
