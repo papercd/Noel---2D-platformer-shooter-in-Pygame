@@ -96,14 +96,14 @@ class myGame:
         pygame.mixer.pre_init(44100, -16, 2, 512)
 
         self.screen_info_obj = pygame.display.Info()
-       
+         
 
         self.clock = pygame.time.Clock()
         self.screen_size = (2560,1440)
         #self.screen_size = (2400,1500)
         self.screen_to_native_ratio = 4
         self.native_res = (int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio))
-       
+        
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
         
         
@@ -390,7 +390,9 @@ class myGame:
     def _handle_common_events(self,event):
         if event.type == pygame.QUIT:
                 self.quit_game() 
-            
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_F12:
+                pygame.display.toggle_fullscreen()
+
         elif event.type == pygame.MOUSEWHEEL:
             if self.curr_gameState == GameState.GameLoop:
                 self.player.change_weapon(event.y)
@@ -477,7 +479,7 @@ class myGame:
                         self.shift_pressed = True 
                         if self.inven_on: 
                             self.player.running = True 
-
+            
                     if event.key == pygame.K_SPACE: 
                         self.player.interact()
 
