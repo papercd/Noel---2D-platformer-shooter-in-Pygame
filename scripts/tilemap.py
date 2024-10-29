@@ -3,6 +3,7 @@ import json
 import random 
 import pygame
 import heapq
+from scripts.entities import Canine, Wheel_bot,Ball_slinger
 from my_pygame_light2d.hull import Hull
 from my_pygame_light2d.light import PointLight
 from scripts.weapon_list import ambientNodeList
@@ -545,7 +546,9 @@ class Tilemap:
                         pass
     """
 
-    def load(self,path):
+    
+
+    def load_map_return_lights(self,path):
         f = open(path,'r')
         tilemap_data = json.load(f)
         
@@ -909,6 +912,32 @@ class Tilemap:
         """
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
+
+    def extract_game_objs(self):
+        for grass in self.extract([('live_grass','0;0'),('live_grass','1;0'),('live_grass','2;0'),('live_grass','3;0'),('live_grass','4;0'),('live_grass','5;0')]):
+            self.game.grass_locations.append((grass.pos[0], grass.pos[1]))
+        
+        for loc in self.game.grass_locations:
+            self.game.gm.place_tile(loc,14,[0,3,4])
+
+        #extract enemies from tilemap and add them into the enemy container 
+
+        for spawner in self.extract([('spawners','0;0'),('spawners','1;0'),('spawners','2;0'),('spawners','3;0'),('spawners','4;0')]):   
+            if spawner.variant == '0;0':
+                
+                self.game.player.pos = [spawner.pos[0] * self.tile_size, spawner.pos[1] * self.tile_size]
+                
+            elif spawner.variant == '1;0': 
+                self.game.enemies.append(Canine(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(34,23),'black'))
+                
+        
+            elif spawner.variant == '2;0':
+                
+                self.game.enemies.append(Wheel_bot(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(20,22)))
+
+            elif spawner.variant == "4;0":
+                self.game.enemies.append(Ball_slinger(self.game,(spawner.pos[0] *self.tile_size,spawner.pos[1] *self.tile_size), (13,19)))
+ 
 
     def extract(self,id_pairs, keep = False):
         matches = []

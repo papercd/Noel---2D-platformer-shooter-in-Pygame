@@ -39,7 +39,7 @@ class Cursor:
     def set_cooldown(self) -> None:
         self.cooldown = 10
 
-    def update(self,surf):
+    def update_render(self,surf):
         
         self.pos = pygame.mouse.get_pos()
         self.pos = ((self.pos[0]/2),(self.pos[1]/2))

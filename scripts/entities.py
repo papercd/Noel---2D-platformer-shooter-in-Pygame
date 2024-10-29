@@ -10,12 +10,11 @@ from scripts.los import line_of_sight
 from scripts.particles import Particle,non_animated_particle,bullet_collide_particle,bullet_trail_particle_wheelbot
 from scripts.health import HealthBar,StaminaBar
 from scripts.indicator import indicator 
-from scripts.tilemap import Node,Tile
 from scripts.fire import Flame_particle
 from scripts.spark import Spark 
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
 from scripts.weapon_list import DoublyLinkedList
-from scripts.range import Rectangle
+from scripts.QuadTreeRange import Rectangle
 from my_pygame_light2d.light import PointLight
 
 
@@ -363,7 +362,7 @@ class Enemy(PhysicsEntity):
     def set_state(self, action):
         if action != self.state:
             self.state = action
-            self.animation = self.game.enemies[self.type + '/' + self.state].copy()
+            self.animation = self.game.enemy_sprites[self.type + '/' + self.state].copy()
 
     def render(self, surf, offset=(0, 0), shake=0):
         x_min = offset[0] - self.size[0]
@@ -981,7 +980,7 @@ class Canine(Enemy):
     def set_state(self,action):
         if action != self.state: 
             self.state = action 
-            self.animation = self.game.enemies[self.type + '/' + self.color  + '/'+ self.state].copy() 
+            self.animation = self.game.enemy_sprites[self.type + '/' + self.color  + '/'+ self.state].copy() 
 
     def update(self,tilemap,player_pos,dt,movement = (0,0)):
      
