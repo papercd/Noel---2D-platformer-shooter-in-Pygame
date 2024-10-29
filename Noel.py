@@ -108,15 +108,17 @@ class myGame:
        
 
         self.clock = pygame.time.Clock()
+        #self.screen_size = (2400,1500)
         self.screen_size = (1200,750)
-        self.native_res = (int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5))
+        self.screen_to_native_ratio = 2
+        self.native_res = (int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio))
        
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
         
         
-        self.buffer_surf = pygame.Surface((int(self.screen_size[0]/2.5),int(self.screen_size[1]/2.5)),pygame.SRCALPHA)
-        self.background_surf = pygame.Surface((int(self.screen_size[0]//2.5),int(self.screen_size[1]/2.5)),pygame.SRCALPHA)
-        self.foreground_surf = pygame.Surface((int(self.screen_size[0]//2.5),int(self.screen_size[1]//2.5)),pygame.SRCALPHA)
+        self.buffer_surf = pygame.Surface((int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio)),pygame.SRCALPHA)
+        self.background_surf = pygame.Surface((int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio)),pygame.SRCALPHA)
+        self.foreground_surf = pygame.Surface((int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio)),pygame.SRCALPHA)
 
         """
         self.test_shader = self.lights_engine.load_shader_from_path('vertex.glsl','fog_fragment.glsl')
@@ -134,6 +136,7 @@ class myGame:
         
 
         self.pygame_logo = self.general_sprites['start_logo']
+        self.pygame_logo_center_offset = (-4/self.screen_to_native_ratio ,35/self.screen_to_native_ratio)
         self.pygame_logo_dim = self.pygame_logo.get_size()
         self.pygame_logo_ratio = self.pygame_logo_dim[0] /self.pygame_logo_dim[1]
         self.pygame_logo = pygame.transform.smoothscale(self.pygame_logo.convert_alpha(),(self.native_res[0]//2,  (self.native_res[0]//2) / self.pygame_logo_ratio))
@@ -329,7 +332,7 @@ class myGame:
             
             
             #self.foreground_surf.blit(logo,(0,0))
-            self.foreground_surf.blit(self.pygame_logo,(self.native_res[0]//4, self.native_res[1]//2 - self.pygame_logo_dim[1]//2))
+            self.foreground_surf.blit(self.pygame_logo,(self.native_res[0]//4 + self.pygame_logo_center_offset[0], self.native_res[1]//2 - self.pygame_logo_dim[1]//2 - self.pygame_logo_center_offset[1]))
             
             self.foreground_surf.blit(blackout_surf,(0,0))
             self.cursor.update(self.foreground_surf)
