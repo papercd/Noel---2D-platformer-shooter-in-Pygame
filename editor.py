@@ -35,7 +35,7 @@ class Editor:
         self.DEFAULT_LIGHT_RADIUS = 356
 
 
-        self.screen_res = [940,700]
+        self.screen_res = [2200,1200]
         self.native_res = [int(self.screen_res[0] / self.RENDER_SCALE) ,int(self.screen_res[1] / self.RENDER_SCALE)]
 
 

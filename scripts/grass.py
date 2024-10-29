@@ -70,10 +70,12 @@ This is the amount of spacial padding the tile images have to fit the blades spi
 probably be set to the height of your tallest blade of grass.
 '''
 
+
 import os
 import random
 import math
 from copy import deepcopy
+from my_pygame_light2d.light import PointLight
 
 import pygame
 
@@ -92,10 +94,10 @@ def normalize(val, amt, target):
 
 # the main object that manages the grass system
 class GrassManager:
-    def __init__(self, grass_path, tile_size=15, shade_amount=100, stiffness=360, max_unique=10, place_range=[1, 1], padding=13):
+    def __init__(self, game, grass_path, tile_size=15, shade_amount=100, stiffness=360, max_unique=10, place_range=[1, 1], padding=13,burn_spread_speed = 1,burn_rate = 1):
         # asset manager
         self.ga = GrassAssets(grass_path, self)
-
+        self.game = game
         # caching variables
         self.grass_id = 0
         self.grass_cache = {}
@@ -113,7 +115,9 @@ class GrassManager:
         self.vertical_place_range = place_range
         self.ground_shadow = [0, (0, 0, 0), 100, (0, 0)]
         self.padding = padding
-
+        self.burn_spread_speed = burn_spread_speed
+        self.burn_rate = burn_rate
+        
     # enables circular shadows that appear below each blade of grass
     def enable_ground_shadows(self, shadow_strength=40, shadow_radius=2, shadow_color=(0, 0, 1), shadow_shift=(0, 0)):
         # don't interfere with colorkey
@@ -184,8 +188,10 @@ class GrassManager:
         for pos in render_list:
             tile = self.grass_tiles[pos]
             if tile.burning == 0:
+                if tile.appended == False: 
+                    self.game.lights_engine.lights.append(tile.light)
+                    tile.appended = True
 
-                
                 for offset_ in BURN_CHECK_OFFSETS:
                     check_pos = (pos[0] + offset_[0] , pos[1]+offset_[1] )
                     if check_pos in self.grass_tiles:
@@ -223,6 +229,8 @@ class GrassAssets:
 
         #if the grass is burning, add a burning color to it. 
         if 0<scale < 1:
+
+
             red_mask = pygame.mask.from_surface(rot_img)
             red_mask.to_surface(rot_img,setcolor=(min(255,palette[0]*(1.8)*(1/scale*6)),min(255,palette[1] *(1/scale*1)) ,min(255,palette[2] *(1/scale*1))))
             
@@ -238,6 +246,7 @@ class GrassAssets:
 # the grass tile object that contains data for the blades
 class GrassTile:
     def __init__(self, tile_size, location, amt, config, ga, gm):
+        
         self.ga = ga
         self.gm = gm
         self.loc = location
@@ -248,10 +257,17 @@ class GrassTile:
         self.padding = self.gm.padding
         self.inc = 90 / self.precision
 
-        self.burn_life = 30
-        self.max_burn_life = 30
+        self.burn_life = int(200/self.gm.burn_rate)
+        self.max_burn_life = int(200/self.gm.burn_rate)
 
-        self.burning = 60
+        self.burning = int(60 / self.gm.burn_spread_speed)
+
+        self.dead = False
+        self.center = (location[0] + 8,location[1] + 16)
+        self.light = PointLight(self.center,power=1,radius=15,illuminator=self,life = self.max_burn_life)
+        self.light.cast_shadows = True
+        self.light.set_color(149,46,17)
+        self.appended = False 
 
         # generate blade data
         y_range = self.gm.vertical_place_range[1] - self.gm.vertical_place_range[0]
@@ -332,6 +348,7 @@ class GrassTile:
             if self.burn_life  == 0:
                 self.blades = [None] * len(self.blades)
                 check_loc = (self.loc[0]//self.size,self.loc[1]//self.size)
+                self.dead = True
                 del self.gm.grass_tiles[check_loc]
                 del self
                 

@@ -174,7 +174,8 @@ class myGame:
         self.HUD = HUD(self.player,self.general_sprites['health_UI'],self.foreground_surf_dim)
         
         #grass manager
-        self.gm = GrassManager('data/images/tiles/live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
+        self.gm = GrassManager(self,'data/images/tiles/live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
+                               max_unique = 5,place_range=[1,1],burn_spread_speed= 3,burn_rate= 1.2)
 
         #game object containers 
         self.collectable_items = []
@@ -416,7 +417,7 @@ class myGame:
                 self._handle_common_events(event)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RETURN:
-                        self.logo_time = max(450,self.logo_time)
+                        self.logo_time = max(480,self.logo_time)
                         self.start_sequence_time = 0
                         break 
 					
@@ -475,6 +476,13 @@ class myGame:
             for event in pygame.event.get():
                 self._handle_common_events(event)
                 if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_m:
+                        self.gm.burn_tile((76,11))
+                    if event.key == pygame.K_n:
+                        positions = [(74,11),(75,11),(76,11),(77,11)]
+                        for pos in positions: 
+                            self.gm.place_tile(pos,14,[0,3,4]) 
+                        
                     if event.key == pygame.K_LSHIFT:
                         self.shift_pressed = True 
                         if self.inven_on: 
@@ -772,24 +780,26 @@ class myGame:
                     del self.particles[i]
 
             # Process physical particles
-            for i in range(len(self.physical_particles) - 1, -1, -1):
-                particle = self.physical_particles[i]
-                kill = particle.update_pos(self.Tilemap, self.frame_count)
-                if kill:
-                    del self.physical_particles[i]
-                    continue
+            for i, particle in enumerate(self.physical_particles.copy()):
+                    
+                    kill = particle.update_pos(self.Tilemap,self.frame_count)
+                    if kill: 
+                        self.physical_particles.remove(particle)
+                        continue 
 
-                particle.render(self.buffer_surf, offset=render_scroll)
+                    particle.render(self.buffer_surf,offset = render_scroll)
 
-                if i % 4 == 0:
-                    xx, yy = particle.pos[0], particle.pos[1]
-                    r = particle.r * 3
-                    rangeCircle = Circle(Vector2(xx, yy), r)
+                    if i % 4 == 0:
+                        xx, yy = particle.pos[0],particle.pos[1]
+                        r = particle.r * 3 
+                        
+                        rangeCircle = Circle(Vector2(xx, yy), r)
 
-                    nearby_entities = quadtree.queryRange(rangeCircle, "enemy")
-                    for entity in nearby_entities:
-                        if entity.state != 'death' and particle.collide(entity):
-                            entity.hit(particle.damage)
+                        nearby_entities = quadtree.queryRange(rangeCircle,"enemy")
+
+                        for entity in nearby_entities:
+                            if  entity.state != 'death' and particle.collide(entity):
+                                entity.hit(particle.damage)
 
             # Process sparks
             for i in range(len(self.sparks) - 1, -1, -1):
@@ -816,75 +826,6 @@ class myGame:
                 if kill:
                     del self.non_animated_particles[i]
 
-
-            """
-            for bullet in self.enemy_bullets.copy():
-                kill = bullet.update_pos(self.Tilemap)
-                bullet.render(self.background_surf,offset=render_scroll)
-                if kill: 
-                    self.enemy_bullets.remove(bullet)
-
-            for particle in self.particles.copy():
-                if particle == None: 
-                    self.particles.remove(particle)
-                else:
-                    kill =particle.update()
-                    particle.render(self.background_surf,offset = render_scroll)
-                    if particle.type =='leaf':
-                        particle.pos[0] += math.sin(particle.animation.frame * 0.035) * 0.3
-                    if particle.source =='player' and particle.type[0:5] == 'smoke':
-                        if self.player.cur_weapon_node:
-                            particle.pos = self.player.cur_weapon_node.weapon.opening_pos
-                    if kill: 
-                        self.particles.remove(particle)
-            
-
-            for i, particle in enumerate(self.physical_particles.copy()):
-                    
-                    kill = particle.update_pos(self.Tilemap,self.frame_count)
-                    if kill: 
-                        self.physical_particles.remove(particle)
-                        continue 
-
-                    particle.render(self.buffer_surf,offset = render_scroll)
-
-                    if i % 4 == 0:
-                        xx, yy = particle.pos[0],particle.pos[1]
-                        r = particle.r * 3 
-                        
-                        rangeCircle = Circle(Vector2(xx, yy), r)
-
-                        nearby_entities = quadtree.queryRange(rangeCircle,"enemy")
-
-                        for entity in nearby_entities:
-                            if  entity.state != 'death' and particle.collide(entity):
-                                entity.hit(particle.damage)
-                        
-            for spark in self.sparks.copy():
-                kill = spark.update(self.Tilemap,self.dt*30)
-                if kill: 
-
-                    self.sparks.remove(spark)
-                    continue 
-                
-                spark.render(self.background_surf,render_scroll)
-
-                 
-
-                    
-            self.background_surf.blit(self.buffer_surf,(0,0))
-
-
-            for particle in self.non_animated_particles.copy():
-                if particle == None: 
-                    self.non_animated_particles.remove(particle)
-                else: 
-                    kill = particle.update(self.dt)
-                    particle.render(self.background_surf,offset =render_scroll)
-                    if kill:
-                        self.non_animated_particles.remove(particle)
-            """
-        
             #player update and render
             self.player.accelerate(self.player_movement_input)
             self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count)

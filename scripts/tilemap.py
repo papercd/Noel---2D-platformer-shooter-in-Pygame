@@ -634,7 +634,7 @@ class Tilemap:
         for i in range(0,self.offgrid_layers):
             for tile_key in tilemap_data['offgrid_'+ str(i)]:
                 if tilemap_data['offgrid_' + str(i)][tile_key]["type"] == "lights":
-                    print("check")
+                    
                     if isinstance(tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][0],int):
                         light = PointLight(position = (tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][0]*self.tile_size+7,tilemap_data['offgrid_'+ str(i)][tile_key]["pos"][1]*self.tile_size+3),\
                                          power= tilemap_data['offgrid_'+ str(i)][tile_key]["power"],radius = tilemap_data['offgrid_'+ str(i)][tile_key]["radius"] )
@@ -652,22 +652,16 @@ class Tilemap:
 
                 else: self.offgrid_tiles[i][tile_key] = Tile(tilemap_data['offgrid_'+str(i)][tile_key]["type"],tilemap_data['offgrid_'+str(i)][tile_key]["variant"],tilemap_data['offgrid_'+str(i)][tile_key]["pos"] )
 
-
+        # adding decoration tiles 
         for tile_value in tilemap_data['decor']:
             self.decorations.append(Tile(tile_value["type"],tile_value["variant"],tile_value["pos"]))
 
         
+        # adding grass 
         for grass_key in tilemap_data['grass']:
             self.grass[grass_key] = Tile(tilemap_data['grass'][grass_key]["type"],tilemap_data['grass'][grass_key]["variant"],tilemap_data['grass'][grass_key]["pos"] )
        
-        """        for tile_value in tilemap_data['offgrid']:
-            self.offgrid_tiles.append(Tile(tile_value["type"],tile_value["variant"],tile_value["pos"]))
-       
-            
-            if (tile_value["pos"][0],tile_value["pos"][1]) not in self.offgrid_tiles_pos:
-                print(tile_value["pos"][0],tile_value["pos"][1])
-                self.offgrid_tiles_pos[(tile_value["pos"][0],tile_value["pos"][1])] = True 
-        """
+        
         f.close
         return lights
 
@@ -903,13 +897,16 @@ class Tilemap:
 
 
     def extract_game_objs(self):
+        
+        # extract grass tiles and place them down using the grass manager
+        
         for grass in self.extract([('live_grass','0;0'),('live_grass','1;0'),('live_grass','2;0'),('live_grass','3;0'),('live_grass','4;0'),('live_grass','5;0')]):
             self.game.grass_locations.append((grass.pos[0], grass.pos[1]))
         
         for loc in self.game.grass_locations:
             self.game.gm.place_tile(loc,14,[0,3,4])
 
-        #extract enemies from tilemap and add them into the enemy container 
+        # extract enemies from tilemap and add them into the enemy container 
 
         for spawner in self.extract([('spawners','0;0'),('spawners','1;0'),('spawners','2;0'),('spawners','3;0'),('spawners','4;0')]):   
             if spawner.variant == '0;0':
