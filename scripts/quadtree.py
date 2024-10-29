@@ -1,6 +1,6 @@
 import pygame
 from pygame.math import Vector2
-from scripts.range import *
+from scripts.QuadTreeRange import *
 
 class QuadTree:
     def __init__(self, capacity, boundary):

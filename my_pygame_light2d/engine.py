@@ -74,7 +74,7 @@ class LightingEngine:
 
         # Configure pygame display
         self._pygame_display = pygame.display.set_mode(
-            self._screen_res, pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF | pygame.RESIZABLE)
+            self._screen_res, pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF)
         
         
 

@@ -105,7 +105,7 @@ class Editor:
 
         self.cur_offgrid_layer = 0
 
-        self.json_file = 'start_screen.json'
+        self.json_file = 'test.json'
 
         #self.json_file = 'main_menu.json'
 
@@ -113,7 +113,7 @@ class Editor:
         self.offgrid_layer_num = numbers(self.cur_offgrid_layer)
 
         try: 
-            self.lights_engine.lights = self.Tilemap.load(self.json_file)
+            self.lights_engine.lights = self.Tilemap.load_map_return_lights(self.json_file)
         except FileNotFoundError:
             pass
         

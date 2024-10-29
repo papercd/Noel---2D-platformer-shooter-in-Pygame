@@ -22,16 +22,16 @@ def load_image(path,background = 'black'):
     return sprite 
 
 
-def smoothclamp(x, mi, mx): 
-        return mi + (mx-mi)*(lambda t: np.where(t < 0 , 0, np.where( t <= 1 , 3*t**2-2*t**3, 1 ) ) )( (x-mi)/(mx-mi) )
+def smoothclamp(x, mi, mx):
+    t = (x - mi) / (mx - mi)
+    smooth_t = np.where(t < 0, 0, np.where(t <= 1, 3 * t**2 - 2 * t**3, 1))
+    return mi + (mx - mi) * smooth_t
 
 def smoothclamp_decreasing(x, mi, mx):
-    def smoothstep(t):
-        return np.where(t < 0, 1, np.where(t <= 1, 1 - (3*t**2 - 2*t**3), 0))
-    
     t = (x - mi) / (mx - mi)
-    
-    return mi + (mx - mi) * smoothstep(t)
+    smooth_t = np.where(t < 0, 1, np.where(t <= 1, 1 - (3 * t**2 - 2 * t**3), 0))
+    return mi + (mx - mi) * smooth_t
+
 
 
 

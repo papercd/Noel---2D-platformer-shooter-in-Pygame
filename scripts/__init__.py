@@ -17,5 +17,5 @@ from .inventory import Item, ITEMS
 
 
 from .quadtree import *
-from .range import * 
+from .QuadTreeRange import * 
 
