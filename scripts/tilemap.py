@@ -240,12 +240,12 @@ class Tilemap:
             if tile_info[3].split('_')[0] == 'trap':
                 # if it is a trapdoor
                 tile = Trapdoor(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos, (16,5) , self.game.interactable_obj_sprites[tile_info[3]]) 
-                self.create_hull_tile_ver(tile)
+                self._create_hull_tile_ver(tile)
 
                 self.tilemap[str(tile_pos[0]) + ';' + str(tile_pos[1])] = tile 
             else: 
                 tile = Door(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos, (4,32), self.game.interactable_obj_sprites[tile_info[3] +'_'+ tile_info[5][0]])
-                self.create_hull_tile_ver(tile)
+                self._create_hull_tile_ver(tile)
 
                 self.tilemap[str(tile_pos[0]) + ';' + str(tile_pos[1])] = tile
                 self.tilemap[str(tile_pos[0]) + ';' + str(tile_pos[1]+1)] = tile
@@ -254,9 +254,9 @@ class Tilemap:
                 tile = CraftingBench(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos)
                 self.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = tile 
             else:
-                enclosed = self.check_enclosure(tile_pos,self.tilemap)
+                enclosed = self._check_enclosure(tile_pos,self.tilemap)
                 tile = Tile(tile_info[3],str(tile_info[5][0]) + ';' + str(tile_info[5][1]),tile_pos,enclosed = enclosed)
-                self.create_hull_tile_ver(tile)
+                self._create_hull_tile_ver(tile)
             
                 self.tilemap[str(tile_pos[0])+';'+str(tile_pos[1])] = tile
                 self.update_enclosure(tile)
@@ -280,7 +280,7 @@ class Tilemap:
                     self.tilemap[check_loc].enclosed = True
                             
 
-    def create_hull_tile_ver(self,tile_data):
+    def _create_hull_tile_ver(self,tile_data):
 
         if tile_data.type != "spawners":
             tile_type_check = len(tile_data.type.split('_')) == 1
@@ -396,7 +396,7 @@ class Tilemap:
             tile_data.hull = None
 
 
-    def create_hull(self,tile_data):
+    def _create_hull(self,tile_data):
         
         hulls = []
 
@@ -519,7 +519,7 @@ class Tilemap:
         else: 
             return None
 
-    def check_enclosure(self,tile_data,tilemap_data):
+    def _check_enclosure(self,tile_data,tilemap_data):
         for offset in [(-1,0),(1,0),(0,1),(0,-1)]:
             check_loc = str(tile_data[0] + offset[0]) + ';' + str(tile_data[1] + offset[1])
 
@@ -551,8 +551,8 @@ class Tilemap:
     def load_map_return_lights(self,path):
         f = open(path,'r')
         tilemap_data = json.load(f)
-        
-        
+
+        #empty obj containers 
         lights = []
         self.tilemap = {}
         self.grass = {}
@@ -560,74 +560,62 @@ class Tilemap:
         self.decorations = []
         self.path_graph = {}
         self.ambientNodes = ambientNodeList()
-
  
-
         self.tilemap = {}
         self.grass = {}
         self.offgrid_tiles = [{} for i in range(0,self.offgrid_layers)]
         self.decorations = []
         self.path_graph = {}
          
+        # fill in tilemap dictionary from json data 
         for tile_key in tilemap_data['tilemap']:
-            """
-            tile_type = tilemap_data['tilemap'][tile_key]["type"] 
-            tile_variant = tilemap_data['tilemap'][tile_key]["variant"]
-            shadow_objects = None
-            if tile_type  in PHYSICS_APPLIED_TILE_TYPES:
-                split_key = tile_key.split(';')
-                if tile_type.split('_')[1] == 'stairs' and tile_variant.split(';')[0] in ["0","1"]:
-
-                    shadow_objects = (pygame.Rect(int(split_key[0]) * self.tile_size, int(split_key[1]) * self.tile_size + 12 ,16,4),
-                                      pygame.Rect(int(split_key[0]) * self.tile_size +4, int(split_key[1]) * self.tile_size + 8 ,12,4),
-                                      pygame.Rect(int(split_key[0]) * self.tile_size+8, int(split_key[1]) * self.tile_size + 4 ,8,4),
-                                      pygame.Rect(int(split_key[0]) * self.tile_size +12, int(split_key[1]) * self.tile_size ,4,4)
-                                      ) if tile_variant.split(';')[0] == "0" else (
-                                      pygame.Rect(int(split_key[0]) * self.tile_size, int(split_key[1]) * self.tile_size + 12 ,16,4),
-                                      pygame.Rect(int(split_key[0]) * self.tile_size , int(split_key[1]) * self.tile_size + 8 ,12,4),
-                                      pygame.Rect(int(split_key[0]) * self.tile_size, int(split_key[1]) * self.tile_size + 4 ,8,4),
-                                      pygame.Rect(int(split_key[0]) * self.tile_size , int(split_key[1]) * self.tile_size ,4,4)
-                                      )
-               
-                else: 
-                    shadow_objects = (pygame.Rect(int(split_key[0]) * self.tile_size, int(split_key[1]) * self.tile_size,self.tile_size,self.tile_size))
-                    """
-            #print(shadow_objects)
+            
+            # for tiles that AREN'T lights 
             if tilemap_data['tilemap'][tile_key]['type'] != "lights" :
+
+                # process for doors (interactable tile)
                 if tilemap_data['tilemap'][tile_key]['type'].endswith('door'):
                     if tilemap_data['tilemap'][tile_key]['type'].split('_')[0] == 'trap':
                         # trap door 
-                        Hull = self.create_hull(tilemap_data['tilemap'][tile_key]) 
+                        Hull = self._create_hull(tilemap_data['tilemap'][tile_key]) 
                         trap_door = Trapdoor(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],tilemap_data['tilemap'][tile_key]["pos"],(16,5) ,\
                                              self.game.interactable_obj_sprites[tilemap_data['tilemap'][tile_key]["type"]] , hull = Hull)
                         self.tilemap[tile_key] = trap_door
-                    else: 
+                    else:
+                        # normal vertical door  
                         if tile_key in self.tilemap: continue 
                         else: 
-                            Hull = self.create_hull(tilemap_data['tilemap'][tile_key])
+                            Hull = self._create_hull(tilemap_data['tilemap'][tile_key])
                             door = Door(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],tilemap_data['tilemap'][tile_key]["pos"],(4,32),\
                                         self.game.interactable_obj_sprites[tilemap_data['tilemap'][tile_key]["type"] + '_' + tilemap_data['tilemap'][tile_key]["variant"].split(';')[0]],hull = Hull)
                             self.tilemap[tile_key] = door 
                             split_key = tile_key.split(';')
                             self.tilemap[split_key[0]+';'+ str(int(split_key[1]) + 1)] = door 
+                
+                # process for every other tile
                 else: 
-                    Hull = self.create_hull(tilemap_data['tilemap'][tile_key]) 
-                    enclosed = self.check_enclosure(tilemap_data['tilemap'][tile_key]['pos'],tilemap_data['tilemap'])
+                    Hull = self._create_hull(tilemap_data['tilemap'][tile_key]) 
+                    enclosed = self._check_enclosure(tilemap_data['tilemap'][tile_key]['pos'],tilemap_data['tilemap'])
 
                     self.tilemap[tile_key] = Tile(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],tilemap_data['tilemap'][tile_key]["pos"],hull= Hull,enclosed = enclosed)
-                    
+
+            # light object creation      
             else: 
+                # for lights, we need to create two objects: the light "tile" object for the tilemap dict, 
+                # and a pointlight object to add to the light list in the lighting engine. 
                 self.tilemap[tile_key] = Light(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],\
                                                  tilemap_data['tilemap'][tile_key]["pos"],radius =tilemap_data['tilemap'][tile_key]["radius"], power = tilemap_data['tilemap'][tile_key]["power"],\
                                                      color_value= tilemap_data['tilemap'][tile_key]["colorValue"] )
                 if isinstance(tilemap_data['tilemap'][tile_key]["pos"][0],int):
-                    
+                    # for lights that are on the tile grid 
+
                     light = PointLight(position = (tilemap_data['tilemap'][tile_key]["pos"][0]*self.tile_size+7,tilemap_data['tilemap'][tile_key]["pos"][1]*self.tile_size+3),\
                                          power= tilemap_data['tilemap'][tile_key]["power"],radius = tilemap_data['tilemap'][tile_key]["radius"] )
                     light.set_color(*tilemap_data['tilemap'][tile_key]["colorValue"])
                     lights.append(light)
                 else: 
-                    
+                    # for lights that are not placed on the tile grid  
+
                     light = PointLight(position = (tilemap_data['tilemap'][tile_key]["pos"][0]+7,tilemap_data['tilemap'][tile_key]["pos"][1]+3),\
                                          power= tilemap_data['tilemap'][tile_key]["power"],radius = tilemap_data['tilemap'][tile_key]["radius"] )
                     light.set_color(*tilemap_data['tilemap'][tile_key]["colorValue"])
@@ -641,7 +629,8 @@ class Tilemap:
         # Create the hull data here and then assign that to the node's hull list pointer.
         self.ambientNodes.create_hull_lists(self)
                 
-       
+
+        # filling in offgrid tile dict
         for i in range(0,self.offgrid_layers):
             for tile_key in tilemap_data['offgrid_'+ str(i)]:
                 if tilemap_data['offgrid_' + str(i)][tile_key]["type"] == "lights":
@@ -1210,11 +1199,11 @@ class Tilemap:
                             if isinstance(asset, list):
                                 variant_sub_1 = random.randint(0, len(asset) - 1) if random_ else 0
                                 tile.variant = f"{variant_sub_0};{variant_sub_1}"
-                                self.create_hull_tile_ver(tile)
+                                self._create_hull_tile_ver(tile)
 
                             else:
                                 tile.variant = f"{variant_sub_0};0"
-                                self.create_hull_tile_ver(tile)
+                                self._create_hull_tile_ver(tile)
                     else:
                         if neighbors in AUTOTILE_MAP:
                             variant_sub_0 = AUTOTILE_MAP[neighbors]
@@ -1222,10 +1211,10 @@ class Tilemap:
                             if isinstance(asset, list):
                                 variant_sub_1 = random.randint(0, len(asset) - 1) if random_ else 0
                                 tile.variant = f"{variant_sub_0};{variant_sub_1}"
-                                self.create_hull_tile_ver(tile)
+                                self._create_hull_tile_ver(tile)
                             else:
                                 tile.variant = f"{variant_sub_0};0"
-                                self.create_hull_tile_ver(tile)
+                                self._create_hull_tile_ver(tile)
 
 
     #the only thing that needs updating for tiles are the decals for now, So there is no separate update function for now. 

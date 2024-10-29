@@ -171,7 +171,7 @@ class myGame:
 
         #HUD
         self.inven_on = True
-        self.HUD = HUD(self.player,self.general_sprites['health_UI'],self.foreground_surf.get_size())
+        self.HUD = HUD(self.player,self.general_sprites['health_UI'],self.foreground_surf_dim)
         
         #grass manager
         self.gm = GrassManager('data/images/tiles/live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
@@ -314,8 +314,8 @@ class myGame:
 
         
         self.start_sequence_time = 255 
-        scroll_increment_x = (self.player.rect().centerx - self.background_surf.get_width() /2)
-        scroll_increment_y =  (self.player.rect().centery - self.background_surf.get_height() /2)
+        scroll_increment_x = (self.player.rect().centerx - self.background_surf_dim[0] /2)
+        scroll_increment_y =  (self.player.rect().centery - self.background_surf_dim[1] /2)
 
         start_scroll = self.scroll.copy() 
 
@@ -329,7 +329,8 @@ class myGame:
             render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
         
 
-            boundary = Rectangle(Vector2(render_scroll[0]- self.qtree_x_slack,render_scroll[1]- self.qtree_y_slack),Vector2(self.background_surf.get_width() +self.qtree_x_slack*2,self.background_surf.get_height() +self.qtree_y_slack*2))
+            boundary = Rectangle(Vector2(render_scroll[0]- self.qtree_x_slack,render_scroll[1]- self.qtree_y_slack),\
+                                 Vector2(self.background_surf_dim[0] +self.qtree_x_slack*2,self.background_surf_dim[1] +self.qtree_y_slack*2))
             quadtree = QuadTree(self.NODE_CAPACITY, boundary)
 
             self.lights_engine.clear(0,0,0,255)
@@ -595,8 +596,8 @@ class myGame:
             self.frame_count = (self.frame_count+1) % 360 
 
             #render scroll update (camera scroll)
-            self.scroll[0] += (self.player.rect().centerx - self.background_surf.get_width() /2 - self.scroll[0])/20
-            self.scroll[1] += (self.player.rect().centery - self.background_surf.get_height() /2 - self.scroll[1])/20
+            self.scroll[0] += (self.player.rect().centerx - self.background_surf_dim[0] /2 - self.scroll[0])/20
+            self.scroll[1] += (self.player.rect().centery - self.background_surf_dim[1] /2 - self.scroll[1])/20
             render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
             
             #----------------------------quadtree update - needed for collision detection between moving entities
@@ -928,8 +929,8 @@ class myGame:
         if self.curr_gameState == GameState.MainMenu:
 
             #render scroll update
-            self.scroll[0] += (self.player.rect().centerx - self.background_surf.get_width() /2 - self.scroll[0])/20
-            self.scroll[1] += (self.player.rect().centery - self.background_surf.get_height() /2 - self.scroll[1])/20
+            self.scroll[0] += (self.player.rect().centerx - self.background_surf_dim[0] /2 - self.scroll[0])/20
+            self.scroll[1] += (self.player.rect().centery - self.background_surf_dim[1] /2 - self.scroll[1])/20
             render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
             
             #------------------------ quadtree update 
