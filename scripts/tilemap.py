@@ -904,7 +904,7 @@ class Tilemap:
             self.game.grass_locations.append((grass.pos[0], grass.pos[1]))
         
         for loc in self.game.grass_locations:
-            self.game.gm.place_tile(loc,14,[0,3,4])
+            self.game.gm.place_tile(loc,14,[0,2,3,4])
 
         # extract enemies from tilemap and add them into the enemy container 
 
