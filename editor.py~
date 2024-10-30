@@ -133,7 +133,7 @@ class Editor:
         """
         
 
-        self.gm = GrassManager(self,'data/images/tiles/live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
+        self.gm = GrassManager('data/images/tiles/live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
 
         #place down grass tiles 
         for key in self.Tilemap.grass: 

@@ -1,5 +1,6 @@
 import os 
 import pygame 
+import numpy as np
 #from PIL import Image, ImageFilter
 
 #so in here we are going to define a function that creates pygame image objects
@@ -19,6 +20,18 @@ def load_image(path,background = 'black'):
     elif background == 'transparent': 
         sprite= pygame.image.load(BASE_PATH + path)
     return sprite 
+
+
+def smoothclamp(x, mi, mx):
+    t = (x - mi) / (mx - mi)
+    smooth_t = np.where(t < 0, 0, np.where(t <= 1, 3 * t**2 - 2 * t**3, 1))
+    return mi + (mx - mi) * smooth_t
+
+def smoothclamp_decreasing(x, mi, mx):
+    t = (x - mi) / (mx - mi)
+    smooth_t = np.where(t < 0, 1, np.where(t <= 1, 1 - (3 * t**2 - 2 * t**3), 0))
+    return mi + (mx - mi) * smooth_t
+
 
 
 

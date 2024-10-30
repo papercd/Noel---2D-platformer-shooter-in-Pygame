@@ -40,6 +40,9 @@ class Spark():
 
     # gravity and friction
     def velocity_adjust(self, friction, force, terminal_velocity, dt):
+        friction += random.uniform(-0.01, 0.01)
+        force += random.uniform(-0.05, 0.05)
+
         movement = self.calculate_movement(dt)
         movement[1] = min(terminal_velocity, movement[1] + force * dt)
         movement[0] *= friction
@@ -53,8 +56,8 @@ class Spark():
         if axis == 'x':
             reflected_angle = math.pi - angle 
         else:
-            reflected_angle =  angle
-            #reflected_angle = -180 + angle 
+            #reflected_angle =  angle
+            reflected_angle = -angle 
 
         return reflected_angle
 
@@ -64,7 +67,6 @@ class Spark():
         if self.speed <= 0:
             self.dead = True
             return True
-        
         self.movement = self.calculate_movement(dt)
         self.loc[0] += self.movement[0] * self.speed_factor
         tile_loc = (int(self.loc[0])//tilemap.tile_size,int(self.loc[1])//tilemap.tile_size)
@@ -72,6 +74,7 @@ class Spark():
         if  key in tilemap.tilemap:
             
             tile = tilemap.tilemap[key]
+            
             if tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
                 check_rects = [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
                                 pygame.Rect(tile_loc[0] + 12, tile_loc[1], 4, 12),
@@ -81,17 +84,24 @@ class Spark():
                                 pygame.Rect(tile_loc[0] + 4, tile_loc[1] + 6, 6, 6)]
                 for check_rect in check_rects:
                     if check_rect.collidepoint(self.center): 
+                        if self.movement[0] <0 :
+                            self.loc[0] =  check_rect.right
+                        else:
+                            self.loc[0] =  check_rect.left
 
                         self.angle = self.calculate_bounce_angle(self.angle,'x')
                         self.speed *= 0.8  
                         #self.dead = True 
                         #return True
-                    
-
-            self.angle = self.calculate_bounce_angle(self.angle,'x')
-            self.speed *= 0.8  #
-            #self.dead = True 
-            #return True
+            else: 
+                if self.movement[0] <0 :
+                    self.loc[0] =  tile_loc[0] * tilemap.tile_size + tilemap.tile_size
+                else:
+                    self.loc[0] =  tile_loc[0] * tilemap.tile_size - 1
+                self.angle = self.calculate_bounce_angle(self.angle,'x')
+                self.speed *= 0.8  #
+                #self.dead = True 
+                #return True
 
 
         self.loc[1] += self.movement[1] * self.speed_factor
@@ -100,6 +110,7 @@ class Spark():
         
         if  key in tilemap.tilemap:
             tile = tilemap.tilemap[key]
+            
             if tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
                 check_rects = [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
                                 pygame.Rect(tile_loc[0] + 12, tile_loc[1], 4, 12),
@@ -109,17 +120,25 @@ class Spark():
                                 pygame.Rect(tile_loc[0] + 4, tile_loc[1] + 6, 6, 6)]
                 for check_rect in check_rects:
                     if check_rect.collidepoint(self.center): 
-
+                        if self.movement[0] <0 :
+                            self.loc[1] =  check_rect.bottom
+                        else:
+                            self.loc[1] =  check_rect.top
+                            
                         self.angle = self.calculate_bounce_angle(self.angle,'y')
                         self.speed *= 0.8  
                         #self.dead = True 
                         #return True
                     
-
-            self.angle = self.calculate_bounce_angle(self.angle,'y')
-            self.speed *= 0.8  #
-            #self.dead = True 
-            #return True
+            else:
+                if self.movement[1] <0 :
+                    self.loc[1] =  tile_loc[1]* tilemap.tile_size + tilemap.tile_size
+                else:
+                    self.loc[1] =  tile_loc[1]* tilemap.tile_size - 1
+                self.angle = self.calculate_bounce_angle(self.angle,'y')
+                self.speed *= 0.8
+                #self.dead = True 
+                #return True
         
        
 
@@ -128,6 +147,9 @@ class Spark():
         # a bunch of options to mess around with relating to angles...
         self.point_towards(math.pi / 2, 0.02)
         self.velocity_adjust(0.975, 0.05, 8, dt)
+        
+        angle_jitter = random.uniform(-0.1, 0.1)  # Small jitter in angle
+        self.angle += angle_jitter
         #self.angle += 0.02
 
         self.speed -= 0.1

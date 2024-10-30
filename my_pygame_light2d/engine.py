@@ -74,7 +74,7 @@ class LightingEngine:
 
         # Configure pygame display
         self._pygame_display = pygame.display.set_mode(
-            self._screen_res, pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF | pygame.RESIZABLE)
+            self._screen_res, pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF)
         
         
 
@@ -524,7 +524,12 @@ class LightingEngine:
             self._buf_lt.fbo.use()
 
             if light.illuminator: 
-                dec = light.power/light.life
+                
+
+                #TODO: light's power is not being decreased properly. 
+            
+                dec = light.power/max(1,light.life)
+                
                 light.cur_power = max(0.0,light.cur_power -dec)
                 light.position = (int(light.illuminator.center[0]) , int(light.illuminator.center[1]))    
                 

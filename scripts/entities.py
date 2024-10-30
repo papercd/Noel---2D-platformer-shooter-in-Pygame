@@ -10,12 +10,11 @@ from scripts.los import line_of_sight
 from scripts.particles import Particle,non_animated_particle,bullet_collide_particle,bullet_trail_particle_wheelbot
 from scripts.health import HealthBar,StaminaBar
 from scripts.indicator import indicator 
-from scripts.tilemap import Node,Tile
 from scripts.fire import Flame_particle
 from scripts.spark import Spark 
 from scripts.Pygame_Lights import LIGHT,pixel_shader,global_light
 from scripts.weapon_list import DoublyLinkedList
-from scripts.range import Rectangle
+from scripts.QuadTreeRange import Rectangle
 from my_pygame_light2d.light import PointLight
 
 
@@ -363,7 +362,7 @@ class Enemy(PhysicsEntity):
     def set_state(self, action):
         if action != self.state:
             self.state = action
-            self.animation = self.game.enemies[self.type + '/' + self.state].copy()
+            self.animation = self.game.enemy_sprites[self.type + '/' + self.state].copy()
 
     def render(self, surf, offset=(0, 0), shake=0):
         x_min = offset[0] - self.size[0]
@@ -981,7 +980,7 @@ class Canine(Enemy):
     def set_state(self,action):
         if action != self.state: 
             self.state = action 
-            self.animation = self.game.enemies[self.type + '/' + self.color  + '/'+ self.state].copy() 
+            self.animation = self.game.enemy_sprites[self.type + '/' + self.color  + '/'+ self.state].copy() 
 
     def update(self,tilemap,player_pos,dt,movement = (0,0)):
      
@@ -1258,24 +1257,24 @@ class Canine(Enemy):
 
 
 class PlayerEntity(PhysicsEntity):
-    def __init__(self,game,pos,size):
+    def __init__(self,game,pos,size,default_speed,accel_rate):
         #attributes required to implement weapon 
         #self.equipped = False 
+        
+        self.accel_rate = accel_rate
+        self.default_speed = default_speed
         self.e_type = 'player'
         self.cur_weapon_node = None 
 
         self.weapon_inven = DoublyLinkedList()
-       
-        
-
         self.change_weapon_inc = False
         self.changing_done = 0 
         self.change_scroll = 0
-
         self.hit_mask = None
 
         super().__init__(game,'player',pos,size)
 
+        self.cur_vel = 0 
         self.recov_rate = 0.6
         self.stamina = 100
         self.health = 200
@@ -1309,6 +1308,23 @@ class PlayerEntity(PhysicsEntity):
     def rect(self):
         return pygame.Rect(self.pos[0]+3,self.pos[1]+1,10,15)
        
+    def accelerate(self,movement_input):
+        if(movement_input[1]-movement_input[0])  >0 :
+            #means that the intent of the player movement is to the right.  
+            self.cur_vel = min( 1.3*self.default_speed,self.accel_rate + self.cur_vel)
+                
+        elif (movement_input[1]-movement_input[0]) <0 :
+            #means that the intent of the player movement is to the left.  
+            self.cur_vel = max( -1.3*self.default_speed,self.cur_vel- self.accel_rate)
+            
+        else: 
+            if self.cur_vel >= 0 :
+                self.cur_vel = max(0,self.cur_vel - self.accel_rate)
+                
+            else:
+                self.cur_vel = min(0,self.cur_vel + self.accel_rate)
+         
+
     def set_state(self,action):
         if action != self.state: 
             self.state = action 
@@ -1318,12 +1334,12 @@ class PlayerEntity(PhysicsEntity):
         self.animation = self.game.general_sprites[self.type + '/' + ('holding_gun/' if self.cur_weapon_node else '') + self.state ]
 
 
-    def update_pos(self, tile_map,quadtree,cursor_pos,frame_count,movement=(0, 0)):
+    def update_pos(self, tile_map,quadtree,cursor_pos,frame_count):
         
         #print(self.velocity[0])
         self.time = frame_count
         self.d_cursor_pos = cursor_pos
-        new_movement = [movement[0],movement[1]]
+        new_movement = [self.cur_vel,0]
 
         if self.fatigued: 
             self.recov_rate = 0.3
@@ -1335,7 +1351,7 @@ class PlayerEntity(PhysicsEntity):
             if self.running: 
                 if self.stamina >= 10:
                     #then you can run. 
-                    if movement[0] != 0:
+                    if self.cur_vel != 0:
                         self.stamina -= 1.2
                         new_movement[0] *= 1.4
                 else: 
@@ -1448,7 +1464,7 @@ class PlayerEntity(PhysicsEntity):
                 elif self.velocity[1] >0 :
                     self.set_state('jump_down')
                
-            elif movement[0] != 0:
+            elif self.cur_vel != 0:
                 if self.state == 'land':
                     if self.animation.done == True: 
                         if self.fatigued: 
@@ -1466,7 +1482,7 @@ class PlayerEntity(PhysicsEntity):
                     if anim_frame == 0 or anim_frame == 3:
                         self.game.player_sfx['run'][str(random.randint(0,7))].play()
                     """
-                if self.crouch and (self.game.player_movement[0] or self.game.player_movement[1]) :
+                if self.crouch and (self.game.player_movement_input[0] or self.game.player_movement_input[1]) :
                     self.cut_movement_input = True
                     self.set_state('slide')
                 self.y_inertia = 0
