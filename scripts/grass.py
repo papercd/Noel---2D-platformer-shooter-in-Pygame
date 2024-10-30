@@ -74,6 +74,8 @@ probably be set to the height of your tallest blade of grass.
 import os
 import random
 import math
+import time 
+from scripts.spark import Spark
 from copy import deepcopy
 from my_pygame_light2d.light import PointLight
 
@@ -205,6 +207,8 @@ class GrassManager:
 class GrassAssets:
     def __init__(self, path, gm):
         self.gm = gm
+        self.spark_colors = ((253,128,70),(244,160,86) ,(189,84,55))
+
         self.blades = []
 
         # load in blade images
@@ -213,35 +217,44 @@ class GrassAssets:
             img.set_colorkey((0, 0, 0))
             self.blades.append(img)
 
-    def render_blade(self, surf, blade_id, location, rotation,scale,palette):
-
-        #before you rotate it, scale it. 
-        
-        # rotate the blade
+    def render_blade(self, surf, blade_id, location, rotation, scale, palette):
+        # before you rotate it, scale it. 
         rot_img = pygame.transform.rotate(self.blades[blade_id], rotation)
-        rot_img = pygame.transform.scale(rot_img,(rot_img.get_width()*scale,rot_img.get_height()*scale))
+        rot_img = pygame.transform.scale(rot_img, (int(rot_img.get_width() * scale), int(rot_img.get_height() * scale)))
 
         # shade the blade of grass based on its rotation
         shade = pygame.Surface(rot_img.get_size())
         shade_amt = self.gm.shade_amount * (abs(rotation) / 90)
-        
         shade.set_alpha(shade_amt)
 
-        #if the grass is burning, add a burning color to it. 
-        if 0<scale < 1:
+        # Add flickering effect based on time
+        flicker_intensity = 0.4 # adjust this value for more or less flickering
+        flicker = 1 + flicker_intensity * math.sin(time.time() * 5)  # frequency adjustment with * 5
 
-
-            red_mask = pygame.mask.from_surface(rot_img)
-            red_mask.to_surface(rot_img,setcolor=(min(255,palette[0]*(1.8)*(1/scale*6)),min(255,palette[1] *(1/scale*1)) ,min(255,palette[2] *(1/scale*1))))
+        # if the grass is burning, add a burning color to it
+        if 0 < scale < 1:
             
-        
+            # if the grass is burning, add a bit of sparks as well.
+            #  
+            print(location)
+            spark = Spark([location[0]+8,location[0]+16],math.radians(random.randint(180,360)),random.randint(1,3),\
+                          random.choice(self.spark_colors), 0.2, speed_factor= 0.2)
+            self.gm.game.sparks.append(spark)
+            red_mask = pygame.mask.from_surface(rot_img)
+            red_mask.to_surface(
+                rot_img,
+                setcolor=(
+                    min(255, palette[0] * flicker * (1 / scale * 6)),
+                    min(255, palette[1] * flicker * (1 / scale)),
+                    min(255, palette[2] * flicker * (1 / scale))
+                )
+            )
 
         rot_img.blit(shade, (0, 0))
 
- 
-
         # render the blade
         surf.blit(rot_img, (location[0] - rot_img.get_width() // 2, location[1] - rot_img.get_height() // 2))
+
 
 # the grass tile object that contains data for the blades
 class GrassTile:
