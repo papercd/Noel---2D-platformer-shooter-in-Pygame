@@ -527,10 +527,9 @@ class LightingEngine:
                 
 
                 #TODO: light's power is not being decreased properly. 
-            
-                dec = light.power/max(1,light.life)
                 
-                light.cur_power = max(0.0,light.cur_power -dec)
+                light.cur_power = max(0,light.power * (light.life/light.maxlife))
+                
                 light.position = (int(light.illuminator.center[0]) , int(light.illuminator.center[1]))    
                 
             elif light.life > 0: 
