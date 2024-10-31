@@ -99,8 +99,8 @@ class myGame:
          
 
         self.clock = pygame.time.Clock()
-        # self.screen_size = (1200,750)
-        self.screen_size = (2560,1440)
+        self.screen_size = (1200,750)
+        #self.screen_size = (2560,1440)
         #self.screen_size = (2400,1500)
         self.screen_to_native_ratio = 4
         self.native_res = (int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio))
