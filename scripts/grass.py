@@ -445,7 +445,6 @@ class GrassTile:
             img = self.render_tile()  
             spark = Spark([self.loc[0] +img.get_width()//2- self.padding ,self.loc[1] +img.get_height()//2- self.padding] ,math.radians(random.randint(180,360)),\
                             random.randint(1,3),random.choice(self.spark_colors),scale=0.3,speed_factor=2)
-            print('check')  
             self.gm.game.sparks.append(spark)
             surf.blit(img, (self.loc[0] - offset[0] - self.padding, self.loc[1] - offset[1] - self.padding))
 
