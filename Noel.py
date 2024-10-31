@@ -833,7 +833,15 @@ class myGame:
             self.player.render(self.background_surf,render_scroll)
 
             #------------------------grass update and rendering
-            rot_function = lambda x, y: int(math.sin(self.rot_func_t / 60 + x / 100) * 7)
+            
+
+            # Define the rotation function with a bit of randomness for a more natural sway
+            rot_function = lambda x, y: int(
+                math.sin(self.rot_func_t / (100 + random.uniform(-10, 10)) + (x + y) / 150 + random.uniform(-0.1, 0.1)) * 
+                (3 + random.uniform(-1, 1))
+            )
+
+
             self.gm.update_render(self.background_surf,self.dt,offset=render_scroll,rot_function= rot_function)
             self.rot_func_t += self.dt * 100
             #----------------------------------
