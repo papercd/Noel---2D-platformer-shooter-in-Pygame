@@ -1,5 +1,6 @@
 import os 
 import pygame 
+import math
 import numpy as np
 #from PIL import Image, ImageFilter
 
@@ -31,6 +32,66 @@ def smoothclamp_decreasing(x, mi, mx):
     t = (x - mi) / (mx - mi)
     smooth_t = np.where(t < 0, 1, np.where(t <= 1, 1 - (3 * t**2 - 2 * t**3), 0))
     return mi + (mx - mi) * smooth_t
+
+def rect_corners(rect, angle):
+    """Returns the four corners of a rotated rectangle."""
+    cx, cy = rect.center
+    w, h = rect.size
+    angle_rad = math.radians(angle)
+
+    cos_a = math.cos(angle_rad)
+    sin_a = math.sin(angle_rad)
+
+    # Define the rectangle's corners (relative to the center)
+    corners = [
+        pygame.math.Vector2(-w / 2, -h / 2),
+        pygame.math.Vector2(w / 2, -h / 2),
+        pygame.math.Vector2(w / 2, h / 2),
+        pygame.math.Vector2(-w / 2, h / 2)
+    ]
+
+    # Rotate the corners around the center
+    rotated_corners = [pygame.math.Vector2(
+        cx + corner.x * cos_a - corner.y * sin_a,
+        cy + corner.x * sin_a + corner.y * cos_a
+    ) for corner in corners]
+
+    return rotated_corners
+
+def project_polygon(corners, axis):
+    """Projects the corners of a polygon onto an axis."""
+    dots = [corner.dot(axis) for corner in corners]
+    return min(dots), max(dots)
+
+def obb_collision(rect1_corners, rect2):
+    """Detects collision between a rotated rectangle and an axis-aligned rectangle."""
+    rect2_corners = [
+        pygame.math.Vector2(rect2.topleft),
+        pygame.math.Vector2(rect2.topright),
+        pygame.math.Vector2(rect2.bottomright),
+        pygame.math.Vector2(rect2.bottomleft)
+    ]
+
+    axes = []
+    for i in range(4):
+        edge = rect1_corners[i] - rect1_corners[(i + 1) % 4]
+        normal = pygame.math.Vector2(-edge.y, edge.x)
+        axes.append(normal.normalize())
+
+    for i in range(2):  # We only need 2 axes for the AABB rectangle (rect2)
+        edge = rect2_corners[i] - rect2_corners[(i + 1) % 4]
+        normal = pygame.math.Vector2(-edge.y, edge.x)
+        axes.append(normal.normalize())
+
+    for axis in axes:
+        proj1 = project_polygon(rect1_corners, axis)
+        proj2 = project_polygon(rect2_corners, axis)
+        if proj1[1] < proj2[0] or proj2[1] < proj1[0]:
+            return False  # No overlap on this axis, so no collision
+    return True
+
+
+
 
 
 

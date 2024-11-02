@@ -6,10 +6,10 @@ import math
 from scripts.Pygame_Lights import LIGHT,pixel_shader
 
 class Flame_particle:
-    def __init__(self,x,y,size,density,rise,rise_angle,spread,wind,damage):
+    def __init__(self,game,x,y,size,density,rise,rise_angle,spread,wind,damage):
        
        #save opening pos for later collision detection 
-
+        self.game = game
         self.origin = (x,y)
        
         # -------------   predetermined particle parameters 
@@ -190,6 +190,8 @@ class Flame_particle:
         self.y += frame_movement[1] 
         
         for rect_tile in tilemap.physics_rects_around((self.pos[0] - self.r,self.pos[1] - self.r),(self.r * 2,self.r * 2)):
+                   
+                 
             side_point,collided = self.collide_with_rect(rect_tile[0])
             if collided: 
                 if not rect_tile[1].type == 'stairs':

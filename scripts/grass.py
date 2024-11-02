@@ -108,6 +108,7 @@ class GrassManager:
 
         # tile data
         self.grass_tiles = {}
+        self.burning_grass_tiles = {}
 
         # config
         self.tile_size = tile_size
@@ -139,17 +140,21 @@ class GrassManager:
             self.formats[format_id]['data'].append((tile_id, data))
     
     def burn_tile(self,location):
-        if tuple(location) in self.grass_tiles: 
+        loc = tuple(location)
+        if loc in self.grass_tiles: 
             #if the location does indeed have grass, burn the grass.
-            self.grass_tiles[tuple(location)].burning = 0
+            self.burning_grass_tiles[loc] = self.grass_tiles.pop(loc)
+            self.burning_grass_tiles[loc].swapped_dict = True
+            self.burning_grass_tiles[loc].burning = 0
         
 
 
     # attempt to place a new grass tile
     def place_tile(self, location, density, grass_options):
         # ignore if a tile was already placed in this location
-        if tuple(location) not in self.grass_tiles:
-            self.grass_tiles[tuple(location)] = GrassTile(self.tile_size, (location[0] * self.tile_size, location[1] * self.tile_size), density, grass_options, self.ga, self)
+        loc = tuple(location)
+        if loc not in self.grass_tiles and loc not in self.burning_grass_tiles:
+            self.grass_tiles[loc] = GrassTile(self.tile_size, (location[0] * self.tile_size, location[1] * self.tile_size), density, grass_options, self.ga, self)
             return True 
         return False 
 
@@ -171,38 +176,130 @@ class GrassManager:
         visible_tile_range = (int(surf.get_width() // self.tile_size) + 1, int(surf.get_height() // self.tile_size) + 1)
         base_pos = (int(offset[0] // self.tile_size), int(offset[1] // self.tile_size))
 
+        # Precompute the visible grass tiles
+        render_list = {(base_pos[0] + x, base_pos[1] + y) 
+                    for y in range(visible_tile_range[1]) 
+                    for x in range(visible_tile_range[0]) 
+                    if (base_pos[0] + x, base_pos[1] + y) in self.grass_tiles}
+
+        # Render shadows if ground_shadow is set
+        if self.ground_shadow[0]:
+            shadow_offset = (offset[0] - self.ground_shadow[3][0], offset[1] - self.ground_shadow[3][1])
+            for pos in render_list:
+                self.grass_tiles[pos].render_shadow(surf, offset=shadow_offset)
+
+        # Track tiles to add to burning_grass and to remove from it
+        keys_to_remove = []
+        keys_to_add = []
+
+        for key, tile in self.burning_grass_tiles.items():
+            if not tile.appended: 
+                self.game.lights_engine.lights.append(tile.light)
+                tile.appended = True 
+            
+            # Update neighboring grass tiles based on burn status
+            for offset_ in BURN_CHECK_OFFSETS:
+                check_pos = (key[0] + offset_[0], key[1] + offset_[1])
+                neighbor_tile = self.grass_tiles.get(check_pos)
+                if neighbor_tile:
+                    neighbor_tile.burning = max(0, neighbor_tile.burning - 1)
+                    if neighbor_tile.burning == 0:
+                        keys_to_add.append(check_pos)
+
+            # Only render if within the visible range
+            if base_pos[0] <= key[0] <= base_pos[0] + visible_tile_range[0] and \
+            base_pos[1] <= key[1] <= base_pos[1] + visible_tile_range[1]:
+                tile.render(surf, dt, offset=offset)
+            
+            # Mark tile for removal if fully burned out
+            if tile.update_burn_state(dt):
+                keys_to_remove.append(key)
+
+        # Update dictionaries outside the main loop
+        for key in keys_to_add:
+            if key in render_list:
+                render_list.remove(key)
+            burning_tile = self.grass_tiles.pop(key, None)
+            if burning_tile:
+                self.burning_grass_tiles[key] = burning_tile
+                burning_tile.swapped_dict = True
+
+        for key in keys_to_remove:
+            del self.burning_grass_tiles[key]
+
+        # Render the grass tiles
+        for pos in render_list:
+            tile = self.grass_tiles[pos]
+            tile.update_burn_state(dt)
+            tile.render(surf, dt, offset=offset)
+            if rot_function:
+                tile.set_rotation(rot_function(tile.loc[0], tile.loc[1]), dt)
+    """
+    # an update and render combination function
+    def update_render(self, surf, dt, offset=(0, 0), rot_function=None):
+        visible_tile_range = (int(surf.get_width() // self.tile_size) + 1, int(surf.get_height() // self.tile_size) + 1)
+        base_pos = (int(offset[0] // self.tile_size), int(offset[1] // self.tile_size))
+
         # get list of grass tiles to render based on visible area
 
-        render_list = []
+        render_list = set()
         for y in range(visible_tile_range[1]):
             for x in range(visible_tile_range[0]):
                 pos = (base_pos[0] + x, base_pos[1] + y)
                 if pos in self.grass_tiles:
-                    render_list.append(pos)
-        
-
+                    render_list.add(pos)
+               
         # render shadow if applicable
         if self.ground_shadow[0]:
             for pos in render_list:
-                self.grass_tiles[pos].render_shadow(surf, offset=(offset[0] - self.ground_shadow[3][0], offset[1] - self.ground_shadow[3][1]))
+                self.grass_tiles[pos[0]].render_shadow(surf, offset=(offset[0] - self.ground_shadow[3][0],\
+                                                                          offset[1] - self.ground_shadow[3][1]))
+        
+        keys_to_remove = []  # Track keys that need to be removed
+        keys_to_add = []
+
+        for key, tile in self.burning_grass_tiles.items():
+            if not tile.appended: 
+                self.game.lights_engine.lights.append(tile.light)
+                tile.appended = True 
+            
+            for offset_ in BURN_CHECK_OFFSETS:
+                check_pos = (key[0] + offset_[0], key[1] + offset_[1])
+ 
+                if check_pos in self.grass_tiles:
+                    self.grass_tiles[check_pos].burning = max(0, self.grass_tiles[check_pos].burning - 1)
+                    if self.grass_tiles[check_pos].burning == 0:
+                        keys_to_add.append(check_pos)
+
+                    #print(self.grass_tiles[check_pos].burning)
+            if base_pos[0] <= key[0] <= base_pos[0] + visible_tile_range[0] and \
+            base_pos[1] <= key[1] <= base_pos[1] + visible_tile_range[1]:
+                tile.render(surf, dt, offset=offset)
+            
+            kill = tile.update_burn_state(dt)
+            if kill:
+                keys_to_remove.append(key)  # Add key to the list for removal
+
+        for key in keys_to_add:
+            self.burning_grass_tiles[key] = self.grass_tiles.pop(key)
+            self.burning_grass_tiles[key].swapped_dict = True 
+            if key in render_list:
+                render_list.remove(key)
+    # Remove items after the main loop
+        for key in keys_to_remove:
+            del self.burning_grass_tiles[key]
+
+       
 
         # render the grass tiles
         for pos in render_list:
+        
             tile = self.grass_tiles[pos]
-            if tile.burning == 0:
-                if tile.appended == False: 
-                    self.game.lights_engine.lights.append(tile.light)
-                    tile.appended = True
-
-                for offset_ in BURN_CHECK_OFFSETS:
-                    check_pos = (pos[0] + offset_[0] , pos[1]+offset_[1] )
-                    if check_pos in self.grass_tiles:
-                        self.grass_tiles[check_pos].burning =  max(0,self.grass_tiles[check_pos].burning -1) 
-
+            tile.update_burn_state(dt)
             tile.render(surf, dt, offset=offset)
             if rot_function:
                 tile.set_rotation(rot_function(tile.loc[0], tile.loc[1]),dt)
-
+        """
 # an asset manager that contains functionality for rendering blades of grass
 class GrassAssets:
     def __init__(self, path, gm):
@@ -258,9 +355,11 @@ class GrassAssets:
 class GrassTile:
     def __init__(self, tile_size, location, amt, config, ga, gm):
         
+        
         self.ga = ga
         self.gm = gm
         self.loc = location
+        self.org_img_dim = None
         self.size = tile_size
         self.blades = []
         self.master_rotation = 0
@@ -272,11 +371,12 @@ class GrassTile:
         self.max_burn_life = int(200/self.gm.burn_rate)
 
         self.burning = int(60 / self.gm.burn_spread_speed)
+        self.swapped_dict = False
 
         self.dead = False
         self.center = (location[0] + 8,location[1] + 16)
         self.light = PointLight(self.center,power=1,radius=15,illuminator=self,life = self.max_burn_life)
-        self.light.cast_shadows = True
+        self.light.cast_shadows = False
         self.light.set_color(149,46,17)
         self.appended = False 
 
@@ -288,10 +388,11 @@ class GrassTile:
         for i in range(amt):
             new_blade = random.choice(config)
             img = self.ga.blades[new_blade]
+            self.org_img_dim = (img.get_width(),img.get_height())
             avg_rgb = [0,0,0]
             count = 0
-            for x in range(0,img.get_width()):
-                for y in range(0,img.get_height()):
+            for x in range(0,self.org_img_dim[0]):
+                for y in range(0,self.org_img_dim[1]):
                                         
                     rgb = img.get_at((x,y))
                     if rgb != (0,0,0,255):
@@ -328,7 +429,10 @@ class GrassTile:
         self.custom_blade_data = None
 
         self.update_render_data(0)
-       
+
+    def rect(self):
+        return pygame.Rect(self.loc[0],self.loc[1]+ (self.org_img_dim[1]-self.padding)*(1- (self.burn_life/self.max_burn_life)),self.size, \
+                           self.loc[1]+ (self.org_img_dim[1]-self.padding)*((self.burn_life/self.max_burn_life)))       
 
     # apply a force that affects each blade individually based on distance instead of the rotation of the entire tile
     def apply_force(self, force_point, force_radius, force_dropoff):
@@ -356,22 +460,30 @@ class GrassTile:
     def update_render_data(self,dt):
         #print(dt)
         
+       
+
+        #basically updates rotation 
+        
+        self.render_data = (self.base_id, self.master_rotation)
+        self.true_rotation = self.inc * self.master_rotation
+
+    
+    def update_burn_state(self,dt):
         if self.burning == 0:
+            if not self.swapped_dict:
+                loc = (self.loc[0]//self.gm.tile_size,self.loc[1]//self.gm.tile_size)
+                self.gm.burning_grass_tiles[loc] = self.gm.grass_tiles.pop(loc)
+                self.swapped_dict = True 
             self.burn_life = max(0,self.burn_life - 25 * dt)
             #if the grass has burnt out completely, then gt rid of the grass data, where? from the grasstiles list, and from the cache. 
             if self.burn_life  == 0:
                 self.blades = [None] * len(self.blades)
                 check_loc = (self.loc[0]//self.size,self.loc[1]//self.size)
                 self.dead = True
-                del self.gm.grass_tiles[check_loc]
+                return True 
+                del self.gm.burning_grass_tiles[check_loc]
                 del self
-                
-        else: 
-
-        #basically updates rotation 
         
-            self.render_data = (self.base_id, self.master_rotation)
-            self.true_rotation = self.inc * self.master_rotation
 
     # set new master tile rotation
     def set_rotation(self, rotation,dt):
@@ -444,18 +556,21 @@ class GrassTile:
             #if it is burning, no caaache. Performance? well, the grass will be deleted after the burn duration, so performace shouldn't be a big issue. 
             img = self.render_tile()  
 
-            decay_rate = int(self.max_burn_life /self.burn_life) * 3
-
-            if self.max_burn_life > 8 and  int(self.burn_life) %decay_rate  == 0:
+            decay_rate = int(self.max_burn_life /self.burn_life) * 6
+            
+            if self.burn_life > 45 and  int(self.burn_life) %decay_rate  == 0:
                 x_offset_dir = random.randint(0,1)
                 x_offset_dir = -1 if x_offset_dir == 0 else 1
-                position = [self.loc[0] +img.get_width()//2 -self.padding +x_offset_dir * random.randint(0,img.get_width()//2),self.loc[1] +img.get_height()//2+16 -self.padding- random.randint(1,img.get_height()//2)]
+                #position = [self.loc[0] +img.get_width()//2 -self.padding +x_offset_dir * random.randint(0,img.get_width()//3),self.loc[1] +img.get_height()//2 -self.padding- random.randint(1,img.get_height()//2)]
+                position = [self.loc[0] +img.get_width()//2 -self.padding +x_offset_dir * random.randint(0,img.get_width()//3),self.loc[1]+self.gm.tile_size-1-random.randint(1,img.get_height()//3,) ]
                 spark = Spark(position.copy(),math.radians(random.randint(180,360)),\
-                                random.randint(1,3),random.choice(self.spark_colors),scale=0.2,speed_factor=2)
-                light = PointLight(position.copy(),power = 1,radius= 6,illuminator= spark,life = 70)
+                                random.randint(1,3),random.choice(self.spark_colors),scale=0.2,speed_factor=2 *(self.burn_life/self.max_burn_life))
+                light = PointLight(position.copy(),power = 1,radius= 6,illuminator= spark,life = 70,radius_decay= True)
+                light.cast_shadows = False
                 light.set_color(149,46,17)
                 self.gm.game.lights_engine.lights.append(light)
                 self.gm.game.sparks.append(spark)    
+            
             
             surf.blit(img, (self.loc[0] - offset[0] - self.padding, self.loc[1] - offset[1] - self.padding))
 
