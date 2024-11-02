@@ -446,13 +446,13 @@ class GrassTile:
 
             decay_rate = int(self.max_burn_life /self.burn_life) * 3
 
-            if self.max_burn_life > 8 and  int(self.burn_life) %decay_rate  == 0:
+            if self.burn_life > 20 and  int(self.burn_life) %decay_rate  == 0:
                 x_offset_dir = random.randint(0,1)
                 x_offset_dir = -1 if x_offset_dir == 0 else 1
-                position = [self.loc[0] +img.get_width()//2 -self.padding +x_offset_dir * random.randint(0,img.get_width()//2),self.loc[1] +img.get_height()//2+16 -self.padding- random.randint(1,img.get_height()//2)]
+                position = [self.loc[0] +img.get_width()//2 -self.padding +x_offset_dir * random.randint(0,img.get_width()//3),self.loc[1] +img.get_height()//2+16 -self.padding- random.randint(1,img.get_height()//2)]
                 spark = Spark(position.copy(),math.radians(random.randint(180,360)),\
-                                random.randint(1,3),random.choice(self.spark_colors),scale=0.2,speed_factor=2)
-                light = PointLight(position.copy(),power = 1,radius= 6,illuminator= spark,life = 70)
+                                random.randint(1,3),random.choice(self.spark_colors),scale=0.2,speed_factor=2 * (self.burn_life/self.max_burn_life ))
+                light = PointLight(position.copy(),power = 1,radius= 6,illuminator= spark,life = 70,radius_decay= True)
                 light.set_color(149,46,17)
                 self.gm.game.lights_engine.lights.append(light)
                 self.gm.game.sparks.append(spark)    
