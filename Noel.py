@@ -66,13 +66,16 @@ or a wave-based survival game with different and stronger enemies that spawn eac
 """
 
 
-
 import numpy as np 
 import pygame
 import random
 import math
 import time
 import sys 
+import os 
+
+import platform
+from screeninfo import get_monitors
 from scripts import * 
 from assets import GameAssets
 from my_pygame_light2d.engine import LightingEngine, Layer_
@@ -90,19 +93,23 @@ class GameState(Enum):
     PauseMenuSettings =5 
 
 
+
 class myGame:
     def __init__(self):
+        
+        os.environ['SDL_VIDEO_CENTERED'] = '1'
         pygame.init() 
         pygame.mixer.pre_init(44100, -16, 2, 512)
 
-        self.screen_info_obj = pygame.display.Info()
-         
+        self.system_display_info = self._get_system_display_info()
 
         self.clock = pygame.time.Clock()
+        self.screen_size = self.system_display_info['resolution']
         #self.screen_size = (1200,750)
-        self.screen_size = (2560,1440)
+        #self.screen_size = (2560,1440)
         #self.screen_size = (2400,1500)
-        self.screen_to_native_ratio = 4
+        self.default_screen_to_native_ratio = 4
+        self.screen_to_native_ratio = 2
         self.native_res = (int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio))
         
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
@@ -229,8 +236,33 @@ class myGame:
         self.start_screen_ui = startScreenUI(self.screen_size)
         self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
 
+    def _get_system_display_info(self):
+        system_info = {}
+        primary_monitor = get_monitors()[0]
+        system_info["resolution"] = (primary_monitor.width, primary_monitor.height)
 
-    
+        if platform.system() == "Windows":
+            import ctypes
+            # Constants for system DPI 
+            LOGPIXELSX = 88
+            h_dc = ctypes.windll.user32.GetDC(0)
+            dpi_x = ctypes.windll.gdi32.GetDeviceCaps(h_dc,LOGPIXELSX)
+            ctypes.windll.user32.ReleaseDC(0,h_dc)
+
+            # Calculate scale percentage
+            system_info["scale_percentage"] = (dpi_x/96) * 100 
+
+        elif platform.system() == "Darwin":
+            import Quartz
+            main_display_id = Quartz.CGMainDisplayID()
+            scale_factor = Quartz.CGDisplayPixelsHigh(main_display_id) / Quartz.CGDisplayBounds(main_display_id).size.height
+            system_info['scale_percentage'] = scale_factor * 100 
+        else: 
+            raise NotImplementedError("This Game Only runs on windows and macOS.")
+
+        return system_info
+
+
     def _load_map_init_game_env(self,map_file_name):
 
         self.collectable_items = []
@@ -389,6 +421,8 @@ class myGame:
     
     def _handle_common_events(self,event):
         if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_i: 
+                self.get_current_monitor_info()
             if event.key == pygame.K_ESCAPE:
                 self.quit_game() 
         if event.type == pygame.QUIT:
