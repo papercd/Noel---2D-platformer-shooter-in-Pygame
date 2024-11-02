@@ -561,11 +561,7 @@ class Tilemap:
         self.path_graph = {}
         self.ambientNodes = ambientNodeList()
  
-        self.tilemap = {}
-        self.grass = {}
-        self.offgrid_tiles = [{} for i in range(0,self.offgrid_layers)]
-        self.decorations = []
-        self.path_graph = {}
+        
          
         # fill in tilemap dictionary from json data 
         for tile_key in tilemap_data['tilemap']:
@@ -659,8 +655,9 @@ class Tilemap:
         
         # adding grass 
         for grass_key in tilemap_data['grass']:
+            print("check")
             self.grass[grass_key] = Tile(tilemap_data['grass'][grass_key]["type"],tilemap_data['grass'][grass_key]["variant"],tilemap_data['grass'][grass_key]["pos"] )
-       
+        print(self.grass)
         
         f.close
         return lights
@@ -901,10 +898,7 @@ class Tilemap:
         # extract grass tiles and place them down using the grass manager
         
         for grass in self.extract([('live_grass','0;0'),('live_grass','1;0'),('live_grass','2;0'),('live_grass','3;0'),('live_grass','4;0'),('live_grass','5;0')]):
-            self.game.grass_locations.append((grass.pos[0], grass.pos[1]))
-        
-        for loc in self.game.grass_locations:
-            self.game.gm.place_tile(loc,14,[0,2,3,4])
+            self.game.gm.place_tile((grass.pos[0], grass.pos[1]),14,[0,2,3,4])
 
         # extract enemies from tilemap and add them into the enemy container 
 
