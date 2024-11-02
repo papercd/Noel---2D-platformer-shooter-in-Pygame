@@ -376,7 +376,7 @@ class Flamethrower(Weapon):
                 #_y = my+math.sin(a)*d
                 
                 for _ in range(round(density)): 
-                    flame_particle= Flame_particle(self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power)
+                    flame_particle= Flame_particle(self.game,self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power)
                     
                     light = PointLight((self.opening_pos[0], self.opening_pos[1]),power = 0.12,radius = 42,illuminator=flame_particle,life = flame_particle.maxlife)
                     light.set_color(255,35,19)
@@ -386,7 +386,7 @@ class Flamethrower(Weapon):
                     self.game.physical_particles.append(flame_particle)
             else:
                 for _ in range(round(density)): 
-                    flame_particle= Flame_particle(self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power)
+                    flame_particle= Flame_particle(self.game, self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power)
 
                     light = PointLight((self.opening_pos[0], self.opening_pos[1]),power = 0.11,radius = 42,illuminator=flame_particle,life = flame_particle.maxlife)
                     light.set_color(255,35,19)

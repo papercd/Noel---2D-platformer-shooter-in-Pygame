@@ -12,7 +12,7 @@ class PointLight:
         enabled (bool, optional): Whether the light source is enabled. Default is True.
     """
 
-    def __init__(self, position, power=1., radius=10., enabled=True, illuminator = None,life = -1,radius_decay = False) -> None:
+    def __init__(self, position, power=1., radius=10., enabled=True, illuminator = None,life = -1,radius_decay = False ) -> None:
         """
         Initialize a point light source.
 

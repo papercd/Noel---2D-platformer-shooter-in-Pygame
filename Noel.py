@@ -99,8 +99,8 @@ class myGame:
          
 
         self.clock = pygame.time.Clock()
-        self.screen_size = (1200,750)
-        #self.screen_size = (2560,1440)
+        #self.screen_size = (1200,750)
+        self.screen_size = (2560,1440)
         #self.screen_size = (2400,1500)
         self.screen_to_native_ratio = 4
         self.native_res = (int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio))
@@ -189,7 +189,6 @@ class myGame:
         self.physical_particles = []
         self.non_animated_particles = []
         self.sparks = []
-        self.grass_locations = []
 
         #light objs containers  
         self.lights = {}
@@ -242,7 +241,6 @@ class myGame:
         self.non_animated_particles = []
         self.enemies = []
         self.sparks = []
-        self.grass_locations = []
 
         self.lights_engine.lights = self.Tilemap.load_map_return_lights(map_file_name)
 
@@ -390,6 +388,9 @@ class myGame:
 
     
     def _handle_common_events(self,event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.quit_game() 
         if event.type == pygame.QUIT:
                 self.quit_game() 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_F12:
@@ -477,12 +478,14 @@ class myGame:
             for event in pygame.event.get():
                 self._handle_common_events(event)
                 if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_z:
+                        print()
+                        print(self.gm.grass_tiles)
                     if event.key == pygame.K_m:
                         self.gm.burn_tile((76,11))
                     if event.key == pygame.K_n:
-                        positions = [(74,11),(75,11),(76,11),(77,11)]
-                        for pos in positions: 
-                            self.gm.place_tile(pos,14,[0,3,4]) 
+                        for _ in range(20):
+                            self.gm.place_tile((74+_,11),14,[0,3,4])
                         
                     if event.key == pygame.K_LSHIFT:
                         self.shift_pressed = True 
@@ -836,7 +839,10 @@ class myGame:
             
 
             # Define the rotation function with a bit of randomness for a more natural sway
-            rot_function = lambda x, y: int(math.sin(self.rot_func_t / 60 + x / 100) * 7)
+
+            rot_function = lambda x, y: int(math.sin(self.rot_func_t/60 + x/100)*7)
+
+
             self.gm.update_render(self.background_surf,self.dt,offset=render_scroll,rot_function= rot_function)
             self.rot_func_t += self.dt * 100
             #----------------------------------
