@@ -95,12 +95,10 @@ class myGame:
         pygame.init() 
         pygame.mixer.pre_init(44100, -16, 2, 512)
 
-        self.screen_info_obj = pygame.display.Info()
-         
 
         self.clock = pygame.time.Clock()
-        #self.screen_size = (1200,750)
-        self.screen_size = (2560,1440)
+        self.screen_size = (1920,1080)
+        #self.screen_size = (2560,1440)
         #self.screen_size = (2400,1500)
         self.screen_to_native_ratio = 4
         self.native_res = (int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio))
@@ -252,6 +250,8 @@ class myGame:
 
     def start_game(self):
         self._load_map_init_game_env('start_screen.json')
+        #print(self.screen_info_obj.current_h,self.screen_info_obj.current_w)
+
         self._show_start_sequence()
         while(True):
             self._handle_events()
@@ -479,7 +479,7 @@ class myGame:
                 self._handle_common_events(event)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_z:
-                        print()
+                    
                         print(self.gm.grass_tiles)
                     if event.key == pygame.K_m:
                         self.gm.burn_tile((76,11))
