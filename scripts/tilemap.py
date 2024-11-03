@@ -655,9 +655,8 @@ class Tilemap:
         
         # adding grass 
         for grass_key in tilemap_data['grass']:
-            print("check")
+            
             self.grass[grass_key] = Tile(tilemap_data['grass'][grass_key]["type"],tilemap_data['grass'][grass_key]["variant"],tilemap_data['grass'][grass_key]["pos"] )
-        print(self.grass)
         
         f.close
         return lights
@@ -898,7 +897,7 @@ class Tilemap:
         # extract grass tiles and place them down using the grass manager
         
         for grass in self.extract([('live_grass','0;0'),('live_grass','1;0'),('live_grass','2;0'),('live_grass','3;0'),('live_grass','4;0'),('live_grass','5;0')]):
-            self.game.gm.place_tile((grass.pos[0], grass.pos[1]),14,[0,2,3,4])
+            self.game.gm.place_tile((grass.pos[0], grass.pos[1]),10,[0,1,2,3,4])
 
         # extract enemies from tilemap and add them into the enemy container 
 
@@ -909,7 +908,7 @@ class Tilemap:
                 
             elif spawner.variant == '1;0': 
                 self.game.enemies.append(Canine(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(34,23),'black'))
-                
+               
         
             elif spawner.variant == '2;0':
                 
@@ -979,7 +978,7 @@ class Tilemap:
         return matches
   
 
-    def tiles_around(self,pos,size):
+    def tiles_around(self,pos,size,grass_check = False):
         """
         tiles = []
 
@@ -1025,13 +1024,16 @@ class Tilemap:
                             tiles.append(self.tilemap[tile_key])
                     else: 
                         tiles.append(self.tilemap[tile_key])
+                elif grass_check and (x,y) in self.game.gm.grass_tiles:
+                    tiles.append(self.game.gm.grass_tiles[(x,y)])
+                    
         
         return tiles
         
                 
     
 
-    def physics_rects_around(self, pos,size):
+    def physics_rects_around(self, pos,size,grass_check= False,cut_or_burn = True):
         """        rects = []
         for tile in self.tiles_around(pos,size):
             if tile.type in PHYSICS_APPLIED_TILE_TYPES:
@@ -1041,15 +1043,14 @@ class Tilemap:
         """
         """
         rects = []
-        tiles = []
+        tilesel
         """
         surrounding_rects_tiles = []
 
         # Get the tiles around the given position
 
         # If the tile type is interactable, then 
-        tiles_around = self.tiles_around(pos, size)
-        
+        tiles_around = self.tiles_around(pos, size,grass_check)
         for tile in tiles_around:
             if tile.type in PHYSICS_APPLIED_TILE_TYPES:
                 if tile.type.endswith('door'):
@@ -1095,6 +1096,15 @@ class Tilemap:
                     )
                 
                     surrounding_rects_tiles.append((pygame.Rect(*rect),tile))
+            elif grass_check and tile.type == 'live_grass':
+                
+                rect = (
+                    tile.pos[0],
+                    tile.pos[1],
+                    16,
+                    16
+                )
+                surrounding_rects_tiles.append((pygame.Rect(*rect),tile))
         # Convert the tuples to pygame Rect objects if needed
         #surrounding_rects_tiles = [ for rect in rects, tile for tile in tiles]
         
