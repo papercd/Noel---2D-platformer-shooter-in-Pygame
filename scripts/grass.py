@@ -170,9 +170,12 @@ class GrassManager:
                 pos = (grid_pos[0] + x, grid_pos[1] + y)
                 if pos in self.grass_tiles:
                     self.grass_tiles[pos].apply_force(location, radius, dropoff)
+                if pos in self.burning_grass_tiles:
+                    self.burning_grass_tiles[pos].apply_force(location, radius, dropoff)
+                
 
     # an update and render combination function
-    def update_render(self, surf, dt, offset=(0, 0), rot_function=None):
+    def update_render(self,quadtree, surf, dt, offset=(0, 0), rot_function=None):
         visible_tile_range = (int(surf.get_width() // self.tile_size) + 1, int(surf.get_height() // self.tile_size) + 1)
         base_pos = (int(offset[0] // self.tile_size), int(offset[1] // self.tile_size))
 
@@ -196,15 +199,15 @@ class GrassManager:
             if not tile.appended: 
                 self.game.lights_engine.lights.append(tile.light)
                 tile.appended = True 
-            
-            # Update neighboring grass tiles based on burn status
-            for offset_ in BURN_CHECK_OFFSETS:
-                check_pos = (key[0] + offset_[0], key[1] + offset_[1])
-                neighbor_tile = self.grass_tiles.get(check_pos)
-                if neighbor_tile:
-                    neighbor_tile.burning = max(0, neighbor_tile.burning - 1)
-                    if neighbor_tile.burning == 0:
-                        keys_to_add.append(check_pos)
+            if tile.burn_life >45:    
+                # Update neighboring grass tiles based on burn status
+                for offset_ in BURN_CHECK_OFFSETS:
+                    check_pos = (key[0] + offset_[0], key[1] + offset_[1])
+                    neighbor_tile = self.grass_tiles.get(check_pos)
+                    if neighbor_tile:
+                        neighbor_tile.burning = max(0, neighbor_tile.burning - 1)
+                        if neighbor_tile.burning == 0:
+                            keys_to_add.append(check_pos)
 
             # Only render if within the visible range
             if base_pos[0] <= key[0] <= base_pos[0] + visible_tile_range[0] and \
@@ -230,10 +233,12 @@ class GrassManager:
         # Render the grass tiles
         for pos in render_list:
             tile = self.grass_tiles[pos]
+            if quadtree:
+                quadtree.insert(tile)
             tile.update_burn_state(dt)
             tile.render(surf, dt, offset=offset)
             if rot_function:
-                tile.set_rotation(rot_function(tile.loc[0], tile.loc[1]), dt)
+                tile.set_rotation(rot_function(tile.pos[0], tile.pos[1]), dt * tile.rot_random_factor_seed)
     """
     # an update and render combination function
     def update_render(self, surf, dt, offset=(0, 0), rot_function=None):
@@ -306,16 +311,23 @@ class GrassAssets:
         self.gm = gm
 
         self.blades = []
+        self.folder_size_info = []
 
         # load in blade images
-        for blade in sorted(os.listdir(path)):
-            img = pygame.image.load(path + '/' + blade).convert()
-            img.set_colorkey((0, 0, 0))
-            self.blades.append(img)
+        for folder in sorted(os.listdir(path)):
+            folder_content = []
+            folder_size = 0
+            for blade in sorted(os.listdir(path +'/'+folder)):
+                folder_size +=1
+                img = pygame.image.load(path + '/' + folder +'/'+ blade).convert()
+                img.set_colorkey((0, 0, 0))
+                folder_content.append(img)
+            self.folder_size_info.append(folder_size)
+            self.blades.append(folder_content)
 
-    def render_blade(self, surf, blade_id, location, rotation, scale, palette):
+    def render_blade(self, surf, blade_id, blade_variation,location, rotation, scale, palette):
         # before you rotate it, scale it. 
-        rot_img = pygame.transform.rotate(self.blades[blade_id], rotation)
+        rot_img = pygame.transform.rotate(self.blades[blade_id][blade_variation], rotation)
         rot_img = pygame.transform.scale(rot_img, (int(rot_img.get_width() * scale), int(rot_img.get_height() * scale)))
 
         # shade the blade of grass based on its rotation
@@ -352,16 +364,20 @@ class GrassAssets:
 
 
 # the grass tile object that contains data for the blades
+
+
+# the grass tile object that contains data for the blades
 class GrassTile:
     def __init__(self, tile_size, location, amt, config, ga, gm):
         
-        
+        self.type = self.e_type = 'live_grass'
         self.ga = ga
         self.gm = gm
-        self.loc = location
+        self.pos = location
         self.org_img_dim = None
         self.size = tile_size
         self.blades = []
+        self.rot_random_factor_seed = random.random()
         self.master_rotation = 0
         self.precision = 30
         self.padding = self.gm.padding
@@ -387,7 +403,8 @@ class GrassTile:
         y_range = self.gm.vertical_place_range[1] - self.gm.vertical_place_range[0]
         for i in range(amt):
             new_blade = random.choice(config)
-            img = self.ga.blades[new_blade]
+            variation_choice = random.randint(0,self.ga.folder_size_info[new_blade]) -1
+            img = self.ga.blades[new_blade][variation_choice]
             self.org_img_dim = (img.get_width(),img.get_height())
             avg_rgb = [0,0,0]
             count = 0
@@ -409,7 +426,7 @@ class GrassTile:
             if y_range:
                 y_pos = random.random() * y_range + self.gm.vertical_place_range[0]
 
-            self.blades.append([(random.random() * self.size, y_pos * self.size), new_blade, random.random() * 30 - 15,avg_rgb])
+            self.blades.append([(random.random() * self.size, y_pos * self.size), new_blade, variation_choice,random.random() * 30 - 15,avg_rgb])
 
         # layer back to front
         self.blades.sort(key=lambda x: x[1])
@@ -431,8 +448,8 @@ class GrassTile:
         self.update_render_data(0)
 
     def rect(self):
-        return pygame.Rect(self.loc[0],self.loc[1]+ (self.org_img_dim[1]-self.padding)*(1- (self.burn_life/self.max_burn_life)),self.size, \
-                           self.loc[1]+ (self.org_img_dim[1]-self.padding)*((self.burn_life/self.max_burn_life)))       
+        return pygame.Rect(self.pos[0],self.pos[1]+ (self.org_img_dim[1]-self.padding)*(1- (self.burn_life/self.max_burn_life)),self.size, \
+                           self.pos[1]+ (self.org_img_dim[1]-self.padding)*((self.burn_life/self.max_burn_life)))       
 
     # apply a force that affects each blade individually based on distance instead of the rotation of the entire tile
     def apply_force(self, force_point, force_radius, force_dropoff):
@@ -441,17 +458,17 @@ class GrassTile:
 
         for i, blade in enumerate(self.blades):
             orig_data = self.custom_blade_data[i]
-            dis = math.sqrt((self.loc[0] + blade[0][0] - force_point[0]) ** 2 + (self.loc[1] + blade[0][1] - force_point[1]) ** 2)
+            dis = math.sqrt((self.pos[0] + blade[0][0] - force_point[0]) ** 2 + (self.pos[1] + blade[0][1] - force_point[1]) ** 2)
             max_force = False
             if dis < force_radius:
                 force = 2
             else:
                 dis = max(0, dis - force_radius)
                 force = 1 - min(dis / force_dropoff, 1)
-            dir = 1 if force_point[0] > (self.loc[0] + blade[0][0]) else -1
+            dir = 1 if force_point[0] > (self.pos[0] + blade[0][0]) else -1
             # don't update unless force is greater
-            if not self.custom_blade_data[i] or abs(self.custom_blade_data[i][2] - self.blades[i][2]) <= abs(force) * 90:
-                self.custom_blade_data[i] = [blade[0], blade[1], blade[2] + dir * force * 90,blade[3]]
+            if not self.custom_blade_data[i] or abs(self.custom_blade_data[i][3] - self.blades[i][3]) <= abs(force) * 90:
+                self.custom_blade_data[i] = [blade[0], blade[1],blade[2], blade[3] + dir * force * 90,blade[4]]
 
 
     #burn spread here 
@@ -471,14 +488,14 @@ class GrassTile:
     def update_burn_state(self,dt):
         if self.burning == 0:
             if not self.swapped_dict:
-                loc = (self.loc[0]//self.gm.tile_size,self.loc[1]//self.gm.tile_size)
+                loc = (self.pos[0]//self.gm.tile_size,self.pos[1]//self.gm.tile_size)
                 self.gm.burning_grass_tiles[loc] = self.gm.grass_tiles.pop(loc)
                 self.swapped_dict = True 
             self.burn_life = max(0,self.burn_life - 25 * dt)
             #if the grass has burnt out completely, then gt rid of the grass data, where? from the grasstiles list, and from the cache. 
             if self.burn_life  == 0:
                 self.blades = [None] * len(self.blades)
-                check_loc = (self.loc[0]//self.size,self.loc[1]//self.size)
+                check_loc = (self.pos[0]//self.size,self.pos[1]//self.size)
                 self.dead = True
                 return True 
                 del self.gm.burning_grass_tiles[check_loc]
@@ -534,7 +551,7 @@ class GrassTile:
 
         # render each blade using the asset manager
         for blade in blades:
-            self.ga.render_blade(surf, blade[1], (blade[0][0] + self.padding, blade[0][1] + self.padding), max(-90, min(90, blade[2] + self.true_rotation)),self.burn_life/self.max_burn_life,blade[3])
+            self.ga.render_blade(surf, blade[1], blade[2],(blade[0][0] + self.padding, blade[0][1] + self.padding), max(-90, min(90, blade[3] + self.true_rotation)),self.burn_life/self.max_burn_life,blade[4])
 
         # return surf and shadow_surf if applicable
         if render_shadow:
@@ -545,7 +562,7 @@ class GrassTile:
     # draw the shadow image for the tile
     def render_shadow(self, surf, offset=(0, 0)):
         if self.gm.ground_shadow[0] and (self.base_id in self.gm.shadow_cache):
-            surf.blit(self.gm.shadow_cache[self.base_id], (self.loc[0] - offset[0] - self.padding, self.loc[1] - offset[1] - self.padding))
+            surf.blit(self.gm.shadow_cache[self.base_id], (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
 
     # draw the grass itself
     def render(self, surf, dt, offset=(0, 0)):
@@ -561,8 +578,8 @@ class GrassTile:
             if self.burn_life > 45 and  int(self.burn_life) %decay_rate  == 0:
                 x_offset_dir = random.randint(0,1)
                 x_offset_dir = -1 if x_offset_dir == 0 else 1
-                #position = [self.loc[0] +img.get_width()//2 -self.padding +x_offset_dir * random.randint(0,img.get_width()//3),self.loc[1] +img.get_height()//2 -self.padding- random.randint(1,img.get_height()//2)]
-                position = [self.loc[0] +img.get_width()//2 -self.padding +x_offset_dir * random.randint(0,img.get_width()//3),self.loc[1]+self.gm.tile_size-1-random.randint(1,img.get_height()//3,) ]
+                #position = [self.pos[0] +img.get_width()//2 -self.padding +x_offset_dir * random.randint(0,img.get_width()//3),self.pos[1] +img.get_height()//2 -self.padding- random.randint(1,img.get_height()//2)]
+                position = [self.pos[0] +img.get_width()//2 -self.padding +x_offset_dir * random.randint(0,img.get_width()//3),self.pos[1]+self.gm.tile_size-1-random.randint(1,img.get_height()//3,) ]
                 spark = Spark(position.copy(),math.radians(random.randint(180,360)),\
                                 random.randint(1,3),random.choice(self.spark_colors),scale=0.2,speed_factor=2 *(self.burn_life/self.max_burn_life))
                 light = PointLight(position.copy(),power = 1,radius= 6,illuminator= spark,life = 70,radius_decay= True)
@@ -572,7 +589,7 @@ class GrassTile:
                 self.gm.game.sparks.append(spark)    
             
             
-            surf.blit(img, (self.loc[0] - offset[0] - self.padding, self.loc[1] - offset[1] - self.padding))
+            surf.blit(img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
 
         else: 
 
@@ -595,8 +612,8 @@ class GrassTile:
                         mask_img = img_mask.to_surface()
 
                         centroid = img_mask.centroid()
-                        #center = (centroid[0] +self.loc[0]- offset[0] - self.padding,  centroid[1]+self.loc[1]- offset[1] - self.padding )
-                        #outline = [(p[0] + self.loc[0] - offset[0] - self.padding, p[1] + self.loc[1]- offset[1] - self.padding) for p in img_mask.outline(every=6)]
+                        #center = (centroid[0] +self.pos[0]- offset[0] - self.padding,  centroid[1]+self.pos[1]- offset[1] - self.padding )
+                        #outline = [(p[0] + self.pos[0] - offset[0] - self.padding, p[1] + self.pos[1]- offset[1] - self.padding) for p in img_mask.outline(every=6)]
                         #outline = [(p[0],p[1]) for p in img_mask.outline(every =6)]
 
                         outline = []
@@ -624,21 +641,21 @@ class GrassTile:
 
                         #test polygon for how it looks 
 
-                        surf.blit(poly_surf,(self.loc[0] - offset[0] - self.padding, self.loc[1] - offset[1] - self.padding+height_offset))
+                        surf.blit(poly_surf,(self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding+height_offset))
                     
                         short_surf = pygame.Surface((img.get_width(),int(mask_img.get_height() * (self.burn_life/self.max_burn_life))))
                         short_surf.set_colorkey((0,0,0))
                         cut_offset = (0,short_surf.get_height()-img.get_height())
                         short_surf.blit(img,cut_offset)
-                        surf.blit(short_surf, (self.loc[0] - offset[0] - self.padding - cut_offset[0], self.loc[1] - offset[1] - self.padding- cut_offset[1]))
+                        surf.blit(short_surf, (self.pos[0] - offset[0] - self.padding - cut_offset[0], self.pos[1] - offset[1] - self.padding- cut_offset[1]))
                         
                         pass
                     else: 
                     """
-                    surf.blit(img, (self.loc[0] - offset[0] - self.padding, self.loc[1] - offset[1] - self.padding))
+                    surf.blit(img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
                     
                     """
-                    #surf.blit(mask_img, (self.loc[0] - offset[0] - self.padding, self.loc[1] - offset[1] - self.padding))
+                    #surf.blit(mask_img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
                     for point in outline:
                         surf.set_at((point[0],point[1]),(255,0,255))
                     surf.set_at(center,(0,0,0))
@@ -666,8 +683,8 @@ class GrassTile:
                     mask_img = img_mask.to_surface()
 
                     centroid = img_mask.centroid()
-                    #center = (centroid[0] +self.loc[0]- offset[0] - self.padding,  centroid[1]+self.loc[1]- offset[1] - self.padding )
-                    #outline = [(p[0] + self.loc[0] - offset[0] - self.padding, p[1] + self.loc[1]- offset[1] - self.padding) for p in img_mask.outline(every=6)]
+                    #center = (centroid[0] +self.pos[0]- offset[0] - self.padding,  centroid[1]+self.pos[1]- offset[1] - self.padding )
+                    #outline = [(p[0] + self.pos[0] - offset[0] - self.padding, p[1] + self.pos[1]- offset[1] - self.padding) for p in img_mask.outline(every=6)]
                     #outline = [(p[0],p[1]) for p in img_mask.outline(every =6)]
 
                     outline = []
@@ -693,19 +710,19 @@ class GrassTile:
 
                     #test polygon for how it looks 
 
-                    surf.blit(poly_surf,(self.loc[0] - offset[0] - self.padding, self.loc[1] - offset[1] - self.padding + height_offset))
+                    surf.blit(poly_surf,(self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding + height_offset))
                 else: 
 
                     """
                 
-                surf.blit(self.gm.grass_cache[self.render_data], (self.loc[0] - offset[0] - self.padding, self.loc[1] - offset[1] - self.padding))
+                surf.blit(self.gm.grass_cache[self.render_data], (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
 
         # attempt to move blades back to their base position
         if self.custom_blade_data:
             matching = True
             for i, blade in enumerate(self.custom_blade_data):
-                blade[2] = normalize(blade[2], self.gm.stiffness * dt, self.blades[i][2])
-                if blade[2] != self.blades[i][2]:
+                blade[3] = normalize(blade[3], self.gm.stiffness * dt, self.blades[i][3])
+                if blade[3] != self.blades[i][3]:
                     matching = False
             # mark the data as non-custom once in base position so the cache can be used
             if matching:

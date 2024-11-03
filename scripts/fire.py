@@ -189,24 +189,31 @@ class Flame_particle:
         self.x +=  frame_movement[0] 
         self.y += frame_movement[1] 
         
-        for rect_tile in tilemap.physics_rects_around((self.pos[0] - self.r,self.pos[1] - self.r),(self.r * 2,self.r * 2)):
-                   
-                 
+        grass_check = j % 11 == 0
+
+        for rect_tile in tilemap.physics_rects_around((self.pos[0] - self.r,self.pos[1] - self.r),(self.r * 2,self.r * 2),grass_check=grass_check):
+              
+             
             side_point,collided = self.collide_with_rect(rect_tile[0])
             if collided: 
+                #print(rect_tile[1].type)
                 if not rect_tile[1].type == 'stairs':
-                    incid_angle = math.degrees(math.atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
-                    if side_point == "Top" or side_point == "Bottom":
-                        self.rise *= 0.7
-                        self.rise_angle = incid_angle
-                    elif side_point == 'Left' or side_point == 'Right':
-                        self.rise *= 0.7
-                        self.rise_angle = -180 + incid_angle
-                    elif side_point == 'Center':
-                        self.rise *= 0.3
+                    if rect_tile[1].type =='live_grass':
+ 
+                        self.game.gm.burn_tile((rect_tile[1].pos[0]//16,rect_tile[1].pos[1]//16))
                     else:
-                        self.rise *= 0.7
-                        self.rise_angle += 180  
+                        incid_angle = math.degrees(math.atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
+                        if side_point == "Top" or side_point == "Bottom":
+                            self.rise *= 0.7
+                            self.rise_angle = incid_angle
+                        elif side_point == 'Left' or side_point == 'Right':
+                            self.rise *= 0.7
+                            self.rise_angle = -180 + incid_angle
+                        elif side_point == 'Center':
+                            self.rise *= 0.3
+                        else:
+                            self.rise *= 0.7
+                            self.rise_angle += 180  
                 else: 
                     #collision with stairs 
                     incid_angle = math.degrees(math.atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))

@@ -106,10 +106,10 @@ class myGame:
         self.clock = pygame.time.Clock()
         self.screen_size = self.system_display_info['resolution']
         #self.screen_size = (1200,750)
-        #self.screen_size = (2560,1440)
+        #self.screen_size = (2540,1420)
         #self.screen_size = (2400,1500)
         self.default_screen_to_native_ratio = 4
-        self.screen_to_native_ratio = 2
+        self.screen_to_native_ratio = 4
         self.native_res = (int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio))
         
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
@@ -121,6 +121,7 @@ class myGame:
 
         self.background_surf_dim = self.foreground_surf_dim = self.background_surf.get_size()
 
+        self.test_shader = self.lights_engine.load_shader_from_path('vertex.glsl','fog_fragment.glsl')
         """
         self.test_shader = self.lights_engine.load_shader_from_path('vertex.glsl','fog_fragment.glsl')
         self.pixel_exp_shader = self.lights_engine.load_shader_from_path('vertex.glsl','exp_fragment.glsl')
@@ -182,7 +183,7 @@ class myGame:
         self.HUD = HUD(self.player,self.general_sprites['health_UI'],self.foreground_surf_dim)
         
         #grass manager
-        self.gm = GrassManager(self,'data/images/tiles/live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
+        self.gm = GrassManager(self,'data/images/tiles/new_live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
                                max_unique = 5,place_range=[1,1],burn_spread_speed= 3,burn_rate= 1.2)
 
         #game object containers 
@@ -516,10 +517,11 @@ class myGame:
                         print()
                         print(self.gm.grass_tiles)
                     if event.key == pygame.K_m:
-                        self.gm.burn_tile((76,11))
+                        self.gm.burn_tile((74,11))
                     if event.key == pygame.K_n:
+                        #self.gm.place_tile((74,11),10,[0,1,2,3,4])
                         for _ in range(20):
-                            self.gm.place_tile((74+_,11),14,[0,3,4])
+                            self.gm.place_tile((74+_,11),14,[0,1,2,3,4])
                         
                     if event.key == pygame.K_LSHIFT:
                         self.shift_pressed = True 
@@ -714,7 +716,7 @@ class myGame:
                 quadtree.insert(collectable_item)
                 collectable_item.render(self.background_surf, offset=render_scroll)
 
-
+            
                 
             for i in range(len(self.bullets_on_screen) - 1, -1, -1):
                 bullet = self.bullets_on_screen[i]
@@ -817,27 +819,51 @@ class myGame:
                 if kill:
                     del self.particles[i]
 
-            # Process physical particles
-            for i, particle in enumerate(self.physical_particles.copy()):
+            self.player.accelerate(self.player_movement_input)
+            self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count)
+            self.player.render(self.background_surf,render_scroll)
+
+            #------------------------grass update and rendering
+            
+
+            # Define the rotation function with a bit of randomness for a more natural sway
+
+            rot_function = lambda x, y: int(math.sin(self.rot_func_t/60 + x/100)*7)
+            
+            if not self.player.crouch: 
+                self.gm.apply_force((self.player.pos[0]+ self.player.size[0]//2, self.player.pos[1]+ self.player.size[1]//2),self.Tilemap.tile_size//4,self.Tilemap.tile_size*3.4//7)
+            self.gm.update_render(quadtree,self.background_surf,self.dt,offset=render_scroll,rot_function= rot_function)
+            self.rot_func_t += self.dt * 100
+            #----------------------------------
+
+
+            particles_to_remove = []
+
+            for i, particle in enumerate(self.physical_particles):
+                kill = particle.update_pos(self.Tilemap, self.frame_count)
+                
+                if kill:
+                    particles_to_remove.append(particle)  # Mark particle for removal
+                    continue
+
+                particle.render(self.buffer_surf, offset=render_scroll)
+
+                if i % 4 == 0:
+                    xx, yy = particle.pos[0], particle.pos[1]
+                    r = particle.r * 3
                     
-                    kill = particle.update_pos(self.Tilemap,self.frame_count)
-                    if kill: 
-                        self.physical_particles.remove(particle)
-                        continue 
+                    rangeCircle = Circle(Vector2(xx, yy), r)
+                    
+                    # Query for nearby entities
+                    nearby_entities = quadtree.queryRange(rangeCircle, "enemy")
+                  
+                    for entity in nearby_entities:
+                        if entity.state != 'death' and particle.collide(entity):
+                            entity.hit(particle.damage)
 
-                    particle.render(self.buffer_surf,offset = render_scroll)
-
-                    if i % 4 == 0:
-                        xx, yy = particle.pos[0],particle.pos[1]
-                        r = particle.r * 3 
-                        
-                        rangeCircle = Circle(Vector2(xx, yy), r)
-
-                        nearby_entities = quadtree.queryRange(rangeCircle,"enemy")
-
-                        for entity in nearby_entities:
-                            if  entity.state != 'death' and particle.collide(entity):
-                                entity.hit(particle.damage)
+            # Remove particles outside the loop to avoid modifying the list during iteration
+            for particle in particles_to_remove:
+                self.physical_particles.remove(particle)
 
             # Process sparks
             for i in range(len(self.sparks) - 1, -1, -1):
@@ -851,7 +877,7 @@ class myGame:
 
             # Blit buffer surface to background surface
             self.background_surf.blit(self.buffer_surf, (0, 0))
-
+            
             # Process non-animated particles
             for i in range(len(self.non_animated_particles) - 1, -1, -1):
                 particle = self.non_animated_particles[i]
@@ -864,22 +890,7 @@ class myGame:
                 if kill:
                     del self.non_animated_particles[i]
 
-            #player update and render
-            self.player.accelerate(self.player_movement_input)
-            self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count)
-            self.player.render(self.background_surf,render_scroll)
-
-            #------------------------grass update and rendering
-            
-
-            # Define the rotation function with a bit of randomness for a more natural sway
-
-            rot_function = lambda x, y: int(math.sin(self.rot_func_t/60 + x/100)*7)
-
-
-            self.gm.update_render(self.background_surf,self.dt,offset=render_scroll,rot_function= rot_function)
-            self.rot_func_t += self.dt * 100
-            #----------------------------------
+           
 
             #HUD rendering 
             self.HUD.render(self.foreground_surf,self.cursor,offset=(0,0),closing = self.inven_on)
@@ -890,10 +901,10 @@ class myGame:
 
             #using lighting engine to turn pg surf into moderngl texture, then render.
             tex = self.lights_engine.surface_to_texture(self.background_surf)
-        
+      
             self.lights_engine.render_texture_with_trans(
                 tex, Layer_.BACKGROUND,
-                position= (-screenshake_offset[0],-screenshake_offset[1])
+                position= (-screenshake_offset[0],-screenshake_offset[1]),
             )
            
             tex.release()
