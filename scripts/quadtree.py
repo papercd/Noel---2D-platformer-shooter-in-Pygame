@@ -76,6 +76,30 @@ class QuadTree:
             if self.southEast.insert(entity):
                 return True
             return False
+    """
+    def queryRange(self, _range, e_type=None):
+        entitiesInRange = []
+        
+        # Simplified boundary check
+        if isinstance(_range, Circle) and not _range.intersects(self.boundary):
+            return entitiesInRange
+        elif isinstance(_range, Rectangle) and not _range.intersects(self.boundary):
+            return entitiesInRange
+
+        # Check if entities are in range and of the specified type
+        for entity in self.entities:
+            if (e_type is None or entity.e_type == e_type) and _range.containsEntity(entity):
+                entitiesInRange.append(entity)
+                
+        # Recursively check subdivisions if they exist
+        if self.northWest:
+            entitiesInRange += self.northWest.queryRange(_range, e_type)
+            entitiesInRange += self.northEast.queryRange(_range, e_type)
+            entitiesInRange += self.southWest.queryRange(_range, e_type)
+            entitiesInRange += self.southEast.queryRange(_range, e_type)
+
+        return entitiesInRange
+    """
 
     def queryRange(self, _range , e_type = None):
         entitiesInRange = []

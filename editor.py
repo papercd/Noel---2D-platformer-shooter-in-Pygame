@@ -225,7 +225,7 @@ class Editor:
             #self.backgrounds['building'].render(self.background_surf,render_scroll)
             self.Tilemap.render(self.background_surf, offset = render_scroll,editor= True)
 
-            self.gm.update_render(self.background_surf,self.dt,offset=render_scroll)
+            self.gm.update_render(None,self.background_surf,self.dt,offset=render_scroll)
 
             #Design a tile panel. The tile panel will look like the following: 
             #It will be on the left side of the screen, and it will be SCROLLABLE. This is to fit all the tiles I add to the assets library. Maybe add a sorting system?

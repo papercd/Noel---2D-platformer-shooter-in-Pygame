@@ -1,120 +1,81 @@
-import sys
-from array import array
-from collections import deque
-
 import pygame
-import moderngl
+import math
+import itertools
 
+# Initialize Pygame
 pygame.init()
 
-# Set up Pygame with OpenGL context
-screen = pygame.display.set_mode((800, 600), pygame.OPENGL | pygame.DOUBLEBUF)
-ctx = moderngl.create_context()
+# Constants for screen dimensions and colors
+SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
+BACKGROUND_COLOR = (25, 25, 25)
 
+# Set up the display
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 clock = pygame.time.Clock()
+FPS = 60
 
-# Load image
-img = pygame.image.load('data/images/background.png')
+# Define a function to create procedural animation
+def procedural_leg_movement(tick):
+    # Calculates the position of a leg using sine and cosine for given tick value
+    amplitude = 30                         # Amplitude of the sine wave
+    frequency = 0.1                        # Frequency of the sine wave
+    phase = tick * frequency               # Compute phase for cyclic movement
+    x_pos = amplitude * math.sin(phase)    # X position follows a sine wave
+    y_pos = abs(amplitude * math.cos(phase))  # Y position follows the absolute value of a cosine wave
+    
+    return x_pos, y_pos
+    
+# Define a class for the creature
+class Creature:
+    def __init__(self):
+        self.base_x = SCREEN_WIDTH // 2
+        self.base_y = SCREEN_HEIGHT // 2
+        self.legs = 4
+        self.leg_seg_length = 50  # Length of each segment of the leg
 
-# Vertex buffer data: position (x, y), uv coords (x, y)
-quad_buffer = ctx.buffer(data=array('f', [
-    -1.0, 1.0, 0.0, 0.0,  # topleft
-    1.0, 1.0, 1.0, 0.0,   # topright
-    -1.0, -1.0, 0.0, 1.0, # bottomleft
-    1.0, -1.0, 1.0, 1.0,  # bottomright
-]))
+    def draw(self, tick):
+        for i, phase_offset in zip(range(self.legs), itertools.cycle([0, math.pi])):
+            # Get the procedural leg position with added phase offset for variety
+            leg_x_offset, leg_y_offset = procedural_leg_movement(tick + phase_offset)
+            
+            # Calculate start and end positions of each leg segment
+            for segment in range(2):
+                start_pos = (
+                    self.base_x + leg_x_offset * segment,
+                    self.base_y + self.leg_seg_length * segment + leg_y_offset
+                )
+                end_pos = (
+                    self.base_x + leg_x_offset * (segment + 1),
+                    self.base_y + self.leg_seg_length * (segment + 1) + leg_y_offset
+                )
+                
+                # Draw the leg segment
+                pygame.draw.line(screen, (255, 220, 150), start_pos, end_pos, 5)
+    
+# Instantiate a creature
+creature = Creature()
 
-# Vertex shader source code
-vert_shader = '''
-#version 330 core
-
-in vec2 vert;
-in vec2 texcoord;
-out vec2 uvs;
-
-void main() {
-    uvs = texcoord;
-    gl_Position = vec4(vert, 0.0, 1.0);
-}
-'''
-
-# Fragment shader source code for circular ripple effect
-frag_shader = '''
-#version 330 core
-
-uniform sampler2D tex;
-uniform float time;
-uniform vec2 resolution;
-uniform vec2 click_pos;
-uniform float click_time;
-
-in vec2 uvs;
-out vec4 f_color;
-
-void main() {
-    vec2 uv = uvs;
-    vec2 click_uv = click_pos / resolution;
-
-    float dist = distance(uv, click_uv);
-    float elapsed = time - click_time;
-    float ripple = sin(10.0 * dist - elapsed * 5.0) * exp(-elapsed * 2.0) * 0.1;
-
-    uv += ripple * normalize(uv - click_uv);
-
-    f_color = texture(tex, uv);
-}
-'''
-
-# Compile shaders and create a shader program
-program = ctx.program(vertex_shader=vert_shader, fragment_shader=frag_shader)
-render_object = ctx.vertex_array(program, [(quad_buffer, '2f 2f', 'vert', 'texcoord')])
-
-# Function to convert Pygame surface to OpenGL texture
-def surf_to_texture(surf):
-    tex = ctx.texture(surf.get_size(), 4)
-    tex.filter = (moderngl.NEAREST, moderngl.NEAREST)
-    tex.swizzle = 'BGRA'
-    tex.write(surf.get_view('1'))
-    return tex
-
-click_positions = deque(maxlen=10)
-start_time = pygame.time.get_ticks()
-
-# Main loop
-while True:
+# Game loop
+running = True
+tick = 0
+while running:
+    # Event handling
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            click_positions.append((event.pos, pygame.time.get_ticks() - start_time))
+            running = False
 
-    # Create a Pygame surface to draw the image
-    display = pygame.Surface((800, 600))
-    display.fill((0, 0, 0))
-    display.blit(img, (0, 0))
-    
-    current_time = (pygame.time.get_ticks() - start_time) / 1000.0
-    
-    # Convert the Pygame surface to an OpenGL texture
-    frame_tex = surf_to_texture(display)
-    frame_tex.use(0)
-    program['tex'] = 0
-    program['time'] = current_time
-    program['resolution'] = (800, 600)
-    
-    if click_positions:
-        click_pos, click_time = click_positions[-1]
-        program['click_pos'] = click_pos
-        program['click_time'] = click_time / 1000.0
-    else:
-        program['click_pos'] = (0, 0)
-        program['click_time'] = -100.0  # A large negative value to ensure no ripple at start
+    # Update
+    tick += 1 # Increment tick
 
-    render_object.render(mode=moderngl.TRIANGLE_STRIP)
+    # Draw everything
+    screen.fill(BACKGROUND_COLOR)
+    creature.draw(tick)
     
+    # Update the display
     pygame.display.flip()
-    
-    frame_tex.release()
-    
-    clock.tick(60)
+
+    # Tick the clock
+    clock.tick(FPS)
+
+# Clean up
+pygame.quit()

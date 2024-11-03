@@ -21,7 +21,7 @@ class GameAssets:
         self.interactable_obj_sprites.update(self.load_interactable_assets())
 
     def load_grass_assets(self):
-        return load_tile_assets(['grass', 'live_grass'], background='transparent')
+        return load_tile_assets(['grass', 'new_live_grass'], background='transparent')
 
     def load_building_assets(self):
         building_paths = [
