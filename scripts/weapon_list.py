@@ -112,6 +112,36 @@ class ambientNode:
     def return_values(self):
         return (self.range,self.colorValue,self.default)
 
+class interpolatedLightNode:
+    def __init__(self,light_range, left_bound_colorValue = (255,255,255,255), right_bound_colorValue = (255,255,255,255)):
+        self.range = list(light_range)
+        self.leftBoundColor = left_bound_colorValue
+        self.rightBoundColor = right_bound_colorValue
+        self.prev = None
+        self.next = None
+        self.default = False 
+        self.hull_y_range = (0,0)
+        self.hulls = []
+
+    def get_interpolated_RGBA(self, pos):
+        # Ensure position is within the range
+        if not (self.range[0] <= pos <= self.range[1]):
+            raise ValueError("Position out of bounds.")
+
+        # Calculate the interpolation factor (0 at the left bound, 1 at the right bound)
+        t = (pos - self.range[0]) / (self.range[1] - self.range[0])
+
+        # Interpolate each color component
+        r = int(self.leftBoundColor[0] + t * (self.rightBoundColor[0] - self.leftBoundColor[0]))
+        g = int(self.leftBoundColor[1] + t * (self.rightBoundColor[1] - self.leftBoundColor[1]))
+        b = int(self.leftBoundColor[2] + t * (self.rightBoundColor[2] - self.leftBoundColor[2]))
+        a = int(self.leftBoundColor[3] + t * (self.rightBoundColor[3] - self.leftBoundColor[3]))
+
+        return (r, g, b, a) 
+    
+    def return_values(self):
+        return (self.ranmge,self.leftBoundColor,self.rightBoundColor,self.default)
+
 class ambientNodeList:
     def __init__(self,default_color = (255,255,255,255)):
         # Initialize with a single default node covering the specified range
@@ -282,13 +312,14 @@ class ambientNodeList:
                                  
                          
         
-        
+    def insert_interpolated_ambient_node(self,new_range,hull_range,leftColor,rightColor):
+        pass
         
 
          
 
     
-    def insert_node(self, new_range, hull_range, colorValue):
+    def insert_ambient_node(self, new_range, hull_range, colorValue):
         overlapping_node = self.find_overlapping_node(new_range)
         if overlapping_node:
             print("Range overlaps with an existing non-default node. Please enter a different range.")

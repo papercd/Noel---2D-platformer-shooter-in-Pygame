@@ -101,19 +101,12 @@ class myGame:
         pygame.init() 
         pygame.mixer.pre_init(44100, -16, 2, 512)
 
-<<<<<<< HEAD
-
-        self.clock = pygame.time.Clock()
-        self.screen_size = (1920,1080)
-        #self.screen_size = (2560,1440)
-=======
         self.system_display_info = self._get_system_display_info()
 
         self.clock = pygame.time.Clock()
         self.screen_size = self.system_display_info['resolution']
         #self.screen_size = (1200,750)
         #self.screen_size = (2540,1420)
->>>>>>> 7cdc8552f2a81635a2b9897dd285b837719ed088
         #self.screen_size = (2400,1500)
         self.default_screen_to_native_ratio = 4
         self.screen_to_native_ratio = 4
