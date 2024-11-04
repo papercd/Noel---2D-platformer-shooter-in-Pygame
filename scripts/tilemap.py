@@ -1030,6 +1030,7 @@ class Tilemap:
                         tiles.append(self.tilemap[tile_key])
                 elif grass_check and (x,y) in self.game.gm.grass_tiles:
                     tiles.append(self.game.gm.grass_tiles[(x,y)])
+                
                     
         
         return tiles
@@ -1037,7 +1038,7 @@ class Tilemap:
                 
     
 
-    def physics_rects_around(self, pos,size,grass_check= False,cut_or_burn = True):
+    def physics_rects_around(self, pos,size,grass_check= False,cut_or_burn = True,light_check = False):
         """        rects = []
         for tile in self.tiles_around(pos,size):
             if tile.type in PHYSICS_APPLIED_TILE_TYPES:
@@ -1054,7 +1055,7 @@ class Tilemap:
         # Get the tiles around the given position
 
         # If the tile type is interactable, then 
-        tiles_around = self.tiles_around(pos, size,grass_check)
+        tiles_around = self.tiles_around(pos, size)
         for tile in tiles_around:
             if tile.type in PHYSICS_APPLIED_TILE_TYPES:
                 if tile.type.endswith('door'):
@@ -1107,6 +1108,14 @@ class Tilemap:
                     tile.pos[1],
                     16,
                     16
+                )
+                surrounding_rects_tiles.append((pygame.Rect(*rect),tile))
+            elif light_check and tile.type == 'lights':
+                rect = (
+                    tile.pos[0]*self.tile_size+ 1,
+                    tile.pos[1] *self.tile_size + 1,
+                    14,
+                    6
                 )
                 surrounding_rects_tiles.append((pygame.Rect(*rect),tile))
         # Convert the tuples to pygame Rect objects if needed

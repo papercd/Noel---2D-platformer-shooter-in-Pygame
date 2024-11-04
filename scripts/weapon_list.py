@@ -484,5 +484,11 @@ class ambientNodeList:
         
         while current:
             default_status = "Default" if current.default else "Non-Default"
-            print(f"Range: {current.range}, Color: {current.colorValue}, Status: {default_status}")
+            if isinstance(current,interpolatedLightNode):
+                print(f"Range: {current.range}, leftBoundColor: {current.leftBoundColor},\
+                       rightBoundColor: {current.rightBoundColor},Status: {default_status}")
+            else:
+                print(f"Range: {current.range}, colorValue: {current.colorValue},\
+                       ,Status: {default_status}")
+
             current = current.next

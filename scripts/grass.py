@@ -310,6 +310,7 @@ class GrassAssets:
     def __init__(self, path, gm):
         self.gm = gm
 
+        self.burn_palette = (153,46,17)
         self.blades = []
         self.folder_size_info = []
 
@@ -324,6 +325,7 @@ class GrassAssets:
                 folder_content.append(img)
             self.folder_size_info.append(folder_size)
             self.blades.append(folder_content)
+           
 
     def render_blade(self, surf, blade_id, blade_variation,location, rotation, scale, palette):
         # before you rotate it, scale it. 
@@ -361,7 +363,6 @@ class GrassAssets:
         # render the blade
        
         surf.blit(rot_img, (location[0] - rot_img.get_width() // 2, location[1] - rot_img.get_height() // 2))
-
 
 # the grass tile object that contains data for the blades
 
