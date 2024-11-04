@@ -1055,7 +1055,7 @@ class Tilemap:
         # Get the tiles around the given position
 
         # If the tile type is interactable, then 
-        tiles_around = self.tiles_around(pos, size)
+        tiles_around = self.tiles_around(pos, size,grass_check)
         for tile in tiles_around:
             if tile.type in PHYSICS_APPLIED_TILE_TYPES:
                 if tile.type.endswith('door'):
