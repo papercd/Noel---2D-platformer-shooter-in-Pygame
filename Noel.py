@@ -514,7 +514,7 @@ class myGame:
                 self._handle_common_events(event)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_z:
-                        print()
+                        print(self.screen_size)
                         print(self.gm.grass_tiles)
                     if event.key == pygame.K_m:
                         self.gm.burn_tile((74,11))

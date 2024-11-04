@@ -620,7 +620,7 @@ class Tilemap:
         
         #create the ambient nodes here with the data. 
         for node_data in tilemap_data['ambient_nodes']:
-            self.ambientNodes.insert_node(node_data["range"],node_data['hull_range'],node_data["colorValue"])
+            self.ambientNodes.insert_ambient_node(node_data["range"],node_data['hull_range'],node_data["colorValue"])
             
         # Create the hull data here and then assign that to the node's hull list pointer.
         self.ambientNodes.create_hull_lists(self)

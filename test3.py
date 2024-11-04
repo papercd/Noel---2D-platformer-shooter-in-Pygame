@@ -1,99 +1,83 @@
+import pygame
+import numpy as np
+import random
+from noise import snoise2  # You may need to install noise via pip
 
-import pygame, sys, math, random
+# Constants
+WIDTH, HEIGHT = 800, 600
+GRID_SIZE = 100  # Size of the grid for smoke simulation
+SMOKE_PARTICLE_COUNT = 500  # Number of smoke particles
+NOISE_SCALE = 0.1  # Scale of the noise function
 
-# Setup pygame/window ---------------------------------------- #
-mainClock = pygame.time.Clock()
-from pygame.locals import *
+# Smoke Class
+class Smoke:
+    def __init__(self):
+        self.particles = []
+        self.density_grid = np.zeros((GRID_SIZE, GRID_SIZE))
+
+    def emit(self, pos):
+        for _ in range(SMOKE_PARTICLE_COUNT):
+            # Create particles with a position near the emit position
+            x_offset = random.uniform(-5, 5)
+            y_offset = random.uniform(-5, -1)  # Emit particles upwards
+            self.particles.append(pygame.Vector2(pos[0] + x_offset, pos[1] + y_offset))
+
+    def update(self):
+        self.density_grid.fill(0)  # Reset the density grid
+
+        for particle in self.particles[:]:
+            # Calculate grid position
+            grid_x = int(particle.x / (WIDTH / GRID_SIZE))
+            grid_y = int(particle.y / (HEIGHT / GRID_SIZE))
+
+            # Update the density at the grid position
+            if 0 <= grid_x < GRID_SIZE and 0 <= grid_y < GRID_SIZE:
+                self.density_grid[grid_x, grid_y] += 1  # Increase density
+
+            # Move particles upwards and add random movement
+            particle.y -= random.uniform(0.5, 1.0)  # Move upwards
+            particle.x += random.uniform(-0.5, 0.5)  # Drift
+
+            # Remove particles that go off screen
+            if particle.y < 0:
+                self.particles.remove(particle)
+
+        # Apply noise to the density grid
+        for i in range(GRID_SIZE):
+            for j in range(GRID_SIZE):
+                noise_value = snoise2(i * NOISE_SCALE, j * NOISE_SCALE, octaves=1)
+                self.density_grid[i, j] += noise_value * 5  # Adjust strength
+
+    def draw(self, surface):
+        for i in range(GRID_SIZE):
+            for j in range(GRID_SIZE):
+                alpha = min(int(self.density_grid[i, j]), 255)
+                if alpha > 0:
+                    color = (200, 200, 200, alpha)
+                    pygame.draw.circle(surface, color, (int(i * (WIDTH / GRID_SIZE)), int(j * (HEIGHT / GRID_SIZE))), 3)
+
+# Pygame setup
 pygame.init()
-pygame.display.set_caption('game base')
-screen = pygame.display.set_mode((500, 500), 0, 32)
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+clock = pygame.time.Clock()
+smoke_system = Smoke()
 
-sparks = []
-
-class Spark():
-    def __init__(self, loc, angle, speed, color, scale=1):
-        self.loc = loc
-        self.angle = angle
-        self.speed = speed
-        self.scale = scale
-        self.color = color
-        self.alive = True
-
-    def point_towards(self, angle, rate):
-        rotate_direction = ((angle - self.angle + math.pi * 3) % (math.pi * 2)) - math.pi
-        try:
-            rotate_sign = abs(rotate_direction) / rotate_direction
-        except ZeroDivisionError:
-            rotate_sing = 1
-        if abs(rotate_direction) < rate:
-            self.angle = angle
-        else:
-            self.angle += rate * rotate_sign
-
-    def calculate_movement(self, dt):
-        return [math.cos(self.angle) * self.speed * dt, -math.sin(self.angle) * self.speed * dt]
-
-
-    # gravity and friction
-    def velocity_adjust(self, friction, force, terminal_velocity, dt):
-        movement = self.calculate_movement(dt)
-        movement[1] = min(terminal_velocity, movement[1] + force * dt)
-        movement[0] *= friction
-        self.angle = math.atan2(movement[1], movement[0])
-        # if you want to get more realistic, the speed should be adjusted here
-
-    def move(self, dt):
-        movement = self.calculate_movement(dt)
-        print(movement)
-        self.loc[0] += movement[0]
-        self.loc[1] += movement[1]
-
-        # a bunch of options to mess around with relating to angles...
-        #self.point_towards(math.pi / 2, 0.02)
-        #self.velocity_adjust(0.975, 0.2, 8, dt)
-        #self.angle += 0.1
-
-        self.speed -= 0.1
-
-        if self.speed <= 0:
-            self.alive = False
-
-    def draw(self, surf, offset=[0, 0]):
-        if self.alive:
-            points = [
-                [self.loc[0] + math.cos(self.angle) * self.speed * self.scale, self.loc[1] + math.sin(self.angle) * self.speed * self.scale],
-                [self.loc[0] + math.cos(self.angle + math.pi / 2) * self.speed * self.scale * 0.3, self.loc[1] + math.sin(self.angle + math.pi / 2) * self.speed * self.scale * 0.3],
-                [self.loc[0] - math.cos(self.angle) * self.speed * self.scale * 3.5, self.loc[1] - math.sin(self.angle) * self.speed * self.scale * 3.5],
-                [self.loc[0] + math.cos(self.angle - math.pi / 2) * self.speed * self.scale * 0.3, self.loc[1] - math.sin(self.angle + math.pi / 2) * self.speed * self.scale * 0.3],
-                ]
-            pygame.draw.polygon(surf, self.color, points)
-
-# Loop ------------------------------------------------------- #
-while True:
-
-    # Background --------------------------------------------- #
-    screen.fill((0,0,0))
-
-    for i, spark in sorted(enumerate(sparks), reverse=True):
-        spark.move(1)
-        spark.draw(screen)
-        if not spark.alive:
-            sparks.pop(i)
-
-
-    mx, my = pygame.mouse.get_pos()
-    sparks.append(Spark([mx, my], math.radians(random.randint(0, 360)), random.randint(3, 6), (255, 255, 255), 2))
-
-    # Buttons ------------------------------------------------ #
+running = True
+while running:
     for event in pygame.event.get():
-        if event.type == QUIT:
-            pygame.quit()
-            sys.exit()
-        if event.type == KEYDOWN:
-            if event.key == K_ESCAPE:
-                pygame.quit()
-                sys.exit()
+        if event.type == pygame.QUIT:
+            running = False
+    
+    screen.fill((0, 0, 0))  # Clear screen
 
-    # Update ------------------------------------------------- #
-    pygame.display.update()
-    mainClock.tick(60)
+    # Emit smoke at a random position
+    if random.random() < 0.05:  # Control emission rate
+        smoke_system.emit((random.randint(200, 600), 550))
+
+    smoke_system.update()
+    smoke_system.draw(screen)
+
+    pygame.display.flip()
+    clock.tick(60)  # Limit to 60 FPS
+
+pygame.quit()
