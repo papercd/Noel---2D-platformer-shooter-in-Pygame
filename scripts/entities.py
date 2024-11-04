@@ -1951,9 +1951,13 @@ class Bullet(PhysicsEntity):
         self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
         entity_rect = self.rect()
 
-        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+        for rect_tile in tile_map.physics_rects_around(self.pos, self.size,light_check = True):
             if entity_rect.colliderect(rect_tile[0]):
-                if rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
+                if rect_tile[1].type == 'lights':
+                    # get rid of the light 
+                    print("checking")
+                    #del tile_map.tilemap[f"{rect_tile[1].pos[0]};{rect_tile[1].pos[1]}"]  
+                elif rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
                     check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
                                    pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),
                                    pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \
@@ -1969,7 +1973,6 @@ class Bullet(PhysicsEntity):
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
-
                         self.create_collision_effects()
                         self.dead = True 
                         return True
@@ -1978,9 +1981,13 @@ class Bullet(PhysicsEntity):
         self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
         entity_rect = self.rect()
 
-        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+        for rect_tile in tile_map.physics_rects_around(self.pos, self.size,light_check = True):
             if entity_rect.colliderect(rect_tile[0]):
-                if rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
+
+                if rect_tile[1].type == 'lights':
+                    print("checking")
+                    pass 
+                elif rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
                     check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
                                    pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),
                                    pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \

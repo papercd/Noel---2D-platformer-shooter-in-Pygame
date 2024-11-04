@@ -177,8 +177,9 @@ class Tilemap:
 
     def json_seriable(self):
 
-        #now save ambientNode list data into json file. 
-
+        # now save ambientNode list data into json file. 
+        # gotta change this so that the interpolated ambient light nodes are also created. 
+        
         ambient_nodes = self.ambientNodes.json_seriable()
         
 
@@ -620,7 +621,10 @@ class Tilemap:
         
         #create the ambient nodes here with the data. 
         for node_data in tilemap_data['ambient_nodes']:
-            self.ambientNodes.insert_ambient_node(node_data["range"],node_data['hull_range'],node_data["colorValue"])
+            if len(node_data.items()) ==4:
+                self.ambientNodes.insert_interpolated_ambient_node(node_data["range"],node_data['hull_range'],node_data["leftColorValue"],node_data["rightColorValue"])
+            else: 
+                self.ambientNodes.insert_ambient_node(node_data["range"],node_data['hull_range'],node_data["colorValue"])
             
         # Create the hull data here and then assign that to the node's hull list pointer.
         self.ambientNodes.create_hull_lists(self)
@@ -1026,6 +1030,7 @@ class Tilemap:
                         tiles.append(self.tilemap[tile_key])
                 elif grass_check and (x,y) in self.game.gm.grass_tiles:
                     tiles.append(self.game.gm.grass_tiles[(x,y)])
+                
                     
         
         return tiles
@@ -1033,7 +1038,7 @@ class Tilemap:
                 
     
 
-    def physics_rects_around(self, pos,size,grass_check= False,cut_or_burn = True):
+    def physics_rects_around(self, pos,size,grass_check= False,cut_or_burn = True,light_check = False):
         """        rects = []
         for tile in self.tiles_around(pos,size):
             if tile.type in PHYSICS_APPLIED_TILE_TYPES:
@@ -1050,7 +1055,7 @@ class Tilemap:
         # Get the tiles around the given position
 
         # If the tile type is interactable, then 
-        tiles_around = self.tiles_around(pos, size,grass_check)
+        tiles_around = self.tiles_around(pos, size)
         for tile in tiles_around:
             if tile.type in PHYSICS_APPLIED_TILE_TYPES:
                 if tile.type.endswith('door'):
@@ -1103,6 +1108,14 @@ class Tilemap:
                     tile.pos[1],
                     16,
                     16
+                )
+                surrounding_rects_tiles.append((pygame.Rect(*rect),tile))
+            elif light_check and tile.type == 'lights':
+                rect = (
+                    tile.pos[0]*self.tile_size+ 1,
+                    tile.pos[1] *self.tile_size + 1,
+                    14,
+                    6
                 )
                 surrounding_rects_tiles.append((pygame.Rect(*rect),tile))
         # Convert the tuples to pygame Rect objects if needed

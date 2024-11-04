@@ -13,8 +13,7 @@ from .indicator import indicator
 from .HUD import HUD
 from .grass import *
 from .inventory import Item, ITEMS
-
-
+from .weapon_list import interpolatedLightNode
 
 from .quadtree import *
 from .QuadTreeRange import * 
