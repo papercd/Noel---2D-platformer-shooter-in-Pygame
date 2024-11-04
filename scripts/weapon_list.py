@@ -108,9 +108,10 @@ class ambientNode:
         self.hull_y_range = (0,0)
         self.hulls = []
 
-
     def return_values(self):
         return (self.range,self.colorValue,self.default)
+
+
 
 class interpolatedLightNode:
     def __init__(self,light_range, left_bound_colorValue = (255,255,255,255), right_bound_colorValue = (255,255,255,255)):
@@ -140,7 +141,7 @@ class interpolatedLightNode:
         return (r, g, b, a) 
     
     def return_values(self):
-        return (self.ranmge,self.leftBoundColor,self.rightBoundColor,self.default)
+        return (self.range,self.leftBoundColor,self.rightBoundColor,self.default)
 
 class ambientNodeList:
     def __init__(self,default_color = (255,255,255,255)):
@@ -206,7 +207,10 @@ class ambientNodeList:
         
         while current: 
             if not current.default: 
-                data.append({'range': current.range, 'hull_range': current.hull_y_range, 'colorValue': current.colorValue})
+                if isinstance(current,interpolatedLightNode):
+                    data.append({'range': current.range, 'hull_range': current.hull_y_range, 'leftColorValue': current.leftBoundColor,'rightColorValue': current.rightBoundColor})
+                else: 
+                    data.append({'range': current.range, 'hull_range': current.hull_y_range, 'colorValue': current.colorValue})
             current = current.next 
         
         return data 
@@ -312,8 +316,53 @@ class ambientNodeList:
                                  
                          
         
-    def insert_interpolated_ambient_node(self,new_range,hull_range,leftColor,rightColor):
-        pass
+    def insert_interpolated_ambient_node(self, new_range, hull_range, left_colorValue, right_colorValue):
+        overlapping_node = self.find_overlapping_node(new_range)
+        if overlapping_node:
+            print("Range overlaps with an existing non-default node. Please enter a different range.")
+            return False
+
+        current = self.head
+
+        # Traverse to the correct insertion point
+        while current.prev and current.range[0] > new_range[0]:
+            current = current.prev
+
+        while current.next and current.range[0] < new_range[0]:
+            current = current.next
+
+        new_node = interpolatedLightNode(new_range, left_bound_colorValue=left_colorValue, right_bound_colorValue=right_colorValue)
+        new_node.hull_y_range = hull_range
+
+        # Adjust default node ranges and insert the new node
+        if current.default:
+            if new_range[0] <= current.range[0]:
+                new_node.next = current
+                new_node.prev = current.prev
+                if current.prev:
+                    current.prev.next = new_node
+                else:
+                    self.head = new_node
+                current.prev = new_node
+            else:
+                new_node.next = current.next
+                new_node.prev = current
+                if current.next:
+                    current.next.prev = new_node
+                current.next = new_node
+
+            self.update_default_nodes()
+            return True
+
+        new_node.next = current.next
+        new_node.prev = current
+        if current.next:
+            current.next.prev = new_node
+        current.next = new_node
+
+        self.update_default_nodes()
+        return True
+
         
 
          

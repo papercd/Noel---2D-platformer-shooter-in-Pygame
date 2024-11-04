@@ -177,8 +177,9 @@ class Tilemap:
 
     def json_seriable(self):
 
-        #now save ambientNode list data into json file. 
-
+        # now save ambientNode list data into json file. 
+        # gotta change this so that the interpolated ambient light nodes are also created. 
+        
         ambient_nodes = self.ambientNodes.json_seriable()
         
 
@@ -620,7 +621,10 @@ class Tilemap:
         
         #create the ambient nodes here with the data. 
         for node_data in tilemap_data['ambient_nodes']:
-            self.ambientNodes.insert_node(node_data["range"],node_data['hull_range'],node_data["colorValue"])
+            if len(node_data.items()) ==4:
+                self.ambientNodes.insert_interpolated_ambient_node(node_data["range"],node_data['hull_range'],node_data["leftColorValue"],node_data["rightColorValue"])
+            else: 
+                self.ambientNodes.insert_ambient_node(node_data["range"],node_data['hull_range'],node_data["colorValue"])
             
         # Create the hull data here and then assign that to the node's hull list pointer.
         self.ambientNodes.create_hull_lists(self)

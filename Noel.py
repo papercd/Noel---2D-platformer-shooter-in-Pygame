@@ -73,7 +73,6 @@ import math
 import time
 import sys 
 import os 
-
 import platform
 from screeninfo import get_monitors
 from scripts import * 
@@ -104,8 +103,8 @@ class myGame:
         self.system_display_info = self._get_system_display_info()
 
         self.clock = pygame.time.Clock()
-        self.screen_size = self.system_display_info['resolution']
-        #self.screen_size = (1200,750)
+        #self.screen_size = self.system_display_info['resolution']
+        self.screen_size = (1200,750)
         #self.screen_size = (2540,1420)
         #self.screen_size = (2400,1500)
         self.default_screen_to_native_ratio = 4
@@ -135,13 +134,14 @@ class myGame:
         self.interactable_obj_sprites = self.game_assets.interactable_obj_sprites
         self.enemy_sprites = self.game_assets.enemies
         
-
+        self.window_icon = self.general_sprites['player']
         self.pygame_logo = self.general_sprites['start_logo']
         self.pygame_logo_center_offset = (-4/self.screen_to_native_ratio ,35/self.screen_to_native_ratio)
         self.pygame_logo_dim = self.pygame_logo.get_size()
         self.pygame_logo_ratio = self.pygame_logo_dim[0] /self.pygame_logo_dim[1]
         self.pygame_logo = pygame.transform.smoothscale(self.pygame_logo.convert_alpha(),(self.native_res[0]//2,  (self.native_res[0]//2) / self.pygame_logo_ratio))
         self.pygame_logo_dim = self.pygame_logo.get_size()
+        pygame.display.set_icon(self.window_icon)
 
         self.weapons = {
             'laser_weapon': Wheelbot_weapon(self,Animation(load_images('entities/enemy/Wheel_bot/charge_weapon',background='transparent'),img_dur=5,loop=True),"A Laser weapon."),
@@ -516,7 +516,7 @@ class myGame:
                 self._handle_common_events(event)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_z:
-                    
+                        print(self.screen_size)
                         print(self.gm.grass_tiles)
                     if event.key == pygame.K_m:
                         self.gm.burn_tile((74,11))
@@ -678,11 +678,25 @@ class myGame:
             if self.player.pos[0] < self.ambient_node_ptr.range[0]:
                 if self.ambient_node_ptr.prev: 
                     self.ambient_node_ptr = self.ambient_node_ptr.prev
-                    self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
+                    if isinstance(self.ambient_node_ptr,interpolatedLightNode):
+                        print("check")
+                        self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+                    else:
+                        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
+
             elif self.player.pos[0] > self.ambient_node_ptr.range[1]:
                 if self.ambient_node_ptr.next: 
                     self.ambient_node_ptr = self.ambient_node_ptr.next
-                    self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
+                    if isinstance(self.ambient_node_ptr,interpolatedLightNode):
+                        print("check")
+                        self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+                    else:
+                        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
+            else: 
+                if isinstance(self.ambient_node_ptr,interpolatedLightNode):
+                    self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+
+
 
             
             #shadow casting hulls update

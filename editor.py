@@ -8,6 +8,7 @@ from assets import GameAssets
 from scripts.tilemap import Tilemap,Tile,Light
 from scripts.utils import load_images,load_tile_images,Animation
 from scripts.panel import tile_panel 
+from scripts.weapon_list import interpolatedLightNode
 
 from scripts.numbers import numbers
 from scripts.alphabet import alphabets
@@ -34,8 +35,8 @@ class Editor:
         self.RENDER_SCALE = 2.5
         self.DEFAULT_LIGHT_RADIUS = 356
 
-
-        self.screen_res = [2200,1200]
+        self.screen_res = [1400,750]
+        #self.screen_res = [2200,1200]
         self.native_res = [int(self.screen_res[0] / self.RENDER_SCALE) ,int(self.screen_res[1] / self.RENDER_SCALE)]
 
 
@@ -243,13 +244,17 @@ class Editor:
             if self.center_ind_x.number < self.ambient_node_ptr.range[0]:
                 if self.ambient_node_ptr.prev: 
                     self.ambient_node_ptr = self.ambient_node_ptr.prev
-                    
-                    self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
+                    if isinstance(self.ambient_node_ptr,interpolatedLightNode):
+                        self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.center_ind_x.number)) 
+                    else: 
+                        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
             elif self.center_ind_x.number > self.ambient_node_ptr.range[1]:
                 if self.ambient_node_ptr.next: 
                     self.ambient_node_ptr = self.ambient_node_ptr.next
-
-                    self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
+                    if isinstance(self.ambient_node_ptr,interpolatedLightNode):
+                        self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.center_ind_x.number)) 
+                    else: 
+                        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
 
             #draw vertical lines for rangew of current ambient light
 
