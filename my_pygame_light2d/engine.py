@@ -508,6 +508,9 @@ class LightingEngine:
 
         for light in self.lights.copy():
             # Skip light if disabled
+            if light.popped:
+                self.lights.remove(light)
+                continue
             if light.illuminator and light.illuminator.dead:
                 self.lights.remove(light)
                 continue 
