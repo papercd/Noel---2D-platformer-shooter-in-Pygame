@@ -600,9 +600,11 @@ class Tilemap:
             else: 
                 # for lights, we need to create two objects: the light "tile" object for the tilemap dict, 
                 # and a pointlight object to add to the light list in the lighting engine. 
+                """
                 self.tilemap[tile_key] = Light(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],\
                                                  tilemap_data['tilemap'][tile_key]["pos"],radius =tilemap_data['tilemap'][tile_key]["radius"], power = tilemap_data['tilemap'][tile_key]["power"],\
                                                      color_value= tilemap_data['tilemap'][tile_key]["colorValue"] )
+                """
                 if isinstance(tilemap_data['tilemap'][tile_key]["pos"][0],int):
                     # for lights that are on the tile grid 
 
@@ -617,7 +619,12 @@ class Tilemap:
                                          power= tilemap_data['tilemap'][tile_key]["power"],radius = tilemap_data['tilemap'][tile_key]["radius"] )
                     light.set_color(*tilemap_data['tilemap'][tile_key]["colorValue"])
                     lights.append(light)
-        
+                
+                self.tilemap[tile_key] = Light(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],\
+                                                 tilemap_data['tilemap'][tile_key]["pos"],radius =tilemap_data['tilemap'][tile_key]["radius"], power = tilemap_data['tilemap'][tile_key]["power"],\
+                                                     color_value= tilemap_data['tilemap'][tile_key]["colorValue"] )
+                self.tilemap[tile_key].light_ptr = light
+
         
         #create the ambient nodes here with the data. 
         for node_data in tilemap_data['ambient_nodes']:
@@ -1055,7 +1062,7 @@ class Tilemap:
         # Get the tiles around the given position
 
         # If the tile type is interactable, then 
-        tiles_around = self.tiles_around(pos, size)
+        tiles_around = self.tiles_around(pos, size,grass_check)
         for tile in tiles_around:
             if tile.type in PHYSICS_APPLIED_TILE_TYPES:
                 if tile.type.endswith('door'):
@@ -1333,7 +1340,6 @@ class Tilemap:
         
 class Tile: 
     def __init__(self,type,variant,pos,dirty = False , hull = None,enclosed = False):
-        
         self.type = type 
         self.variant = variant
         self.pos = pos 
@@ -1409,6 +1415,7 @@ class Light(Tile):
     def __init__(self, type, variant, pos, dirty=False, radius = 356,power = 1.0,color_value = (255,255,255,255)):
         
         super().__init__(type, variant, pos, dirty)
+        self.light_ptr = None 
         self.radius = radius
         self.power = power
         self.color_value = color_value 
