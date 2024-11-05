@@ -199,8 +199,10 @@ class Flame_particle:
                 #print(rect_tile[1].type)
                 if not rect_tile[1].type == 'stairs':
                     if rect_tile[1].type =='live_grass':
- 
-                        self.game.gm.burn_tile((rect_tile[1].pos[0]//16,rect_tile[1].pos[1]//16))
+                        loc = (rect_tile[1].pos[0]//16,rect_tile[1].pos[1]//16)
+                        if loc in self.game.gm.grass_tiles:
+                            self.game.gm.grass_tiles[loc].burning -= 0.3
+                        #self.game.gm.burn_tile((rect_tile[1].pos[0]//16,rect_tile[1].pos[1]//16))
                     else:
                         incid_angle = math.degrees(math.atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
                         if side_point == "Top" or side_point == "Bottom":

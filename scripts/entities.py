@@ -1862,10 +1862,10 @@ class Bullet(PhysicsEntity):
     def rect(self):
         return pygame.Rect(self.pos[0], self.pos[1], self.sprite.get_width(), self.sprite.get_height())
     
-    def create_collision_effects(self,with_glass = False):
-        if with_glass:
+    def create_collision_effects(self,glass_rect = None):
+        if glass_rect :
             for i in range(15):
-                spark = Spark(self.center.copy(),math.radians(random.randint(0,360)),\
+                spark = Spark([glass_rect[0]+8,glass_rect[1]+2],math.radians(random.randint(0,360)),\
                                             random.randint(1,3),(255,255,255),0.24,speed_factor=10,speed_decay_factor =8)
                 light = PointLight(self.center.copy(),power = 1,radius = 6,illuminator=spark,life = 70)
                 light.set_color(255,255,255)
@@ -1972,7 +1972,7 @@ class Bullet(PhysicsEntity):
             if entity_rect.colliderect(rect_tile[0]):
                 if rect_tile[1].type == 'lights':
                     # get rid of the light 
-                    self.create_collision_effects(True)
+                    self.create_collision_effects(rect_tile[0])
                     tile_map.tilemap[f"{rect_tile[1].pos[0]};{rect_tile[1].pos[1]}"].light_ptr.popped = True
                     del tile_map.tilemap[f"{rect_tile[1].pos[0]};{rect_tile[1].pos[1]}"]
 
@@ -2004,8 +2004,10 @@ class Bullet(PhysicsEntity):
             if entity_rect.colliderect(rect_tile[0]):
 
                 if rect_tile[1].type == 'lights':
-                    print("checking")
-                    pass 
+                    self.create_collision_effects(rect_tile[0])
+                    tile_map.tilemap[f"{rect_tile[1].pos[0]};{rect_tile[1].pos[1]}"].light_ptr.popped = True
+                    del tile_map.tilemap[f"{rect_tile[1].pos[0]};{rect_tile[1].pos[1]}"]
+
                 elif rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
                     check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
                                    pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),

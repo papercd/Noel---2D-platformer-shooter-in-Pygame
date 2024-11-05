@@ -327,7 +327,7 @@ class GrassAssets:
             self.blades.append(folder_content)
            
 
-    def render_blade(self, surf, blade_id, blade_variation,location, rotation, scale, palette):
+    def render_blade(self, surf, blade_id, blade_variation,location, rotation, burn_progression,scale, palette):
         # before you rotate it, scale it. 
         rot_img = pygame.transform.rotate(self.blades[blade_id][blade_variation], rotation)
         rot_img = pygame.transform.scale(rot_img, (int(rot_img.get_width() * scale), int(rot_img.get_height() * scale)))
@@ -357,6 +357,17 @@ class GrassAssets:
                     min(255, palette[2] * flicker * (1 / scale))
                 )
             )
+        elif burn_progression<1:
+            burn_surface = pygame.Surface((rot_img.get_width(),rot_img.get_height()),pygame.SRCALPHA)
+            burn_surface.fill(
+                color=
+                (
+                self.burn_palette[0],
+                self.burn_palette[1],
+                self.burn_palette[2],
+                max(1,255*burn_progression))
+            )
+            rot_img.blit(burn_surface,(0,0),special_flags=pygame.BLEND_RGBA_MULT)
 
         rot_img.blit(shade, (0, 0))
 
@@ -387,6 +398,7 @@ class GrassTile:
         self.burn_life = int(200/self.gm.burn_rate)
         self.max_burn_life = int(200/self.gm.burn_rate)
 
+        self.initial_burning_val =int(60 / self.gm.burn_spread_speed)
         self.burning = int(60 / self.gm.burn_spread_speed)
         self.swapped_dict = False
 
@@ -487,7 +499,7 @@ class GrassTile:
 
     
     def update_burn_state(self,dt):
-        if self.burning == 0:
+        if self.burning <= 0:
             if not self.swapped_dict:
                 loc = (self.pos[0]//self.gm.tile_size,self.pos[1]//self.gm.tile_size)
                 self.gm.burning_grass_tiles[loc] = self.gm.grass_tiles.pop(loc)
@@ -552,7 +564,8 @@ class GrassTile:
 
         # render each blade using the asset manager
         for blade in blades:
-            self.ga.render_blade(surf, blade[1], blade[2],(blade[0][0] + self.padding, blade[0][1] + self.padding), max(-90, min(90, blade[3] + self.true_rotation)),self.burn_life/self.max_burn_life,blade[4])
+            self.ga.render_blade(surf, blade[1], blade[2],(blade[0][0] + self.padding, blade[0][1] + self.padding), \
+                                 max(-90, min(90, blade[3] + self.true_rotation)),self.burning/self.initial_burning_val,self.burn_life/self.max_burn_life,blade[4])
 
         # return surf and shadow_surf if applicable
         if render_shadow:
@@ -570,7 +583,7 @@ class GrassTile:
         # render a new grass tile image if using custom uncached data otherwise use cached data if possible Also, if the tile is burning, don't use 
         # cached data. As burning is another state.
 
-        if self.burning == 0:
+        if self.burning <= 0:
             #if it is burning, no caaache. Performance? well, the grass will be deleted after the burn duration, so performace shouldn't be a big issue. 
             img = self.render_tile()  
 
@@ -593,8 +606,7 @@ class GrassTile:
             surf.blit(img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
 
         else: 
-
-        
+            
             if self.custom_blade_data:
                     #if not cached, 
 
@@ -651,10 +663,27 @@ class GrassTile:
                         surf.blit(short_surf, (self.pos[0] - offset[0] - self.padding - cut_offset[0], self.pos[1] - offset[1] - self.padding- cut_offset[1]))
                         
                         pass
-                    else: 
-                    """
-                    surf.blit(img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
                     
+                    else: 
+
+                    """
+                    if self.burning/self.initial_burning_val<1:
+                        img =img.copy()
+                        burn_surface = pygame.Surface((img.get_width(),img.get_height()),pygame.SRCALPHA)
+                        burn_surface.fill(
+                            color=
+                            (
+                            self.ga.burn_palette[0],
+                            self.ga.burn_palette[1],
+                            self.ga.burn_palette[2],
+                            max(1,255*(1-self.burning/self.initial_burning_val)))
+                        )
+                        img.blit(burn_surface,(0,0),special_flags=pygame.BLEND_RGBA_MULT)
+
+   
+                    surf.blit(img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
+                
+                        
                     """
                     #surf.blit(mask_img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
                     for point in outline:
@@ -715,8 +744,21 @@ class GrassTile:
                 else: 
 
                     """
-                
-                surf.blit(self.gm.grass_cache[self.render_data], (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
+                img = self.gm.grass_cache[self.render_data]
+                if self.burning/self.initial_burning_val<1:
+                    img = img.copy()
+                    burn_surface = pygame.Surface((img.get_width(),img.get_height()),pygame.SRCALPHA)
+                    burn_surface.fill(
+                        color=
+                        (
+                        self.ga.burn_palette[0],
+                        self.ga.burn_palette[1],
+                        self.ga.burn_palette[2],
+                        max(1,255*(1-self.burning/self.initial_burning_val)))
+                    )
+                    img.blit(burn_surface,(0,0),special_flags=pygame.BLEND_RGBA_MULT)
+
+                surf.blit(img,(self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
 
         # attempt to move blades back to their base position
         if self.custom_blade_data:
