@@ -42,6 +42,7 @@ class Menu:
             Slider((pos[0] +30+ 35, pos[1]+15), (25,5), 1., 0, 356),
         ]
 
+
     def run_ambient_settings(self):
         
         mouse = pygame.mouse.get_pressed()
