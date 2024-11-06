@@ -645,6 +645,8 @@ class LightingEngine:
 
         return self.make_shader(vertex_src, fragment_src)
 
+    def render_onto_bg_texture(self):
+        pass 
 
     def render_texture_with_trans(self,
                tex: moderngl.Texture,
