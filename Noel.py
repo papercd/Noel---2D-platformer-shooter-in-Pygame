@@ -216,6 +216,8 @@ class myGame:
         self.mouse_pressed = [False,False] 
         self.shift_pressed = False
         self.reset = True 
+        self.logo_time_speed_factor= 1
+
         
         self.scroll = [0,0]
         self.menu_scroll_up = False 
@@ -307,7 +309,7 @@ class myGame:
         while self.logo_time <600 :
             
             
-            self.logo_time += 1
+            self.logo_time += 1*self.logo_time_speed_factor
             
             self._handle_events()
             
@@ -348,8 +350,10 @@ class myGame:
             fps = self.clock.get_fps()
             pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
             self.clock.tick(60)
-
         
+        self.scroll[0] = (self.player.rect().centerx - self.background_surf_dim[0] /2)
+        self.scroll[1] = (self.player.rect().centery - self.background_surf_dim[1] /2)
+        """
         self.start_sequence_time = 255 
         scroll_increment_x = (self.player.rect().centerx - self.background_surf_dim[0] /2)
         scroll_increment_y =  (self.player.rect().centery - self.background_surf_dim[1] /2)
@@ -419,7 +423,7 @@ class myGame:
             pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
             self.clock.tick(60)
 
-        
+        """
         self.curr_gameState = GameState.MainMenu
 
 
@@ -458,7 +462,8 @@ class myGame:
                 self._handle_common_events(event)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RETURN:
-                        self.logo_time = max(480,self.logo_time)
+                        self.logo_time_speed_factor = 7
+                        self.logo_time = max(300,self.logo_time)
                         self.start_sequence_time = 0
                         break 
 					
