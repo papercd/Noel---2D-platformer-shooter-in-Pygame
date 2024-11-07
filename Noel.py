@@ -66,6 +66,7 @@ or a wave-based survival game with different and stronger enemies that spawn eac
 """
 
 
+from scripts.particles import glass
 import numpy as np 
 import pygame
 import random
@@ -109,7 +110,7 @@ class myGame():
         #self.screen_size = (2540,1420)
         #self.screen_size = (2400,1500)
         self.default_screen_to_native_ratio = 4
-        self.screen_to_native_ratio =2.5 
+        self.screen_to_native_ratio =4
         self.native_res = (int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio))
         
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
@@ -526,9 +527,19 @@ class myGame():
                         print(self.gm.grass_tiles)
                     if event.key == pygame.K_m:
                         self.gm.burn_tile((74,11))
+
+                    if event.key == pygame.K_o:
+                        for _ in range(9):
+                            glass_ = glass(list(self.player.pos),1,6,math.radians(random.randint(0,180)),20)
+                            self.sparks.append(glass_)
+                        pass 
                     if event.key == pygame.K_n:
-                        #self.Tilemap.tilemap[f"74;8"] = Light("lights","0;0",(74,8),radius= 50,power = 1\
-                        #                                )
+                        self.Tilemap.tilemap[f"74;8"] = Light("lights","0;0",(74,8),radius= 50,power = 1\
+                                                        )
+                        
+                        light = PointLight([74*16+8,8*16+2],power =1, radius = 50)
+                        self.Tilemap.tilemap[f"74;8"].light_ptr = light 
+                        self.lights_engine.lights.append(light)
                         for _ in range(20):
                             self.gm.place_tile((74+_,11),10,[0,1,2,3,4])
                         
