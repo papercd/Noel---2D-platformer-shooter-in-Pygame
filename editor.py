@@ -35,8 +35,8 @@ class Editor:
         self.RENDER_SCALE = 2.5
         self.DEFAULT_LIGHT_RADIUS = 356
 
-        self.screen_res = [1400,750]
-        #self.screen_res = [2200,1200]
+        #self.screen_res = [1400,750]
+        self.screen_res = [2200,1200]
         self.native_res = [int(self.screen_res[0] / self.RENDER_SCALE) ,int(self.screen_res[1] / self.RENDER_SCALE)]
 
 
@@ -1062,6 +1062,9 @@ class Editor:
                                 light.set_color(255, 255, 255, 200)
                                 self.lights_engine.lights.append(light)
                             """
+                    if event.key == pygame.K_ESCAPE:
+                        pygame.quit()
+                        sys.exit()
                     if event.key == pygame.K_5: 
                         # Print out the door tiles in the tilemap. 
                         for tilekey in self.Tilemap.tilemap: 

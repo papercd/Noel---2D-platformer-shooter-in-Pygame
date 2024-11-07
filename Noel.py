@@ -475,6 +475,8 @@ class myGame():
                         self.start_sequence_time = 0
                     if event.key == pygame.K_p:
                         self._load_map_init_game_env('test.json')
+                        self.scroll[0]= (self.player.rect().centerx - self.background_surf_dim[0] /2)
+                        self.scroll[1]=  (self.player.rect().centery - self.background_surf_dim[1] /2) - 20 
                         self.curr_gameState = GameState.GameLoop
                         break
                     if event.key == pygame.K_w: 
@@ -530,15 +532,15 @@ class myGame():
 
                     if event.key == pygame.K_o:
                         for _ in range(9):
-                            glass_ = glass(list(self.player.pos),1,6,math.radians(random.randint(0,180)),20)
+                            glass_ = glass([80 * 16 +8, 3 *16 +2],2.5,10,math.radians(random.randint(50,130)),180)
                             self.sparks.append(glass_)
                         pass 
                     if event.key == pygame.K_n:
-                        self.Tilemap.tilemap[f"74;8"] = Light("lights","0;0",(74,8),radius= 50,power = 1\
-                                                        )
+                        self.Tilemap.tilemap[f"80;3"] = Light("lights","0;0",(80,3),radius=356 ,power = 1\
+                                                      )
                         
-                        light = PointLight([74*16+8,8*16+2],power =1, radius = 50)
-                        self.Tilemap.tilemap[f"74;8"].light_ptr = light 
+                        light = PointLight([80*16+8,3*16+2],power =1, radius = 356)
+                        self.Tilemap.tilemap[f"80;3"].light_ptr = light 
                         self.lights_engine.lights.append(light)
                         for _ in range(20):
                             self.gm.place_tile((74+_,11),10,[0,1,2,3,4])

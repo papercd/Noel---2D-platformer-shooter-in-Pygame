@@ -8,7 +8,7 @@ from scripts.utils import rect_corners,obb_collision
 from pygame.math import Vector2
 from scripts.spark import Spark
 from scripts.los import line_of_sight
-from scripts.particles import Particle,non_animated_particle,bullet_collide_particle,bullet_trail_particle_wheelbot
+from scripts.particles import Particle,non_animated_particle,bullet_collide_particle,bullet_trail_particle_wheelbot,glass
 from scripts.health import HealthBar,StaminaBar
 from scripts.indicator import indicator 
 from scripts.fire import Flame_particle
@@ -1863,8 +1863,20 @@ class Bullet(PhysicsEntity):
         return pygame.Rect(self.pos[0], self.pos[1], self.sprite.get_width(), self.sprite.get_height())
     
     def create_collision_effects(self,glass_rect = None):
+        glass_spawn_angle_range =(max(35,180-int(self.angle)-40),min(145,180-int(self.angle) + 40)) if self.angle > 0 else \
+                                 (max(35,-int(self.angle)-40),min(145,-int(self.angle) +40))
         if glass_rect :
             for i in range(15):
+                if i == 1:
+                    center_light = PointLight([glass_rect[0]+8,glass_rect[1]+2],power =1 , radius= 20, life = 10,radius_decay= True)
+                    center_light.set_color(244,160,86,255)
+                    light = PointLight([glass_rect[0]+8,glass_rect[1]+2],power =1 , radius= 80, life = 10,radius_decay= True)
+                    self.game.lights_engine.lights.append(light)
+                    self.game.lights_engine.lights.append(center_light)
+                if i < 9 : 
+                    glass_ = glass([glass_rect[0]+8,glass_rect[1]],2.5,10,math.radians(random.randint(glass_spawn_angle_range[0],glass_spawn_angle_range[1])),180)
+                    self.game.sparks.append(glass_)
+                
                 spark = Spark([glass_rect[0]+8,glass_rect[1]+2],math.radians(random.randint(0,360)),\
                                             random.randint(1,3),(255,255,255),0.24,speed_factor=10,speed_decay_factor =8)
                 light = PointLight(self.center.copy(),power = 1,radius = 6,illuminator=spark,life = 70)
@@ -1873,6 +1885,7 @@ class Bullet(PhysicsEntity):
 
                 self.game.sparks.append(spark) 
                 self.game.lights_engine.lights.append(light)
+                
                 
 
 
