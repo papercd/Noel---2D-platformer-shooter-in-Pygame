@@ -1193,7 +1193,7 @@ class Tilemap:
             return tile_img.get_at(sample_loc[side] )
 
    
-    def autotile(self, random_=False):
+    def autotile(self, random_=False,autotile_options = 0):
         dicts = [self.tilemap] + self.offgrid_tiles
         
         for autotile_dict in dicts:
@@ -1216,7 +1216,7 @@ class Tilemap:
                         auto_map = BUILDING_AUTOTILE[building_type]
                         if neighbors in auto_map:
                             variant_sub_0 = auto_map[neighbors]
-                            asset = self.game.general_sprites[tile.type][int(variant_sub_0)]
+                            asset = self.game.assets[tile.type][int(variant_sub_0)]
                             if isinstance(asset, list):
                                 variant_sub_1 = random.randint(0, len(asset) - 1) if random_ else 0
                                 tile.variant = f"{variant_sub_0};{variant_sub_1}"
@@ -1228,7 +1228,7 @@ class Tilemap:
                     else:
                         if neighbors in AUTOTILE_MAP:
                             variant_sub_0 = AUTOTILE_MAP[neighbors]
-                            asset = self.game.general_sprites[tile.type][int(variant_sub_0)]
+                            asset = self.game.assets[tile.type][int(variant_sub_0)]
                             if isinstance(asset, list):
                                 variant_sub_1 = random.randint(0, len(asset) - 1) if random_ else 0
                                 tile.variant = f"{variant_sub_0};{variant_sub_1}"

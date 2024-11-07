@@ -333,6 +333,7 @@ class GrassAssets:
             self.blades.append(folder_content)
            
 
+    
     def render_blade(self, surf, blade_id, blade_variation,location, rotation,scale,burning_sides,burning_initiation_time,palette):
         # before you rotate it, scale it. 
         rot_img = pygame.transform.rotate(self.blades[blade_id][blade_variation], rotation)
@@ -398,90 +399,12 @@ class GrassAssets:
     
             pass
       
-
-
-        """
-        flicker_intensity = 0.4 # adjust this value for more or less flickering
-        flicker = 1 + flicker_intensity * math.sin(time.time() * 5)  # frequency adjustment with * 5
-
-        # if the grass is burning, add a burning color to it
-        if 0 < scale < 1:
-            
-            # if the grass is burning, add a bit of sparks as well.
-            # a
-            print(burning_progression)
-            if burning_progression[0] + burning_progression[1] >= 1 :
-                red_mask = pygame.mask.from_surface(rot_img)
-                red_mask.to_surface(
-                    rot_img,
-                    setcolor=(
-                        min(255, palette[0] * flicker * (1 / scale * 6)),
-                        min(255, palette[1] * flicker * (1 / scale)),
-                        min(255, palette[2] * flicker * (1 / scale))
-                    )
-                )
-            else: 
-                burn_surface = pygame.Surface((rot_img_dim[0],rot_img_dim[1]),pygame.SRCALPHA)
-                burn_surface.fill(
-
-                    color =(
-                        min(255, palette[0] * flicker * (1 / scale * 6)),
-                        min(255, palette[1] * flicker * (1 / scale)),
-                        min(255, palette[2] * flicker * (1 / scale))
-                    )
-    
-                )
-                blit_pos = -rot_img_dim[0]+ rot_img_dim[0] * burning_progression[0]
-                rot_img.blit(burn_surface,dest=(blit_pos,0),special_flags= pygame.BLEND_RGB_MULT)
-                blit_pos = rot_img_dim[0]- rot_img_dim[0] * burning_progression[1]
-                rot_img.blit(burn_surface,dest=(blit_pos,0),special_flags= pygame.BLEND_RGB_MULT)
-        """
-        """
-            burn_surface = pygame.Surface((rot_img_dim[0],rot_img_dim[1]),pygame.SRCALPHA)
-            burn_surface.fill(
-
-                color =(
-                    min(255, palette[0] * flicker * (1 / scale * 6)),
-                    min(255, palette[1] * flicker * (1 / scale)),
-                    min(255, palette[2] * flicker * (1 / scale))
-                )
- 
-            )
-            
-            #check burn progression from both sides 
-            stop_burn_progression = False 
-
-            if burning_progression[0] + burning_progression[1] >=1:
-               stop_burn_progression = True 
-            
-            if stop_burn_progression:
-                rot_img.blit(burn_surface,dest=(0,0),special_flags=pygame.BLEND_RGBA_MULT)
-            else: 
-                if burning_sides[0]:
-                    blit_pos =  rot_img_dim[0]*burning_progression[0]
-                    rot_img.blit(burn_surface,dest=(blit_pos,0),special_flags=pygame.BLEND_RGB_MULT)
-                if burning_sides[1]:
-                    blit_pos = rot_img_dim[0]  - rot_img_dim[0]*burning_progression[1]
-                    rot_img.blit(burn_surface,dest=(blit_pos,0),special_flags=pygame.BLEND_RGB_MULT)
-        """
-        """
-            red_mask = pygame.mask.from_surface(rot_img)
-            red_mask.to_surface(
-                rot_img,
-                setcolor=(
-                    min(255, palette[0] * flicker * (1 / scale * 6)),
-                    min(255, palette[1] * flicker * (1 / scale)),
-                    min(255, palette[2] * flicker * (1 / scale))
-                )
-            )
-        """
-            
-        
         rot_img.blit(shade, (0, 0))
 
         # render the blade
        
         surf.blit(rot_img, (location[0] - rot_img.get_width() // 2, location[1] - rot_img.get_height() // 2))
+        
 
 # the grass tile object that contains data for the blades
 
@@ -624,7 +547,7 @@ class GrassTile:
                 self.burn_initiated = True 
             self.burn_initiation_time = max(0,self.burn_initiation_time - (25 * dt)*self.burn_initiated )
              
-            self.burn_life = max(0,self.burn_life - 10 * dt)
+            self.burn_life = max(0,self.burn_life - 25 * dt)
             #if the grass has burnt out completely, then gt rid of the grass data, where? from the grasstiles list, and from the cache. 
             if self.burn_life  == 0:
                 self.blades = [None] * len(self.blades)
@@ -792,7 +715,7 @@ class GrassTile:
                     else: 
 
                     """
-                    
+                    """
                     if self.burning/self.initial_burning_val<1:
                         img =img.copy()
                         burn_surface = pygame.Surface((img.get_width(),img.get_height()),pygame.SRCALPHA)
@@ -806,10 +729,10 @@ class GrassTile:
                         )
                         img.blit(burn_surface,(0,0),special_flags=pygame.BLEND_RGBA_MULT)
 
-                    
+                    """
                     surf.blit(img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
-                    
-                        
+                                        
+                
                     """
                     #surf.blit(mask_img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
                     for point in outline:
@@ -872,6 +795,7 @@ class GrassTile:
                     """
                 
                 img = self.gm.grass_cache[self.render_data]
+                """
                 if self.burning/self.initial_burning_val<1:
                     img = img.copy()
                     burn_surface = pygame.Surface((img.get_width(),img.get_height()),pygame.SRCALPHA)
@@ -885,7 +809,7 @@ class GrassTile:
                     )
                     img.blit(burn_surface,(0,0),special_flags=pygame.BLEND_RGBA_MULT)
                     
-                
+                """ 
                 surf.blit(img,(self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
 
         # attempt to move blades back to their base position

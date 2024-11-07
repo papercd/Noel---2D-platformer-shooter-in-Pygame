@@ -104,12 +104,12 @@ class myGame():
         self.system_display_info = self._get_system_display_info()
 
         self.clock = pygame.time.Clock()
-        #self.screen_size = self.system_display_info['resolution']
-        self.screen_size = (1200,750)
+        self.screen_size = self.system_display_info['resolution']
+        #self.screen_size = (1200,750)
         #self.screen_size = (2540,1420)
         #self.screen_size = (2400,1500)
         self.default_screen_to_native_ratio = 4
-        self.screen_to_native_ratio =2.5 
+        self.screen_to_native_ratio = 4.5
         self.native_res = (int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio))
         
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
