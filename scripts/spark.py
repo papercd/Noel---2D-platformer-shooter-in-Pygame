@@ -52,13 +52,13 @@ class Spark():
     
     
 
-    def calculate_bounce_angle(self, angle,axis):
+    def calculate_bounce_angle(self,axis):
         
         if axis == 'x':
-            reflected_angle = math.pi - angle 
+            reflected_angle = math.pi - self.angle
         else:
             #reflected_angle =  angle
-            reflected_angle = -angle 
+            reflected_angle = -self.angle 
 
         return reflected_angle
 
@@ -91,7 +91,7 @@ class Spark():
                         else:
                             self.loc[0] =  check_rect.left
 
-                        self.angle = self.calculate_bounce_angle(self.angle,'x')
+                        self.angle = self.calculate_bounce_angle('x')
                         self.speed *= 0.8  
                         #self.dead = True 
                         #return True
@@ -100,7 +100,7 @@ class Spark():
                     self.loc[0] =  tile_loc[0] * tilemap.tile_size + tilemap.tile_size
                 else:
                     self.loc[0] =  tile_loc[0] * tilemap.tile_size - 1
-                self.angle = self.calculate_bounce_angle(self.angle,'x')
+                self.angle = self.calculate_bounce_angle('x')
                 self.speed *= 0.8  #
                 #self.dead = True 
                 #return True
@@ -128,7 +128,7 @@ class Spark():
                         else:
                             self.loc[1] =  check_rect.top
                             
-                        self.angle = self.calculate_bounce_angle(self.angle,'y')
+                        self.angle = self.calculate_bounce_angle('y')
                         self.speed *= 0.8  
                         #self.dead = True 
                         #return True
@@ -138,7 +138,7 @@ class Spark():
                     self.loc[1] =  tile_loc[1]* tilemap.tile_size + tilemap.tile_size
                 else:
                     self.loc[1] =  tile_loc[1]* tilemap.tile_size - 1
-                self.angle = self.calculate_bounce_angle(self.angle,'y')
+                self.angle = self.calculate_bounce_angle('y')
                 self.speed *= 0.8
                 #self.dead = True 
                 #return True
