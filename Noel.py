@@ -66,6 +66,7 @@ or a wave-based survival game with different and stronger enemies that spawn eac
 """
 
 
+from scripts.particles import glass
 import numpy as np 
 import pygame
 import random
@@ -73,13 +74,14 @@ import math
 import time
 import sys 
 import os 
-
 import platform
 from screeninfo import get_monitors
 from scripts import * 
+
 from assets import GameAssets
 from my_pygame_light2d.engine import LightingEngine, Layer_
 from my_pygame_light2d.light import PointLight
+from scripts.tilemap import Light
 from my_pygame_light2d.hull import Hull
 from enum import Enum
 
@@ -93,8 +95,7 @@ class GameState(Enum):
     PauseMenuSettings =5 
 
 
-
-class myGame:
+class myGame():
     def __init__(self):
         
         os.environ['SDL_VIDEO_CENTERED'] = '1'
@@ -109,7 +110,7 @@ class myGame:
         #self.screen_size = (2540,1420)
         #self.screen_size = (2400,1500)
         self.default_screen_to_native_ratio = 4
-        self.screen_to_native_ratio = 4
+        self.screen_to_native_ratio = 4.5
         self.native_res = (int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio))
         
         self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
@@ -135,13 +136,14 @@ class myGame:
         self.interactable_obj_sprites = self.game_assets.interactable_obj_sprites
         self.enemy_sprites = self.game_assets.enemies
         
-
+        self.window_icon = self.general_sprites['player']
         self.pygame_logo = self.general_sprites['start_logo']
         self.pygame_logo_center_offset = (-4/self.screen_to_native_ratio ,35/self.screen_to_native_ratio)
         self.pygame_logo_dim = self.pygame_logo.get_size()
         self.pygame_logo_ratio = self.pygame_logo_dim[0] /self.pygame_logo_dim[1]
         self.pygame_logo = pygame.transform.smoothscale(self.pygame_logo.convert_alpha(),(self.native_res[0]//2,  (self.native_res[0]//2) / self.pygame_logo_ratio))
         self.pygame_logo_dim = self.pygame_logo.get_size()
+        pygame.display.set_icon(self.window_icon)
 
         self.weapons = {
             'laser_weapon': Wheelbot_weapon(self,Animation(load_images('entities/enemy/Wheel_bot/charge_weapon',background='transparent'),img_dur=5,loop=True),"A Laser weapon."),
@@ -214,6 +216,8 @@ class myGame:
         self.mouse_pressed = [False,False] 
         self.shift_pressed = False
         self.reset = True 
+        self.logo_time_speed_factor= 1
+
         
         self.scroll = [0,0]
         self.menu_scroll_up = False 
@@ -285,6 +289,8 @@ class myGame:
 
     def start_game(self):
         self._load_map_init_game_env('start_screen.json')
+        #print(self.screen_info_obj.current_h,self.screen_info_obj.current_w)
+
         self._show_start_sequence()
         while(True):
             self._handle_events()
@@ -303,7 +309,7 @@ class myGame:
         while self.logo_time <600 :
             
             
-            self.logo_time += 1
+            self.logo_time += 1*self.logo_time_speed_factor
             
             self._handle_events()
             
@@ -344,8 +350,10 @@ class myGame:
             fps = self.clock.get_fps()
             pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
             self.clock.tick(60)
-
         
+        self.scroll[0] = (self.player.rect().centerx - self.background_surf_dim[0] /2)
+        self.scroll[1] = (self.player.rect().centery - self.background_surf_dim[1] /2)
+        """
         self.start_sequence_time = 255 
         scroll_increment_x = (self.player.rect().centerx - self.background_surf_dim[0] /2)
         scroll_increment_y =  (self.player.rect().centery - self.background_surf_dim[1] /2)
@@ -415,7 +423,7 @@ class myGame:
             pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
             self.clock.tick(60)
 
-        
+        """
         self.curr_gameState = GameState.MainMenu
 
 
@@ -454,7 +462,8 @@ class myGame:
                 self._handle_common_events(event)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RETURN:
-                        self.logo_time = max(480,self.logo_time)
+                        self.logo_time_speed_factor = 7
+                        self.logo_time = max(300,self.logo_time)
                         self.start_sequence_time = 0
                         break 
 					
@@ -466,6 +475,8 @@ class myGame:
                         self.start_sequence_time = 0
                     if event.key == pygame.K_p:
                         self._load_map_init_game_env('test.json')
+                        self.scroll[0]= (self.player.rect().centerx - self.background_surf_dim[0] /2)
+                        self.scroll[1]=  (self.player.rect().centery - self.background_surf_dim[1] /2) - 20 
                         self.curr_gameState = GameState.GameLoop
                         break
                     if event.key == pygame.K_w: 
@@ -514,14 +525,25 @@ class myGame:
                 self._handle_common_events(event)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_z:
-                        print()
+                        print(self.screen_size)
                         print(self.gm.grass_tiles)
                     if event.key == pygame.K_m:
                         self.gm.burn_tile((74,11))
+
+                    if event.key == pygame.K_o:
+                        for _ in range(9):
+                            glass_ = glass([80 * 16 +8, 3 *16 +2],2.5,10,math.radians(random.randint(50,130)),180)
+                            self.sparks.append(glass_)
+                        pass 
                     if event.key == pygame.K_n:
-                        #self.gm.place_tile((74,11),10,[0,1,2,3,4])
+                        self.Tilemap.tilemap[f"80;3"] = Light("lights","0;0",(80,3),radius=356 ,power = 1\
+                                                      )
+                        
+                        light = PointLight([80*16+8,3*16+2],power =1, radius = 356)
+                        self.Tilemap.tilemap[f"80;3"].light_ptr = light 
+                        self.lights_engine.lights.append(light)
                         for _ in range(20):
-                            self.gm.place_tile((74+_,11),14,[0,1,2,3,4])
+                            self.gm.place_tile((74+_,11),10,[0,1,2,3,4])
                         
                     if event.key == pygame.K_LSHIFT:
                         self.shift_pressed = True 
@@ -676,11 +698,25 @@ class myGame:
             if self.player.pos[0] < self.ambient_node_ptr.range[0]:
                 if self.ambient_node_ptr.prev: 
                     self.ambient_node_ptr = self.ambient_node_ptr.prev
-                    self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
+                    if isinstance(self.ambient_node_ptr,interpolatedLightNode):
+                        print("check")
+                        self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+                    else:
+                        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
+
             elif self.player.pos[0] > self.ambient_node_ptr.range[1]:
                 if self.ambient_node_ptr.next: 
                     self.ambient_node_ptr = self.ambient_node_ptr.next
-                    self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
+                    if isinstance(self.ambient_node_ptr,interpolatedLightNode):
+                        print("check")
+                        self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+                    else:
+                        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
+            else: 
+                if isinstance(self.ambient_node_ptr,interpolatedLightNode):
+                    self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+
+
 
             
             #shadow casting hulls update

@@ -31,8 +31,135 @@ class Particle:
         img = self.animation.img()
         surf.blit(img, (self.pos[0]-offset[0]-img.get_width()//2,self.pos[1]- offset[1]-img.get_height()//2))
 
+class glass():
+    def __init__(self,pos,size,speed,angle,idle_time):
+        self.random_seed = random.random()
+        self.size = size * self.random_seed 
+        self.pos = pos
+        self.angle =angle 
+        self.speed =speed * self.random_seed 
+        self.num_vertices = random.randint(4,7)
+        self._create_vertice_data()
+        self.velocity = self.calculate_initial_velocity() 
+        self.dead = False 
+        self.frames_flown = 0
+        self.idle_time = idle_time
+        self.rot_angle = 0
+
+    def _create_vertice_data(self):
+        self.vertice_data = []
+        for i in range(self.num_vertices): 
+            angle = 2 * (i+1)* math.pi / self.num_vertices
+            randomized_dist_from_pos = self.size * random.random()
+            self.vertice_data.append((randomized_dist_from_pos,angle))
 
 
+    def velocity_adjust(self):
+        friction = random.uniform(0.44,0.46)
+        self.velocity[0] *= friction  
+            
+    def calculate_initial_velocity(self):
+        return [math.cos(self.angle) * self.speed , math.sin(self.angle) * self.speed ]
+
+
+    def update(self,tilemap,dt):
+        if math.sqrt(self.velocity[0] ** 2 + self.velocity[0] **2) >  dt:
+            self.rot_angle = math.atan2(self.velocity[1],self.velocity[0])
+        else: 
+            self.idle_time -= 1
+        if self.idle_time <= 0 :
+            self.dead = True 
+            return True 
+        self.frames_flown += 1
+        if self.frames_flown > 600: 
+            self.dead = True 
+            return True 
+        
+        self.pos[0] += self.velocity[0] 
+        tile_loc = (int(self.pos[0])//tilemap.tile_size,int(self.pos[1])//tilemap.tile_size)
+        key = f"{tile_loc[0]};{tile_loc[1]}" 
+        if  key in tilemap.tilemap:
+            
+            tile = tilemap.tilemap[key]
+            if tile.type == 'lights':
+                pass
+            elif tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
+                check_rects = [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
+                                pygame.Rect(tile_loc[0] + 12, tile_loc[1], 4, 12),
+                                pygame.Rect(tile_loc[0] + 6, tile_loc[1] + 6, 6, 6)] if tile.variant.split(';')[0] == '0' else \
+                                [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
+                                pygame.Rect(tile_loc[0], tile_loc[1], 4, 12),
+                                pygame.Rect(tile_loc[0] + 4, tile_loc[1] + 6, 6, 6)]
+                for check_rect in check_rects:
+                    if check_rect.collidepoint(self.pos): 
+                        if self.velocity[0] <0 :
+                            self.pos[0] =  check_rect.right
+                        else:
+                            self.pos[0] =  check_rect.left
+                        self.velocity[0] = - self.velocity[0] * 0.25 
+
+                        #self.dead = True 
+                        #return True
+            else: 
+                if self.velocity[0] <0 :
+                    self.pos[0] =  tile_loc[0] * tilemap.tile_size + tilemap.tile_size
+                else:
+                    self.pos[0] =  tile_loc[0] * tilemap.tile_size - 1
+                self.velocity[0] = - self.velocity[0] *0.25
+                #self.dead = True 
+                #return True
+        
+        self.velocity[1] = min(12,self.velocity[1] +0.44)
+        self.pos[1] += self.velocity[1] 
+        tile_loc = (int(self.pos[0])//tilemap.tile_size,int(self.pos[1])//tilemap.tile_size)
+        key = f"{tile_loc[0]};{tile_loc[1]}" 
+        
+        if  key in tilemap.tilemap:
+            tile = tilemap.tilemap[key]
+            if tile.type == 'lights':
+                pass
+            elif tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
+                check_rects = [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
+                                pygame.Rect(tile_loc[0] + 12, tile_loc[1], 4, 12),
+                                pygame.Rect(tile_loc[0] + 6, tile_loc[1] + 6, 6, 6)] if tile.variant.split(';')[0] == '0' else \
+                                [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
+                                pygame.Rect(tile_loc[0], tile_loc[1], 4, 12),
+                                pygame.Rect(tile_loc[0] + 4, tile_loc[1] + 6, 6, 6)]
+                for check_rect in check_rects:
+                    if check_rect.collidepoint(self.pos): 
+                        if self.velocity[0] <0 :
+                            self.pos[1] =  check_rect.bottom
+                        else:
+                            self.pos[1] =  check_rect.top
+                        self.velocity_adjust()
+                        self.velocity[1] = -self.velocity[1] * 0.25
+                    
+            else:
+                if self.velocity[1] <0 :
+                    self.pos[1] =  tile_loc[1]* tilemap.tile_size + tilemap.tile_size
+                else:
+                    self.pos[1] =  tile_loc[1]* tilemap.tile_size - 1
+                self.velocity[1] = - self.velocity[1] * 0.25
+                self.velocity_adjust()
+       
+
+
+
+
+
+
+
+    def render(self, surf, offset=(0, 0)):
+        points = []
+        for distance, angle in self.vertice_data:
+            points.append((
+                int(self.pos[0] + distance * math.cos(angle+self.rot_angle) -offset[0]),int(self.pos[1] + distance * math.sin(angle+self.rot_angle) - offset[1])
+            ))    
+        pygame.draw.polygon(surf,(255,255,255),points)
+                                
+
+
+            
 class non_animated_particle():
     def __init__(self,pos,color,velocity,tilemap,life = 60):
         self.time = 0

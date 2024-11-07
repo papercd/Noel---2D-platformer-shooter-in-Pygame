@@ -8,7 +8,7 @@ from scripts.utils import rect_corners,obb_collision
 from pygame.math import Vector2
 from scripts.spark import Spark
 from scripts.los import line_of_sight
-from scripts.particles import Particle,non_animated_particle,bullet_collide_particle,bullet_trail_particle_wheelbot
+from scripts.particles import Particle,non_animated_particle,bullet_collide_particle,bullet_trail_particle_wheelbot,glass
 from scripts.health import HealthBar,StaminaBar
 from scripts.indicator import indicator 
 from scripts.fire import Flame_particle
@@ -90,10 +90,10 @@ class PhysicsEntity:
         for rect_tile in tile_map.physics_rects_around((self.pos[0] +anim_offset[0] ,self.pos[1] +anim_offset[1] ), self.size):
             
             tile_type = rect_tile[1].type
-            
+            if tile_type == 'lights':
+                continue           
             if tile_type in INTERACTABLES:
                 interactables.append(rect_tile) 
-            
 
             if entity_rect.colliderect(rect_tile[0]) and tile_type.split('_')[1] != 'stairs':
                 if tile_type.split('_')[1] == 'door':
@@ -151,6 +151,8 @@ class PhysicsEntity:
         entity_rect = self.rect()
         for rect_tile in tile_map.physics_rects_around((self.pos[0] +anim_offset[0] ,self.pos[1] +anim_offset[1]), self.size):
             tile_type = rect_tile[1].type
+            if tile_type == 'lights':
+                continue
             if entity_rect.colliderect(rect_tile[0]):
                 if tile_type.split('_')[1] != 'stairs':
                     if tile_type.split('_')[1] == 'door' and  rect_tile[1].open:
@@ -244,7 +246,8 @@ class CollectableItem:
         for rect_tile in tile_map.physics_rects_around((self.pos[0] + self.size[0] /2 ,  self.pos[1] + self.size[1] / 2), self.size):
             
             tile_type = rect_tile[1].type
-        
+            if tile_type == 'lights':
+                continue 
 
             if entity_rect.colliderect(rect_tile[0]) and tile_type.split('_')[1] != 'stairs':
                 if tile_type.split('_')[1] == 'door':
@@ -1859,19 +1862,46 @@ class Bullet(PhysicsEntity):
     def rect(self):
         return pygame.Rect(self.pos[0], self.pos[1], self.sprite.get_width(), self.sprite.get_height())
     
-    def create_collision_effects(self):
-        for i in range(2):
-            
-            spark = Spark(self.center.copy(),math.radians(random.randint(int(180 - self.angle - 30),int(180 - self.angle + 30))),\
-                                        random.randint(1,3),random.choice(self.spark_colors),0.4,speed_factor=8)
-            
-            light = PointLight(self.center.copy(),power = 1,radius = 6,illuminator=spark,life = 70)
-            light.set_color(149,46,17)
-            light.cast_shadows = False
+    def create_collision_effects(self,glass_rect = None):
+        glass_spawn_angle_range =(max(35,180-int(self.angle)-40),min(145,180-int(self.angle) + 40)) if self.angle > 0 else \
+                                 (max(35,-int(self.angle)-40),min(145,-int(self.angle) +40))
+        if glass_rect :
+            for i in range(15):
+                if i == 1:
+                    center_light = PointLight([glass_rect[0]+8,glass_rect[1]+2],power =1 , radius= 20, life = 10,radius_decay= True)
+                    center_light.set_color(244,160,86,255)
+                    light = PointLight([glass_rect[0]+8,glass_rect[1]+2],power =1 , radius= 80, life = 10,radius_decay= True)
+                    self.game.lights_engine.lights.append(light)
+                    self.game.lights_engine.lights.append(center_light)
+                if i < 9 : 
+                    glass_ = glass([glass_rect[0]+8,glass_rect[1]],2.5,10,math.radians(random.randint(glass_spawn_angle_range[0],glass_spawn_angle_range[1])),180)
+                    self.game.sparks.append(glass_)
+                
+                spark = Spark([glass_rect[0]+8,glass_rect[1]+2],math.radians(random.randint(0,360)),\
+                                            random.randint(1,3),(255,255,255),0.24,speed_factor=10,speed_decay_factor =8)
+                light = PointLight(self.center.copy(),power = 1,radius = 6,illuminator=spark,life = 70)
+                light.set_color(255,255,255)
+                light.cast_shadows = False
 
-            self.game.sparks.append(spark) 
-            self.game.lights_engine.lights.append(light)
-            
+                self.game.sparks.append(spark) 
+                self.game.lights_engine.lights.append(light)
+                
+                
+
+
+        else: 
+            for i in range(2):
+                
+                spark = Spark(self.center.copy(),math.radians(random.randint(int(180 - self.angle - 30),int(180 - self.angle + 30))),\
+                                            random.randint(1,3),random.choice(self.spark_colors),0.4,speed_factor=8)
+                
+                light = PointLight(self.center.copy(),power = 1,radius = 6,illuminator=spark,life = 70)
+                light.set_color(149,46,17)
+                light.cast_shadows = False
+
+                self.game.sparks.append(spark) 
+                self.game.lights_engine.lights.append(light)
+                
 
     def collision_handler(self, tilemap, rect_tile, ent_rect, dir, axis):
         rect_tile = rect_tile if isinstance(rect_tile, pygame.Rect) else rect_tile[0]
@@ -1951,9 +1981,15 @@ class Bullet(PhysicsEntity):
         self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
         entity_rect = self.rect()
 
-        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+        for rect_tile in tile_map.physics_rects_around(self.pos, self.size,light_check = True):
             if entity_rect.colliderect(rect_tile[0]):
-                if rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
+                if rect_tile[1].type == 'lights':
+                    # get rid of the light 
+                    self.create_collision_effects(rect_tile[0])
+                    tile_map.tilemap[f"{rect_tile[1].pos[0]};{rect_tile[1].pos[1]}"].light_ptr.popped = True
+                    del tile_map.tilemap[f"{rect_tile[1].pos[0]};{rect_tile[1].pos[1]}"]
+
+                elif rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
                     check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
                                    pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),
                                    pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \
@@ -1969,7 +2005,6 @@ class Bullet(PhysicsEntity):
                                 return True
                 else:
                     if self.collision_handler(tile_map, rect_tile, entity_rect, self.velocity[0] > 0, True):
-
                         self.create_collision_effects()
                         self.dead = True 
                         return True
@@ -1978,9 +2013,15 @@ class Bullet(PhysicsEntity):
         self.center = [self.pos[0] + self.sprite.get_width() / 3, self.pos[1] + self.sprite.get_height() / 2]
         entity_rect = self.rect()
 
-        for rect_tile in tile_map.physics_rects_around(self.pos, self.size):
+        for rect_tile in tile_map.physics_rects_around(self.pos, self.size,light_check = True):
             if entity_rect.colliderect(rect_tile[0]):
-                if rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
+
+                if rect_tile[1].type == 'lights':
+                    self.create_collision_effects(rect_tile[0])
+                    tile_map.tilemap[f"{rect_tile[1].pos[0]};{rect_tile[1].pos[1]}"].light_ptr.popped = True
+                    del tile_map.tilemap[f"{rect_tile[1].pos[0]};{rect_tile[1].pos[1]}"]
+
+                elif rect_tile[1].type.split('_')[1] == 'stairs' and rect_tile[1].variant.split(';')[0] in ['0', '1']:
                     check_rects = [pygame.Rect(rect_tile[0].left, rect_tile[0].bottom + 4, rect_tile[0].width, 4),
                                    pygame.Rect(rect_tile[0].left + 12, rect_tile[0].top, 4, 12),
                                    pygame.Rect(rect_tile[0].left + 6, rect_tile[0].top + 6, 6, 6)] if rect_tile[1].variant.split(';')[0] == '0' else \

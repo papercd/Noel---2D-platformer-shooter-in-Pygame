@@ -8,6 +8,7 @@ from assets import GameAssets
 from scripts.tilemap import Tilemap,Tile,Light
 from scripts.utils import load_images,load_tile_images,Animation
 from scripts.panel import tile_panel 
+from scripts.weapon_list import interpolatedLightNode
 
 from scripts.numbers import numbers
 from scripts.alphabet import alphabets
@@ -34,7 +35,7 @@ class Editor:
         self.RENDER_SCALE = 2.5
         self.DEFAULT_LIGHT_RADIUS = 356
 
-
+        #self.screen_res = [1400,750]
         self.screen_res = [2200,1200]
         self.native_res = [int(self.screen_res[0] / self.RENDER_SCALE) ,int(self.screen_res[1] / self.RENDER_SCALE)]
 
@@ -133,7 +134,7 @@ class Editor:
         """
         
 
-        self.gm = GrassManager(self,'data/images/tiles/live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
+        self.gm = GrassManager(self,'data/images/tiles/new_live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,max_unique = 5,place_range=[1,1])
 
         #place down grass tiles 
         for key in self.Tilemap.grass: 
@@ -243,13 +244,17 @@ class Editor:
             if self.center_ind_x.number < self.ambient_node_ptr.range[0]:
                 if self.ambient_node_ptr.prev: 
                     self.ambient_node_ptr = self.ambient_node_ptr.prev
-                    
-                    self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
+                    if isinstance(self.ambient_node_ptr,interpolatedLightNode):
+                        self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.center_ind_x.number)) 
+                    else: 
+                        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
             elif self.center_ind_x.number > self.ambient_node_ptr.range[1]:
                 if self.ambient_node_ptr.next: 
                     self.ambient_node_ptr = self.ambient_node_ptr.next
-
-                    self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
+                    if isinstance(self.ambient_node_ptr,interpolatedLightNode):
+                        self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.center_ind_x.number)) 
+                    else: 
+                        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
 
             #draw vertical lines for rangew of current ambient light
 
@@ -1057,13 +1062,50 @@ class Editor:
                                 light.set_color(255, 255, 255, 200)
                                 self.lights_engine.lights.append(light)
                             """
+                    if event.key == pygame.K_ESCAPE:
+                        pygame.quit()
+                        sys.exit()
                     if event.key == pygame.K_5: 
                         # Print out the door tiles in the tilemap. 
                         for tilekey in self.Tilemap.tilemap: 
                             if self.Tilemap.tilemap[tilekey].type.endswith('door'):
                                 print(self.Tilemap.tilemap[tilekey])
 
-                    
+                    # setting node with interpolated ambient lighting 
+                    if event.key == pygame.K_j: 
+                        UI.init(self.foreground_surf)
+                        menu = Menu(self,mpos)
+                        running = True 
+                        left_bound_rgba = None 
+                        right_bound_rgba = None 
+                        while running:
+                            running, left_bound_rgba = menu.run_ambient_settings() 
+                            self.lights_engine.set_ambient(*left_bound_rgba)
+                            self.render_surfaces(render_scroll)
+                        
+                        running = True 
+                        while running:
+                            running, right_bound_rgba = menu.run_ambient_settings() 
+                            self.lights_engine.set_ambient(*right_bound_rgba)
+                            self.render_surfaces(render_scroll)
+                        
+                        range_ = input("Range? : ")
+                        
+                        
+                        if range_ == 'n' or range_ == 'N':
+                            self.Tilemap.ambientNodes.update_default_colors(self.ambient_rgba)                             
+                        else: 
+                            hulls_range =  input("y range for hull optimization: ")
+                            hull_nums = hulls_range.split()
+                            nums = range_.split()
+                            if self.Tilemap.ambientNodes.insert_interpolated_ambient_node((int(nums[0]),int(nums[1])),(int(hull_nums[0]),int(hull_nums[1])) ,\
+                                                                                          left_bound_rgba,right_bound_rgba):
+                                self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(int(render_scroll[0] + self.native_res[0]//2))
+                                print("Node added successfully.")
+ 
+
+                        
+
                     if event.key == pygame.K_l:
                         #you can set ambient light with this.
                         UI.init(self.foreground_surf)
@@ -1083,7 +1125,7 @@ class Editor:
                             hulls_range =  input("y range for hull optimization: ")
                             hull_nums = hulls_range.split()
                             nums = range_.split()
-                            if self.Tilemap.ambientNodes.insert_node((int(nums[0]),int(nums[1])),(int(hull_nums[0]),int(hull_nums[1])) ,self.ambient_rgba):
+                            if self.Tilemap.ambientNodes.insert_ambient_node((int(nums[0]),int(nums[1])),(int(hull_nums[0]),int(hull_nums[1])) ,self.ambient_rgba):
                                 self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(int(render_scroll[0] + self.native_res[0]//2))
                                 print("Node added successfully.")
                             

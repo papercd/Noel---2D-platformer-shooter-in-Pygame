@@ -177,8 +177,9 @@ class Tilemap:
 
     def json_seriable(self):
 
-        #now save ambientNode list data into json file. 
-
+        # now save ambientNode list data into json file. 
+        # gotta change this so that the interpolated ambient light nodes are also created. 
+        
         ambient_nodes = self.ambientNodes.json_seriable()
         
 
@@ -599,9 +600,11 @@ class Tilemap:
             else: 
                 # for lights, we need to create two objects: the light "tile" object for the tilemap dict, 
                 # and a pointlight object to add to the light list in the lighting engine. 
+                """
                 self.tilemap[tile_key] = Light(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],\
                                                  tilemap_data['tilemap'][tile_key]["pos"],radius =tilemap_data['tilemap'][tile_key]["radius"], power = tilemap_data['tilemap'][tile_key]["power"],\
                                                      color_value= tilemap_data['tilemap'][tile_key]["colorValue"] )
+                """
                 if isinstance(tilemap_data['tilemap'][tile_key]["pos"][0],int):
                     # for lights that are on the tile grid 
 
@@ -616,11 +619,19 @@ class Tilemap:
                                          power= tilemap_data['tilemap'][tile_key]["power"],radius = tilemap_data['tilemap'][tile_key]["radius"] )
                     light.set_color(*tilemap_data['tilemap'][tile_key]["colorValue"])
                     lights.append(light)
-        
+                
+                self.tilemap[tile_key] = Light(tilemap_data['tilemap'][tile_key]["type"],tilemap_data['tilemap'][tile_key]["variant"],\
+                                                 tilemap_data['tilemap'][tile_key]["pos"],radius =tilemap_data['tilemap'][tile_key]["radius"], power = tilemap_data['tilemap'][tile_key]["power"],\
+                                                     color_value= tilemap_data['tilemap'][tile_key]["colorValue"] )
+                self.tilemap[tile_key].light_ptr = light
+
         
         #create the ambient nodes here with the data. 
         for node_data in tilemap_data['ambient_nodes']:
-            self.ambientNodes.insert_node(node_data["range"],node_data['hull_range'],node_data["colorValue"])
+            if len(node_data.items()) ==4:
+                self.ambientNodes.insert_interpolated_ambient_node(node_data["range"],node_data['hull_range'],node_data["leftColorValue"],node_data["rightColorValue"])
+            else: 
+                self.ambientNodes.insert_ambient_node(node_data["range"],node_data['hull_range'],node_data["colorValue"])
             
         # Create the hull data here and then assign that to the node's hull list pointer.
         self.ambientNodes.create_hull_lists(self)
@@ -1026,6 +1037,7 @@ class Tilemap:
                         tiles.append(self.tilemap[tile_key])
                 elif grass_check and (x,y) in self.game.gm.grass_tiles:
                     tiles.append(self.game.gm.grass_tiles[(x,y)])
+                
                     
         
         return tiles
@@ -1033,7 +1045,7 @@ class Tilemap:
                 
     
 
-    def physics_rects_around(self, pos,size,grass_check= False,cut_or_burn = True):
+    def physics_rects_around(self, pos,size,grass_check= False,cut_or_burn = True,light_check = False):
         """        rects = []
         for tile in self.tiles_around(pos,size):
             if tile.type in PHYSICS_APPLIED_TILE_TYPES:
@@ -1105,6 +1117,14 @@ class Tilemap:
                     16
                 )
                 surrounding_rects_tiles.append((pygame.Rect(*rect),tile))
+            elif light_check and tile.type == 'lights':
+                rect = (
+                    tile.pos[0]*self.tile_size+ 1,
+                    tile.pos[1] *self.tile_size + 1,
+                    14,
+                    6
+                )
+                surrounding_rects_tiles.append((pygame.Rect(*rect),tile))
         # Convert the tuples to pygame Rect objects if needed
         #surrounding_rects_tiles = [ for rect in rects, tile for tile in tiles]
         
@@ -1173,7 +1193,7 @@ class Tilemap:
             return tile_img.get_at(sample_loc[side] )
 
    
-    def autotile(self, random_=False):
+    def autotile(self, random_=False,autotile_options = 0):
         dicts = [self.tilemap] + self.offgrid_tiles
         
         for autotile_dict in dicts:
@@ -1196,7 +1216,7 @@ class Tilemap:
                         auto_map = BUILDING_AUTOTILE[building_type]
                         if neighbors in auto_map:
                             variant_sub_0 = auto_map[neighbors]
-                            asset = self.game.general_sprites[tile.type][int(variant_sub_0)]
+                            asset = self.game.assets[tile.type][int(variant_sub_0)]
                             if isinstance(asset, list):
                                 variant_sub_1 = random.randint(0, len(asset) - 1) if random_ else 0
                                 tile.variant = f"{variant_sub_0};{variant_sub_1}"
@@ -1208,7 +1228,7 @@ class Tilemap:
                     else:
                         if neighbors in AUTOTILE_MAP:
                             variant_sub_0 = AUTOTILE_MAP[neighbors]
-                            asset = self.game.general_sprites[tile.type][int(variant_sub_0)]
+                            asset = self.game.assets[tile.type][int(variant_sub_0)]
                             if isinstance(asset, list):
                                 variant_sub_1 = random.randint(0, len(asset) - 1) if random_ else 0
                                 tile.variant = f"{variant_sub_0};{variant_sub_1}"
@@ -1320,7 +1340,6 @@ class Tilemap:
         
 class Tile: 
     def __init__(self,type,variant,pos,dirty = False , hull = None,enclosed = False):
-        
         self.type = type 
         self.variant = variant
         self.pos = pos 
@@ -1396,6 +1415,7 @@ class Light(Tile):
     def __init__(self, type, variant, pos, dirty=False, radius = 356,power = 1.0,color_value = (255,255,255,255)):
         
         super().__init__(type, variant, pos, dirty)
+        self.light_ptr = None 
         self.radius = radius
         self.power = power
         self.color_value = color_value 

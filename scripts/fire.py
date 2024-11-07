@@ -189,7 +189,7 @@ class Flame_particle:
         self.x +=  frame_movement[0] 
         self.y += frame_movement[1] 
         
-        grass_check = j % 11 == 0
+        grass_check = j % 11== 0
 
         for rect_tile in tilemap.physics_rects_around((self.pos[0] - self.r,self.pos[1] - self.r),(self.r * 2,self.r * 2),grass_check=grass_check):
               
@@ -199,8 +199,10 @@ class Flame_particle:
                 #print(rect_tile[1].type)
                 if not rect_tile[1].type == 'stairs':
                     if rect_tile[1].type =='live_grass':
- 
-                        self.game.gm.burn_tile((rect_tile[1].pos[0]//16,rect_tile[1].pos[1]//16))
+                        loc = (rect_tile[1].pos[0]//16,rect_tile[1].pos[1]//16)
+                        if loc in self.game.gm.grass_tiles:
+                            self.game.gm.grass_tiles[loc].burning -= 0.3
+                        #self.game.gm.burn_tile((rect_tile[1].pos[0]//16,rect_tile[1].pos[1]//16))
                     else:
                         incid_angle = math.degrees(math.atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
                         if side_point == "Top" or side_point == "Bottom":

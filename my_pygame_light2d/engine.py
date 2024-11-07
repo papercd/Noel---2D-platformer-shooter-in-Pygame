@@ -218,7 +218,19 @@ class LightingEngine:
         self._fbo_ao = self.ctx.framebuffer([self._tex_ao])
 
 
-        
+        self._buf_lt._tex1.repeat_x = False
+        self._buf_lt._tex1.repeat_y = False
+        self._buf_lt._tex2.repeat_x = False
+        self._buf_lt._tex2.repeat_y = False
+
+        self._tex_ao.repeat_x = False
+        self._tex_ao.repeat_y = False
+        self._tex_bg.repeat_x = False
+        self._tex_bg.repeat_y = False 
+        self._tex_fg.repeat_x = False
+        self._tex_fg.repeat_y = False 
+
+
 
     def _create_ssbos(self):
         # Set block indices for the SSBOS in the shader program
@@ -496,6 +508,9 @@ class LightingEngine:
 
         for light in self.lights.copy():
             # Skip light if disabled
+            if light.popped:
+                self.lights.remove(light)
+                continue
             if light.illuminator and light.illuminator.dead:
                 self.lights.remove(light)
                 continue 
@@ -630,6 +645,8 @@ class LightingEngine:
 
         return self.make_shader(vertex_src, fragment_src)
 
+    def render_onto_bg_texture(self):
+        pass 
 
     def render_texture_with_trans(self,
                tex: moderngl.Texture,

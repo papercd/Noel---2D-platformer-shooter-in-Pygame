@@ -12,8 +12,9 @@ screen = pygame.display.set_mode((500, 500), 0, 32)
 sparks = []
 
 class Spark():
-    def __init__(self, loc, angle, speed, color, scale=1,speed_factor = 2):
+    def __init__(self, loc, angle, speed, color, scale=1,speed_factor = 2,speed_decay_factor =1 ):
         self.loc = loc
+        self.speed_decay_factor = speed_decay_factor
         self.center = self.loc
         self.angle = angle
         self.speed = speed
@@ -51,13 +52,13 @@ class Spark():
     
     
 
-    def calculate_bounce_angle(self, angle,axis):
+    def calculate_bounce_angle(self,axis):
         
         if axis == 'x':
-            reflected_angle = math.pi - angle 
+            reflected_angle = math.pi - self.angle
         else:
             #reflected_angle =  angle
-            reflected_angle = -angle 
+            reflected_angle = -self.angle 
 
         return reflected_angle
 
@@ -74,8 +75,9 @@ class Spark():
         if  key in tilemap.tilemap:
             
             tile = tilemap.tilemap[key]
-            
-            if tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
+            if tile.type == 'lights':
+                pass
+            elif tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
                 check_rects = [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
                                 pygame.Rect(tile_loc[0] + 12, tile_loc[1], 4, 12),
                                 pygame.Rect(tile_loc[0] + 6, tile_loc[1] + 6, 6, 6)] if tile.variant.split(';')[0] == '0' else \
@@ -89,7 +91,7 @@ class Spark():
                         else:
                             self.loc[0] =  check_rect.left
 
-                        self.angle = self.calculate_bounce_angle(self.angle,'x')
+                        self.angle = self.calculate_bounce_angle('x')
                         self.speed *= 0.8  
                         #self.dead = True 
                         #return True
@@ -98,7 +100,7 @@ class Spark():
                     self.loc[0] =  tile_loc[0] * tilemap.tile_size + tilemap.tile_size
                 else:
                     self.loc[0] =  tile_loc[0] * tilemap.tile_size - 1
-                self.angle = self.calculate_bounce_angle(self.angle,'x')
+                self.angle = self.calculate_bounce_angle('x')
                 self.speed *= 0.8  #
                 #self.dead = True 
                 #return True
@@ -110,8 +112,9 @@ class Spark():
         
         if  key in tilemap.tilemap:
             tile = tilemap.tilemap[key]
-            
-            if tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
+            if tile.type == 'lights':
+                pass
+            elif tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
                 check_rects = [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
                                 pygame.Rect(tile_loc[0] + 12, tile_loc[1], 4, 12),
                                 pygame.Rect(tile_loc[0] + 6, tile_loc[1] + 6, 6, 6)] if tile.variant.split(';')[0] == '0' else \
@@ -125,7 +128,7 @@ class Spark():
                         else:
                             self.loc[1] =  check_rect.top
                             
-                        self.angle = self.calculate_bounce_angle(self.angle,'y')
+                        self.angle = self.calculate_bounce_angle('y')
                         self.speed *= 0.8  
                         #self.dead = True 
                         #return True
@@ -135,7 +138,7 @@ class Spark():
                     self.loc[1] =  tile_loc[1]* tilemap.tile_size + tilemap.tile_size
                 else:
                     self.loc[1] =  tile_loc[1]* tilemap.tile_size - 1
-                self.angle = self.calculate_bounce_angle(self.angle,'y')
+                self.angle = self.calculate_bounce_angle('y')
                 self.speed *= 0.8
                 #self.dead = True 
                 #return True
@@ -152,7 +155,7 @@ class Spark():
         self.angle += angle_jitter
         #self.angle += 0.02
 
-        self.speed -= 0.1
+        self.speed -= 0.1*self.speed_decay_factor
 
          
         return False
