@@ -97,53 +97,131 @@ class GameState(Enum):
 
 class myGame():
     def __init__(self):
+        # set display settings, setup lighting engine and load game assets. 
+        self._initialize_game_settings()
+
         
-        os.environ['SDL_VIDEO_CENTERED'] = '1'
-        pygame.init() 
+        """ initialize public members """
+        
+        # tilemap 
+        self.Tilemap = Tilemap(self,tile_size=16,offgrid_layers=2)
+        
+        # cursor 
+        pygame.mouse.set_visible(False)
+        self.cursor = Cursor(self,(50,50),(4,4),'default')
+
+        # player 
+        self.player = PlayerEntity(self,(50,50),(14,16))
+        self.player.set_accel_rate(0.7)
+        self.player.set_default_speed(2.2)
+        self.player_movement_input = [False,False] 
+    
+        # HUD
+        self.inven_on = True
+        self.HUD = HUD(self.player,self.general_sprites['health_UI'],self._foreground_surf_dim)
+        
+        # grass manager
+        self.gm = GrassManager(self,'data/images/tiles/new_live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
+                               max_unique = 5,place_range=[1,1],burn_spread_speed= 3,burn_rate= 1.2)
+       
+        
+        # other tracking variables
+        self.frame_count = 0
+        self.mouse_pressed = [False,False] 
+        self.shift_pressed = False
+        self.reset = True 
+        
+        """ initialize private members""" 
+        
+        # game object containers 
+        self._collectable_items = []
+        self._bullets_on_screen = []
+        self._enemies = []
+        self._enemy_bullets = []
+ 
+        # particles and effects containers 
+        self._particles = []
+        self._fire_particles = []
+        self._non_animated_particles = []
+        self._sparks = []
+
+        # dash variables
+        self._boost_ready = False 
+        self._timer = 0
+        self._time_increment = False
+
+        # other tracking variables 
+        self._logo_time_speed_factor= 1
+        
+        self._scroll = [0,0]
+        self._menu_scroll_up = False 
+        self._menu_scroll_down = False 
+      
+        self._dt = 0
+        self._prev_frame_time= time.time()
+        self._rot_func_t = 0
+     
+        self._screen_shake = 0
+
+        # quadtree settings 
+        self._NODE_CAPACITY = 4
+        self._qtree_x_slack = 300
+        self._qtree_y_slack = 300
+
+        # gamestate var, start screen ui, ambient light node pointer 
+        self._curr_gameState = GameState.StartSequence
+        self._start_screen_ui = startScreenUI(self._screen_size)
+        self._ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])  
+
+
+
+       
+        
+        
+    def _initialize_game_settings(self):
+        pygame.init()
         pygame.mixer.pre_init(44100, -16, 2, 512)
+        self._clock = pygame.time.Clock()
+        self._system_display_info = self._get_system_display_info()
+        self._default_screen_to_native_ratio = 4
 
-        self.system_display_info = self._get_system_display_info()
+        self._set_initial_display_settings()
+        self._setup_engine_and_render_surfs()
+        self._load_game_assets()
 
-        self.clock = pygame.time.Clock()
-        self.screen_size = self.system_display_info['resolution']
-        #self.screen_size = (1200,750)
-        #self.screen_size = (2540,1420)
-        #self.screen_size = (2400,1500)
-        self.default_screen_to_native_ratio = 4
-        self.screen_to_native_ratio = 4.5
-        self.native_res = (int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio))
-        
-        self.lights_engine = LightingEngine(screen_res=self.screen_size,native_res=self.native_res,lightmap_res=self.native_res)
-        
-        
-        self.buffer_surf = pygame.Surface((int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio)),pygame.SRCALPHA)
-        self.background_surf = pygame.Surface((int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio)),pygame.SRCALPHA)
-        self.foreground_surf = pygame.Surface((int(self.screen_size[0]/self.screen_to_native_ratio),int(self.screen_size[1]/self.screen_to_native_ratio)),pygame.SRCALPHA)
+    def _set_initial_display_settings(self):
+        os.environ['SDL_VIDEO_CENTERED'] = '1'
+        self._screen_size = self._system_display_info['resolution']
 
-        self.background_surf_dim = self.foreground_surf_dim = self.background_surf.get_size()
+        #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
+        self._screen_to_native_ratio = 4.5 
+        self._native_res = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
 
+    def _setup_engine_and_render_surfs(self):
+        self.lights_engine = LightingEngine(screen_res=self._screen_size,native_res=self._native_res,lightmap_res=self._native_res)
+
+        self._background_surf_dim = self._foreground_surf_dim = self.buffer_surf_dim = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
+        self.buffer_surf = pygame.Surface(self.buffer_surf_dim,pygame.SRCALPHA)
+        self.background_surf = pygame.Surface(self._background_surf_dim,pygame.SRCALPHA)
+        self.foreground_surf = pygame.Surface(self._foreground_surf_dim,pygame.SRCALPHA)
+
+        # testing custom shaders 
         self.test_shader = self.lights_engine.load_shader_from_path('vertex.glsl','fog_fragment.glsl')
-        """
-        self.test_shader = self.lights_engine.load_shader_from_path('vertex.glsl','fog_fragment.glsl')
-        self.pixel_exp_shader = self.lights_engine.load_shader_from_path('vertex.glsl','exp_fragment.glsl')
-        self.sparks_shader = self.lights_engine.load_shader_from_path('vertex.glsl','sparks.glsl')
-        self.dithering_shader = self.lights_engine.load_shader_from_path('vertex.glsl','dithering.glsl')
 
-        """
-        
+    def _load_game_assets(self):
         self.game_assets = GameAssets()
         self.general_sprites = self.game_assets.general_sprites
         self.interactable_obj_sprites = self.game_assets.interactable_obj_sprites
         self.enemy_sprites = self.game_assets.enemies
-        
-        self.window_icon = self.general_sprites['player']
-        self.pygame_logo = self.general_sprites['start_logo']
-        self.pygame_logo_center_offset = (-4/self.screen_to_native_ratio ,35/self.screen_to_native_ratio)
-        self.pygame_logo_dim = self.pygame_logo.get_size()
-        self.pygame_logo_ratio = self.pygame_logo_dim[0] /self.pygame_logo_dim[1]
-        self.pygame_logo = pygame.transform.smoothscale(self.pygame_logo.convert_alpha(),(self.native_res[0]//2,  (self.native_res[0]//2) / self.pygame_logo_ratio))
-        self.pygame_logo_dim = self.pygame_logo.get_size()
-        pygame.display.set_icon(self.window_icon)
+
+        self._window_icon = self.general_sprites['player']
+        self._pygame_logo = self.general_sprites['start_logo']
+        self._pygame_logo_center_offset = (-4/self._screen_to_native_ratio ,35/self._screen_to_native_ratio)
+        self._pygame_logo_dim = self._pygame_logo.get_size()
+        self._pygame_logo_ratio = self._pygame_logo_dim[0] /self._pygame_logo_dim[1]
+        self._pygame_logo = pygame.transform.smoothscale(self._pygame_logo.convert_alpha(),(self._native_res[0]//2,  (self._native_res[0]//2) / self._pygame_logo_ratio))
+        self._pygame_logo_dim = self._pygame_logo.get_size()
+        pygame.display.set_icon(self._window_icon)
 
         self.weapons = {
             'laser_weapon': Wheelbot_weapon(self,Animation(load_images('entities/enemy/Wheel_bot/charge_weapon',background='transparent'),img_dur=5,loop=True),"A Laser weapon."),
@@ -166,80 +244,6 @@ class myGame():
             'new_building' : Background(self,load_images('backgrounds/new_building',background='transparent'))
         }
 
-        #tile map 
-        self.Tilemap = Tilemap(self,tile_size=16,offgrid_layers=2)
-        
-        #cursor object 
-        pygame.mouse.set_visible(False)
-        self.cursor = Cursor(self,(50,50),(4,4),'default')
-
-        #player 
-        self.PLAYER_DEFAULT_SPEED = 2.2
-        self.accel_rate = 0.7
-
-        self.player = PlayerEntity(self,(50,50),(14,16),self.PLAYER_DEFAULT_SPEED,self.accel_rate)
-        self.player_movement_input = [False,False]
-
-        #HUD
-        self.inven_on = True
-        self.HUD = HUD(self.player,self.general_sprites['health_UI'],self.foreground_surf_dim)
-        
-        #grass manager
-        self.gm = GrassManager(self,'data/images/tiles/new_live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
-                               max_unique = 5,place_range=[1,1],burn_spread_speed= 3,burn_rate= 1.2)
-
-        #game object containers 
-        self.collectable_items = []
-        self.bullets_on_screen = []
-        self.enemies = []
-        self.enemy_bullets = []
-        
-        #particles and effects containers 
-        self.particles = []
-        self.physical_particles = []
-        self.non_animated_particles = []
-        self.sparks = []
-
-        #light objs containers  
-        self.lights = {}
-        self.temp_lights = []
-        self.shadow_objects = [] 
-
-
-        #dash variables
-        self.boost_ready = False 
-        self.timer = 0
-        self.time_increment = False
-
-        #other tracking variables
-        self.frame_count = 0
-        self.mouse_pressed = [False,False] 
-        self.shift_pressed = False
-        self.reset = True 
-        self.logo_time_speed_factor= 1
-
-        
-        self.scroll = [0,0]
-        self.menu_scroll_up = False 
-        self.menu_scroll_down = False 
-      
-        self.dt = 0
-        self.start = time.time()
-        self.running_time = time.time()
-        self.rot_func_t = 0
-        self.main_offset = None 
-     
-        self.screen_shake = 0
-
-        #quadtree settings 
-        self.NODE_CAPACITY = 4
-        self.qtree_x_slack = 300
-        self.qtree_y_slack = 300
-
-
-        self.curr_gameState = GameState.StartSequence
-        self.start_screen_ui = startScreenUI(self.screen_size)
-        self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
 
     def _get_system_display_info(self):
         system_info = {}
@@ -270,46 +274,31 @@ class myGame():
 
     def _load_map_init_game_env(self,map_file_name):
 
-        self.collectable_items = []
-        self.bullets_on_screen = []
-        self.enemy_bullets = []
-        self.particles = []
-        self.physical_particles = []
-        self.non_animated_particles = []
-        self.enemies = []
-        self.sparks = []
+        self._collectable_items = []
+        self._bullets_on_screen = []
+        self._enemy_bullets = []
+        self._particles = []
+        self._fire_particles = []
+        self._non_animated_particles = []
+        self._enemies = []
+        self._sparks = []
 
         self.lights_engine.lights = self.Tilemap.load_map_return_lights(map_file_name)
 
         self.Tilemap.extract_game_objs()
 
-        self.ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
-        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue)
+        self._ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
+        self.lights_engine.set_ambient(*self._ambient_node_ptr.colorValue)
        
-
-    def start_game(self):
-        self._load_map_init_game_env('start_screen.json')
-        #print(self.screen_info_obj.current_h,self.screen_info_obj.current_w)
-
-        self._show_start_sequence()
-        while(True):
-            self._handle_events()
-            self._update_render()
-    
-
-
-    def _resize_resolution(self):
-        pass
-
 
     def _show_start_sequence(self):
         
-        self.logo_time = 0
+        self._logo_time = 0
 
-        while self.logo_time <600 :
+        while self._logo_time <600 :
             
             
-            self.logo_time += 1*self.logo_time_speed_factor
+            self._logo_time += 1*self._logo_time_speed_factor
             
             self._handle_events()
             
@@ -318,19 +307,19 @@ class myGame():
             self.foreground_surf.fill((0,0,0))
         
 
-            blackout_surf = pygame.Surface(self.screen_size)
+            blackout_surf = pygame.Surface(self._screen_size)
             blackout_surf = blackout_surf.convert()
             blackout_surf.fill((0,0,0,0))
 
 
-            if self.logo_time <= 300 :
+            if self._logo_time <= 300 :
     
-                blackout_surf.set_alpha(smoothclamp(255-self.logo_time,0,255))
+                blackout_surf.set_alpha(smoothclamp(255-self._logo_time,0,255))
             else: 
-                 blackout_surf.set_alpha(255-min(255,smoothclamp_decreasing(self.logo_time,0,600)))
+                 blackout_surf.set_alpha(255-min(255,smoothclamp_decreasing(self._logo_time,0,600)))
             
             
-            self.foreground_surf.blit(self.pygame_logo,(self.native_res[0]//4 + self.pygame_logo_center_offset[0], self.native_res[1]//2 - self.pygame_logo_dim[1]//2 - self.pygame_logo_center_offset[1]))
+            self.foreground_surf.blit(self._pygame_logo,(self._native_res[0]//4 + self._pygame_logo_center_offset[0], self._native_res[1]//2 - self._pygame_logo_dim[1]//2 - self._pygame_logo_center_offset[1]))
             self.foreground_surf.blit(blackout_surf,(0,0))
             self.cursor.update_render(self.foreground_surf)
 
@@ -343,16 +332,16 @@ class myGame():
             )
             tex.release()
 
-            self.lights_engine.render(self.ambient_node_ptr.range,(0,0), (0,0))
+            self.lights_engine.render(self._ambient_node_ptr.range,(0,0), (0,0))
             
             
             pygame.display.flip()
-            fps = self.clock.get_fps()
+            fps = self._clock.get_fps()
             pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
-            self.clock.tick(60)
+            self._clock.tick(60)
         
-        self.scroll[0] = (self.player.rect().centerx - self.background_surf_dim[0] /2)
-        self.scroll[1] = (self.player.rect().centery - self.background_surf_dim[1] /2)
+        self._scroll[0] = (self.player.rect().centerx - self._background_surf_dim[0] /2)
+        self._scroll[1] = (self.player.rect().centery - self._background_surf_dim[1] /2)
         """
         self.start_sequence_time = 255 
         scroll_increment_x = (self.player.rect().centerx - self.background_surf_dim[0] /2)
@@ -424,23 +413,21 @@ class myGame():
             self.clock.tick(60)
 
         """
-        self.curr_gameState = GameState.MainMenu
+        self._curr_gameState = GameState.MainMenu
 
 
     
     def _handle_common_events(self,event):
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_i: 
-                self.get_current_monitor_info()
             if event.key == pygame.K_ESCAPE:
                 self.quit_game() 
+            if event.key == pygame.K_F12:
+                pygame.display.toggle_fullscreen()
         if event.type == pygame.QUIT:
                 self.quit_game() 
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_F12:
-                pygame.display.toggle_fullscreen()
 
         elif event.type == pygame.MOUSEWHEEL:
-            if self.curr_gameState == GameState.GameLoop:
+            if self._curr_gameState == GameState.GameLoop:
                 self.player.change_weapon(event.y)
                 
         elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -457,17 +444,17 @@ class myGame():
 		 
 	
     def _handle_events(self):
-        if self.curr_gameState == GameState.StartSequence:
+        if self._curr_gameState == GameState.StartSequence:
             for event in pygame.event.get():
                 self._handle_common_events(event)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RETURN:
-                        self.logo_time_speed_factor = 7
-                        self.logo_time = max(300,self.logo_time)
+                        self._logo_time_speed_factor = 7
+                        self._logo_time = max(300,self._logo_time)
                         self.start_sequence_time = 0
                         break 
 					
-        elif self.curr_gameState == GameState.MainMenu:
+        elif self._curr_gameState == GameState.MainMenu:
             for event in pygame.event.get():
                 self._handle_common_events(event)
                 if event.type == pygame.KEYDOWN:
@@ -475,18 +462,18 @@ class myGame():
                         self.start_sequence_time = 0
                     if event.key == pygame.K_p:
                         self._load_map_init_game_env('test.json')
-                        self.scroll[0]= (self.player.rect().centerx - self.background_surf_dim[0] /2)
-                        self.scroll[1]=  (self.player.rect().centery - self.background_surf_dim[1] /2) - 20 
-                        self.curr_gameState = GameState.GameLoop
+                        self._scroll[0]= (self.player.rect().centerx - self._background_surf_dim[0] /2)
+                        self._scroll[1]=  (self.player.rect().centery - self._background_surf_dim[1] /2) - 20 
+                        self._curr_gameState = GameState.GameLoop
                         break
                     if event.key == pygame.K_w: 
-                        self.menu_scroll_up = True 
+                        self._menu_scroll_up = True 
                     if event.key == pygame.K_UP: 
-                        self.menu_scroll_up = True
+                        self._menu_scroll_up = True
                     if event.key == pygame.K_s:
-                        self.menu_scroll_down = True
+                        self._menu_scroll_down = True
                     if  event.key == pygame.K_DOWN: 
-                        self.menu_scroll_down = True
+                        self._menu_scroll_down = True
                     if event.key == pygame.K_SPACE:
                         self.menu_select = True 
                     if event.key == pygame.K_KP_ENTER:
@@ -494,19 +481,19 @@ class myGame():
                 
                 if event.type == pygame.KEYUP: 
                     if event.key == pygame.K_w: 
-                        self.menu_scroll_up = False
+                        self._menu_scroll_up = False
                     if event.key == pygame.K_UP: 
-                        self.menu_scroll_up = False
+                        self._menu_scroll_up = False
                     if event.key == pygame.K_s:
-                        self.menu_scroll_down = False
+                        self._menu_scroll_down = False
                     if  event.key == pygame.K_DOWN: 
-                        self.menu_scroll_down = False
+                        self._menu_scroll_down = False
                     if event.key == pygame.K_SPACE:
                         self.menu_select = False
                     if event.key == pygame.K_KP_ENTER:
                         self.menu_select = False
                         
-        elif self.curr_gameState == GameState.GameLoop:
+        elif self._curr_gameState == GameState.GameLoop:
             
             if self.mouse_pressed[0]:
                 if not self.cursor.interacting:
@@ -525,7 +512,7 @@ class myGame():
                 self._handle_common_events(event)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_z:
-                        print(self.screen_size)
+                        print(self._screen_size)
                         print(self.gm.grass_tiles)
                     if event.key == pygame.K_m:
                         self.gm.burn_tile((74,11))
@@ -533,7 +520,7 @@ class myGame():
                     if event.key == pygame.K_o:
                         for _ in range(9):
                             glass_ = glass([80 * 16 +8, 3 *16 +2],2.5,10,math.radians(random.randint(50,130)),180)
-                            self.sparks.append(glass_)
+                            self._sparks.append(glass_)
                         pass 
                     if event.key == pygame.K_n:
                         self.Tilemap.tilemap[f"80;3"] = Light("lights","0;0",(80,3),radius=356 ,power = 1\
@@ -589,16 +576,16 @@ class myGame():
                     if event.key == pygame.K_a: 
                         """
                         if self.player.flip: 
-                            if self.timer >=0 and self.timer < 20:
-                                if self.boost_ready:
-                                    self.boost_ready = False 
+                            if self._timer >=0 and self._timer < 20:
+                                if self._boost_ready:
+                                    self._boost_ready = False 
                                     self.player.dash()
                                 else: 
-                                    self.boost_ready = True 
+                                    self._boost_ready = True 
                         else: 
-                            self.boost_ready = True 
-                        self.timer = 0
-                        self.time_increment = True
+                            self._boost_ready = True 
+                        self._timer = 0
+                        self._time_increment = True
 
                         """
                         self.player_movement_input[0] = True
@@ -606,16 +593,16 @@ class myGame():
                     if event.key == pygame.K_d: 
                         """
                         if not self.player.flip:
-                            if self.timer >=0 and self.timer < 20:
-                                if self.boost_ready: 
-                                    self.boost_ready = False 
+                            if self._timer >=0 and self._timer < 20:
+                                if self._boost_ready: 
+                                    self._boost_ready = False 
                                     self.player.dash()
                                 else: 
-                                    self.boost_ready = True 
+                                    self._boost_ready = True 
                         else: 
                             self.boost_ready = True 
-                        self.timer = 0
-                        self.time_increment = True 
+                        self._timer = 0
+                        self._time_increment = True 
 
                         """
                         self.player_movement_input[1] = True
@@ -646,36 +633,36 @@ class myGame():
         
     def _update_render(self):
         
-        if self.curr_gameState == GameState.GameLoop:
+        if self._curr_gameState == GameState.GameLoop:
             
             #parameters related to render update 
-            self.prev_cursor_pos = self.cursor.pos
-            self.dt = time.time() - self.start
-            self.start = time.time()
-            self.screen_shake = max(0,self.screen_shake -1)
+           # self.prev_cursor_pos = self.cursor.pos
+            self._dt = time.time() - self._prev_frame_time
+            self._prev_frame_time = time.time()
+            self._screen_shake = max(0,self._screen_shake -1)
         
             #timer update for acceleration and dash timings  - have dash implemented, unsure 
             #if it should be kept 
                 
-            self.timer += self.time_increment
+            self._timer += self._time_increment
 
-            if self.timer > 20:
+            if self._timer > 20:
                 self.boost_ready = False 
-                self.time_increment = False 
-                self.timer = 0
+                self._time_increment = False 
+                self._timer = 0
 
             #frame counter update needed for weapon fire rate implementation 
             self.frame_count = (self.frame_count+1) % 360 
 
             #render scroll update (camera scroll)
-            self.scroll[0] += (self.player.rect().centerx - self.background_surf_dim[0] /2 - self.scroll[0])/20
-            self.scroll[1] += (self.player.rect().centery - self.background_surf_dim[1] /2 - self.scroll[1])/20
-            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+            self._scroll[0] += (self.player.rect().centerx - self._background_surf_dim[0] /2 - self._scroll[0])/20
+            self._scroll[1] += (self.player.rect().centery - self._background_surf_dim[1] /2 - self._scroll[1])/20
+            render_scroll = (int(self._scroll[0]), int(self._scroll[1]))
             
             #----------------------------quadtree update - needed for collision detection between moving entities
-            boundary = Rectangle(Vector2(render_scroll[0]- self.qtree_x_slack,render_scroll[1]- self.qtree_y_slack),\
-                                 Vector2(self.background_surf_dim[0] +self.qtree_x_slack*2,self.background_surf_dim[1] +self.qtree_y_slack*2))
-            quadtree = QuadTree(self.NODE_CAPACITY, boundary)
+            boundary = Rectangle(Vector2(render_scroll[0]- self._qtree_x_slack,render_scroll[1]- self._qtree_y_slack),\
+                                 Vector2(self._background_surf_dim[0] +self._qtree_x_slack*2,self._background_surf_dim[1] +self._qtree_y_slack*2))
+            quadtree = QuadTree(self._NODE_CAPACITY, boundary)
 
             x_lower = boundary.position.x
             x_higher = x_lower + boundary.scale.x
@@ -695,26 +682,26 @@ class myGame():
             self.Tilemap.render(self.background_surf,render_scroll)
 
             #ambient lighting update - ambient node (node that contains the ambient lighting info in the current domain)
-            if self.player.pos[0] < self.ambient_node_ptr.range[0]:
-                if self.ambient_node_ptr.prev: 
-                    self.ambient_node_ptr = self.ambient_node_ptr.prev
-                    if isinstance(self.ambient_node_ptr,interpolatedLightNode):
+            if self.player.pos[0] < self._ambient_node_ptr.range[0]:
+                if self._ambient_node_ptr.prev: 
+                    self._ambient_node_ptr = self._ambient_node_ptr.prev
+                    if isinstance(self._ambient_node_ptr,interpolatedLightNode):
                         print("check")
-                        self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+                        self.lights_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
                     else:
-                        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
+                        self.lights_engine.set_ambient(*self._ambient_node_ptr.colorValue) 
 
-            elif self.player.pos[0] > self.ambient_node_ptr.range[1]:
-                if self.ambient_node_ptr.next: 
-                    self.ambient_node_ptr = self.ambient_node_ptr.next
-                    if isinstance(self.ambient_node_ptr,interpolatedLightNode):
+            elif self.player.pos[0] > self._ambient_node_ptr.range[1]:
+                if self._ambient_node_ptr.next: 
+                    self._ambient_node_ptr = self._ambient_node_ptr.next
+                    if isinstance(self._ambient_node_ptr,interpolatedLightNode):
                         print("check")
-                        self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+                        self.lights_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
                     else:
-                        self.lights_engine.set_ambient(*self.ambient_node_ptr.colorValue) 
+                        self.lights_engine.set_ambient(*self._ambient_node_ptr.colorValue) 
             else: 
-                if isinstance(self.ambient_node_ptr,interpolatedLightNode):
-                    self.lights_engine.set_ambient(self.ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+                if isinstance(self._ambient_node_ptr,interpolatedLightNode):
+                    self.lights_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
 
 
 
@@ -723,29 +710,29 @@ class myGame():
             self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
             
 
-            for i in range(len(self.enemies) - 1, -1, -1):
-                enemy = self.enemies[i]
+            for i in range(len(self._enemies) - 1, -1, -1):
+                enemy = self._enemies[i]
                 
                 if (enemy.pos[0] >= x_lower and enemy.pos[0] <= x_higher) and (enemy.pos[1] >= y_lower and enemy.pos[1] <= y_higher):
-                    kill = enemy.update(self.Tilemap, self.player.pos, self.dt, (0, 0))
+                    kill = enemy.update(self.Tilemap, self.player.pos, self._dt, (0, 0))
                     quadtree.insert(enemy)
 
                     # TODO: Handle enemy collision and push-back logic here.
 
                     enemy.render(self.background_surf, offset=render_scroll)
                     if kill:
-                        del self.enemies[i]  # Removes the enemy without needing a list copy.
+                        del self._enemies[i]  # Removes the enemy without needing a list copy.
      
 
 
-            for i in range(len(self.collectable_items) - 1, -1, -1):
-                collectable_item = self.collectable_items[i]
+            for i in range(len(self._collectable_items) - 1, -1, -1):
+                collectable_item = self._collectable_items[i]
 
                 if (collectable_item.life <= 0 or 
                     (collectable_item.pos[0] + collectable_item.size[0] <= x_lower or collectable_item.pos[0] >= x_higher) or 
                     (collectable_item.pos[1] + collectable_item.size[1] <= y_lower or collectable_item.pos[1] >= y_higher)):
                     
-                    del self.collectable_items[i]
+                    del self._collectable_items[i]
                     continue
 
                 collectable_item.update_pos(self.Tilemap)
@@ -754,12 +741,12 @@ class myGame():
 
             
                 
-            for i in range(len(self.bullets_on_screen) - 1, -1, -1):
-                bullet = self.bullets_on_screen[i]
+            for i in range(len(self._bullets_on_screen) - 1, -1, -1):
+                bullet = self._bullets_on_screen[i]
 
                 kill = bullet.update_pos(self.Tilemap)
                 if kill:
-                    del self.bullets_on_screen[i]
+                    del self._bullets_on_screen[i]
                     continue    
 
                 if (bullet.pos[0] >= x_lower and bullet.pos[0] <= x_higher) and (bullet.pos[1] >= y_lower and bullet.pos[1] <= y_higher):
@@ -786,11 +773,11 @@ class myGame():
                         collide_particle = Particle(self, 'bullet_collide/rifle', end_point, 'player')
                         rotated_collide_particle_images = [pygame.transform.rotate(image, 180 + bullet.angle) for image in collide_particle.animation.images]
                         collide_particle.animation.images = rotated_collide_particle_images
-                        self.particles.append(collide_particle)
+                        self._particles.append(collide_particle)
                         
                         # Ensure bullet is removed if still in list
-                        if i < len(self.bullets_on_screen) and self.bullets_on_screen[i] == bullet:
-                            del self.bullets_on_screen[i]
+                        if i < len(self._bullets_on_screen) and self._bullets_on_screen[i] == bullet:
+                            del self._bullets_on_screen[i]
 
             """
             for bullet in self.bullets_on_screen.copy():
@@ -820,7 +807,7 @@ class myGame():
 
                                     center_pos = [bullet.pos[0]+bullet.sprite.get_width()/2, bullet.pos[1] + bullet.sprite.get_height()/2]
                                     end_point = [center_pos[0]+og_end_point_vec[0]- (bullet.sprite.get_width()/2 if bullet.velocity[0] >=0 else 0),center_pos[1] + og_end_point_vec[1]] 
-                                    collide_particle = Particle(self,'bullet_collide/rifle',end_point,'player')
+                                    collide_particle = Particle(self,'bullet_collide/rifle',end_point,'player'/
                                     rotated_collide_particle_images = [pygame.transform.rotate(image,180+bullet.angle) for image in collide_particle.animation.copy().images]
                                     collide_particle.animation.images = rotated_collide_particle_images
 
@@ -831,18 +818,18 @@ class myGame():
                                     
             
             # Process enemy bullets
-            for i in range(len(self.enemy_bullets) - 1, -1, -1):
-                bullet = self.enemy_bullets[i]
+            for i in range(len(self._enemy_bullets) - 1, -1, -1):
+                bullet = self._enemy_bullets[i]
                 kill = bullet.update_pos(self.Tilemap)
                 bullet.render(self.background_surf, offset=render_scroll)
                 if kill:
-                    del self.enemy_bullets[i]
+                    del self._enemy_bullets[i]
 
             # Process particles
-            for i in range(len(self.particles) - 1, -1, -1):
-                particle = self.particles[i]
+            for i in range(len(self._particles) - 1, -1, -1):
+                particle = self._particles[i]
                 if particle is None:
-                    del self.particles[i]
+                    del self._particles[i]
                     continue
 
                 kill = particle.update()
@@ -853,7 +840,7 @@ class myGame():
                     if self.player.cur_weapon_node:
                         particle.pos = self.player.cur_weapon_node.weapon.opening_pos
                 if kill:
-                    del self.particles[i]
+                    del self._particles[i]
 
             self.player.accelerate(self.player_movement_input)
             self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos,self.frame_count)
@@ -864,18 +851,18 @@ class myGame():
 
             # Define the rotation function with a bit of randomness for a more natural sway
 
-            rot_function = lambda x, y: int(math.sin(self.rot_func_t/60 + x/100)*7)
+            rot_function = lambda x, y: int(math.sin(self._rot_func_t/60 + x/100)*7)
             
             if not self.player.crouch: 
                 self.gm.apply_force((self.player.pos[0]+ self.player.size[0]//2, self.player.pos[1]+ self.player.size[1]//2),self.Tilemap.tile_size//4,self.Tilemap.tile_size*3.4//7)
-            self.gm.update_render(quadtree,self.background_surf,self.dt,offset=render_scroll,rot_function= rot_function)
-            self.rot_func_t += self.dt * 100
+            self.gm.update_render(quadtree,self.background_surf,self._dt,offset=render_scroll,rot_function= rot_function)
+            self._rot_func_t += self._dt * 100
             #----------------------------------
 
 
             particles_to_remove = []
 
-            for i, particle in enumerate(self.physical_particles):
+            for i, particle in enumerate(self._fire_particles):
                 kill = particle.update_pos(self.Tilemap, self.frame_count)
                 
                 if kill:
@@ -899,14 +886,14 @@ class myGame():
 
             # Remove particles outside the loop to avoid modifying the list during iteration
             for particle in particles_to_remove:
-                self.physical_particles.remove(particle)
+                self._fire_particles.remove(particle)
 
             # Process sparks
-            for i in range(len(self.sparks) - 1, -1, -1):
-                spark = self.sparks[i]
-                kill = spark.update(self.Tilemap, self.dt * 30)
+            for i in range(len(self._sparks) - 1, -1, -1):
+                spark = self._sparks[i]
+                kill = spark.update(self.Tilemap, self._dt * 30)
                 if kill:
-                    del self.sparks[i]
+                    del self._sparks[i]
                     continue
 
                 spark.render(self.background_surf, render_scroll)
@@ -915,16 +902,16 @@ class myGame():
             self.background_surf.blit(self.buffer_surf, (0, 0))
             
             # Process non-animated particles
-            for i in range(len(self.non_animated_particles) - 1, -1, -1):
-                particle = self.non_animated_particles[i]
+            for i in range(len(self._non_animated_particles) - 1, -1, -1):
+                particle = self._non_animated_particles[i]
                 if particle is None:
-                    del self.non_animated_particles[i]
+                    del self._non_animated_particles[i]
                     continue
 
-                kill = particle.update(self.dt)
+                kill = particle.update(self._dt)
                 particle.render(self.background_surf, offset=render_scroll)
                 if kill:
-                    del self.non_animated_particles[i]
+                    del self._non_animated_particles[i]
 
            
 
@@ -933,7 +920,7 @@ class myGame():
             
             #cursor update and render 
             self.cursor.update_render(self.foreground_surf)
-            screenshake_offset = (random.random()* self.screen_shake - self.screen_shake /2, random.random()* self.screen_shake - self.screen_shake /2)
+            screenshake_offset = (random.random()* self._screen_shake - self._screen_shake /2, random.random()* self._screen_shake - self._screen_shake /2)
 
             #using lighting engine to turn pg surf into moderngl texture, then render.
             tex = self.lights_engine.surface_to_texture(self.background_surf)
@@ -953,24 +940,24 @@ class myGame():
             )
             tex.release()
 
-            self.lights_engine.render(self.ambient_node_ptr.range,render_scroll, screenshake_offset)
+            self.lights_engine.render(self._ambient_node_ptr.range,render_scroll, screenshake_offset)
 
             pygame.display.flip()
-            fps = self.clock.get_fps()
+            fps = self._clock.get_fps()
             pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
-            self.clock.tick(60)
+            self._clock.tick(60)
 
-        if self.curr_gameState == GameState.MainMenu:
+        if self._curr_gameState == GameState.MainMenu:
 
             #render scroll update
-            self.scroll[0] += (self.player.rect().centerx - self.background_surf_dim[0] /2 - self.scroll[0])/20
-            self.scroll[1] += (self.player.rect().centery - self.background_surf_dim[1] /2 - self.scroll[1])/20
-            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+            self._scroll[0] += (self.player.rect().centerx - self._background_surf_dim[0] /2 - self._scroll[0])/20
+            self._scroll[1] += (self.player.rect().centery - self._background_surf_dim[1] /2 - self._scroll[1])/20
+            render_scroll = (int(self._scroll[0]), int(self._scroll[1]))
             
             #------------------------ quadtree update 
-            boundary = Rectangle(Vector2(render_scroll[0]- self.qtree_x_slack,render_scroll[1]- self.qtree_y_slack),\
-                                 Vector2(self.background_surf_dim[0] +self.qtree_x_slack*2,self.background_surf_dim[1] +self.qtree_y_slack*2))
-            quadtree = QuadTree(self.NODE_CAPACITY, boundary)
+            boundary = Rectangle(Vector2(render_scroll[0]- self._qtree_x_slack,render_scroll[1]- self._qtree_y_slack),\
+                                 Vector2(self._background_surf_dim[0] +self._qtree_x_slack*2,self._background_surf_dim[1] +self._qtree_y_slack*2))
+            quadtree = QuadTree(self._NODE_CAPACITY, boundary)
             #------------------------------------------
 
             #lighting engine texture and surface clearance 
@@ -984,8 +971,8 @@ class myGame():
             self.Tilemap.render(self.background_surf,render_scroll)
 
             #rendering main menu ui - buttons (options,start game, etc)
-            self.start_screen_ui.update(self.cursor)
-            self.start_screen_ui.render(self.foreground_surf,(0,0))
+            self._start_screen_ui.update(self.cursor)
+            self._start_screen_ui.render(self.foreground_surf,(0,0))
 
             #update shadow casting hulls 
             self.lights_engine.hulls = self.Tilemap.update_shadow_objs(self.background_surf,render_scroll)
@@ -1017,13 +1004,52 @@ class myGame():
             )
             tex.release()
             
-            self.lights_engine.render(self.ambient_node_ptr.range,render_scroll, (0,0))
+            self.lights_engine.render(self._ambient_node_ptr.range,render_scroll, (0,0))
             
             pygame.display.flip()
-            fps = self.clock.get_fps()
+            fps = self._clock.get_fps()
             pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
-            self.clock.tick(60)
+            self._clock.tick(60)
             pass
+    
+
+
+    # public methods 
+    def add_bullet(self,bullet):
+        self._bullets_on_screen.append(bullet)
+    
+    def add_collectable_item(self,item):
+        self._collectable_items.append(item)
+
+    def add_enemy(self,enemy):
+        self._enemies.append(enemy)
+
+    def add_particle(self,particle):
+        self._particles.append(particle)
+
+    def add_fire_particle(self,fire_particle):
+        self._fire_particles.append(fire_particle)
+
+    def add_non_anim_particle(self,non_anim_particle):
+        self._non_animated_particles.append(non_anim_particle)
+
+    def add_spark(self,spark):
+        self._sparks.append(spark)
+
+    def add_screen_shake(self,magnitude):
+        self._screen_shake = max(magnitude,self._screen_shake)
+        pass 
+
+    def start_game(self):
+        self._load_map_init_game_env('start_screen.json')
+        #print(self.screen_info_obj.current_h,self.screen_info_obj.current_w)
+
+        self._show_start_sequence()
+        while(True):
+            self._handle_events()
+            self._update_render()
+    
+    
 
     def quit_game(self): 
         pygame.quit()

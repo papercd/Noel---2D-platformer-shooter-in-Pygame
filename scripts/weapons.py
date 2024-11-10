@@ -106,7 +106,7 @@ class Weapon:
 
 
 
-                self.game.bullets_on_screen.append(bullet)
+                self.game.add_bullet(bullet)
                 
                 self.knockback = [-bullet.velocity[0]/2,-bullet.velocity[1]/2]
                 
@@ -294,7 +294,7 @@ class AK_47(Weapon):
 
 
 
-            self.game.bullets_on_screen.append(bullet)
+            self.game.add_bullet(bullet)
             
             self.knockback = [-bullet.velocity[0]/2,-bullet.velocity[1]/2]
             
@@ -330,7 +330,7 @@ class AK_47(Weapon):
             rotated_shot_particle_images = [pygame.transform.rotate(image,bullet.angle) for image in shot_particle.animation.copy().images]
             shot_particle.animation.images = rotated_shot_particle_images
 
-            self.game.particles.append(shot_particle)
+            self.game.add_particle(shot_particle)
             #add non animated particles here to polish as well 
             colors = [(253,245,216),(117,116,115),(30,30,30)]
             for i in range(random.randint(6,13)):
@@ -339,7 +339,7 @@ class AK_47(Weapon):
                 up_down = random.randint(-10,10)
                 
                 shot_muzzle_particle = non_animated_particle(self.opening_pos.copy(),random.choice(colors),[bullet.velocity[0]*20*factor + normal[0]* factor*up_down,bullet.velocity[1]*20*factor +normal[1]* factor*up_down],self.game.Tilemap,life = random.randint(1,5))
-                self.game.non_animated_particles.append(shot_muzzle_particle)
+                self.game.add_non_anim_particle(shot_muzzle_particle)
                 
 
 class Flamethrower(Weapon):
@@ -383,7 +383,7 @@ class Flamethrower(Weapon):
                     light.cast_shadows = False
                     self.game.lights_engine.lights.append(light)
                     
-                    self.game.physical_particles.append(flame_particle)
+                    self.game.add_fire_particle(flame_particle)
             else:
                 for _ in range(round(density)): 
                     flame_particle= Flame_particle(self.game, self.opening_pos[0], self.opening_pos[1],size,density,rise,self.angle_opening,spread,wind,self.power)
@@ -395,7 +395,7 @@ class Flamethrower(Weapon):
                     self.game.lights_engine.lights.append(light)
 
 
-                    self.game.physical_particles.append(flame_particle)
+                    self.game.add_fire_particle(flame_particle)
 
             self.knockback = [ - 4 * math.cos(math.radians(self.angle_opening)), 4* math.sin(math.radians(self.angle_opening))]
         
@@ -458,7 +458,7 @@ class Rocket_launcher(Weapon):
                 bullet.flip = True 
             
 
-            self.game.bullets_on_screen.append(bullet)
+            self.game.add_bullet(bullet)
 
             self.knockback = [-bullet.velocity[0]/2,-bullet.velocity[1]/2]
 
@@ -530,7 +530,7 @@ class Shotgun(Weapon):
                 light.cast_shadows = False
                 self.game.lights_engine.lights.append(light)
 
-                self.game.bullets_on_screen.append(bullet)
+                self.game.add_bullet(bullet)
             self.knockback = knockback
             
             """"""
@@ -553,7 +553,7 @@ class Shotgun(Weapon):
             rotated_shot_particle_images = [pygame.transform.rotate(image,bullet.angle) for image in shot_particle.animation.copy().images]
             shot_particle.animation.images = rotated_shot_particle_images
 
-            self.game.particles.append(shot_particle)
+            self.game.add_particle(shot_particle)
 
             colors = [(253,245,216),(117,116,115),(30,30,30)]
             for i in range(random.randint(8,15)):
@@ -562,7 +562,7 @@ class Shotgun(Weapon):
                 up_down = random.randint(-10,10)
                 
                 shot_muzzle_particle = non_animated_particle(self.opening_pos.copy(),random.choice(colors),[bullet.velocity[0]*20*factor + normal[0]* factor*up_down,bullet.velocity[1]*20*factor +normal[1]* factor*up_down],self.game.Tilemap,life = random.randint(1,5))
-                self.game.non_animated_particles.append(shot_muzzle_particle)
+                self.game.add_non_anim_particle(shot_muzzle_particle)
                 
            
         pass 
@@ -619,7 +619,7 @@ class Wheelbot_weapon(Weapon):
 
             
 
-            self.game.enemy_bullets.append(bullet)
+            self.game.add_enemy_bullet(bullet)
             self.knockback = [-bullet.velocity[0]*2,-bullet.velocity[1]*2]
             
         #add the shooting particles first 
@@ -644,8 +644,8 @@ class Wheelbot_weapon(Weapon):
             rotated_shot_muzzle_particle_images =  [pygame.transform.flip(img,True,False) for img in [pygame.transform.rotate(image,self.angle_opening) for image in shot_muzzle.animation.copy().images]] if self.holder.flip else [pygame.transform.flip(pygame.transform.rotate(image,self.angle_opening+180),True,False) for image in shot_muzzle.animation.copy().images]
             shot_muzzle.animation.images = rotated_shot_muzzle_particle_images 
 
-            self.game.particles.append(shot_muzzle)
-            self.game.particles.append(shot_particle)
+            self.game.add_particle(shot_muzzle)
+            self.game.add_particle(shot_particle)
 
             light = PointLight(bullet.pos,power = 1.0,radius = 52,illuminator=bullet,life = 300)
             light.set_color(268,45,84)
@@ -669,7 +669,7 @@ class Wheelbot_weapon(Weapon):
                 up_down = random.randint(-10,10)
                 
                 shot_muzzle_particle = non_animated_particle(self.opening_pos.copy(),random.choice(colors),[bullet.velocity[0]*20*factor + normal[0]* factor*up_down,bullet.velocity[1]*20*factor +normal[1]* factor*up_down],self.game.Tilemap,life = random.randint(1,5))
-                self.game.non_animated_particles.append(shot_muzzle_particle)
+                self.game.add_non_anim_particl(shot_muzzle_particle)
             
         
              

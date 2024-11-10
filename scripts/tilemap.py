@@ -918,15 +918,15 @@ class Tilemap:
                 self.game.player.pos = [spawner.pos[0] * self.tile_size, spawner.pos[1] * self.tile_size]
                 
             elif spawner.variant == '1;0': 
-                self.game.enemies.append(Canine(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(34,23),'black'))
+                self.game.add_enemy(Canine(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(34,23),'black'))
                
         
             elif spawner.variant == '2;0':
                 
-                self.game.enemies.append(Wheel_bot(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(20,22)))
+                self.game.add_enemy(Wheel_bot(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(20,22)))
 
             elif spawner.variant == "4;0":
-                self.game.enemies.append(Ball_slinger(self.game,(spawner.pos[0] *self.tile_size,spawner.pos[1] *self.tile_size), (13,19)))
+                self.game.add_enemy(Ball_slinger(self.game,(spawner.pos[0] *self.tile_size,spawner.pos[1] *self.tile_size), (13,19)))
  
 
     def extract(self,id_pairs, keep = False):
