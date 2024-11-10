@@ -35,7 +35,7 @@ class glass():
     def __init__(self,pos,size,speed,angle,idle_time):
         self.random_seed = random.random()
         self.size = size * self.random_seed 
-        self.pos = pos
+        self.pos =self.center = pos
         self.angle =angle 
         self.speed =speed * self.random_seed 
         self.num_vertices = random.randint(4,7)
@@ -84,10 +84,10 @@ class glass():
             if tile.type == 'lights':
                 pass
             elif tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
-                check_rects = [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
+                check_rects = [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size - 4, tilemap.tile_size, 4),
                                 pygame.Rect(tile_loc[0] + 12, tile_loc[1], 4, 12),
                                 pygame.Rect(tile_loc[0] + 6, tile_loc[1] + 6, 6, 6)] if tile.variant.split(';')[0] == '0' else \
-                                [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
+                                [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size - 4, tilemap.tile_size, 4),
                                 pygame.Rect(tile_loc[0], tile_loc[1], 4, 12),
                                 pygame.Rect(tile_loc[0] + 4, tile_loc[1] + 6, 6, 6)]
                 for check_rect in check_rects:
@@ -119,15 +119,15 @@ class glass():
             if tile.type == 'lights':
                 pass
             elif tile.type.split('_')[1] == 'stairs' and tile.variant.split(';')[0] in ['0', '1']:
-                check_rects = [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
+                check_rects = [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size - 4, tilemap.tile_size, 4),
                                 pygame.Rect(tile_loc[0] + 12, tile_loc[1], 4, 12),
                                 pygame.Rect(tile_loc[0] + 6, tile_loc[1] + 6, 6, 6)] if tile.variant.split(';')[0] == '0' else \
-                                [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size + 4, tilemap.tile_size, 4),
+                                [pygame.Rect(tile_loc[0], tile_loc[1] + tilemap.tile_size - 4, tilemap.tile_size, 4),
                                 pygame.Rect(tile_loc[0], tile_loc[1], 4, 12),
                                 pygame.Rect(tile_loc[0] + 4, tile_loc[1] + 6, 6, 6)]
                 for check_rect in check_rects:
                     if check_rect.collidepoint(self.pos): 
-                        if self.velocity[0] <0 :
+                        if self.velocity[1] <0 :
                             self.pos[1] =  check_rect.bottom
                         else:
                             self.pos[1] =  check_rect.top

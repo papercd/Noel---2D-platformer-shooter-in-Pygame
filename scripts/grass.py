@@ -637,7 +637,7 @@ class GrassTile:
                 light.cast_shadows = False
                 light.set_color(149,46,17)
                 self.gm.game.lights_engine.lights.append(light)
-                self.gm.game.sparks.append(spark)    
+                self.gm.game.add_spark(spark)    
 
            
             surf.blit(img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
