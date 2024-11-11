@@ -406,28 +406,36 @@ class LightingEngine:
                         variant_sub = tile.variant.split(';')
 
                         if tile.type.endswith('door') and tile.type.split('_')[0] != 'trap':
-                            tex = texture_source[tile.type + '_' + variant_sub[0]][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])
-                            self.render_texture_with_trans(
+                            tex = texture_source[tile.type + '_' + variant_sub[0]][int(variant_sub[0])]
+                            self.render_texture(
                                 tex,Layer_.BACKGROUND,
-                                position= (tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1])
+                                dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
+                                source=pygame.Rect(0,0,tex.width,tex.height)
                             )
+                            
                             #surf.blit(sprite_source[tile.type + '_' + variant_sub[0]][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])) 
 
                         else: 
                             if isinstance(texture_source[tile.type][int(variant_sub[0])],list):
                             #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
-                                tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])
-                                self.render_texture_with_trans(
-                                tex,Layer_.BACKGROUND,
-                                position= (tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1])
-                                )   
+                                tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
+
+                                self.render_texture(
+                                    tex,Layer_.BACKGROUND,
+                                    dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
+                                    source=pygame.Rect(0,0,tex.width,tex.height)
+                                )
+
+                        
                                 #surf.blit(texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
                             else: 
-                                tex = texture_source[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])
-                                self.render_texture_with_trans(
-                                tex,Layer_.BACKGROUND,
-                                position= (tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1])
+                                tex = texture_source[tile.type][int(variant_sub[0])]
+                                self.render_texture(
+                                    tex,Layer_.BACKGROUND,
+                                    dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
+                                    source=pygame.Rect(0,0,tex.width,tex.height)
                                 )
+                               
                                 #surf.blit(texture_source[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
     
 
@@ -450,18 +458,25 @@ class LightingEngine:
                         if tile.open:
                             tile.cur_frame = min(tile.animation.count-1, tile.cur_frame+1)
                             tex = tile.animation.textures[tile.cur_frame]
-                            self.render_texture_with_trans(
+
+                            self.render_texture(
                                 tex,Layer_.BACKGROUND,
-                                position= (tile.pos[0] * tilemap.tile_size-offset[0], tile.pos[1] *tilemap.tile_size-offset[1])
-                                )
+                                dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
+                                source=pygame.Rect(0,0,tex.width,tex.height)
+                            )
+                           
+
+                            
                             #surf.blit(tile.animation.images[tile.cur_frame],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]) )
                         else: 
                             tile.cur_frame = max(0, tile.cur_frame -1)
-                            tex = tile.animation.images[tile.cur_frame]
-                            self.render_texture_with_trans(
+                            tex = tile.animation.textures[tile.cur_frame]
+                            self.render_texture(
                                 tex,Layer_.BACKGROUND,
-                                position= (tile.pos[0] * tilemap.tile_size-offset[0], tile.pos[1] *tilemap.tile_size-offset[1])
-                                )
+                                dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
+                                source=pygame.Rect(0,0,tex.width,tex.height)
+                            )
+                            
                             
                             #surf.blit(tile.animation.images[tile.cur_frame],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])) 
                         
@@ -471,23 +486,32 @@ class LightingEngine:
                         if isinstance(texture_source[tile.type][int(variant_sub[0])],list):
                         #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
                             tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
-                            self.render_texture_with_trans(
+                            self.render_texture(
                                 tex,Layer_.BACKGROUND,
-                                position= (tile.pos[0] * tilemap.tile_size-offset[0], tile.pos[1] *tilemap.tile_size-offset[1])
-                                )
+                                dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
+                                source=pygame.Rect(0,0,tex.width,tex.height)
+                            )
+                            
 
                             #surf.blit(texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
                         else:
                             tex =  texture_source[tile.type][int(variant_sub[0])]
+                            self.render_texture(
+                                tex,Layer_.BACKGROUND,
+                                dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
+                                source=pygame.Rect(0,0,tex.width,tex.height)
+                            )
+
                             #surf.blit(texture_source[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
 
                         if in_editor and tile.type in tilemap.PHYSICS_APPLIED_TILE_TYPES and tile.dirty:
                             temp_surf = pygame.Surface((tilemap.tile_size,tilemap.tile_size),pygame.SRCALPHA)
                             pygame.draw.rect(temp_surf,(255,12,12),(0,0,tilemap.tile_size,tilemap.tile_size),width= 1)
                             red_square_tex = self.surface_to_texture(temp_surf) 
-                            self.render_texture_with_trans(
+                            self.render_texture(
                                 red_square_tex,Layer_.BACKGROUND,
-                                position= (tile.pos[0] * tilemap.tile_size-offset[0], tile.pos[1] *tilemap.tile_size-offset[1])
+                                dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],red_square_tex.width,red_square_tex.height),
+                                source=pygame.Rect(0,0,red_square_tex.width,red_square_tex.height)
                             )
                             red_square_tex.release()
                             #pygame.draw.rect(surf,(255,12,12), (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1],self.tile_size,self.tile_size),width = 1)
@@ -513,18 +537,21 @@ class LightingEngine:
                 if isinstance(texture_source[tile.type][int(variant_sub[0])],list):
                 #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
                     tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
-                    self.render_texture_with_trans(
+                    self.render_texture(
                                 tex,Layer_.BACKGROUND,
-                                position= (tile.pos[0] -offset[0], tile.pos[1] -offset[1])
+                                dest=pygame.Rect(tile.pos[0] - offset[0] , tile.pos[1] - offset[1],tex.width,tex.height),
+                                source=pygame.Rect(0,0,tex.width,tex.height)
                             )
-                    
+                   
                     #surf.blit(texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
                 else: 
                     tex =  texture_source[tile.type][int(variant_sub[0])]
-                    self.render_texture_with_trans(
+                    self.render_texture(
                                 tex,Layer_.BACKGROUND,
-                                position= (tile.pos[0] -offset[0], tile.pos[1] -offset[1])
+                                dest=pygame.Rect(tile.pos[0] - offset[0] , tile.pos[1] - offset[1],tex.width,tex.height),
+                                source=pygame.Rect(0,0,tex.width,tex.height)
                             )
+                    
                     
 
                     #surf.blit(texture_source[tile.type][int(variant_sub[0])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))

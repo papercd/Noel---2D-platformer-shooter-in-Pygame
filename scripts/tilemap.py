@@ -925,11 +925,11 @@ class Tilemap:
                
         
             elif spawner.variant == '2;0':
-                
                 self.game.add_enemy(Wheel_bot(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(20,22)))
 
             elif spawner.variant == "4;0":
                 self.game.add_enemy(Ball_slinger(self.game,(spawner.pos[0] *self.tile_size,spawner.pos[1] *self.tile_size), (13,19)))
+
  
 
     def extract(self,id_pairs, keep = False):

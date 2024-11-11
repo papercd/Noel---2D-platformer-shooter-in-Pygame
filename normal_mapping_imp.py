@@ -92,7 +92,7 @@ class myGame():
         self._screen_size = (1400,750)
 
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
-        self._screen_to_native_ratio = 4.5 
+        self._screen_to_native_ratio = 2.5 
         self._native_res = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
 
     def _setup_engine_and_render_surfs(self):
@@ -287,7 +287,7 @@ class myGame():
         self.render_engine.clear(0,0,0,255)
 
         #print(self.backgrounds['test_background'].bg_layers[0].width)
-    
+        
         self.render_engine.render_background_view(
             self.backgrounds['test_background'], render_scroll
         )
@@ -327,7 +327,7 @@ class myGame():
         pass 
 
     def start_game(self):
-        self._load_map_init_game_env('normal_map_test.json')
+        self._load_map_init_game_env('test.json')
 
         while(True):
             self._handle_events()
