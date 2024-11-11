@@ -1,9 +1,8 @@
 import pygame 
 
 class Background:
-    def __init__(self,game,images,infinite = True):
-        self.game = game 
-        self.bg_layers = images
+    def __init__(self,textures,infinite = True):
+        self.bg_layers =textures 
         self.infinite = infinite
 
     def render(self,surf,offset= (0,0)): 

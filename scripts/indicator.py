@@ -1,8 +1,8 @@
-from scripts.utils import load_image
+from scripts.utils import load_texture
 from scripts.numbers import numbers 
 
 
-slash = load_image('text/others/0.png',background='transparent')
+slash = load_texture('text/others/0.png')
 
 class indicator: 
     def __init__(self,cur_resource,max_resource):

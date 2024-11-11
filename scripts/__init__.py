@@ -1,19 +1,7 @@
 
-from .ui import startScreenUI 
 from .tilemap import Tilemap
-from .utils import load_image, load_images, load_tile_images, Animation, load_sounds,smoothclamp,smoothclamp_decreasing
-from .entities import PlayerEntity,  Wheel_bot, Ball_slinger, Bullet,Canine
-from .clouds import Clouds
-from .particles import Particle
-from .cursor import Cursor
-from .weapons import Weapon, Wheelbot_weapon, AK_47, Rocket_launcher, Flamethrower, Shotgun
-from .background import Background
-from .Pygame_Lights import LIGHT, global_light, pixel_shader
-from .indicator import indicator
-from .HUD import HUD
-from .grass import *
-from .inventory import Item, ITEMS
-from .weapon_list import interpolatedLightNode
+from .utils import load_texture, load_textures, load_tile_textures, Animation, load_sounds,smoothclamp,smoothclamp_decreasing
+from .entities import PlayerEntity
 
 from .quadtree import *
 from .QuadTreeRange import * 

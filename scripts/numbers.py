@@ -1,8 +1,8 @@
-from scripts.utils import load_images,load_image
+from scripts.utils import load_textures,load_texture
 
-NEW_NUMBERS = load_images('text/new_numbers',background="transparent")
-DEFAULT_NUMBERS = load_images('text/numbers',background='transparent')
-MINUS = load_image('text/minus.png',background= "transparent")
+NEW_NUMBERS = load_textures('text/new_numbers')
+DEFAULT_NUMBERS = load_textures('text/numbers')
+MINUS = load_texture('text/minus.png')
 #only positive numbers for now. 
 
 class numbers:
