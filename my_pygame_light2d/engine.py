@@ -6,6 +6,7 @@ import pygame
 import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
+from scripts.tilemap import Tilemap
 from scripts.background import Background
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
@@ -22,7 +23,7 @@ class Layer_(Enum):
 class LightingEngine:
     """A class for managing lighting effects within a Pygame environment."""
 
-    def __init__(self, screen_res: tuple[int, int],screen_to_native_ratio : float, native_res: tuple[int, int], lightmap_res: tuple[int, int]) -> None:
+    def __init__(self,game, screen_res: tuple[int, int],screen_to_native_ratio : float, native_res: tuple[int, int], lightmap_res: tuple[int, int]) -> None:
         """
         Initialize the lighting engine.
 
@@ -44,6 +45,7 @@ class LightingEngine:
         self.lights: list[PointLight] = []
         self.hulls: list[Hull] = []
         self.shadow_blur_radius: int = 5
+        self.game = game
 
         # Configure pygame
         self._check_and_configure_pygame()
@@ -386,6 +388,149 @@ class LightingEngine:
                 
                 )
             speed += 1
+
+
+    def render_tilemap(self,tilemap:Tilemap,offset:tuple[int,int],in_editor : bool = False) -> None:
+        if in_editor:
+            texture_source = self.game.assets
+        else: 
+            texture_source = self.game.general_sprites
+        
+        for x_cor in range(offset[0] // tilemap.tile_size, (offset[0] + self._native_res[0]) // tilemap.tile_size+1):
+            for y_cor in range(offset[1] // tilemap.tile_size, (offset[1] + self._native_res[1]) // tilemap.tile_size+1): 
+                coor = str(x_cor) + ';' + str(y_cor)
+                for dict in tilemap.offgrid_tiles:
+                    
+                    if coor in dict: 
+                        tile = dict[coor]
+                        variant_sub = tile.variant.split(';')
+
+                        if tile.type.endswith('door') and tile.type.split('_')[0] != 'trap':
+                            tex = texture_source[tile.type + '_' + variant_sub[0]][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])
+                            self.render_texture_with_trans(
+                                tex,Layer_.BACKGROUND,
+                                position= (tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1])
+                            )
+                            #surf.blit(sprite_source[tile.type + '_' + variant_sub[0]][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])) 
+
+                        else: 
+                            if isinstance(texture_source[tile.type][int(variant_sub[0])],list):
+                            #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
+                                tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])
+                                self.render_texture_with_trans(
+                                tex,Layer_.BACKGROUND,
+                                position= (tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1])
+                                )   
+                                #surf.blit(texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                            else: 
+                                tex = texture_source[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])
+                                self.render_texture_with_trans(
+                                tex,Layer_.BACKGROUND,
+                                position= (tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1])
+                                )
+                                #surf.blit(texture_source[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+    
+
+                                                
+                        #you also gotta blit an alpha surface depending on their exposure ( how many neighbors they have. )
+                        #render the mask 
+                        #surf.blit(self.game.assets['masks'][int(variant_sub[0])], (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+            
+        #tiles rendering, render the decals here as well. 
+
+        for x_cor in range(offset[0] // tilemap.tile_size, (offset[0] + self._native_res[0]) // tilemap.tile_size+1):
+            for y_cor in range(offset[1] // tilemap.tile_size, (offset[1] + self._native_res[1]) //tilemap.tile_size +1): 
+                coor = str(x_cor) + ';' + str(y_cor)
+                if coor in tilemap.tilemap: 
+                    tile = tilemap.tilemap[coor]
+                    variant_sub = tile.variant.split(';')
+
+                    if tile.type.endswith('door'):
+                        # Blit the animation frame. 
+                        if tile.open:
+                            tile.cur_frame = min(tile.animation.count-1, tile.cur_frame+1)
+                            tex = tile.animation.textures[tile.cur_frame]
+                            self.render_texture_with_trans(
+                                tex,Layer_.BACKGROUND,
+                                position= (tile.pos[0] * tilemap.tile_size-offset[0], tile.pos[1] *tilemap.tile_size-offset[1])
+                                )
+                            #surf.blit(tile.animation.images[tile.cur_frame],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]) )
+                        else: 
+                            tile.cur_frame = max(0, tile.cur_frame -1)
+                            tex = tile.animation.images[tile.cur_frame]
+                            self.render_texture_with_trans(
+                                tex,Layer_.BACKGROUND,
+                                position= (tile.pos[0] * tilemap.tile_size-offset[0], tile.pos[1] *tilemap.tile_size-offset[1])
+                                )
+                            
+                            #surf.blit(tile.animation.images[tile.cur_frame],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])) 
+                        
+                        #surf.blit(self.game.interactables[tile.type + '_' +variant_sub[0]].images[tile.cur_frame],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))  
+
+                    else: 
+                        if isinstance(texture_source[tile.type][int(variant_sub[0])],list):
+                        #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
+                            tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
+                            self.render_texture_with_trans(
+                                tex,Layer_.BACKGROUND,
+                                position= (tile.pos[0] * tilemap.tile_size-offset[0], tile.pos[1] *tilemap.tile_size-offset[1])
+                                )
+
+                            #surf.blit(texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                        else:
+                            tex =  texture_source[tile.type][int(variant_sub[0])]
+                            #surf.blit(texture_source[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+
+                        if in_editor and tile.type in tilemap.PHYSICS_APPLIED_TILE_TYPES and tile.dirty:
+                            temp_surf = pygame.Surface((tilemap.tile_size,tilemap.tile_size),pygame.SRCALPHA)
+                            pygame.draw.rect(temp_surf,(255,12,12),(0,0,tilemap.tile_size,tilemap.tile_size),width= 1)
+                            red_square_tex = self.surface_to_texture(temp_surf) 
+                            self.render_texture_with_trans(
+                                red_square_tex,Layer_.BACKGROUND,
+                                position= (tile.pos[0] * tilemap.tile_size-offset[0], tile.pos[1] *tilemap.tile_size-offset[1])
+                            )
+                            red_square_tex.release()
+                            #pygame.draw.rect(surf,(255,12,12), (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1],self.tile_size,self.tile_size),width = 1)
+
+                        #you also gotta blit an alpha surface depending on their exposure ( how many neighbors they have. )
+                        #render the mask 
+                        #surf.blit(self.game.assets['masks'][int(variant_sub[0])], (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                        for decal in tile.decals.copy():
+                            #so decals need to be surface objects. 
+                            pass
+                            """
+                            surf.blit(decal[0],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                            decal[1] += 1
+                            if decal[1] >= 40:
+                                tile.decals.remove(decal)
+                            """
+
+        #decorations rendering 
+        
+        for tile in tilemap.decorations: 
+            
+                variant_sub = tile.variant.split(';')
+                if isinstance(texture_source[tile.type][int(variant_sub[0])],list):
+                #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
+                    tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
+                    self.render_texture_with_trans(
+                                tex,Layer_.BACKGROUND,
+                                position= (tile.pos[0] -offset[0], tile.pos[1] -offset[1])
+                            )
+                    
+                    #surf.blit(texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
+                else: 
+                    tex =  texture_source[tile.type][int(variant_sub[0])]
+                    self.render_texture_with_trans(
+                                tex,Layer_.BACKGROUND,
+                                position= (tile.pos[0] -offset[0], tile.pos[1] -offset[1])
+                            )
+                    
+
+                    #surf.blit(texture_source[tile.type][int(variant_sub[0])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
+        
+
+
         
         
       

@@ -96,7 +96,7 @@ class myGame():
         self._native_res = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
 
     def _setup_engine_and_render_surfs(self):
-        self.lights_engine = LightingEngine(screen_res=self._screen_size,screen_to_native_ratio = self._screen_to_native_ratio,native_res=self._native_res,lightmap_res=self._native_res)
+        self.render_engine = LightingEngine(self,screen_res=self._screen_size,screen_to_native_ratio = self._screen_to_native_ratio,native_res=self._native_res,lightmap_res=self._native_res)
 
         self._background_surf_dim = self._foreground_surf_dim = self.buffer_surf_dim = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
         self.buffer_surf = pygame.Surface(self.buffer_surf_dim,pygame.SRCALPHA)
@@ -104,7 +104,7 @@ class myGame():
         self.foreground_surf = pygame.Surface(self._foreground_surf_dim,pygame.SRCALPHA)
 
         # testing custom shaders 
-        self.test_shader = self.lights_engine.load_shader_from_path('vertex.glsl','fog_fragment.glsl')
+        self.test_shader = self.render_engine.load_shader_from_path('vertex.glsl','fog_fragment.glsl')
 
     def _load_game_assets(self):
         self.game_assets = GameAssets()
@@ -156,12 +156,12 @@ class myGame():
 
     def _load_map_init_game_env(self,map_file_name):
 
-        self.lights_engine.lights = self.Tilemap.load_map_return_lights(map_file_name)
+        self.render_engine.lights = self.Tilemap.load_map_return_lights(map_file_name)
 
         self.Tilemap.extract_game_objs()
 
         self._ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])
-        self.lights_engine.set_ambient(*self._ambient_node_ptr.colorValue)
+        self.render_engine.set_ambient(*self._ambient_node_ptr.colorValue)
        
     
     def _handle_common_events(self,event):
@@ -224,6 +224,7 @@ class myGame():
                     self._time_increment = True
 
                     """
+                    
                     self.player_movement_input[0] = True
 
                 if event.key == pygame.K_d: 
@@ -283,19 +284,19 @@ class myGame():
         self._scroll[1] += (self.player.rect().centery - self._background_surf_dim[1] /2 - self._scroll[1])/20
         render_scroll = (int(self._scroll[0]), int(self._scroll[1]))
 
-        self.lights_engine.clear(0,0,0,255)
+        self.render_engine.clear(0,0,0,255)
 
         #print(self.backgrounds['test_background'].bg_layers[0].width)
     
-        self.lights_engine.render_background_view(
+        self.render_engine.render_background_view(
             self.backgrounds['test_background'], render_scroll
         )
 
-        self.lights_engine.render_tilemap(
-            
+        self.render_engine.render_tilemap(
+            self.Tilemap,render_scroll
         )
 
-        self.lights_engine.render(self._ambient_node_ptr.range,(0,0), (0,0))
+        self.render_engine.render(self._ambient_node_ptr.range,(0,0), (0,0))
         
         pygame.display.flip()
         fps = self._clock.get_fps()

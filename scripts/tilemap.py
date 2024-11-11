@@ -83,6 +83,9 @@ BUILDING_AUTOTILE ={
 
 class Tilemap: 
     def __init__(self,game,tile_size = 16, offgrid_layers = 1):
+        self.PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs','building_door','trap_door',\
+                              'ladder'}
+
         self.tile_size = tile_size
         self.game = game
         
