@@ -40,6 +40,10 @@ class myGame():
         
         # cursor 
 
+        # grass manager 
+        self.gm = GrassManager(self,'data/images/tiles/new_live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
+                               max_unique=5,place_range=[1,1],burn_spread_speed=3,burn_rate=1.2)
+
         # player 
         self.player = PlayerEntity(self,(50,50),(14,16))
         self.player.set_accel_rate(0.7)
