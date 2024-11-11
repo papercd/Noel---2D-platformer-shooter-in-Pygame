@@ -6,6 +6,7 @@ import pygame
 import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
+from scripts.background import Background
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
 from my_pygame_light2d.hull import Hull
@@ -21,7 +22,7 @@ class Layer_(Enum):
 class LightingEngine:
     """A class for managing lighting effects within a Pygame environment."""
 
-    def __init__(self, screen_res: tuple[int, int], native_res: tuple[int, int], lightmap_res: tuple[int, int]) -> None:
+    def __init__(self, screen_res: tuple[int, int],screen_to_native_ratio : float, native_res: tuple[int, int], lightmap_res: tuple[int, int]) -> None:
         """
         Initialize the lighting engine.
 
@@ -31,7 +32,7 @@ class LightingEngine:
         """
 
         # Initialize private members
-        
+        self._screen_to_native_ratio = screen_to_native_ratio
         self._screen_res = screen_res
         self._native_res = native_res
         self._diagonal = math.sqrt(self._native_res[0]**2 + self._native_res[1] **2)
@@ -369,6 +370,26 @@ class LightingEngine:
         R, G, B, A = normalize_color_arguments(R, G, B, A)
         self._fbo_bg.clear(R, G, B, A)
         self._fbo_fg.clear(0, 0, 0, 0)
+
+    def render_background_view(self,background:Background,offset = (0,0)):
+        
+        scroll = offset[0]
+        speed = 1
+        
+    
+        for texture in background.bg_layers:
+            for panels in range(-1, 2):
+                self.render_texture_with_trans(
+                    texture, Layer_.BACKGROUND,
+                    position= (panels*texture.width -scroll *0.05*speed,\
+                               0 - min(0, offset[1] * 0.05)),                
+                
+                )
+            speed += 1
+        
+        
+      
+
 
     def render(self,range,offset,screen_shake):
         """

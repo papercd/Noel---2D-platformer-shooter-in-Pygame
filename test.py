@@ -1,149 +1,169 @@
-import pygame
-import numpy as np
+from scripts.utils import *
 
-# Initialize Pygame
-pygame.init()
+class GameAssets:
+    def __init__(self):
+        self.general_sprites = {}
+        self.enemies = {}
 
-# Screen dimensions
-WIDTH, HEIGHT = 1000, 1000
-GRID_SIZE = 100
-CELL_SIZE = WIDTH // GRID_SIZE
+        self.interactable_obj_sprites = {}
+        self.load_assets()
 
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("2D Eulerian Fluid Simulator")
+    def load_assets(self):
+        self.general_sprites.update(self.load_grass_assets())
+        self.general_sprites.update(self.load_building_assets())
+        self.general_sprites.update(self.load_entity_assets())
+        self.general_sprites.update(self.load_cursor_assets())
+        self.general_sprites.update(self.load_cloud_assets())
+        self.general_sprites.update(self.load_ui_assets())
+        self.general_sprites.update(self.load_particle_assets())
+        self.enemies.update(self.load_enemy_assets())
 
-# Colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
+        self.interactable_obj_sprites.update(self.load_interactable_assets())
 
-# Clock to control the frame rate
-clock = pygame.time.Clock()
+    def load_grass_assets(self):
+        return load_tile_assets(['grass', 'new_live_grass'], background='transparent')
 
-# Fluid simulation parameters
-diffusion = 0.0001
-viscosity = 0.0001
-dt = 0.1
+    def load_building_assets(self):
+        building_paths = [
+            'building_0', 'building_1', 'building_2', 'building_3', 'building_4',
+            'building_5', 'building_back', 'building_decor', 'lights', 'building_stairs',
+            'building_door_0','dungeon_back','trap_door'
+        ]
+        return load_tile_assets(building_paths, background='transparent')
 
-# Grid initialization
-u = np.zeros((GRID_SIZE, GRID_SIZE))  # velocity x
-v = np.zeros((GRID_SIZE, GRID_SIZE))  # velocity y
-p = np.zeros((GRID_SIZE, GRID_SIZE))  # pressure
-s = np.zeros((GRID_SIZE, GRID_SIZE))  # source (density)
-density = np.zeros((GRID_SIZE, GRID_SIZE))  # density field
+    def load_entity_assets(self):
+        player_animations = {
+            'player/holding_gun/idle': ('entities/player/holding_gun/idle', 'transparent', 6, True, False),
+            'player/holding_gun/run': ('entities/player/holding_gun/run', 'transparent', 4, True, False),
+            'player/holding_gun/jump_up': ('entities/player/holding_gun/jump/up', 'transparent', 5, True, False),
+            'player/holding_gun/jump_down': ('entities/player/holding_gun/jump/down', 'transparent', 5, True, True),
+            'player/holding_gun/land': ('entities/player/holding_gun/land', 'transparent', 2, False, False),
+            'player/holding_gun/slide': ('entities/player/slide', 'transparent', 5, True, False),
+            'player/holding_gun/wall_slide': ('entities/player/wall_slide', 'transparent', 4, True, False),
+            'player/holding_gun/walk': ('entities/player/holding_gun/walk', 'transparent', 7, True, False),
+            'player/holding_gun/crouch': ('entities/player/holding_gun/crouch', 'transparent', 4, True, False),
+            
+            'player/idle': ('entities/player/idle', 'transparent', 6, True, False),
+            'player/run': ('entities/player/run', 'transparent', 4, True, False),
+            'player/jump_up': ('entities/player/jump/up', 'transparent', 5, True, False),
+            'player/jump_down': ('entities/player/jump/down', 'transparent', 5, True, True),
+            'player/land': ('entities/player/land', 'transparent', 2, False, False),
+            'player/slide': ('entities/player/slide', 'transparent', 5, True, True),
+            'player/wall_slide': ('entities/player/wall_slide', 'transparent', 4, True, False),
+            'player/crouch': ('entities/player/crouch', 'transparent', 7, False, False),
+            
+        }
+        return {
+            'player': load_image('entities/player.png'),
+            **load_animation_assets(player_animations)
+        }
 
-def add_source(x, s, dt):
-    x += dt * s
+    def load_cursor_assets(self):
+        cursor_paths = {
+            'cursor/default': ('cursor/default_cursor.png', 'black'),
+            'crosshair': ('cursor/crosshair.png', 'black')
+        }
+        return load_image_assets(cursor_paths)
 
-def diffuse(b, x, x0, diff, dt):
-    a = dt * diff * (GRID_SIZE - 2) * (GRID_SIZE - 2)
-    for k in range(20):
-        x[1:-1, 1:-1] = (x0[1:-1, 1:-1] + a * (x[2:, 1:-1] + x[:-2, 1:-1] +
-                                               x[1:-1, 2:] + x[1:-1, :-2])) / (1 + 4 * a)
-        set_bnd(b, x)
+    def load_cloud_assets(self):
+        cloud_paths = {
+            'clouds': ('clouds/default', 'transparent'),
+            'gray1_clouds': ('clouds/gray1', 'transparent'),
+            'gray2_clouds': ('clouds/gray2', 'transparent'),
+        }
+        return load_image_assets_multiple(cloud_paths)
 
-def advect(b, d, d0, u, v, dt):
-    N = GRID_SIZE
-    dt0 = dt * N
-    for i in range(1, N-1):
-        for j in range(1, N-1):
-            x = i - dt0 * u[i, j]
-            y = j - dt0 * v[i, j]
-            if x < 0.5: x = 0.5
-            if x > N + 0.5: x = N + 0.5
-            i0 = int(x)
-            i1 = i0 + 1
-            if y < 0.5: y = 0.5
-            if y > N + 0.5: y = N + 0.5
-            j0 = int(y)
-            j1 = j0 + 1
-            s1 = x - i0
-            s0 = 1 - s1
-            t1 = y - j0
-            t0 = 1 - t1
-            d[i, j] = s0 * (t0 * d0[i0, j0] + t1 * d0[i0, j1]) + s1 * (t0 * d0[i1, j0] + t1 * d0[i1, j1])
-    set_bnd(b, d)
+    def load_ui_assets(self):
+        ui_paths = {
+            'health_UI': ('ui/health/0.png', 'transparent'),
+            'stamina_UI': ('ui/stamina/0.png', 'transparent'),
+            'start_element' : ('ui/start_ui/start_element.png','transparent'),
+            'start_logo' : ('ui/start_logo/logo.png','transparent'),
+        }
+        return load_image_assets(ui_paths)
 
-def set_bnd(b, x):
-    N = GRID_SIZE
-    for i in range(1, N-1):
-        x[0, i] = -x[1, i] if b == 1 else x[1, i]
-        x[N-1, i] = -x[N-2, i] if b == 1 else x[N-2, i]
-        x[i, 0] = -x[i, 1] if b == 2 else x[i, 1]
-        x[i, N-1] = -x[i, N-2] if b == 2 else x[i, N-2]
-    x[0, 0] = 0.5 * (x[1, 0] + x[0, 1])
-    x[0, N-1] = 0.5 * (x[1, N-1] + x[0, N-2])
-    x[N-1, 0] = 0.5 * (x[N-2, 0] + x[N-1, 1])
-    x[N-1, N-1] = 0.5 * (x[N-2, N-1] + x[N-1, N-2])
+    def load_particle_assets(self):
+        particle_animations = {
+            'particle/ball_slinger_attack': ('particles/attack/ball_slinger/normal','transparent',6,False,False),
+            'particle/ball_slinger_attack_flipped': ('particles/attack/ball_slinger/flipped','transparent',6,False,False),
+            'particle/box_destroy': ('particles/box', 'transparent', 3, False, False),
+            'particle/box_smoke': ('particles/box_break', 'black', 3, False, False),
+            'particle/leaf': ('particles/leaf', 'black', 20, False, False),
+            'particle/jump': ('particles/jump', 'black', 2, False, False),
+            'particle/dash_left': ('particles/dash/left', 'black', 1, False, False),
+            'particle/dash_right': ('particles/dash/right', 'black', 1, False, False),
+            'particle/dash_air': ('particles/dash/air', 'black', 2, False, False),
+            'particle/land': ('particles/land', 'transparent', 3, False, False),
+            'particle/big_land': ('particles/big_land', 'transparent', 2, False, False),
+            'particle/shot_muzzle/laser_weapon': ('particles/shot_muzzle/laser_weapon', 'transparent', 3, False, False),
+            'particle/smoke/ak_47': ('particles/shoot/rifle', 'transparent', 3, False, False),
+            'particle/smoke/rocket_launcher' : ('particles/shoot/rocket_launcher','transparent',1,False,False),
+            'particle/smoke/rifle_small': ('particles/bullet_collide_smoke/rifle/small', 'black', 2, False, False),
+            'particle/smoke/shotgun' : ('particles/shoot/shotgun', 'transparent',3,False,False),
+            'particle/smoke/laser_weapon': ('particles/shoot/laser_weapon', 'transparent', 3, False, False),
+            'particle/bullet_collide/laser_weapon': ('particles/bullet_collide/laser_weapon', 'transparent', 2, False, False),
+            'particle/bullet_collide/rifle': ('particles/bullet_collide/rifle', 'transparent', 2, False, False),
+            'particle/rocket_launcher_smoke' : ('particles/rocket_launcher_smoke','transparent',2,False,False),
+            'particle/rocket_launcher_collide' : ('particles/rocket_launcher_collide','transparent',1,False,False),
+        }
 
-def project(u, v, p, div):
-    N = GRID_SIZE
-    div[1:-1, 1:-1] = -0.5 * (u[2:, 1:-1] - u[:-2, 1:-1] +
-                              v[1:-1, 2:] - v[1:-1, :-2]) / N
-    p.fill(0)
-    set_bnd(0, div)
-    set_bnd(0, p)
-    for k in range(20):
-        p[1:-1, 1:-1] = (div[1:-1, 1:-1] + p[2:, 1:-1] + p[:-2, 1:-1] +
-                         p[1:-1, 2:] + p[1:-1, :-2]) / 4
-        set_bnd(0, p)
-    u[1:-1, 1:-1] -= 0.5 * N * (p[2:, 1:-1] - p[:-2, 1:-1])
-    v[1:-1, 1:-1] -= 0.5 * N * (p[1:-1, 2:] - p[1:-1, :-2])
-    set_bnd(1, u)
-    set_bnd(2, v)
+        
 
-def vel_step(u, v, u0, v0, visc, dt):
-    add_source(u, u0, dt)
-    add_source(v, v0, dt)
-    u0, u = u, u0
-    v0, v = v, v0
-    diffuse(1, u, u0, visc, dt)
-    diffuse(2, v, v0, visc, dt)
-    project(u, v, u0, v0)
-    u0, u = u, u0
-    v0, v = v, v0
-    advect(1, u, u0, u0, v0, dt)
-    advect(2, v, v0, u0, v0, dt)
-    project(u, v, u0, v0)
 
-def density_step(x, x0, u, v, diff, dt):
-    add_source(x, x0, dt)
-    x0, x = x, x0
-    diffuse(0, x, x0, diff, dt)
-    x0, x = x, x0
-    advect(0, x, x0, u, v, dt)
+        return load_animation_assets(particle_animations)
+    
+    def load_enemy_assets(self):
+            enemy_animations = {
+            'Canine/black/idle': ('entities/enemy/Canine/black/idle', 'transparent', 8, True,False),
+            'Canine/black/run': ('entities/enemy/Canine/black/run', 'transparent', 6, True,False),
+            'Canine/black/jump_up': ('entities/enemy/Canine/black/jump/up', 'transparent', 1, False,False),
+            'Canine/black/jump_down': ('entities/enemy/Canine/black/jump/down', 'transparent', 3, False,False),
+            'Canine/black/hit': ('entities/enemy/Canine/black/hit', 'transparent', 5, False,False),
+            'Canine/black/grounded_death': ('entities/enemy/Canine/black/death/grounded', 'transparent', 5, False,False),
 
-def draw_density(screen, density):
-    for i in range(GRID_SIZE):
-        for j in range(GRID_SIZE):
-            d = density[i, j]
-            color = (min(255, int(d * 255)), 0, 0)
-            pygame.draw.rect(screen, color, (i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+            'Wheel_bot/idle': ('entities/enemy/Wheel_bot/idle', 'transparent', 6, True,False),
+            'Wheel_bot/move': ('entities/enemy/Wheel_bot/move', 'transparent', 7, True,False),
+            'Wheel_bot/dormant': ('entities/enemy/Wheel_bot/dormant', 'transparent', 2, True,False),
+            'Wheel_bot/alert': ('entities/enemy/Wheel_bot/alert', 'transparent', 4, False,False),
+            'Wheel_bot/wake': ('entities/enemy/Wheel_bot/wake', 'transparent', 5, False,False),
+            'Wheel_bot/new_charge': ('entities/enemy/Wheel_bot/new_charge', 'transparent', 3, True,False),
+            'Wheel_bot/shoot': ('entities/enemy/Wheel_bot/shoot', 'transparent', 4, False,False),
+            'Wheel_bot/hit': ('entities/enemy/Wheel_bot/hit', 'transparent', 4, False,False),
+            'Wheel_bot/death': ('entities/enemy/Wheel_bot/death', 'transparent', 4, False,False),
 
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+            'sabre/idle': ('entities/enemy/sabre/idle', 'transparent', 6, True,False),
+            'sabre/move': ('entities/enemy/sabre/move', 'transparent', 6, True,False),
+            'sabre/dormant': ('entities/enemy/sabre/dormant', 'transparent', 6, True,False),
+            'sabre/wake': ('entities/enemy/sabre/wake', 'transparent', 5, False,False),
 
-        # Add mouse interaction for creating fluid sources
-        if pygame.mouse.get_pressed()[0]:
-            mouse_x, mouse_y = pygame.mouse.get_pos()
-            grid_x = mouse_x // CELL_SIZE
-            grid_y = mouse_y // CELL_SIZE
-            if 1 <= grid_x < GRID_SIZE-1 and 1 <= grid_y < GRID_SIZE-1:
-                s[grid_x, grid_y] = 100.0
-                density[grid_x, grid_y] = 1.0
-                u[grid_x, grid_y] = 10.0 * (mouse_x - WIDTH / 2) / WIDTH
-                v[grid_x, grid_y] = 10.0 * (mouse_y - HEIGHT / 2) / HEIGHT
 
-    vel_step(u, v, np.zeros_like(u), np.zeros_like(v), viscosity, dt)
-    density_step(density, s, u, v, diffusion, dt)
-    s.fill(0)  # Reset source field after each step
+            'ball_slinger/idle' : ('entities/enemy/ball_slinger/idle','transparent',7,True,False),
+            'ball_slinger/move' : ('entities/enemy/ball_slinger/move','transparent',6,True,False),
+            'ball_slinger/transition' : ('entities/enemy/ball_slinger/transition','transparent',6,False,False),
+            'ball_slinger/charge' : ('entities/enemy/ball_slinger/charge','transparent',6,False,False),
+            'ball_slinger/attack' : ('entities/enemy/ball_slinger/attack','transparent',6,False,False),
+            'ball_slinger/death' : ('entities/enemy/ball_slinger/death','transparent',6,False,False),
 
-    screen.fill(BLACK)
-    draw_density(screen, density)
+            'shotguner/idle' : ('entities/enemy/shotgunner/idle','transparent',7,True,False),
+            'shotguner/move' : ('entities/enemy/shotgunner/move','transparent',6,True,False),
+		#	'shotguner/shoot' : ('entities/enemy/shotgunner/shoot','transparent',6,False,False),
+            'shotguner/attack' : ('entities/enemy/shotgunner/attack','transparent',6,False,False),
+         #   'shotguner/death' : ('entities/enemy/shotgunner/death','transparent',6,False,False),
 
-    pygame.display.flip()
-    clock.tick(60)
+            
+            
+            
+            
 
-pygame.quit()
+            
+            }
+            return load_animation_assets(enemy_animations)
+    
+    # Animation
+    def load_interactable_assets(self):
+            interactable_animations = {
+                 'building_door_0' : ('interactables/building_door/0','transparent',5, True,False),
+                 'trap_door' : ('interactables/trap_door','transparent',5,True,False),
+
+            }
+            return load_animation_assets(interactable_animations)

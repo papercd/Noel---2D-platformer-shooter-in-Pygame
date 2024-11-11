@@ -11,15 +11,16 @@ import numpy as np
 
 BASE_PATH = 'data/images/'
 
-def load_image(path,background = 'black'):
-     
+def load_texture(path):
     
+    """
     if background == 'black':
         sprite = pygame.image.load(BASE_PATH + path)
         sprite.set_colorkey((0,0,0))
        
     elif background == 'transparent': 
-        sprite= pygame.image.load(BASE_PATH + path)
+    """
+    sprite= pygame.image.load(BASE_PATH + path)
     return sprite 
 
 
@@ -99,40 +100,40 @@ def obb_collision(rect1_corners, rect2):
 
 #now the this load_images function will get all the sprites within one directory and turn them into a list.
 
-def load_tile_assets(paths, background=None):
-    return {path: load_tile_images(f'tiles/{path}', background=background) for path in paths}
+def load_tile_textures(paths):
+    return {path: retrieve_textures(f'tiles/{path}') for path in paths}
 
-def load_image_assets(paths):
-    return {key: load_image(path, background=bg) for key, (path, bg) in paths.items()}
+def load_textures_from_path_dict(paths):
+    return {key: load_texture(path) for key, (path) in paths.items()}
 
-def load_image_assets_multiple(paths):
-    return {key: load_images(path, background=bg) for key, (path, bg) in paths.items()}
+def load_textures_from_dict_multiple(paths):
+    return {key: load_textures(path, background=bg) for key, (path, bg) in paths.items()}
 
 
 
-def load_animation_assets(animations):
+def load_animation_textures(animations_paths):
     return {
-        key: Animation(load_images(path, background=bg), img_dur=dur, loop=loop, halt=halt)
-        for key, (path, bg, dur, loop, halt) in animations.items()
+        key: Animation(load_textures(path ), img_dur=dur, loop=loop, halt=halt)
+        for key, (path, dur, loop, halt) in animations_paths.items()
     }
 
-def load_images(path,background = 'black'):
+def load_textures(path):
     sprites = []
     #the sorted() method will turn the list into an alphabetically-sorted list.
     for sprite_name in sorted(os.listdir(BASE_PATH + path)):
-        sprites.append(load_image(path+ '/' + sprite_name,background))
+        sprites.append(load_texture(path+ '/' + sprite_name))
 
     return sprites
 
-def load_tile_images(path,background = 'black'):
+def retrieve_textures(path):
     list_of_lists = []
     for dir in sorted(os.listdir(BASE_PATH + path)):
         dir_check = dir.split('.')
         if len(dir_check) > 1:
             
-            list_of_lists.append(load_image(path +'/'+dir,background))
+            list_of_lists.append(load_texture(path +'/'+dir))
         else: 
-            new_list = load_tile_images(path +'/' + dir, background)
+            new_list = retrieve_textures(path +'/' + dir)
             list_of_lists.append(new_list)
     return list_of_lists
 
@@ -147,9 +148,9 @@ def load_sounds(path):
     
 
 class Animation: 
-    def __init__(self, images, img_dur = 5, halt = False, loop = True):
-        self.images = images
-        self.count = len(self.images) 
+    def __init__(self, textures, img_dur = 5, halt = False, loop = True):
+        self.textures=textures 
+        self.count = len(self.textures) 
         self.loop = loop 
         self.halt = halt
         self.img_dur = img_dur 
@@ -157,25 +158,25 @@ class Animation:
         self.frame = 0
 
     def copy(self):
-        return Animation(self.images,self.img_dur,self.halt,self.loop)
+        return Animation(self.textures,self.img_dur,self.halt,self.loop)
     
     def update(self):
         if self.halt: 
-             self.frame = min(self.frame+1,self.img_dur * len(self.images) -1)
+             self.frame = min(self.frame+1,self.img_dur * len(self.textures) -1)
         else: 
             if self.loop:
-                self.frame = (self.frame+1) % (self.img_dur * len(self.images))
+                self.frame = (self.frame+1) % (self.img_dur * len(self.textures))
             else: 
-                self.frame = min(self.frame+1,self.img_dur * len(self.images) -1)
-                if self.frame >= self.img_dur *len(self.images) -1:
+                self.frame = min(self.frame+1,self.img_dur * len(self.textures) -1)
+                if self.frame >= self.img_dur *len(self.textures) -1:
                     self.done = True 
 
 
     def reverse(self):
         pass 
 
-    def img(self):
-        return self.images[int(self.frame / self.img_dur)]
+    def curr_tex(self):
+        return self.textures[int(self.frame / self.img_dur)]
 
 
 

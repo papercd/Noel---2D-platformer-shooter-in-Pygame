@@ -39,8 +39,6 @@ class myGame():
         self.Tilemap = Tilemap(self,tile_size=16,offgrid_layers=2)
         
         # cursor 
-        pygame.mouse.set_visible(False)
-        self.cursor = Cursor(self,(50,50),(4,4),'default')
 
         # player 
         self.player = PlayerEntity(self,(50,50),(14,16))
@@ -98,7 +96,7 @@ class myGame():
         self._native_res = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
 
     def _setup_engine_and_render_surfs(self):
-        self.lights_engine = LightingEngine(screen_res=self._screen_size,native_res=self._native_res,lightmap_res=self._native_res)
+        self.lights_engine = LightingEngine(screen_res=self._screen_size,screen_to_native_ratio = self._screen_to_native_ratio,native_res=self._native_res,lightmap_res=self._native_res)
 
         self._background_surf_dim = self._foreground_surf_dim = self.buffer_surf_dim = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
         self.buffer_surf = pygame.Surface(self.buffer_surf_dim,pygame.SRCALPHA)
@@ -113,6 +111,9 @@ class myGame():
         self.general_sprites = self.game_assets.general_sprites
         self.interactable_obj_sprites = self.game_assets.interactable_obj_sprites
         self.enemy_sprites = self.game_assets.enemies
+        self.backgrounds = self.game_assets.backgrounds
+
+        """
 
         self._window_icon = self.general_sprites['player']
         self._pygame_logo = self.general_sprites['start_logo']
@@ -123,28 +124,9 @@ class myGame():
         self._pygame_logo_dim = self._pygame_logo.get_size()
         pygame.display.set_icon(self._window_icon)
 
-        self.weapons = {
-            'laser_weapon': Wheelbot_weapon(self,Animation(load_images('entities/enemy/Wheel_bot/charge_weapon',background='transparent'),img_dur=5,loop=True),"A Laser weapon."),
-            'ak' : AK_47(self,load_image('weapons/ak_holding.png',background='transparent'),load_image('weapons/ak_47_img.png',background='transparent'),load_image('weapons/shrunk/ak_47.png',background='transparent'),"The staple AK-47."),
-            'flamethrower' : Flamethrower(self,load_image('weapons/flamethrower_holding.png',background='transparent'),load_image('weapons/flamethrower_img.png',background='transparent'),load_image('weapons/shrunk/flamethrower_img.png',background='transparent'),"Splits powerful flames."),
-            'rocket_launcher' : Rocket_launcher(self,load_image('weapons/rocket_launcher_holding.png',background='transparent'),load_image('weapons/rocket_launcher_img.png',background='transparent'),load_image('weapons/shrunk/rocket_launcher.png',background='transparent')," "),
-            'shotgun' : Shotgun(self,load_image('weapons/shotgun_holding.png',background='transparent'),load_image('weapons/shotgun_img.png',background='transparent'),load_image('weapons/shrunk/shotgun.png',background='transparent')," ")
-        }
-
+        """
         
-        self.bullets = {
-            'rifle_small' : load_image('bullets/rifle/small.png',background='transparent'),
-            'laser_weapon' : Animation(load_images('bullets/laser_weapon/new',background='transparent'),img_dur= 5, loop = True),
-            'shotgun' : load_image('bullets/shotgun/small.png',background='transparent'),
-            'rocket_launcher' : load_image('bullets/rocket_launcher/0.png',background='transparent'),
-        }
-
-        self.backgrounds = {
-            'building' : Background(self,load_images('backgrounds/building',background= 'transparent')),
-            'new_building' : Background(self,load_images('backgrounds/new_building',background='transparent'))
-        }
-
-
+        
     def _get_system_display_info(self):
         system_info = {}
         primary_monitor = get_monitors()[0]
@@ -209,6 +191,7 @@ class myGame():
 		 
 	
     def _handle_events(self):
+        """
         if self.mouse_pressed[0]:
             if not self.cursor.interacting:
                 if self.player.return_weapon_toggle_state():
@@ -221,6 +204,7 @@ class myGame():
         else: 
             self.reset = True 
 
+        """
         for event in pygame.event.get():
             self._handle_common_events(event)
             if event.type == pygame.KEYDOWN:
@@ -288,7 +272,8 @@ class myGame():
         # self.prev_cursor_pos = self.cursor.pos
         self._dt = time.time() - self._prev_frame_time
         self._prev_frame_time = time.time()
-    
+
+        
         #timer update for acceleration and dash timings  - have dash implemented, unsure 
         #if it should be kept 
             
@@ -297,6 +282,20 @@ class myGame():
         self._scroll[0] += (self.player.rect().centerx - self._background_surf_dim[0] /2 - self._scroll[0])/20
         self._scroll[1] += (self.player.rect().centery - self._background_surf_dim[1] /2 - self._scroll[1])/20
         render_scroll = (int(self._scroll[0]), int(self._scroll[1]))
+
+        self.lights_engine.clear(0,0,0,255)
+
+        #print(self.backgrounds['test_background'].bg_layers[0].width)
+    
+        self.lights_engine.render_background_view(
+            self.backgrounds['test_background'], render_scroll
+        )
+
+        self.lights_engine.render_tilemap(
+            
+        )
+
+        self.lights_engine.render(self._ambient_node_ptr.range,(0,0), (0,0))
         
         pygame.display.flip()
         fps = self._clock.get_fps()
