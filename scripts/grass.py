@@ -335,6 +335,7 @@ class GrassAssets:
   
 
 
+
     def render_blade(self, surf, blade_id, blade_variation, location, rotation, scale, burning_sides, burning_initiation_time, palette):
         # Scale and rotate the blade image
         rot_img = pygame.transform.rotate(self.blades[blade_id][blade_variation], rotation)
@@ -355,7 +356,7 @@ class GrassAssets:
                 
                 # Determine burn spread direction and boundary based on burn initiation time
                 for x in range(rot_img_dim[0]):
-                    offset = int((random.random() - 0.5) * 9)  # Jagged edge
+                    offset = int((random.random() - 0.5) * 1)  # Jagged edge
                     if (burning_sides[0] and x < rot_img_dim[0] * (1 - burn_spread_ratio)) or \
                     (burning_sides[1] and x > rot_img_dim[0] - rot_img_dim[0] * (1 - burn_spread_ratio)):
                         for y in range(max(0, offset), rot_img_dim[1]):
@@ -394,84 +395,6 @@ class GrassAssets:
         # Render the blade
         surf.blit(rot_img, (location[0] - rot_img.get_width() // 2, location[1] - rot_img.get_height() // 2))
 
-
-
-
-    """
-
-    def render_blade(self, surf, blade_id, blade_variation,location, rotation,scale,burning_sides,burning_initiation_time,palette):
-        # before you rotate it, scale it. 
-        rot_img = pygame.transform.rotate(self.blades[blade_id][blade_variation], rotation)
-        rot_img_dim = rot_img.get_size()
-        rot_img = pygame.transform.scale(rot_img, (int(rot_img_dim[0] * scale), int(rot_img_dim[1]* scale)))
-
-        # shade the blade of grass based on its rotation
-        shade = pygame.Surface(rot_img_dim)
-        shade_amt = self.gm.shade_amount * (abs(rotation) / 90)
-        shade.set_alpha(shade_amt)
-        
-        # if the grass has initiated grass burn, add flickering effect 
-        if 0 < scale < 1:
-            # before the flickering, add a quick burn spread effect. 
-            if burning_initiation_time > 0:
-                if burning_sides[0]:
-                    flicker_intensity = 0.4 # adjust this value for more or less flickering
-                    flicker = 1 + flicker_intensity * math.sin(time.time() * 5)  # frequency adjustment with * 5
-
-                    burn_surface = pygame.Surface((rot_img_dim[0],rot_img_dim[1]),pygame.SRCALPHA)
-                    burn_surface.fill(
-
-                        color =(
-                            min(255, palette[0] * flicker * (1 / scale * 6)),
-                            min(255, palette[1] * flicker * (1 / scale)),
-                            min(255, palette[2] * flicker * (1 / scale))
-                        )
-        
-                    )
-                    blit_pos = -rot_img_dim[0]+ rot_img_dim[0] * (1-burning_initiation_time/20) 
-                    rot_img.blit(burn_surface,dest=(blit_pos,0),special_flags= pygame.BLEND_RGB_MULT)
-                    
-                if burning_sides[1]:
-                    flicker_intensity = 0.4 # adjust this value for more or less flickering
-                    flicker = 1 + flicker_intensity * math.sin(time.time() * 5)  # frequency adjustment with * 5
-
-                    burn_surface = pygame.Surface((rot_img_dim[0],rot_img_dim[1]),pygame.SRCALPHA)
-                    burn_surface.fill(
-
-                        color =(
-                            min(255, palette[0] * flicker * (1 / scale * 6)),
-                            min(255, palette[1] * flicker * (1 / scale)),
-                            min(255, palette[2] * flicker * (1 / scale))
-                        )
-        
-                    )
-                    blit_pos = rot_img_dim[0]- rot_img_dim[0] * (1-burning_initiation_time/20) 
-                    rot_img.blit(burn_surface,dest=(blit_pos,0),special_flags= pygame.BLEND_RGB_MULT)
-                    
-                    
-            else: 
-                flicker_intensity = 0.4 # adjust this value for more or less flickering
-                flicker = 1 + flicker_intensity * math.sin(time.time() * 5)  # frequency adjustment with * 5
-                red_mask = pygame.mask.from_surface(rot_img)
-                red_mask.to_surface(
-                    rot_img,
-                    setcolor=(
-                        min(255, palette[0] * flicker * (1 / scale * 6)),
-                        min(255, palette[1] * flicker * (1 / scale)),
-                        min(255, palette[2] * flicker * (1 / scale))
-                    )
-                )
-    
-      
-
-        rot_img.blit(shade, (0, 0))
-
-        # render the blade
-       
-        surf.blit(rot_img, (location[0] - rot_img.get_width() // 2, location[1] - rot_img.get_height() // 2))
-        
-        """
-# the grass tile object that contains data for the blades
 
 
 # the grass tile object that contains data for the blades
@@ -714,7 +637,7 @@ class GrassTile:
                 light.cast_shadows = False
                 light.set_color(149,46,17)
                 self.gm.game.lights_engine.lights.append(light)
-                self.gm.game.sparks.append(spark)    
+                self.gm.game.add_spark(spark)    
 
            
             surf.blit(img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
@@ -797,8 +720,8 @@ class GrassTile:
 
                     """
                     surf.blit(img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
-                    
-                        
+                                        
+                
                     """
                     #surf.blit(mask_img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
                     for point in outline:
@@ -875,7 +798,9 @@ class GrassTile:
                     )
                     img.blit(burn_surface,(0,0),special_flags=pygame.BLEND_RGBA_MULT)
                     
-                """
+                """ 
+                
+                
                 surf.blit(img,(self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
 
         # attempt to move blades back to their base position

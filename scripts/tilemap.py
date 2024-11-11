@@ -918,15 +918,15 @@ class Tilemap:
                 self.game.player.pos = [spawner.pos[0] * self.tile_size, spawner.pos[1] * self.tile_size]
                 
             elif spawner.variant == '1;0': 
-                self.game.enemies.append(Canine(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(34,23),'black'))
+                self.game.add_enemy(Canine(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(34,23),'black'))
                
         
             elif spawner.variant == '2;0':
                 
-                self.game.enemies.append(Wheel_bot(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(20,22)))
+                self.game.add_enemy(Wheel_bot(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(20,22)))
 
             elif spawner.variant == "4;0":
-                self.game.enemies.append(Ball_slinger(self.game,(spawner.pos[0] *self.tile_size,spawner.pos[1] *self.tile_size), (13,19)))
+                self.game.add_enemy(Ball_slinger(self.game,(spawner.pos[0] *self.tile_size,spawner.pos[1] *self.tile_size), (13,19)))
  
 
     def extract(self,id_pairs, keep = False):
@@ -1193,7 +1193,7 @@ class Tilemap:
             return tile_img.get_at(sample_loc[side] )
 
    
-    def autotile(self, random_=False):
+    def autotile(self, random_=False,autotile_options = 0):
         dicts = [self.tilemap] + self.offgrid_tiles
         
         for autotile_dict in dicts:
@@ -1216,7 +1216,7 @@ class Tilemap:
                         auto_map = BUILDING_AUTOTILE[building_type]
                         if neighbors in auto_map:
                             variant_sub_0 = auto_map[neighbors]
-                            asset = self.game.general_sprites[tile.type][int(variant_sub_0)]
+                            asset = self.game.assets[tile.type][int(variant_sub_0)]
                             if isinstance(asset, list):
                                 variant_sub_1 = random.randint(0, len(asset) - 1) if random_ else 0
                                 tile.variant = f"{variant_sub_0};{variant_sub_1}"
@@ -1228,7 +1228,7 @@ class Tilemap:
                     else:
                         if neighbors in AUTOTILE_MAP:
                             variant_sub_0 = AUTOTILE_MAP[neighbors]
-                            asset = self.game.general_sprites[tile.type][int(variant_sub_0)]
+                            asset = self.game.assets[tile.type][int(variant_sub_0)]
                             if isinstance(asset, list):
                                 variant_sub_1 = random.randint(0, len(asset) - 1) if random_ else 0
                                 tile.variant = f"{variant_sub_0};{variant_sub_1}"

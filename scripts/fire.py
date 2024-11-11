@@ -189,7 +189,7 @@ class Flame_particle:
         self.x +=  frame_movement[0] 
         self.y += frame_movement[1] 
         
-        grass_check = j % 11 == 0
+        grass_check = j % 11== 0
 
         for rect_tile in tilemap.physics_rects_around((self.pos[0] - self.r,self.pos[1] - self.r),(self.r * 2,self.r * 2),grass_check=grass_check):
               
