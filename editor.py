@@ -35,8 +35,8 @@ class Editor:
         self.RENDER_SCALE = 2.5
         self.DEFAULT_LIGHT_RADIUS = 356
 
-        #self.screen_res = [1400,750]
-        self.screen_res = [2200,1200]
+        self.screen_res = [1400,750]
+       # self.screen_res = [2200,1200]
         self.native_res = [int(self.screen_res[0] / self.RENDER_SCALE) ,int(self.screen_res[1] / self.RENDER_SCALE)]
 
 
@@ -106,9 +106,9 @@ class Editor:
 
         self.cur_offgrid_layer = 0
 
-        self.json_file = 'test.json'
+        #self.json_file = 'test.json'
 
-        #self.json_file = 'main_menu.json'
+        self.json_file = 'normal_map_test.json'
 
         self.offgrid_layer_ind = alphabets('cur_off_layer')
         self.offgrid_layer_num = numbers(self.cur_offgrid_layer)

@@ -583,6 +583,7 @@ class LightingEngine:
         self._prog_blur['blurRadius'] = self.shadow_blur_radius
         self._vao_blur.render()
 
+
     def _render_background(self,range,offset):
         self.ctx.screen.use()
         self._tex_bg.use()
@@ -642,8 +643,6 @@ class LightingEngine:
 
         return self.make_shader(vertex_src, fragment_src)
 
-    def render_onto_bg_texture(self):
-        pass 
 
     def render_texture_with_trans(self,
                tex: moderngl.Texture,
