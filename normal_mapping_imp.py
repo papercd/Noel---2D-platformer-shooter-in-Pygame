@@ -312,18 +312,14 @@ class myGame():
         #print(self.backgrounds['test_background'].bg_layers[0].width)
         
         self.render_engine.render_background_view(
-            self.backgrounds['test_background'], render_scroll
+            self.backgrounds['new_building'], render_scroll
         )
 
         self.render_engine.render_tilemap(
             self.Tilemap,render_scroll
         )
 
-        rot_function = lambda x, y: int(math.sin(self._rot_func_t/60 + x/100)*7)
-        self._rot_func_t += self._dt * 100
-        self.gm.update_render(quadtree,self._native_res,self._dt,render_scroll,rot_function=rot_function)
-
-
+        
         # TODO: render enemies to background layer with draw shader, but also 
         # passing normal map data to achieve dynamic lights with lightmap data
 
@@ -397,15 +393,21 @@ class myGame():
         #TODO: implement rendering for particles 
         #
         #
+        self.player.accelerate(self.player_movement_input)
+        self.player.update_pos(self.Tilemap,quadtree,[50,50],self.frame_count)
+        self.player.render(self.render_engine,render_scroll)
+
+        rot_function = lambda x, y: int(math.sin(self._rot_func_t/60 + x/100)*7)
+        self._rot_func_t += self._dt * 100
+        self.gm.update_render(quadtree,self._native_res,self._dt,render_scroll,rot_function=rot_function)
 
 
-        
 
-
-        self.render_engine.render(self._ambient_node_ptr.range,(0,0), (0,0))
+        self.render_engine.render(self._ambient_node_ptr.range,render_scroll, (0,0))
         
         pygame.display.flip()
         fps = self._clock.get_fps()
+        print(fps)
         pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
         self._clock.tick(60)
 

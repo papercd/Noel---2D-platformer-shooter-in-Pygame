@@ -198,12 +198,24 @@ class PhysicsEntity:
 
     def render(self, render_engine_ref:LightingEngine, offset = (0,0)):
         tex = self.animation.curr_tex()
-        pos = render_engine_ref.calculate_render_position_with_offset(self.pos,(offset[0] -self.anim_offset[0], offset[1] -self.anim_offset[1]))
+        #pos = render_engine_ref.calculate_render_position_with_offset(self.pos,(offset[0] -self.anim_offset[0], offset[1] -self.anim_offset[1]))
+        
+        render_engine_ref.render_texture(
+            tex,Layer_.BACKGROUND,
+            dest = pygame.Rect(int(self.pos[0] - offset[0] +self.anim_offset[0]) , int(self.pos[1] -offset[1]+self.anim_offset[1]),tex.width,tex.height),
+            source = pygame.Rect(0,0,tex.width,tex.height),
+            flip= (self.flip, False)
+        )
+        
+        """
         render_engine_ref.render_texture_with_trans(
             tex, Layer_.BACKGROUND,
-            position= (int(pos[0]) , int(pos[1])) ,
+            position= (0.5,0.5) ,
+            scale=0.5,
             flip = (self.flip,False)
         )
+        
+        """
         #surf.blit(pygame.transform.flip(self.animation.img(), self.flip, False),
         #          (int(self.pos[0] - offset[0] + self.anim_offset[0]), int(self.pos[1] - offset[1] + self.anim_offset[1])))
 
@@ -1307,7 +1319,7 @@ class PlayerEntity(PhysicsEntity):
         self.change_weapon_inc = False
         self.changing_done = 0 
         self.change_scroll = 0
-        self.hit_mask = None
+        self.show_hit_mask = False 
 
         super().__init__(game,'player',pos,size)
 
@@ -1438,6 +1450,9 @@ class PlayerEntity(PhysicsEntity):
         #the number of particles that are created should depend on the impact force, which can be a function of y_inertia you've 
         #defined already. 
 
+
+        #TODO: recover this logic. get rid of breaks. 
+
         if self.collisions['down']:
             if self.y_inertia > 6:
                 self.set_state('land')
@@ -1445,23 +1460,28 @@ class PlayerEntity(PhysicsEntity):
             for offset in range(-tile_map.tile_size, tile_map.tile_size, 4):
             #(0,-tile_map.tile_size,tile_map.tile_size):
                 if tile_map.solid_check((entry_pos[0]+offset,entry_pos[1])):
-                    color = tile_map.return_color((entry_pos[0]+offset,entry_pos[1]),side ='top')
                     break
+                    color = tile_map.return_color((entry_pos[0]+offset,entry_pos[1]),side ='top')
 
 
 
             offsets = [(-2,0),(-1,0), (0,0), (1,0),(2,0)]                
             for i in range(min(8,self.y_inertia//2)):
+                break
                 offset = random.choice(offsets)
                 self.game.add_non_anim_particle(bullet_collide_particle(random.choice([(1,1),(2,1),(1,2),(3,1),(1,3),(2,2)]), (entry_pos[0] - offset[0],entry_pos[1] ) ,-90 + random.randint(-88,88),2.4+random.random(),color,tile_map,gravity_factor= 1.4 * min(8,self.y_inertia//2)/5))
         
 
 
             if self.y_inertia > 12 and self.y_inertia <35:
+                
+                pass
+                """
                 land_smoke = Particle(self.game,'land',(self.pos[0] +8,self.pos[1]+14),'player')
                 self.game.add_particle(land_smoke)
                 self.game.add_screen_shake(5) 
                 self.hard_land_recovery_time = 7
+                """
                 #self.set_state('land')
                 
 
@@ -1469,12 +1489,15 @@ class PlayerEntity(PhysicsEntity):
                 
                 
             elif self.y_inertia >= 35:
+                pass 
+                """
                 land_smoke = Particle(self.game,'big_land',(self.pos[0] +7,self.pos[1]+7),'player')
                 self.game.add_particle(land_smoke)
                 #self.set_state('land')
                 self.game.add_screen_shake(16)
                 self.animation.img_dur = 5
                 self.hard_land_recovery_time = 20
+                """
 
             self.y_inertia = 0
             self.jump_count =2 
@@ -1568,17 +1591,28 @@ class PlayerEntity(PhysicsEntity):
     
         
     
-    def render(self,surf,offset):
+    def render(self,render_engine_ref:LightingEngine, offset = (0,0)):
         
         knockback = (0,0) if not self.cur_weapon_node else (self.cur_weapon_node.weapon.knockback[0]/5,self.cur_weapon_node.weapon.knockback[1]/9)
 
-        super().render(surf,(offset[0] - knockback[0],offset[1] - knockback[1]))
+        super().render(render_engine_ref,(offset[0] - knockback[0],offset[1] - knockback[1]))
 
 
-        if self.hit_mask:
+        if self.show_hit_mask:
+            
+            mask_tex = render_engine_ref.create_outline_texture(self.animation.curr_tex(),white= True)
             for offset_ in [(-1,0),(1,0),(0,-1),(0,1)]:
-                surf.blit(self.hit_mask.to_surface(unsetcolor=(0,0,0,0),setcolor=(255,255,255,255)),(self.pos[0] - offset[0]+offset_[0] - knockback[0],self.pos[1]-offset[1]+offset_[1]- knockback[1]))
-            self.hit_mask = None
+                    pos = render_engine_ref.calculate_render_position_with_offset(self,pos,(offset[0] - offset_[0] + knockback[0] ,offset[1] - offset_[1] +knockback[1]))
+                    render_engine_ref.render_texture_with_trans(
+                        mask_tex,Layer_.BACKGROUND,
+                        position= pos,
+                        flip = (self.flip, False)
+                    )
+
+
+
+               #surf.blit(self.hit_mask.to_surface(unsetcolor=(0,0,0,0),setcolor=(255,255,255,255)),(self.pos[0] - offset[0]+offset_[0] - knockback[0],self.pos[1]-offset[1]+offset_[1]- knockback[1]))
+            self.show_hit_mask = False 
 
         """
         #render the health bar and the stamina bar 
@@ -1599,8 +1633,11 @@ class PlayerEntity(PhysicsEntity):
         stamina_ind.render(self.stamina_bar.x+34,self.stamina_bar.y-1,surf)
         """
         #print(self.changing_done)
-        if self.cur_weapon_node: 
-            """
+
+
+        #TODO: recover weapon rendering 
+        #if self.cur_weapon_node: 
+        """
             if self.changing_done == 0:
                 self.cur_weapon_node.weapon.render(surf,offset,set_angle = None)
             else: 
@@ -1612,7 +1649,7 @@ class PlayerEntity(PhysicsEntity):
                         
                 arm_pos_angle = angles[self.changing_done]
             """
-            self.cur_weapon_node.weapon.render(surf,offset) 
+            #self.cur_weapon_node.weapon.render(surf,offset) 
             
     
     def interact(self):
@@ -1684,8 +1721,8 @@ class PlayerEntity(PhysicsEntity):
                 self.velocity[1] =-4.4
                 
 
-                air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
-                self.game.add_particle(air)
+                #air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
+                #self.game.add_particle(air)
 
             if self.jump_count == 2:
                 if self.state == 'jump_down':
@@ -1694,8 +1731,8 @@ class PlayerEntity(PhysicsEntity):
 
                     self.velocity[1] = -4.4
                     
-                    air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
-                    self.game.add_particle(air)
+                    #air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
+                    #self.game.add_particle(air)
                 else: 
                     self.jump_count -=1
                     #self.accel_up() 
@@ -1706,8 +1743,8 @@ class PlayerEntity(PhysicsEntity):
                 self.jump_count -=1
                 #self.accel_up() 
                 self.velocity[1] = -4.4  
-                air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
-                self.game.add_particle(air)
+                #air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
+                #self.game.add_particle(air)
             
     
 
@@ -1842,7 +1879,8 @@ class PlayerEntity(PhysicsEntity):
     def hit(self,hit_damage):
         self.health -= hit_damage
         self.game.add_screen_shake(hit_damage/2.2)
-        self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
+        self.show_hit_mask = True 
+        #self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(),True,False))
         
 
 class Item(PhysicsEntity):
