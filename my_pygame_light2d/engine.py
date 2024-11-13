@@ -6,7 +6,6 @@ import pygame
 import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
-from scripts.tilemap import Tilemap
 from scripts.background import Background
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
@@ -282,6 +281,17 @@ class LightingEngine:
         """
         self._ambient = normalize_color_arguments(R, G, B, A)
 
+    def get_native_res(self) -> tuple[int,int]:
+        """
+        Get the native resolution.
+        
+        Returns: 
+            tuple[int,int] 
+
+        """
+        return self._native_res 
+
+
     def get_ambient(self) -> tuple[int, int, int, int]:
         """
         Get the ambient light color.
@@ -358,6 +368,30 @@ class LightingEngine:
 
         img = pygame.image.load(path).convert_alpha()
         return self.surface_to_texture(img)
+    
+
+    def create_outline_texture(self,tex: moderngl.Texture,white :bool= False) ->moderngl.Texture:
+        """
+        Create a completely white/black texture from a texture with colored bits.
+
+        """
+
+        width,height = tex.size
+
+        texture_data = tex.read()
+
+        image_array = np.frombuffer(texture_data,dtype=np.uint8).reshape((height,width,4))
+        
+        new_array = np.copy(image_array)
+        if white:
+            new_array[new_array[:,:,3] >0] = [255,255,255,255]
+        else: 
+            new_array[new_array[:,:,3] >0] = [0,0,0,255]
+
+        new_tex = self.ctx.texture((width,height),4,new_array.tobytes())
+
+        return new_tex
+       
 
     def clear(self, R: (int | tuple[int]) = 0, G: int = 0, B: int = 0, A: int = 255):
         """
@@ -390,7 +424,7 @@ class LightingEngine:
             speed += 1
 
 
-    def render_tilemap(self,tilemap:Tilemap,offset:tuple[int,int],in_editor : bool = False) -> None:
+    def render_tilemap(self,tilemap,offset:tuple[int,int],in_editor : bool = False) -> None:
         if in_editor:
             texture_source = self.game.assets
         else: 
@@ -847,7 +881,6 @@ class LightingEngine:
         """
         return ((pos[0] - offset[0])/self._screen_to_native_ratio,(pos[1] - offset[1])/self._screen_to_native_ratio)
 
-        pass 
 
     def render_texture_with_trans(self,
                tex: moderngl.Texture,

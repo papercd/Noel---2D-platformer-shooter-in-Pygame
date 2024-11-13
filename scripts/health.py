@@ -1,5 +1,5 @@
 import pygame
-from my_pygame_light2d.engine import Layer_
+from my_pygame_light2d.engine import Layer_,LightingEngine
 from random import random
 
 class Bar():
@@ -15,7 +15,7 @@ class Bar():
         self.x = x
         self.y = y
 
-    def render(self,render_engine_ref,offset = (0,0)):
+    def render(self,render_engine_ref:LightingEngine,offset = (0,0)):
         #calculate health ratio 
         ratio = self.hp/ self.max_hp
 
@@ -73,7 +73,7 @@ class HealthBar(Bar):
             
             self.last_cur -= (self.last_cur-self.cur_resource )/4
         
-    def _render_surface_as_texture(self,surf,render_engine,offset = (0,0)):
+    def _render_surface_as_texture(self,surf,render_engine:LightingEngine,offset = (0,0)):
         # convert surface into moderngl.Texture using render engine
         tex = render_engine.surface_to_texture(surf)
 
@@ -88,7 +88,7 @@ class HealthBar(Bar):
         tex.release()
 
 
-    def render(self,render_engine_ref,offset = (0,0)):
+    def render(self,render_engine_ref:LightingEngine,offset = (0,0)):
         #calculate health ratio 
        
        
@@ -110,7 +110,8 @@ class HealthBar(Bar):
         pygame.draw.rect(third_surf_buffer,(225,69,29,255),(0,0,self.w*ratio_mid,self.h))
         pygame.draw.rect(fourth_surf_buffer,(119,48,48,255),(0,0,self.w*ratio,self.h))
 
-        self._render_surface_as_texture(first_surf_buffer,render_engine_ref,offset)
+        self._render_surface_as_texture(first_surf_buffer,render_engine_ref,(offset[0] + (shake_offset[0] if self.last_shake else 0) ,\
+                                                                             offset[1] + (shake_offset[1] if self.last_shake else 0)))
         self._render_surface_as_texture(first_surf_buffer,render_engine_ref,(offset[0] + shake_offset[0],offset[1] + shake_offset[1]))
         self._render_surface_as_texture(first_surf_buffer,render_engine_ref,(offset[0] + shake_offset[0],offset[1] + shake_offset[1]))
         self._render_surface_as_texture(first_surf_buffer,render_engine_ref,(offset[0] + shake_offset[0],offset[1] + shake_offset[1]))
@@ -135,8 +136,25 @@ class StaminaBar(Bar):
         self.cur_resource = stamina 
         pass 
 
-    def render(self,surf,offset = (0,0)):
+
+    def _render_surface_as_texture(self,surf,render_engine:LightingEngine,offset=(0,0)):
+        tex = render_engine.surface_to_texture(surf)
+        render_engine.render_texture(
+            tex,Layer_.BACKGROUND,
+            dest = pygame.Rect(self.x-offset[0],self.y-offset[1],tex.width,tex.height),
+            source = pygame.Rect(0,0,tex.width,tex.height)
+        )
+        tex.release()
+        pass
+
+    def render(self,render_engine,offset = (0,0)):
         #calculate health ratio 
         ratio = self.cur_resource/ self.max_resource
-        pygame.draw.rect(surf,(0,0,0,255),(self.x-offset[0],self.y-offset[1],self.w,self.h))
-        pygame.draw.rect(surf,(61,44,116,255),(self.x-offset[0],self.y-offset[1],self.w*ratio,self.h))
+        back_buffer_surf = pygame.Surface((self.w,self.h))
+        front_buffer_surf = pygame.Surface((self.w*ratio,self.h))
+
+        pygame.draw.rect(back_buffer_surf,(0,0,0,255),(0,0,self.w,self.h))
+        pygame.draw.rect(front_buffer_surf,(61,44,116,255),(0,0,self.w*ratio,self.h))
+
+        self._render_surface_as_texture(back_buffer_surf,render_engine,offset)
+        self._render_surface_as_texture(front_buffer_surf,render_engine,offset)

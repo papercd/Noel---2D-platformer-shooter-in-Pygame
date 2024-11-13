@@ -4,7 +4,7 @@ import random
 import pygame 
 import math
 
-from my_pygame_light2d.engine import Layer_ 
+from my_pygame_light2d.engine import Layer_ ,LightingEngine
 from scripts.utils import rect_corners,obb_collision
 from pygame.math import Vector2
 from scripts.spark import Spark
@@ -196,12 +196,12 @@ class PhysicsEntity:
         
         return interactables
 
-    def render(self, render_engine_ref, offset):
+    def render(self, render_engine_ref:LightingEngine, offset = (0,0)):
         tex = self.animation.curr_tex()
-        pos = render_engine_ref.calculate_render_position_with_offset(self.pos,offset)
+        pos = render_engine_ref.calculate_render_position_with_offset(self.pos,(offset[0] -self.anim_offset[0], offset[1] -self.anim_offset[1]))
         render_engine_ref.render_texture_with_trans(
             tex, Layer_.BACKGROUND,
-            position= (int(pos[0] + self.anim_offset[0]) , int(pos[1] + self.anim_offset[1])) ,
+            position= (int(pos[0]) , int(pos[1])) ,
             flip = (self.flip,False)
         )
         #surf.blit(pygame.transform.flip(self.animation.img(), self.flip, False),
@@ -366,7 +366,7 @@ class Enemy(PhysicsEntity):
         self.air_time = 0
         self.aggro = False
         self.aggro_timer = 0
-        self.hit_mask = None
+        self.show_hit_mask = False
         self.first_hit = False
         self.alerted = False
         self.hp = hp
@@ -376,15 +376,28 @@ class Enemy(PhysicsEntity):
             self.state = action
             self.animation = self.game.enemy_sprites[self.type + '/' + self.state].copy()
 
-    def render(self,render_engine_ref,offset=(0, 0), shake=0):
+
+    def render(self,render_engine_ref:LightingEngine,offset=(0, 0), shake=0):
+        native_res = render_engine_ref.get_native_res()
         x_min = offset[0] - self.size[0]
-        x_max = offset[0] + surf.get_width() + self.size[0]
+        x_max = offset[0] + native_res[0] + self.size[0]
         y_min = offset[1] - self.size[1]
-        y_max = offset[1] + surf.get_height() + self.size[1]
+        y_max = offset[1] + native_res[1] + self.size[1]
 
         if x_min < self.pos[0] < x_max and y_min < self.pos[1] < y_max:
 
             #---------- outlining 
+            current_tex = self.animation.tex()
+            outline_tex = render_engine_ref.create_outline_texture(current_tex)
+
+            for offset_ in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                pos = render_engine_ref.calculate_render_position_with_offset(self.pos,(offset[0] - offset_[0],offset[1] - offset_[1]))
+                render_engine_ref.render_texture_with_trans(
+                    outline_tex,Layer_.BACKGROUND,
+                    position= pos,
+                    flip= (self.flip, False)
+                )
+            """
             current_image = self.animation.img()
             if self.flip:
                 current_image = pygame.transform.flip(current_image, True, False)
@@ -393,14 +406,19 @@ class Enemy(PhysicsEntity):
             for offset_ in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 outline_surface = self.outline.to_surface(unsetcolor=(255, 255, 255, 0), setcolor=(0, 0, 0, 255))
                 surf.blit(outline_surface, (int(self.pos[0] - offset[0] + offset_[0]), int(self.pos[1] - offset[1] + offset_[1])))
-            #-----------
+            """
             super().render(render_engine_ref, offset=offset)
 
-            if self.hit_mask:
-                hit_surface = self.hit_mask.to_surface(unsetcolor=(0, 0, 0, 0), setcolor=(255, 255, 255, 255))
+            if self.show_hit_mask:
+                mask_tex = render_engine_ref.create_outline_texture(current_tex,white= True)
                 for offset_ in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                    surf.blit(hit_surface, (int(self.pos[0] - offset[0] + offset_[0]), int(self.pos[1] - offset[1] + offset_[1])))
-                self.hit_mask = None
+                    pos = render_engine_ref.calculate_render_position_with_offset(self,pos,(offset[0] - offset_[0],offset[1] - offset_[1]))
+                    render_engine_ref.render_texture_with_trans(
+                        mask_tex,Layer_.BACKGROUND,
+                        position= pos,
+                        flip = (self.flip, False)
+                    )
+                self.show_hit_mask = False
 
 
     def _handle_movment(self,tilemap,movement,check_offset):
@@ -486,10 +504,7 @@ class Enemy(PhysicsEntity):
             self.hp -= hit_damage
             self.first_hit = True
             self.hurt = True
-            current_image = self.animation.img()
-            if self.flip:
-                current_image = pygame.transform.flip(current_image, True, False)
-            self.hit_mask = pygame.mask.from_surface(current_image)
+            self.show_hit_mask = True 
 
 
 """
@@ -799,7 +814,7 @@ class Wheel_bot(Enemy):
         if self.alerted:
             self.health_bar.render(render_engine_ref, offset)
 
-        super().render(surf, (offset[0] - self.weapon.knockback[0] / 4, offset[1] - self.weapon.knockback[1] / 4))
+        super().render(render_engine_ref, (offset[0] - self.weapon.knockback[0] / 4, offset[1] - self.weapon.knockback[1] / 4))
 
         if self.state in {'new_charge', 'shoot', 'hit'}:
             self.weapon.render(surf, offset)
