@@ -1,4 +1,5 @@
 import pygame
+from my_pygame_light2d.engine import Layer_
 from random import random
 
 class Bar():
@@ -14,11 +15,23 @@ class Bar():
         self.x = x
         self.y = y
 
-    def render(self,surf,offset = (0,0)):
+    def render(self,render_engine_ref,offset = (0,0)):
         #calculate health ratio 
         ratio = self.hp/ self.max_hp
-        pygame.draw.rect(surf,"black",(self.x-offset[0],self.y-offset[1],self.w,self.h))
-        pygame.draw.rect(surf,"red",(self.x-offset[0],self.y-offset[1],self.w*ratio,self.h))
+
+        back_buffer_surf = pygame.Surface(self.w,self.h)
+        front_buffer_surf = pygame.Surface(self.w*ratio, self.h)
+        pygame.draw.rect(back_buffer_surf,"black",(0,0))
+        pygame.draw.rect(front_buffer_surf,"red",(0,0))
+
+        back_tex = render_engine_ref.surface_to_texture(back_buffer_surf)
+        front_tex = render_engine_ref.surface_to_texture(front_buffer_surf)
+
+        render_engine_ref.render_texture(
+            back_tex,Layer_.BACKGROUND,
+            dest = pygame.Rect(0,0),
+            source = pygame.Rect(0,back_tex.width,back_tex.height)
+        )
 
 class HealthBar(Bar):
     
@@ -68,7 +81,6 @@ class HealthBar(Bar):
             
 
         pygame.draw.rect(surf,(0,0,0,255),(self.x-offset[0] - (shake_offset[0] if self.last_shake else 0) ,self.y-offset[1]- (shake_offset[1] if self.last_shake else 0),self.w,self.h))
-
         pygame.draw.rect(surf,(173,106,29,255),(self.x-offset[0]- shake_offset[0],self.y-offset[1]- shake_offset[1],self.w*ratio_last,self.h))
         pygame.draw.rect(surf,(225,69,29,255),(self.x-offset[0]- shake_offset[0],self.y-offset[1]- shake_offset[1],self.w*ratio_mid,self.h))
         pygame.draw.rect(surf,(119,48,48,255),(self.x-offset[0]- shake_offset[0],self.y-offset[1]- shake_offset[1],self.w*ratio,self.h))

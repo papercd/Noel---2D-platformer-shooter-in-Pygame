@@ -198,10 +198,11 @@ class PhysicsEntity:
 
     def render(self, render_engine_ref, offset):
         tex = self.animation.curr_tex()
-        render_engine_ref.render_texture(
-            tex,Layer_.BACKGROUND, 
-            dest = pygame.Rect(),
-            source = pygame.Rect( )
+        pos = render_engine_ref.calculate_render_position_with_offset(self.pos,offset)
+        render_engine_ref.render_texture_with_trans(
+            tex, Layer_.BACKGROUND,
+            position= (int(pos[0] + self.anim_offset[0]) , int(pos[1] + self.anim_offset[1])) ,
+            flip = (self.flip,False)
         )
         #surf.blit(pygame.transform.flip(self.animation.img(), self.flip, False),
         #          (int(self.pos[0] - offset[0] + self.anim_offset[0]), int(self.pos[1] - offset[1] + self.anim_offset[1])))
@@ -794,9 +795,9 @@ class Wheel_bot(Enemy):
             self.hurt = True
             self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(), True, False))
 
-    def render(self, surf, offset):
+    def render(self,render_engine_ref, offset=(0,0)):
         if self.alerted:
-            self.health_bar.render(surf, offset)
+            self.health_bar.render(render_engine_ref, offset)
 
         super().render(surf, (offset[0] - self.weapon.knockback[0] / 4, offset[1] - self.weapon.knockback[1] / 4))
 

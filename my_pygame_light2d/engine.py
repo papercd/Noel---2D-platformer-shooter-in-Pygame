@@ -837,7 +837,7 @@ class LightingEngine:
 
         return self.make_shader(vertex_src, fragment_src)
 
-    def calculate_render_position_with_offset(self)->tuple[float,float]:
+    def calculate_render_position_with_offset(self,pos,offset = (0,0) )->tuple[float,float]:
         """
         helper function to calculate what the render position of a entity 
         texture would be with render scroll taken into consideration.
@@ -845,8 +845,8 @@ class LightingEngine:
         meant to be used when using the render_texture_with_trans function. 
         
         """
+        return ((pos[0] - offset[0])/self._screen_to_native_ratio,(pos[1] - offset[1])/self._screen_to_native_ratio)
 
-        
         pass 
 
     def render_texture_with_trans(self,
