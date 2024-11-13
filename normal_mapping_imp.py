@@ -308,6 +308,12 @@ class myGame():
         rot_function = None
         self.gm.update_render(quadtree,self._native_res,self._dt,render_scroll,rot_function=rot_function)
 
+
+        # TODO: render enemies to background layer with draw shader, but also 
+        # passing normal map data to achieve dynamic lights with lightmap data
+        
+
+
         self.render_engine.render(self._ambient_node_ptr.range,(0,0), (0,0))
         
         pygame.display.flip()

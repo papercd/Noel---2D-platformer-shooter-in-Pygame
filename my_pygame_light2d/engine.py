@@ -558,9 +558,10 @@ class LightingEngine:
         
 
 
+    def render_items(self,items,offset = (0,0)):
+        pass 
         
-        
-      
+    
 
 
     def render(self,range,offset,screen_shake):
