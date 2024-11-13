@@ -57,7 +57,7 @@ class myGame():
         self.shift_pressed = False
         self.reset = True 
         
-        """ initialize private members""" 
+        """ initialize private  members""" 
         
         # game object containers 
         self._rot_func_t = 0
@@ -95,11 +95,11 @@ class myGame():
 
     def _set_initial_display_settings(self):
         os.environ['SDL_VIDEO_CENTERED'] = '1'
-        #self._screen_size = self._system_display_info['resolution']
-        self._screen_size = (700,550)
+        self._screen_size = self._system_display_info['resolution']
+        #self._screen_size = (700,550)
 
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
-        self._screen_to_native_ratio = 3.5 
+        self._screen_to_native_ratio = 4.5 
         self._native_res = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
 
     def _setup_engine_and_render_surfs(self):
