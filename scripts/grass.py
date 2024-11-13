@@ -70,7 +70,7 @@ This is the amount of spacial padding the tile images have to fit the blades spi
 probably be set to the height of your tallest blade of grass.
 '''
 
-
+from my_pygame_light2d.engine import Layer_
 import os
 import random
 import math
@@ -96,7 +96,10 @@ def normalize(val, amt, target):
 
 # the main object that manages the grass system
 class GrassManager:
-    def __init__(self, game, grass_path, tile_size=15, shade_amount=100, stiffness=360, max_unique=10, place_range=[1, 1], padding=13,burn_spread_speed = 1,burn_rate = 1):
+    def __init__(self,render_engine_ref, game, grass_path, tile_size=15, shade_amount=100, stiffness=360, max_unique=10, place_range=[1, 1], padding=13,burn_spread_speed = 1,burn_rate = 1):
+        # reference to render engine for rendering 
+        self.render_engine = render_engine_ref
+        
         # asset manager
         self.ga = GrassAssets(grass_path, self)
         self.game = game
@@ -182,11 +185,12 @@ class GrassManager:
         pass        
 
     # an update and render combination function
-    def update_render(self,quadtree, surf, dt, offset=(0, 0), rot_function=None):
-        visible_tile_range = (int(surf.get_width() // self.tile_size) + 1, int(surf.get_height() // self.tile_size) + 1)
+
+    def update_render(self,quadtree,native_res , dt, offset=(0, 0), rot_function=None):
+        visible_tile_range = (int(native_res[0] // self.tile_size) + 1, int(native_res[1] // self.tile_size) + 1)
         base_pos = (int(offset[0] // self.tile_size), int(offset[1] // self.tile_size))
 
-        # Precompute the visible grass tiles
+        # Precompute the visible grass tiles 
         render_list = {(base_pos[0] + x, base_pos[1] + y) 
                     for y in range(visible_tile_range[1]) 
                     for x in range(visible_tile_range[0]) 
@@ -196,9 +200,9 @@ class GrassManager:
         if self.ground_shadow[0]:
             shadow_offset = (offset[0] - self.ground_shadow[3][0], offset[1] - self.ground_shadow[3][1])
             for pos in render_list:
-                self.grass_tiles[pos].render_shadow(surf, offset=shadow_offset)
+                self.grass_tiles[pos].render_shadow(offset=shadow_offset)
 
-        # Track tiles to add to burning_grass and to remove from it
+        # Track tiles to add to burning_grass and to remove from it  
         keys_to_remove = []
         keys_to_add = []
 
@@ -223,7 +227,7 @@ class GrassManager:
             # Only render if within the visible range
             if base_pos[0] <= key[0] <= base_pos[0] + visible_tile_range[0] and \
             base_pos[1] <= key[1] <= base_pos[1] + visible_tile_range[1]:
-                tile.render(surf, dt, offset=offset)
+                tile.render(dt, offset=offset)
             
             # Mark tile for removal if fully burned out
             if tile.update_burn_state(dt):
@@ -247,7 +251,7 @@ class GrassManager:
             if quadtree:
                 quadtree.insert(tile)
             tile.update_burn_state(dt)
-            tile.render(surf, dt, offset=offset)
+            tile.render(dt, offset=offset)
             if rot_function:
                 tile.set_rotation(rot_function(tile.pos[0], tile.pos[1]), dt * tile.rot_random_factor_seed)
     """
@@ -565,35 +569,14 @@ class GrassTile:
         # make a new padded surface (to fit blades spilling out of the tile)
         surf = pygame.Surface((self.size + self.padding * 2, self.size + self.padding * 2))
         surf.set_colorkey((0, 0, 0))
-
         
-
-
-
-
         # use custom_blade_data if it's active (uncached). otherwise use the base data (cached).
         if self.custom_blade_data:
             blades = self.custom_blade_data
         else:
             blades = self.blades
 
-
-        #if the grass is burning, this is what I'm going to do. The height, of the grass, decreases as the burning time decreases.
-        #How do I decrease the height of the grass? use a shorter surface. 
-
-   
-        """
-        if self.burning:
-            print(self.burn_life)
-            
-            ratio = self.burn_life/self.max_burn_life
-
-            #print(int((self.size + self.padding * 2) * self.burn_life / self.max_burn_life ))
-            surf = pygame.Surface((self.size + self.padding * 2, max(1,int((self.size + self.padding * 2)* ratio))))
-            surf.set_colorkey((0,0,0))
-        """
-
-        
+                
         # render the shadows of each blade if applicable
         if render_shadow:
             shadow_surf = pygame.Surface(surf.get_size())
@@ -608,26 +591,37 @@ class GrassTile:
                                  max(-90, min(90, blade[3] + self.true_rotation)),self.burn_life/self.max_burn_life,(self.left_is_burning,self.right_is_burning),\
                                     self.burn_initiation_time,blade[4])
 
+        #transform the pygame surfaces to moderngl textures 
+        surf_tex = self.gm.render_engine.surface_to_texture(surf)
+        shadow_tex = self.gm.render_engine.surface_to_texture(surf)
+
         # return surf and shadow_surf if applicable
         if render_shadow:
-            return surf, shadow_surf
+            return surf_tex,shadow_tex 
         else:
-            return surf
+            return surf_tex
 
     # draw the shadow image for the tile
-    def render_shadow(self, surf, offset=(0, 0)):
+    def render_shadow(self, offset=(0, 0)):
+        # shadow cache is just list of textures 
         if self.gm.ground_shadow[0] and (self.base_id in self.gm.shadow_cache):
-            surf.blit(self.gm.shadow_cache[self.base_id], (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
+            tex =self.gm.shadow_cache[self.base_id] 
+            self.gm.render_engine.render_texture(
+                tex,Layer_.BACKGROUND,
+                dest = pygame.Rect(self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding,tex.width,tex.height),
+                source = pygame.Rect(0,0,tex.width,tex.height)
+            )
+            #surf.blit(self.gm.shadow_cache[self.base_id], (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
 
     # draw the grass itself
-    def render(self, surf, dt, offset=(0, 0)):
+    def render(self, dt, offset=(0, 0)):
         # render a new grass tile image if using custom uncached data otherwise use cached data if possible Also, if the tile is burning, don't use 
         # cached data. As burning is another state.
 
         if self.burning <= 0:
             #if it is burning, no caaache. Performance? well, the grass will be deleted after the burn duration, so performace shouldn't be a big issue. 
-            img = self.render_tile()  
-            img_dim = img.get_size()
+            tex = self.render_tile()  
+            tex_dim = tex.size 
 
             decay_rate = int(self.max_burn_life /self.burn_life) * 7
             
@@ -635,7 +629,7 @@ class GrassTile:
                 x_offset_dir = random.randint(0,1)
                 x_offset_dir = -1 if x_offset_dir == 0 else 1
                 #position = [self.pos[0] +img.get_width()//2 -self.padding +x_offset_dir * random.randint(0,img.get_width()//3),self.pos[1] +img.get_height()//2 -self.padding- random.randint(1,img.get_height()//2)]
-                position = [self.pos[0] +img_dim[0]//2 -self.padding +x_offset_dir * random.randint(0,img_dim[0]//3),self.pos[1]+self.gm.tile_size-1-random.randint(1,img_dim[1]//5,) ]
+                position = [self.pos[0] +tex_dim[0]//2 -self.padding +x_offset_dir * random.randint(0,tex_dim[0]//3),self.pos[1]+self.gm.tile_size-1-random.randint(1,tex_dim[1]//5,) ]
                 spark = Spark(position.copy(),math.radians(random.randint(180,360)),\
                                 random.randint(1,3),random.choice(self.spark_colors),scale=0.2,speed_factor=2 *(self.burn_life/self.max_burn_life))
                 light = PointLight(position.copy(),power = 1,radius= 5,illuminator= spark,life = 90)
@@ -644,21 +638,20 @@ class GrassTile:
                 self.gm.game.lights_engine.lights.append(light)
                 self.gm.game.add_spark(spark)    
 
-           
-            surf.blit(img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
-
+            self.gm.render_engine.render_texture(
+                tex, Layer_.BACKGROUND,
+                dest=pygame.Rect(self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding,tex.width,tex.height),
+                source = pygame.Rect(0,0,tex.width,tex.height)
+            )
+            tex.release()
         else: 
             
             if self.custom_blade_data:
                     #if not cached, 
 
                     
-                    img = self.render_tile() 
+                    tex = self.render_tile() 
                     
-                    
-                
-
-                    #mask_img = img_mask.to_surface(unsetcolor=(0,0,0,0))
                     """
                     
                     if self.burning == 0:
@@ -724,7 +717,13 @@ class GrassTile:
                         img.blit(burn_surface,(0,0),special_flags=pygame.BLEND_RGBA_MULT)
 
                     """
-                    surf.blit(img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
+                    self.gm.render_engine.render_texture(
+                        tex, Layer_.BACKGROUND,
+                        dest=pygame.Rect(self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding,tex.width,tex.height),
+                        source = pygame.Rect(0,0,tex.width,tex.height)
+                    )
+                    tex.release()
+                    #surf.blit(img, (self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
                                         
                 
                     """
@@ -741,9 +740,9 @@ class GrassTile:
                 
                 # check if a new cached image needs to be generated and use the cached data if not (also cache shadow if necessary)
                 if (self.render_data not in self.gm.grass_cache) and (self.gm.ground_shadow[0] and (self.base_id not in self.gm.shadow_cache)):
-                    grass_img, shadow_img = self.render_tile(render_shadow=True)
-                    self.gm.grass_cache[self.render_data] = grass_img
-                    self.gm.shadow_cache[self.base_id] = shadow_img
+                    grass_tex, shadow_tex = self.render_tile(render_shadow=True)
+                    self.gm.grass_cache[self.render_data] = grass_tex
+                    self.gm.shadow_cache[self.base_id] = shadow_tex
                 elif self.render_data not in self.gm.grass_cache:
                     self.gm.grass_cache[self.render_data] = self.render_tile()
                 """
@@ -788,7 +787,7 @@ class GrassTile:
 
                     """
                 
-                img = self.gm.grass_cache[self.render_data]
+                tex = self.gm.grass_cache[self.render_data]
                 """
                 if self.burning/self.initial_burning_val<1:
                     img = img.copy()
@@ -805,8 +804,12 @@ class GrassTile:
                     
                 """ 
                 
-                
-                surf.blit(img,(self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
+                self.gm.render_engine.render_texture(
+                    tex, Layer_.BACKGROUND,
+                    dest = pygame.Rect(self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding,tex.width,tex.height),
+                    source = pygame.Rect(0,0,tex.width,tex.height)
+                )
+                #surf.blit(img,(self.pos[0] - offset[0] - self.padding, self.pos[1] - offset[1] - self.padding))
 
         # attempt to move blades back to their base position
         if self.custom_blade_data:

@@ -41,11 +41,11 @@ class myGame():
         # cursor 
 
         # grass manager 
-        self.gm = GrassManager(self,'data/images/tiles/new_live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
+        self.gm = GrassManager(self.render_engine,self,'data/images/tiles/new_live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
                                max_unique=5,place_range=[1,1],burn_spread_speed=3,burn_rate=1.2)
 
         # player 
-        self.player = PlayerEntity(self,(50,50),(14,16))
+        self.player = PlayerEntity(self,(74,10),(14,16))
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
         self.player_movement_input = [False,False] 
@@ -60,6 +60,7 @@ class myGame():
         """ initialize private members""" 
         
         # game object containers 
+        self._rot_func_t = 0
         self._enemies = []
         self._enemy_bullets = []
  
@@ -70,8 +71,10 @@ class myGame():
       
         self._dt = 0
         self._prev_frame_time= time.time()
-     
-
+        self._qtree_x_slack = 50
+        self._qtree_y_slack = 50
+        self._NODE_CAPACITY =4
+        
         self._ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])  
 
 
@@ -93,16 +96,16 @@ class myGame():
     def _set_initial_display_settings(self):
         os.environ['SDL_VIDEO_CENTERED'] = '1'
         #self._screen_size = self._system_display_info['resolution']
-        self._screen_size = (1400,750)
+        self._screen_size = (700,550)
 
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
-        self._screen_to_native_ratio = 2.5 
+        self._screen_to_native_ratio = 3.5 
         self._native_res = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
 
     def _setup_engine_and_render_surfs(self):
         self.render_engine = LightingEngine(self,screen_res=self._screen_size,screen_to_native_ratio = self._screen_to_native_ratio,native_res=self._native_res,lightmap_res=self._native_res)
 
-        self._background_surf_dim = self._foreground_surf_dim = self.buffer_surf_dim = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
+        self._background_surf_dim = self._foreground_surf_dim = self.buffer_surf_dim =  self._native_res 
         self.buffer_surf = pygame.Surface(self.buffer_surf_dim,pygame.SRCALPHA)
         self.background_surf = pygame.Surface(self._background_surf_dim,pygame.SRCALPHA)
         self.foreground_surf = pygame.Surface(self._foreground_surf_dim,pygame.SRCALPHA)
@@ -212,7 +215,10 @@ class myGame():
         for event in pygame.event.get():
             self._handle_common_events(event)
             if event.type == pygame.KEYDOWN:
-
+                
+                if event.key == pygame.K_n:
+                   for _ in range(10):
+                    self.gm.place_tile((74+_,11),10,[0,1,2,3,4])
                 if event.key == pygame.K_a: 
                     """
                     if self.player.flip: 
@@ -288,6 +294,17 @@ class myGame():
         self._scroll[1] += (self.player.rect().centery - self._background_surf_dim[1] /2 - self._scroll[1])/20
         render_scroll = (int(self._scroll[0]), int(self._scroll[1]))
 
+        #----------------------------quadtree update - needed for collision detection between moving entities
+        boundary = Rectangle(Vector2(render_scroll[0]- self._qtree_x_slack,render_scroll[1]- self._qtree_y_slack),\
+                                Vector2(self._native_res[0] +self._qtree_x_slack*2,self._native_res[1] +self._qtree_y_slack*2))
+        quadtree = QuadTree(self._NODE_CAPACITY, boundary)
+
+        x_lower = boundary.position.x
+        x_higher = x_lower + boundary.scale.x
+        y_lower = boundary.position.y
+        y_higher = y_lower + boundary.scale.y
+        #-------------------------------
+
         self.render_engine.clear(0,0,0,255)
 
         #print(self.backgrounds['test_background'].bg_layers[0].width)
@@ -300,7 +317,27 @@ class myGame():
             self.Tilemap,render_scroll
         )
 
-        self.gm.update_render()
+        rot_function = lambda x, y: int(math.sin(self._rot_func_t/60 + x/100)*7)
+        self._rot_func_t += self._dt * 100
+        self.gm.update_render(quadtree,self._native_res,self._dt,render_scroll,rot_function=rot_function)
+
+
+        # TODO: render enemies to background layer with draw shader, but also 
+        # passing normal map data to achieve dynamic lights with lightmap data
+
+        for i in range(len(self._enemies) - 1, -1, -1):
+                enemy = self._enemies[i]
+                
+                if (enemy.pos[0] >= x_lower and enemy.pos[0] <= x_higher) and (enemy.pos[1] >= y_lower and enemy.pos[1] <= y_higher):
+                    kill = enemy.update(self.Tilemap, self.player.pos, self._dt, (0, 0))
+                    quadtree.insert(enemy)
+
+                    # TODO: Handle enemy collision and push-back logic here.
+
+                    enemy.render(self.render_engine, offset=render_scroll)
+                    if kill:
+                        del self._enemies[i]  # Removes the enemy without needing a list copy.
+
 
         self.render_engine.render(self._ambient_node_ptr.range,(0,0), (0,0))
         
