@@ -4,6 +4,7 @@ import random
 import pygame 
 import math
 
+from my_pygame_light2d.engine import Layer_ 
 from scripts.utils import rect_corners,obb_collision
 from pygame.math import Vector2
 from scripts.spark import Spark
@@ -195,9 +196,15 @@ class PhysicsEntity:
         
         return interactables
 
-    def render(self, surf, offset):
-        surf.blit(pygame.transform.flip(self.animation.img(), self.flip, False),
-                  (int(self.pos[0] - offset[0] + self.anim_offset[0]), int(self.pos[1] - offset[1] + self.anim_offset[1])))
+    def render(self, render_engine_ref, offset):
+        tex = self.animation.curr_tex()
+        render_engine_ref.render_texture(
+            tex,Layer_.BACKGROUND, 
+            dest = pygame.Rect(),
+            source = pygame.Rect( )
+        )
+        #surf.blit(pygame.transform.flip(self.animation.img(), self.flip, False),
+        #          (int(self.pos[0] - offset[0] + self.anim_offset[0]), int(self.pos[1] - offset[1] + self.anim_offset[1])))
 
 
 """
@@ -368,7 +375,7 @@ class Enemy(PhysicsEntity):
             self.state = action
             self.animation = self.game.enemy_sprites[self.type + '/' + self.state].copy()
 
-    def render(self, surf, offset=(0, 0), shake=0):
+    def render(self,render_engine_ref,offset=(0, 0), shake=0):
         x_min = offset[0] - self.size[0]
         x_max = offset[0] + surf.get_width() + self.size[0]
         y_min = offset[1] - self.size[1]
@@ -386,7 +393,7 @@ class Enemy(PhysicsEntity):
                 outline_surface = self.outline.to_surface(unsetcolor=(255, 255, 255, 0), setcolor=(0, 0, 0, 255))
                 surf.blit(outline_surface, (int(self.pos[0] - offset[0] + offset_[0]), int(self.pos[1] - offset[1] + offset_[1])))
             #-----------
-            super().render(surf, offset=offset)
+            super().render(render_engine_ref, offset=offset)
 
             if self.hit_mask:
                 hit_surface = self.hit_mask.to_surface(unsetcolor=(0, 0, 0, 0), setcolor=(255, 255, 255, 255))

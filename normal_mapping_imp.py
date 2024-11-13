@@ -70,8 +70,10 @@ class myGame():
       
         self._dt = 0
         self._prev_frame_time= time.time()
-     
-
+        self._qtree_x_slack = 50
+        self._qtree_y_slack = 50
+        self._NODE_CAPACITY =4
+        
         self._ambient_node_ptr = self.Tilemap.ambientNodes.set_ptr(self.player.pos[0])  
 
 
@@ -102,7 +104,7 @@ class myGame():
     def _setup_engine_and_render_surfs(self):
         self.render_engine = LightingEngine(self,screen_res=self._screen_size,screen_to_native_ratio = self._screen_to_native_ratio,native_res=self._native_res,lightmap_res=self._native_res)
 
-        self._background_surf_dim = self._foreground_surf_dim = self.buffer_surf_dim = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
+        self._background_surf_dim = self._foreground_surf_dim = self.buffer_surf_dim =  self._native_res 
         self.buffer_surf = pygame.Surface(self.buffer_surf_dim,pygame.SRCALPHA)
         self.background_surf = pygame.Surface(self._background_surf_dim,pygame.SRCALPHA)
         self.foreground_surf = pygame.Surface(self._foreground_surf_dim,pygame.SRCALPHA)
@@ -291,6 +293,17 @@ class myGame():
         self._scroll[1] += (self.player.rect().centery - self._background_surf_dim[1] /2 - self._scroll[1])/20
         render_scroll = (int(self._scroll[0]), int(self._scroll[1]))
 
+        #----------------------------quadtree update - needed for collision detection between moving entities
+        boundary = Rectangle(Vector2(render_scroll[0]- self._qtree_x_slack,render_scroll[1]- self._qtree_y_slack),\
+                                Vector2(self._native_res[0] +self._qtree_x_slack*2,self._native_res[1] +self._qtree_y_slack*2))
+        quadtree = QuadTree(self._NODE_CAPACITY, boundary)
+
+        x_lower = boundary.position.x
+        x_higher = x_lower + boundary.scale.x
+        y_lower = boundary.position.y
+        y_higher = y_lower + boundary.scale.y
+        #-------------------------------
+
         self.render_engine.clear(0,0,0,255)
 
         #print(self.backgrounds['test_background'].bg_layers[0].width)
@@ -311,7 +324,7 @@ class myGame():
 
         # TODO: render enemies to background layer with draw shader, but also 
         # passing normal map data to achieve dynamic lights with lightmap data
-        
+
         for i in range(len(self._enemies) - 1, -1, -1):
                 enemy = self._enemies[i]
                 
@@ -321,7 +334,7 @@ class myGame():
 
                     # TODO: Handle enemy collision and push-back logic here.
 
-                    enemy.render(self.background_surf, offset=render_scroll)
+                    enemy.render(self.render_engine, offset=render_scroll)
                     if kill:
                         del self._enemies[i]  # Removes the enemy without needing a list copy.
 
