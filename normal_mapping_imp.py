@@ -41,11 +41,11 @@ class myGame():
         # cursor 
 
         # grass manager 
-        self.gm = GrassManager(self,'data/images/tiles/new_live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
+        self.gm = GrassManager(self.render_engine,self,'data/images/tiles/new_live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
                                max_unique=5,place_range=[1,1],burn_spread_speed=3,burn_rate=1.2)
 
         # player 
-        self.player = PlayerEntity(self,(50,50),(14,16))
+        self.player = PlayerEntity(self,(74,10),(14,16))
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
         self.player_movement_input = [False,False] 
@@ -93,10 +93,10 @@ class myGame():
     def _set_initial_display_settings(self):
         os.environ['SDL_VIDEO_CENTERED'] = '1'
         #self._screen_size = self._system_display_info['resolution']
-        self._screen_size = (1400,750)
+        self._screen_size = (700,550)
 
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
-        self._screen_to_native_ratio = 2.5 
+        self._screen_to_native_ratio = 3.5 
         self._native_res = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
 
     def _setup_engine_and_render_surfs(self):
@@ -212,7 +212,10 @@ class myGame():
         for event in pygame.event.get():
             self._handle_common_events(event)
             if event.type == pygame.KEYDOWN:
-
+                
+                if event.key == pygame.K_n:
+                   for _ in range(10):
+                    self.gm.place_tile((74+_,11),10,[0,1,2,3,4])
                 if event.key == pygame.K_a: 
                     """
                     if self.player.flip: 
@@ -299,6 +302,11 @@ class myGame():
         self.render_engine.render_tilemap(
             self.Tilemap,render_scroll
         )
+
+        # create quadtree here # 
+        quadtree = None 
+        rot_function = None
+        self.gm.update_render(quadtree,self._native_res,self._dt,render_scroll,rot_function=rot_function)
 
         self.render_engine.render(self._ambient_node_ptr.range,(0,0), (0,0))
         
