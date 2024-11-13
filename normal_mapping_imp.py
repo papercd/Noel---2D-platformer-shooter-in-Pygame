@@ -60,6 +60,7 @@ class myGame():
         """ initialize private members""" 
         
         # game object containers 
+        self._rot_func_t = 0
         self._enemies = []
         self._enemy_bullets = []
  
@@ -316,9 +317,8 @@ class myGame():
             self.Tilemap,render_scroll
         )
 
-        # create quadtree here # 
-        quadtree = None 
-        rot_function = None
+        rot_function = lambda x, y: int(math.sin(self._rot_func_t/60 + x/100)*7)
+        self._rot_func_t += self._dt * 100
         self.gm.update_render(quadtree,self._native_res,self._dt,render_scroll,rot_function=rot_function)
 
 
