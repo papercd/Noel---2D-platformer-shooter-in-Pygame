@@ -174,7 +174,12 @@ class GrassManager:
                     self.grass_tiles[pos].apply_force(location, radius, dropoff)
                 if pos in self.burning_grass_tiles:
                     self.burning_grass_tiles[pos].apply_force(location, radius, dropoff)
-                
+
+    def update(self,quadtree,surf,dt, offset = (0,0),rot_function = None):
+        pass 
+
+    def render(self,qquadtree,surf,dt, offset = (0,0),rot_function = None):
+        pass        
 
     # an update and render combination function
     def update_render(self,quadtree, surf, dt, offset=(0, 0), rot_function=None):
@@ -760,7 +765,7 @@ class GrassTile:
                     #move the outline points closer to the center of the grass img based on how much the grass has burnt. 
                     min_loc = 0
                     #move the outline points closer to the center of the grass img based on how much the grass has burnt. 
-                    
+                    (tile.pos[0] * tilemap.tile_size-offset[0], tile.pos[1] *tilemap.tile_size-offset[1])
                     for p in img_mask.outline(every=2):
                         dist_from_base_ratio = (mask_img.get_height() - p[1]) / (2*mask_img.get_height())
                         burn_ratio = max(dist_from_base_ratio,self.burn_life/self.max_burn_life)

@@ -300,6 +300,8 @@ class myGame():
             self.Tilemap,render_scroll
         )
 
+        self.gm.update_render()
+
         self.render_engine.render(self._ambient_node_ptr.range,(0,0), (0,0))
         
         pygame.display.flip()
