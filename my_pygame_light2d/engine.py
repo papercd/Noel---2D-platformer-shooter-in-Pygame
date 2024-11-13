@@ -113,13 +113,25 @@ class LightingEngine:
             except KeyError:
                 print("Uniform 'range' not found")
 
-        """
-        fragment_src_mask = resources.read_text(
-            'pygame_light2d', 'fragment_mask.glsl')
+        with open('my_pygame_light2d/fragment_draw.glsl', encoding='utf-8') as file:
+           
+            fragment_src_draw = file.read()
+            
+            try:
+                self._prog_draw = self.ctx.program(vertex_shader=vertex_src, fragment_shader=fragment_src_draw)
+            except Exception as e:
+                print("Shader compilation or linking error:", e)
+                return
 
-        """
-        fragment_src_draw = resources.read_text(
-            'pygame_light2d', 'fragment_draw.glsl')
+            # Print all active uniforms to verify 'range' is present
+            print("Active uniforms:")
+            for uniform in self._prog_draw:
+                print(uniform)
+            
+            try:
+                print(self._prog_draw['u_alpha'])
+            except KeyError:
+                print("Uniform 'u_alpha' not found")
 
         # Create shader programs
         
@@ -129,12 +141,22 @@ class LightingEngine:
         self._prog_blur = self.ctx.program(vertex_shader=vertex_src,
                                            fragment_shader=fragment_src_blur)
         
-        
-        
         self._prog_draw = self.ctx.program(vertex_shader=vertex_src,
                                            fragment_shader=fragment_src_draw)
 
+
+    def set_alpha_value_draw_shader(self,alpha_value : float) -> None:
+        """
+        set the alpha value uniform for the draw shader.        
         
+        """
+        assert  0<= alpha_value <=1
+
+        self._prog_draw['u_alpha'].value = alpha_value
+
+
+        
+
 
     def _create_screen_vertex_buffers(self):
         # Screen mesh

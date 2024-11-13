@@ -223,12 +223,13 @@ with much simpler properties
 
 class CollectableItem:
     def __init__(self,game,pos,item):
+
         self.game = game 
         self.Item = item
         self.pos = pos
         self.e_type = 'item'
         self.state = 'inanimate'
-        self.image = item.image.copy()
+        self.tex = item.tex
         self.size = [self.image.get_width()//2, self.image.get_height()//2]
 
         self.life = 600
@@ -349,10 +350,19 @@ class CollectableItem:
 
 
 
-    def render(self,surf,offset = (0,0)):
+    def render(self,render_engine_ref:LightingEngine,offset = (0,0)):
         if self.life < 60:
-            self.image.set_alpha(255 * (self.life/60))
-        surf.blit(self.image, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
+            alpha_value = min(1,0,max(0.0,self.life / 60.0))
+            render_engine_ref.set_alpha_value_draw_shader(alpha_value)
+        
+        render_engine_ref.render_texture(
+            self.image,Layer_.BACKGROUND,
+            dest = pygame.Rect(self.pos[0] - offset[0],self.pos[1] -offset[1],self.image.width,self.image.height),
+            source= pygame.Rect(0,0,self.image.width,self.image.height)
+        )
+
+        render_engine_ref.set_alpha_value_draw_shader(1.0)
+        #surf.blit(self.image, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
          
 
 

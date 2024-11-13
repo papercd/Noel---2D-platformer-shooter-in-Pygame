@@ -63,7 +63,8 @@ class myGame():
         self._rot_func_t = 0
         self._enemies = []
         self._enemy_bullets = []
- 
+        self._collectable_items = []
+
         # particles and effects containers 
 
         
@@ -337,6 +338,22 @@ class myGame():
                     enemy.render(self.render_engine, offset=render_scroll)
                     if kill:
                         del self._enemies[i]  # Removes the enemy without needing a list copy.
+
+        
+        for i in range(len(self._collectable_items) - 1, -1, -1):
+                collectable_item = self._collectable_items[i]
+
+                if (collectable_item.life <= 0 or 
+                    (collectable_item.pos[0] + collectable_item.size[0] <= x_lower or collectable_item.pos[0] >= x_higher) or 
+                    (collectable_item.pos[1] + collectable_item.size[1] <= y_lower or collectable_item.pos[1] >= y_higher)):
+                    
+                    del self._collectable_items[i]
+                    continue
+
+                collectable_item.update_pos(self.Tilemap)
+                quadtree.insert(collectable_item)
+                collectable_item.render(self.render_engine, offset=render_scroll)
+
 
 
         self.render_engine.render(self._ambient_node_ptr.range,(0,0), (0,0))
