@@ -312,6 +312,18 @@ class myGame():
         # TODO: render enemies to background layer with draw shader, but also 
         # passing normal map data to achieve dynamic lights with lightmap data
         
+        for i in range(len(self._enemies) - 1, -1, -1):
+                enemy = self._enemies[i]
+                
+                if (enemy.pos[0] >= x_lower and enemy.pos[0] <= x_higher) and (enemy.pos[1] >= y_lower and enemy.pos[1] <= y_higher):
+                    kill = enemy.update(self.Tilemap, self.player.pos, self._dt, (0, 0))
+                    quadtree.insert(enemy)
+
+                    # TODO: Handle enemy collision and push-back logic here.
+
+                    enemy.render(self.background_surf, offset=render_scroll)
+                    if kill:
+                        del self._enemies[i]  # Removes the enemy without needing a list copy.
 
 
         self.render_engine.render(self._ambient_node_ptr.range,(0,0), (0,0))
