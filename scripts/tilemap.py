@@ -131,11 +131,11 @@ class Tilemap:
         return shadow_objs
             
       
-    def update_shadow_objs(self,surf,offset = (0,0)):
+    def update_shadow_objs(self,native_res,offset = (0,0)):
         hulls = []
         
-        for x_cor in range(offset[0] // self.tile_size - 10, (offset[0] + surf.get_width()) // self.tile_size +10):
-            for y_cor in range(offset[1] // self.tile_size -10, (offset[1] + surf.get_height()) // self.tile_size +10): 
+        for x_cor in range(offset[0] // self.tile_size - 10, (offset[0] + native_res[0]) // self.tile_size +10):
+            for y_cor in range(offset[1] // self.tile_size -10, (offset[1] + native_res[1]) // self.tile_size +10): 
                 coor = str(x_cor) + ';' + str(y_cor)
                 if coor in self.tilemap:
                     tile = self.tilemap[coor]

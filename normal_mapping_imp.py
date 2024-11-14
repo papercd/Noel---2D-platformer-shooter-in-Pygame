@@ -39,6 +39,8 @@ class myGame():
         self.Tilemap = Tilemap(self,tile_size=16,offgrid_layers=2)
         
         # cursor 
+        pygame.mouse.set_visible(False)
+        self.cursor = Cursor(self,(50,50),(4,4),'default')
 
         # grass manager 
         self.gm = GrassManager(self.render_engine,self,'data/images/tiles/new_live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
@@ -49,7 +51,8 @@ class myGame():
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
         self.player_movement_input = [False,False] 
-   
+
+        
   
         # other tracking variables
         self.frame_count = 0
@@ -122,7 +125,10 @@ class myGame():
         self.interactable_obj_sprites = self.game_assets.interactable_obj_sprites
         self.enemy_sprites = self.game_assets.enemies
         self.backgrounds = self.game_assets.backgrounds
-
+        self.weapons = {
+            'ak' : AK_47(self,load_pygame_srf('weapons/ak_holding.png'),load_pygame_srf('weapons/ak_47_img.png'),\
+                         load_pygame_srf('weapons/shrunk/ak_47.png'),"The staple AK-47."),
+        }
         """
 
         self._window_icon = self.general_sprites['player']
@@ -175,7 +181,11 @@ class myGame():
        
     
     def _handle_common_events(self,event):
+        
         if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_f:
+                new_ak = self.weapons['ak'].copy()
+                self.player.equip_test(new_ak)
             if event.key == pygame.K_ESCAPE:
                 self.quit_game() 
             if event.key == pygame.K_F12:
@@ -296,7 +306,6 @@ class myGame():
         self._scroll[0] += (self.player.rect().centerx - self._background_surf_dim[0] /2 - self._scroll[0])/20
         self._scroll[1] += (self.player.rect().centery - self._background_surf_dim[1] /2 - self._scroll[1])/20
         render_scroll = (int(self._scroll[0]), int(self._scroll[1]))
-
         #----------------------------quadtree update - needed for collision detection between moving entities
         boundary = Rectangle(Vector2(render_scroll[0]- self._qtree_x_slack,render_scroll[1]- self._qtree_y_slack),\
                                 Vector2(self._native_res[0] +self._qtree_x_slack*2,self._native_res[1] +self._qtree_y_slack*2))
@@ -320,6 +329,29 @@ class myGame():
             self.Tilemap,render_scroll
         )
 
+        if self.player.pos[0] < self._ambient_node_ptr.range[0]:
+                if self._ambient_node_ptr.prev: 
+                    self._ambient_node_ptr = self._ambient_node_ptr.prev
+                    if isinstance(self._ambient_node_ptr,interpolatedLightNode):
+                        print("check")
+                        self.render_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+                    else:
+                        self.render_engine.set_ambient(*self._ambient_node_ptr.colorValue) 
+
+        elif self.player.pos[0] > self._ambient_node_ptr.range[1]:
+            if self._ambient_node_ptr.next: 
+                self._ambient_node_ptr = self._ambient_node_ptr.next
+                if isinstance(self._ambient_node_ptr,interpolatedLightNode):
+                    print("check")
+                    self.render_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+                else:
+                    self.render_engine.set_ambient(*self._ambient_node_ptr.colorValue) 
+        else: 
+            if isinstance(self._ambient_node_ptr,interpolatedLightNode):
+                self.render_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+
+
+        self.render_engine.hulls = self.Tilemap.update_shadow_objs(self._native_res)
     
         # TODO: render enemies to background layer with draw shader, but also 
         # passing normal map data to achieve dynamic lights with lightmap data
@@ -420,20 +452,23 @@ class myGame():
                 del self._particles[i]
 
         self.player.accelerate(self.player_movement_input)
-        self.player.update_pos(self.Tilemap,quadtree,[50,50],self.frame_count)
+        self.player.update_pos(self.Tilemap,quadtree,self.cursor.pos , self.frame_count)
         self.player.render(self.render_engine,render_scroll)
 
+        if not self.player.crouch: 
+            self.gm.apply_force((self.player.pos[0]+ self.player.size[0]//2, self.player.pos[1]+ self.player.size[1]//2),self.Tilemap.tile_size//4,self.Tilemap.tile_size*3.4//7)
         rot_function = lambda x, y: int(math.sin(self._rot_func_t/60 + x/100)*7)
         self._rot_func_t += self._dt * 100
         self.gm.update_render(quadtree,self._native_res,self._dt,render_scroll,rot_function=rot_function)
 
+        self.cursor.update_render(self.render_engine)
+       
 
 
         self.render_engine.render(self._ambient_node_ptr.range,render_scroll, (0,0))
         
         pygame.display.flip()
         fps = self._clock.get_fps()
-        print(fps)
         pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
         self._clock.tick(60)
 

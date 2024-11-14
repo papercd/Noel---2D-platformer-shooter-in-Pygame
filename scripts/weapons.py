@@ -162,15 +162,17 @@ class Weapon:
                 rotate_cap_right = True 
             
             pass 
+
+        sprite_dim = self.sprite_buffer.get_size()
         #get the angle, the pivot, and offset
         if self.flipped: 
             self.pivot = [self.holder.pos[0]+self.right_anchor[0]-offset[0]-1,self.holder.pos[1]+self.right_anchor[1] -offset[1]]
-            self.render_offset = pygame.math.Vector2(-self.sprite_buffer.width/2 + self.img_pivot[0] , self.sprite_buffer.height/2 - self.img_pivot[1])
+            self.render_offset = pygame.math.Vector2(-sprite_dim[0]/2 + self.img_pivot[0] , sprite_dim[1]/2 - self.img_pivot[1])
 
             # self.render_offset = pygame.math.Vector2(-self.sprite_buffer.get_rect().centerx + self.img_pivot[0],self.sprite_buffer.get_rect().centery - self.img_pivot[1] )       
         else: 
             self.pivot = [self.holder.pos[0]+self.left_anchor[0]-offset[0]+1,self.holder.pos[1]+self.left_anchor[1] -offset[1]]
-            self.render_offset = pygame.math.Vector2(self.sprite_buffer.width/2 - self.img_pivot[0] , self.sprite_buffer.height/2 - self.img_pivot[1])
+            self.render_offset = pygame.math.Vector2(sprite_dim[0]/2 - self.img_pivot[0] , sprite_dim[1]/2 - self.img_pivot[1])
             
             # self.render_offset = pygame.math.Vector2(self.sprite_buffer.get_rect().centerx - self.img_pivot[0], self.sprite_buffer.get_rect().centery - self.img_pivot[1])
 
@@ -179,7 +181,7 @@ class Weapon:
 
         #angle is in degrees 
         angle = math.degrees(math.atan2(-dy,dx)) 
-        sprite_width = self.sprite_buffer.width - self.sprite_width_discrepency
+        sprite_width = sprite_dim[0] - self.sprite_width_discrepency
         
         #separate angle varialble for the gun's opening - to apply angle cap and to pass onto firing bullet 
         self.angle_opening = angle 
@@ -191,7 +193,7 @@ class Weapon:
         if (angle > 90 and angle <= 180) or (angle < -90 and angle >= -180):
             if rotate_cap_right:
                 if self.flipped:
-                    #self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
+                    self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
                     self.flipped = False
                     blitz = True 
                 if (angle > 90 and angle <= 180):
@@ -201,7 +203,7 @@ class Weapon:
                 self.angle_opening = -angle 
             else: 
                 if self.flipped != True: 
-                    #self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
+                    self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
                     self.flipped = True 
                     blitz = True 
                 angle += 180    
@@ -209,7 +211,7 @@ class Weapon:
         else: 
             if rotate_cap_left:
                 if self.flipped == False: 
-                    #self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
+                    self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
                     self.flipped = True
                     blitz = True 
                 if (angle >0 and angle <= 90) : 
@@ -219,18 +221,18 @@ class Weapon:
                 self.angle_opening = 180-angle 
             else: 
                 if self.flipped != False: 
-                    #self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
+                    self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
                     self.flipped = False  
                     blitz = True 
                 angle = -angle
 
         #if self.flipped: sprite_buffer = pygame.transform.flip(sprite_buffer,True,False)
-        
-        """
-        weapon_display = pygame.Surface((self.sprite_buffer.get_width(),self.sprite_buffer.get_height()),pygame.SRCALPHA)
+       
+       
+        weapon_display = pygame.Surface((sprite_dim[0],sprite_dim[1]),pygame.SRCALPHA)
         weapon_display.blit(self.sprite_buffer,(0,0))
         rotated_image,rect = self.rotate(weapon_display,angle if set_angle == None else set_angle,self.pivot,self.render_offset)
-        """
+        
 
         #the gun's opening position  
         #self.opening_pos[0] = self.pivot[0] + math.cos(math.radians(-self.angle_opening)) * sprite_width
@@ -251,13 +253,14 @@ class Weapon:
             self.knockback[1] = max(self.knockback[1] -1.45, 0)
 
         if not blitz:
+            tex = render_engine_ref.surface_to_texture(rotated_image)
             render_engine_ref.render_texture(
-                self.sprite_buffer,Layer_.BACKGROUND,
-                dest =  pygame.Rect(self.opening_pos[0] - offset[0], self.opening_pos[1] - offset[1], self.sprite_buffer.width,self.sprite_buffer.height),
-                source = pygame.Rect(0,0, self.sprite_buffer.width,self.sprite_buffer.height),
-                angle = math.radians(self.angle_opening),
-                flip= (self.flipped,False)
+                tex, Layer_.BACKGROUND,
+                dest = pygame.Rect(rect.topleft[0] + self.knockback[0]  , rect.topleft[1] +self.knockback[1], tex.width,tex.height),
+                source = pygame.Rect(0,0,tex.width,tex.height),
             )
+            #tex.release()
+            
 
         #if not blitz: 
             #surf.blit(testSurf,(self.opening_pos[0]-offset[0],self.opening_pos[1]-offset[1]))

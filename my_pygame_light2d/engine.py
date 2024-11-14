@@ -14,6 +14,8 @@ from my_pygame_light2d.color import normalize_color_arguments, denormalize_color
 from my_pygame_light2d.double_buff import DoubleBuff
 from my_pygame_light2d.util import create_rotated_rect,to_dest_coords
 
+BASE_PATH = 'data/images/'
+
 class Layer_(Enum):
     BACKGROUND = 1,
     FOREGROUND = 2,
@@ -89,11 +91,19 @@ class LightingEngine:
         with open('my_pygame_light2d/vertex.glsl',encoding='utf-8') as file:
             vertex_src = file.read()
 
+        with open('my_pygame_light2d/rotate_vertex.glsl',encoding='utf-8') as file:
+            rotate_vertex_src = file.read()
+
+        with open('my_pygame_light2d/fragment_rotate.glsl',encoding='utf-8') as file:
+            fragment_src_rotate= file.read()
+
+
         fragment_src_light = resources.read_text(
             'pygame_light2d', 'fragment_light.glsl')
         fragment_src_blur = resources.read_text(
             'pygame_light2d', 'fragment_blur.glsl')
-        
+
+               
         # Read source files
 
         with open('my_pygame_light2d/fragment_mask.glsl', encoding='utf-8') as file:
@@ -146,6 +156,9 @@ class LightingEngine:
         
         self._prog_draw = self.ctx.program(vertex_shader=vertex_src,
                                            fragment_shader=fragment_src_draw)
+        
+        self._prog_rotate = self.ctx.program(vertex_shader= rotate_vertex_src,
+                                             fragment_shader=fragment_src_rotate)
 
 
     def set_alpha_value_draw_shader(self,alpha_value : float) -> None:
@@ -187,7 +200,7 @@ class LightingEngine:
    
 
     def release_objects(self):
-        
+        self._prog_rotate.release()
         self._prog_light.release()
         self._prog_blur.release()
         self._prog_mask.release()
@@ -393,7 +406,7 @@ class LightingEngine:
             moderngl.Texture: Loaded texture.
         """
 
-        img = pygame.image.load(path).convert_alpha()
+        img = pygame.image.load(BASE_PATH+ path).convert_alpha()
         return self.surface_to_texture(img)
     
 
@@ -819,6 +832,84 @@ class LightingEngine:
         self._prog_draw['rotation'].value = 0
         self._prog_draw['flip_horizontal'].value = False
         self._prog_draw['flip_vertical'].value = False
+
+
+    def create_rotated_texture(self, source_texture: moderngl.Texture, 
+                            rotation_angle: float, pivot: tuple[float, float]) -> moderngl.Texture:
+        """
+        Creates a rotated texture from a given texture and returns the new rotated texture
+        contained within a fitting bounding box.
+        
+        Args:
+            source_texture (moderngl.Texture): The source texture to rotate.
+            rotation_angle (float): Rotation angle in radians.
+            pivot (tuple[float, float]): The pivot point for the rotation, given as (x, y) coordinates.
+            
+        Returns:
+            moderngl.Texture: A new texture containing the rotated image within a fitting bounding box.
+        """
+        src_width, src_height = source_texture.size
+
+        # Calculate the bounding box size after rotation
+        cos_angle = abs(np.cos(rotation_angle))
+        sin_angle = abs(np.sin(rotation_angle))
+        new_width = int(src_width * cos_angle + src_height * sin_angle)
+        new_height = int(src_width * sin_angle + src_height * cos_angle)
+
+        # Create a framebuffer and a new texture for the rotated output
+        rotated_texture = self.ctx.texture((new_width, new_height), 4)
+        rotated_texture.filter = (moderngl.NEAREST, moderngl.NEAREST)
+        fbo = self.ctx.framebuffer(rotated_texture)
+
+        # Compute the translation to center the pivot in the new bounding box
+        pivot_offset_x = pivot[0] - src_width / 2.0
+        pivot_offset_y = pivot[1] - src_height / 2.0
+        translation_x = new_width / 2.0 - pivot_offset_x
+        translation_y = new_height / 2.0 - pivot_offset_y
+
+        # Prepare the vertices and texture coordinates
+        vertices = np.array([
+            (-src_width / 2, src_height / 2), (src_width / 2, src_height / 2), (-src_width / 2, -src_height / 2),
+            (-src_width / 2, -src_height / 2), (src_width / 2, src_height / 2), (src_width / 2, -src_height / 2),
+        ], dtype=np.float32)
+
+        tex_coords = np.array([
+            (0.0, 1.0), (1.0, 1.0), (0.0, 0.0),
+            (0.0, 0.0), (1.0, 1.0), (1.0, 0.0),
+        ], dtype=np.float32)
+
+        # Create buffer data and set up vertex array object
+        buffer_data = np.hstack([vertices, tex_coords])
+        vbo = self.ctx.buffer(buffer_data)
+        vao = self.ctx.vertex_array(self._prog_rotate,[
+            (vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
+        ])
+
+        # Set rotation matrix for pivot rotation
+        rotation_matrix = np.array([
+            [cos_angle, -np.sin(rotation_angle), 0.0],
+            [np.sin(rotation_angle), cos_angle, 0.0],
+            [0.0, 0.0, 1.0]
+        ], dtype=np.float32)
+
+        # Set uniforms for rotation, translation, and texture
+        vao.program['rotation_matrix'].write(rotation_matrix.tobytes())
+        vao.program['translation'].value = (translation_x / new_width * 2.0 - 1.0, 1.0 - translation_y / new_height * 2.0)
+        vao.program['source_texture'].value = 0
+
+        # Render the rotated texture to the new framebuffer
+        source_texture.use(0)
+        fbo.use()
+        fbo.clear(0.0, 0.0, 0.0, 0.0)
+        vao.render()
+
+        # Clean up resources
+        vbo.release()
+        vao.release()
+        fbo.release()
+
+        return rotated_texture
+
 
     def _test_render_tex_to_fbo(self, tex: moderngl.Texture, fbo: moderngl.Framebuffer, dest: pygame.Rect, source: pygame.Rect,
                        rotation: float = 0.0, flip: tuple[bool,bool] = (False,False)):

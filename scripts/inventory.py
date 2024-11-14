@@ -160,7 +160,7 @@ class Cursor_Context_Box():
         self.description = description
         self.flip = flip
 
-    def update(self, x, y, surf,scale) -> None:
+    def update(self, x, y, render_engine,scale) -> None:
         #update and render together in one function 
 
         footer = False

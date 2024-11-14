@@ -1569,10 +1569,14 @@ class PlayerEntity(PhysicsEntity):
                 
         
         
-        #print(self.changing_done)
+        #testing weapon rendering  
+        if self.cur_weapon_node:
+            self.cur_weapon_node.update(self.d_cursor_pos)
+
+        """
         if self.cur_weapon_node:
             self.cur_weapon_node.weapon.update(self.d_cursor_pos)
-        
+        """
         #update the health and stamina bars 
         
     def accel(self):
@@ -1596,8 +1600,10 @@ class PlayerEntity(PhysicsEntity):
         
     
     def render(self,render_engine_ref:LightingEngine, offset = (0,0)):
-        
-        knockback = (0,0) if not self.cur_weapon_node else (self.cur_weapon_node.weapon.knockback[0]/5,self.cur_weapon_node.weapon.knockback[1]/9)
+        #change weapon to weapon node later after testing 
+
+        knockback = (0,0) if not self.cur_weapon_node else (self.cur_weapon_node.knockback[0]/5,self.cur_weapon_node.knockback[1]/9)
+        #knockback = (0,0) if not self.cur_weapon_node else (self.cur_weapon_node.weapon.knockback[0]/5,self.cur_weapon_node.weapon.knockback[1]/9)
 
         super().render(render_engine_ref,(offset[0] - knockback[0],offset[1] - knockback[1]))
 
@@ -1653,7 +1659,7 @@ class PlayerEntity(PhysicsEntity):
                         
                 arm_pos_angle = angles[self.changing_done]
             """
-            self.cur_weapon_node.weapon.render(render_engine_ref,offset) 
+            self.cur_weapon_node.render(render_engine_ref,offset) 
             
     
     def interact(self):
@@ -1799,6 +1805,10 @@ class PlayerEntity(PhysicsEntity):
                     self.change_scroll = 0
                     self.change_weapon_inc = False 
         """
+    def equip_test(self,weapon):
+        self.animation = self.game.general_sprites[self.type + '/holding_gun/' + self.state]
+        self.cur_weapon_node = weapon 
+        weapon.equip(self)
 
     def equip(self):
         

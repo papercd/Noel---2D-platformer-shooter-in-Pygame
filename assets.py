@@ -146,7 +146,16 @@ class GameAssets:
     def load_cursor_textures(self):
         cursor_paths = {
             'cursor/default': ('cursor/default_cursor.png' ),
-            'crosshair': ('cursor/crosshair.png')
+            'crosshair': ('cursor/crosshair.png'),
+            "cursor": ("ui/inventory/cursor.png"),
+            "grab": ("ui/inventory/cursor_grab.png"),
+            "magnet": ("ui/inventory/cursor_magnet.png"),
+            "move": ("ui/inventory/cursor_move.png"),
+            "text": ("ui/inventory/cursor_text.png"),           # Added cursor text icon
+
+            "rifle_crosshair": ("cursor/default_cursor.png"),
+
+            
         }
         return self._load_textures_from_path_dict(cursor_paths)
 

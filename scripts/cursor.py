@@ -1,7 +1,9 @@
 import pygame 
-from scripts.utils import load_image
+from my_pygame_light2d.engine import LightingEngine,Layer_
 from pygame.locals import * 
 
+
+"""
 CURSOR_ICONS = {
     "cursor": load_image("ui/inventory/cursor.png",background='transparent'),
     "grab": load_image("ui/inventory/cursor_grab.png",background='transparent'),
@@ -11,7 +13,7 @@ CURSOR_ICONS = {
 
     "rifle_crosshair": load_image("cursor/default_cursor.png",background= 'black'),
 }
-
+"""
 class Cursor:
     def __init__(self,game,pos,aim_offset,type = 'default'):
         self.game = game 
@@ -30,8 +32,7 @@ class Cursor:
         self.magnet = False
         self.move = False
         self.context = None
-        self.image = pygame.transform.scale(
-                    CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))    
+        self.image = self.game.general_sprites["cursor"]
 
 
 
@@ -39,7 +40,7 @@ class Cursor:
     def set_cooldown(self) -> None:
         self.cooldown = 10
 
-    def update_render(self,surf):
+    def update_render(self,render_engine_ref:LightingEngine):
         
         self.pos = pygame.mouse.get_pos()
         self.pos = ((self.pos[0]/2),(self.pos[1]/2))
@@ -49,7 +50,15 @@ class Cursor:
 
 
         if self.item is not None:
-            self.item.draw(*self.pos,surf, 1)
+
+            render_engine_ref.render_texture(
+                self.item.tex,Layer_.FOREGROUND,
+                dest=pygame.Rect(self.pos[0],self.pos[1],self.item.tex.width,self.item.tex.height),
+                source= pygame.Rect(0,0,self.item.tex.width,self.item.tex.height)
+            )
+
+
+            #self.item.draw(*self.pos,surf, 1)
         if self.cooldown > 0:
             self.cooldown -= 1
 
@@ -65,31 +74,42 @@ class Cursor:
         """
 
         if self.context is not None:
-            self.context.update(*self.pos,surf,1)
+            self.context.update(*self.pos,render_engine_ref,1)
             self.context = None
 
         if self.interacting: 
             if self.magnet:
-                self.image = pygame.transform.scale(
-                CURSOR_ICONS["magnet"], (9 * 1, 10 * 1))
+                self.image = self.game.general_sprites["magnet"]
+               # pygame.transform.scale(
+               # CURSOR_ICONS["magnet"], (9 * 1, 10 * 1))
             elif self.move:
-                self.image = pygame.transform.scale(
-                    CURSOR_ICONS["move"], (9 * 1, 10 * 1))
+                self.image = self.game.general_sprites["move"]
+                #self.image = pygame.transform.scale(
+                #   CURSOR_ICONS["move"], (9 * 1, 10 * 1))
             elif self.item is not None:
-                self.image = pygame.transform.scale(
-                    CURSOR_ICONS["grab"], (9 * 1, 10 * 1))
+                self.image = self.game.general_sprites["grab"]
+                #self.image = pygame.transform.scale(
+                #    CURSOR_ICONS["grab"], (9 * 1, 10 * 1))
             
             else:
-                self.image = pygame.transform.scale(
-                    CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))    
+                self.image = self.game.general_sprites["cursor"]
+                #self.image = pygame.transform.scale(
+                #    CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))    
         else: 
             if self.game.player.cur_weapon_node:
-                self.image = CURSOR_ICONS["rifle_crosshair"]
+                #self.image = CURSOR_ICONS["rifle_crosshair"]
+                self.image = self.game.general_sprites["rifle_crosshair"]
             else: 
-                self.image = pygame.transform.scale(
-                    CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))   
+                self.image = self.game.general_sprites["cursor"]
+                #self.image = pygame.transform.scale(
+                #    CURSOR_ICONS["cursor"], (9 * 1, 10 * 1))   
 
-        surf.blit(self.image,(self.pos[0] - self.aim_offset[0],self.pos[1] - self.aim_offset[1]))
+        render_engine_ref.render_texture(
+            self.image,Layer_.FOREGROUND,
+            dest= pygame.Rect(self.pos[0] - self.aim_offset[0], self.pos[1] -self.aim_offset[1],self.image.width,self.image.height),
+            source= pygame.Rect(0,0,self.image.width,self.image.height)
+        )
+        #surf.blit(self.image,(self.pos[0] - self.aim_offset[0],self.pos[1] - self.aim_offset[1]))
 
 
 

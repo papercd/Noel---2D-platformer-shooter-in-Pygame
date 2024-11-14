@@ -12,6 +12,11 @@ import numpy as np
 BASE_PATH = 'data/images/'
 
 def load_texture(path):
+    sprite= pygame.image.load(BASE_PATH + path).convert_alpha()
+    return sprite 
+
+
+def load_pygame_srf(path):
     
     """
     if background == 'black':
@@ -20,7 +25,7 @@ def load_texture(path):
        
     elif background == 'transparent': 
     """
-    sprite= pygame.image.load(BASE_PATH + path)
+    sprite= pygame.image.load(BASE_PATH + path).convert_alpha()
     return sprite 
 
 
