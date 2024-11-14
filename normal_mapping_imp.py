@@ -97,8 +97,8 @@ class myGame():
 
     def _set_initial_display_settings(self):
         os.environ['SDL_VIDEO_CENTERED'] = '1'
-        self._screen_size = self._system_display_info['resolution']
-        #self._screen_size = (700,550)
+        #self._screen_size = self._system_display_info['resolution']
+        self._screen_size = (700,550)
 
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
         self._screen_to_native_ratio = 4.5 
@@ -319,7 +319,7 @@ class myGame():
             self.Tilemap,render_scroll
         )
 
-        
+    
         # TODO: render enemies to background layer with draw shader, but also 
         # passing normal map data to achieve dynamic lights with lightmap data
 
