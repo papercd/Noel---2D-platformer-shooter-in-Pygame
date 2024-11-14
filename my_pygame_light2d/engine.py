@@ -84,8 +84,11 @@ class LightingEngine:
 
     def _load_shaders(self):
         # Read source files
-        vertex_src = resources.read_text(
-            'pygame_light2d', 'vertex.glsl')
+        #vertex_src = resources.read_text(
+        #    'pygame_light2d', 'vertex.glsl')
+        with open('my_pygame_light2d/vertex.glsl',encoding='utf-8') as file:
+            vertex_src = file.read()
+
         fragment_src_light = resources.read_text(
             'pygame_light2d', 'fragment_light.glsl')
         fragment_src_blur = resources.read_text(
@@ -113,13 +116,25 @@ class LightingEngine:
             except KeyError:
                 print("Uniform 'range' not found")
 
-        """
-        fragment_src_mask = resources.read_text(
-            'pygame_light2d', 'fragment_mask.glsl')
+        with open('my_pygame_light2d/fragment_draw.glsl', encoding='utf-8') as file:
+           
+            fragment_src_draw = file.read()
+            
+            try:
+                self._prog_draw = self.ctx.program(vertex_shader=vertex_src, fragment_shader=fragment_src_draw)
+            except Exception as e:
+                print("Shader compilation or linking error:", e)
+                return
 
-        """
-        fragment_src_draw = resources.read_text(
-            'pygame_light2d', 'fragment_draw.glsl')
+            # Print all active uniforms to verify 'range' is present
+            print("Active uniforms:")
+            for uniform in self._prog_draw:
+                print(uniform)
+            
+            try:
+                print(self._prog_draw['u_alpha'])
+            except KeyError:
+                print("Uniform 'u_alpha' not found")
 
         # Create shader programs
         
@@ -129,12 +144,22 @@ class LightingEngine:
         self._prog_blur = self.ctx.program(vertex_shader=vertex_src,
                                            fragment_shader=fragment_src_blur)
         
-        
-        
         self._prog_draw = self.ctx.program(vertex_shader=vertex_src,
                                            fragment_shader=fragment_src_draw)
 
+
+    def set_alpha_value_draw_shader(self,alpha_value : float) -> None:
+        """
+        set the alpha value uniform for the draw shader.        
         
+        """
+        assert  0<= alpha_value <=1
+
+        self._prog_draw['u_alpha'].value = alpha_value
+
+
+        
+
 
     def _create_screen_vertex_buffers(self):
         # Screen mesh
@@ -322,7 +347,7 @@ class LightingEngine:
         glBlitNamedFramebuffer(fb.glo, fbo.glo, source.x, source.y, source.w, source.h,
                                dest.x, dest.y, dest.w, dest.h, GL_COLOR_BUFFER_BIT, GL_NEAREST)
 
-    def render_texture(self, tex: moderngl.Texture, Layer_: Layer_, dest: pygame.Rect, source: pygame.Rect):
+    def render_texture(self, tex: moderngl.Texture, Layer_: Layer_, dest: pygame.Rect, source: pygame.Rect,angle:float=0.0,flip : tuple[bool,bool]= (False,False)):
         """
         Render a texture onto a specified Layer_'s framebuffer using the draw shader.
 
@@ -331,11 +356,13 @@ class LightingEngine:
             Layer_ (Layer_): Layer_ to render the texture onto.
             dest (pygame.Rect): Destination rectangle.
             source (pygame.Rect): Source rectangle from the texture.
+            angle (float) : angle to rotate around center in radians 
+            flip (tuple[bool,bool]) : values to indicate flip vertically and horizontally 
         """
 
         # Render texture onto Layer_ with the draw shader
         fbo = self._get_fbo(Layer_)
-        self._render_tex_to_fbo(tex, fbo, dest, source)
+        self._test_render_tex_to_fbo(tex, fbo, dest, source , angle,flip)
 
     def surface_to_texture(self, sfc: pygame.Surface) -> moderngl.Texture:
         """
@@ -704,6 +731,58 @@ class LightingEngine:
         vbo.release()
         vao.release()
 
+
+    def _test_render_tex_to_fbo(self, tex: moderngl.Texture, fbo: moderngl.Framebuffer, dest: pygame.Rect, source: pygame.Rect,
+                       rotation: float = 0.0, flip: tuple[bool,bool] = (False,False)):
+        # Mesh for destination rect on screen
+        width, height = fbo.size
+        x = 2. * dest.x / width - 1.
+        y = 1. - 2. * dest.y / height
+        w = 2. * dest.w / width
+        h = 2. * dest.h / height
+
+        vertices = np.array([
+            (x, y), (x + w, y), (x, y - h),
+            (x, y - h), (x + w, y), (x + w, y - h)
+        ], dtype=np.float32)
+
+        # Texture coordinates (top-left to bottom-right)
+        tx = source.x / tex.size[0]
+        ty = source.y / tex.size[1]
+        tw = source.w / tex.size[0]
+        th = source.h / tex.size[1]
+
+        tex_coords = np.array([
+            (tx, ty + th), (tx + tw, ty + th), (tx, ty),
+            (tx, ty), (tx + tw, ty + th), (tx + tw, ty)
+        ], dtype=np.float32)
+
+        buffer_data = np.hstack([vertices, tex_coords])
+        vbo = self.ctx.buffer(buffer_data)
+        vao = self.ctx.vertex_array(self._prog_draw, [
+            (vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
+        ])
+
+        # Set rotation and flip uniforms
+        self._prog_draw['rotation'].value = rotation
+        self._prog_draw['flip_horizontal'].value = flip[0]
+        self._prog_draw['flip_vertical'].value = flip[1]
+
+        # Use buffers and render
+        tex.use()
+        fbo.use()
+        vao.render()
+
+        # Free vertex data
+        vbo.release()
+        vao.release()
+
+        self._prog_draw['rotation'].value = 0
+        self._prog_draw['flip_horizontal'].value = False
+        self._prog_draw['flip_vertical'].value = False 
+
+
+
     def _send_hull_data(self,offset):
         # Lists with hull vertices and indices
         vertices = []
@@ -733,7 +812,6 @@ class LightingEngine:
     def _render_to_buf_lt(self,range,offset):
         # Disable alpha blending to render lights
         self.ctx.disable(moderngl.BLEND)
-
         for light in self.lights.copy():
             # Skip light if disabled
             if light.popped:

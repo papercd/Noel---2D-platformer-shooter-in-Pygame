@@ -199,7 +199,8 @@ class GameAssets:
     
     def load_background_objects(self):
         backgrounds = {
-            'test_background': Background(self._load_textures('backgrounds/building'),infinite=False)
+            'test_background': Background(self._load_textures('backgrounds/building'),infinite=False),
+            'new_building' : Background(self._load_textures('backgrounds/new_building'),infinite= True)
 
         }
         return backgrounds

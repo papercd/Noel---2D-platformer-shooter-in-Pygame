@@ -57,13 +57,15 @@ class myGame():
         self.shift_pressed = False
         self.reset = True 
         
-        """ initialize private members""" 
+        """ initialize private  members""" 
         
         # game object containers 
         self._rot_func_t = 0
         self._enemies = []
+        self._bullets_on_screen  = []
         self._enemy_bullets = []
- 
+        self._collectable_items = []
+
         # particles and effects containers 
 
         
@@ -95,11 +97,11 @@ class myGame():
 
     def _set_initial_display_settings(self):
         os.environ['SDL_VIDEO_CENTERED'] = '1'
-        #self._screen_size = self._system_display_info['resolution']
-        self._screen_size = (700,550)
+        self._screen_size = self._system_display_info['resolution']
+        #self._screen_size = (700,550)
 
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
-        self._screen_to_native_ratio = 3.5 
+        self._screen_to_native_ratio = 4.5 
         self._native_res = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
 
     def _setup_engine_and_render_surfs(self):
@@ -310,18 +312,14 @@ class myGame():
         #print(self.backgrounds['test_background'].bg_layers[0].width)
         
         self.render_engine.render_background_view(
-            self.backgrounds['test_background'], render_scroll
+            self.backgrounds['new_building'], render_scroll
         )
 
         self.render_engine.render_tilemap(
             self.Tilemap,render_scroll
         )
 
-        rot_function = lambda x, y: int(math.sin(self._rot_func_t/60 + x/100)*7)
-        self._rot_func_t += self._dt * 100
-        self.gm.update_render(quadtree,self._native_res,self._dt,render_scroll,rot_function=rot_function)
-
-
+        
         # TODO: render enemies to background layer with draw shader, but also 
         # passing normal map data to achieve dynamic lights with lightmap data
 
@@ -338,11 +336,78 @@ class myGame():
                     if kill:
                         del self._enemies[i]  # Removes the enemy without needing a list copy.
 
+        
+        for i in range(len(self._collectable_items) - 1, -1, -1):
+                collectable_item = self._collectable_items[i]
 
-        self.render_engine.render(self._ambient_node_ptr.range,(0,0), (0,0))
+                if (collectable_item.life <= 0 or 
+                    (collectable_item.pos[0] + collectable_item.size[0] <= x_lower or collectable_item.pos[0] >= x_higher) or 
+                    (collectable_item.pos[1] + collectable_item.size[1] <= y_lower or collectable_item.pos[1] >= y_higher)):
+                    
+                    del self._collectable_items[i]
+                    continue
+
+                collectable_item.update_pos(self.Tilemap)
+                quadtree.insert(collectable_item)
+                collectable_item.render(self.render_engine, offset=render_scroll)
+        
+
+        for i in range(len(self._bullets_on_screen) - 1, -1, -1):
+                        bullet = self._bullets_on_screen[i]
+
+                        kill = bullet.update_pos(self.Tilemap)
+                        if kill:
+                            del self._bullets_on_screen[i]
+                            continue    
+
+                        if (bullet.pos[0] >= x_lower and bullet.pos[0] <= x_higher) and (bullet.pos[1] >= y_lower and bullet.pos[1] <= y_higher):
+                            bullet.render(self.render_engine, offset=render_scroll)
+
+                        xx, yy = bullet.pos[0], bullet.pos[1]
+                        r = max(bullet.size) * 3  # Adjust range radius for rectangular particles
+                        rangeRect = Rectangle(Vector2(xx - r / 2, yy - r / 2), Vector2(r, r))
+
+                        nearby_entities = quadtree.queryRange(rangeRect, "enemy")
+                        for entity in nearby_entities:
+                            if entity.state != 'death' and bullet.collide(entity):
+                                bullet.dead = True
+                                entity.hit(bullet.damage)
+                                
+                                # Set up for collision particle effect
+                                og_end_point_vec = pygame.math.Vector2((6, 0)).rotate(bullet.angle)
+                                center_pos = [bullet.pos[0] + bullet.sprite.get_width() / 2, bullet.pos[1] + bullet.sprite.get_height() / 2]
+                                end_point = [
+                                    center_pos[0] + og_end_point_vec[0] - (bullet.sprite.get_width() / 2 if bullet.velocity[0] >= 0 else 0),
+                                    center_pos[1] + og_end_point_vec[1]
+                                ]
+
+                                collide_particle = Particle(self, 'bullet_collide/rifle', end_point, 'player')
+                                rotated_collide_particle_images = [pygame.transform.rotate(image, 180 + bullet.angle) for image in collide_particle.animation.images]
+                                collide_particle.animation.images = rotated_collide_particle_images
+                                self._particles.append(collide_particle)
+                                
+                                # Ensure bullet is removed if still in list
+                                if i < len(self._bullets_on_screen) and self._bullets_on_screen[i] == bullet:
+                                    del self._bullets_on_screen[i]
+
+        #TODO: implement rendering for particles 
+        #
+        #
+        self.player.accelerate(self.player_movement_input)
+        self.player.update_pos(self.Tilemap,quadtree,[50,50],self.frame_count)
+        self.player.render(self.render_engine,render_scroll)
+
+        rot_function = lambda x, y: int(math.sin(self._rot_func_t/60 + x/100)*7)
+        self._rot_func_t += self._dt * 100
+        self.gm.update_render(quadtree,self._native_res,self._dt,render_scroll,rot_function=rot_function)
+
+
+
+        self.render_engine.render(self._ambient_node_ptr.range,render_scroll, (0,0))
         
         pygame.display.flip()
         fps = self._clock.get_fps()
+        print(fps)
         pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
         self._clock.tick(60)
 
