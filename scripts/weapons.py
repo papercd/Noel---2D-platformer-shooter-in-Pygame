@@ -4,9 +4,9 @@ import math
 
 from scripts.fire import Flame_particle
 from scripts.particles import Particle,non_animated_particle
-from scripts.Pygame_Lights import LIGHT ,pixel_shader
 from scripts.entities import Bullet, shotgun_Bullet, RocketShell
 from my_pygame_light2d.light import PointLight
+from my_pygame_light2d.engine import Layer_,LightingEngine 
 
 WEAPONS_WITH_KNOCKBACK = {'rifle'}
 WEAPONS_THAT_CAN_RAPID_FIRE = {'rifle','weapon'}
@@ -129,10 +129,7 @@ class Weapon:
     def update(self,cursor_pos):
         self.mpos = cursor_pos
 
-    def render(self,surf,offset = (0,0),set_angle = None):
-        #save surf to use when passing it to bullet 
-        
-        self.surf = surf 
+    def render(self,render_engine_ref:LightingEngine,offset = (0,0),set_angle = None):
 
         #you need to define the anchor point positions for every state of the player. 
 
@@ -168,16 +165,21 @@ class Weapon:
         #get the angle, the pivot, and offset
         if self.flipped: 
             self.pivot = [self.holder.pos[0]+self.right_anchor[0]-offset[0]-1,self.holder.pos[1]+self.right_anchor[1] -offset[1]]
-            self.render_offset = pygame.math.Vector2(-self.sprite_buffer.get_rect().centerx + self.img_pivot[0],self.sprite_buffer.get_rect().centery - self.img_pivot[1] )       
+            self.render_offset = pygame.math.Vector2(-self.sprite_buffer.width/2 + self.img_pivot[0] , self.sprite_buffer.height/2 - self.img_pivot[1])
+
+            # self.render_offset = pygame.math.Vector2(-self.sprite_buffer.get_rect().centerx + self.img_pivot[0],self.sprite_buffer.get_rect().centery - self.img_pivot[1] )       
         else: 
             self.pivot = [self.holder.pos[0]+self.left_anchor[0]-offset[0]+1,self.holder.pos[1]+self.left_anchor[1] -offset[1]]
-            self.render_offset = pygame.math.Vector2(self.sprite_buffer.get_rect().centerx - self.img_pivot[0], self.sprite_buffer.get_rect().centery - self.img_pivot[1])
+            self.render_offset = pygame.math.Vector2(self.sprite_buffer.width/2 - self.img_pivot[0] , self.sprite_buffer.height/2 - self.img_pivot[1])
+            
+            # self.render_offset = pygame.math.Vector2(self.sprite_buffer.get_rect().centerx - self.img_pivot[0], self.sprite_buffer.get_rect().centery - self.img_pivot[1])
 
        
         dx, dy = self.mpos[0] - (self.pivot[0] + self.pivot_to_opening_offset[0]), self.mpos[1]- (self.pivot[1] +self.pivot_to_opening_offset[1]) 
-      
+
+        #angle is in degrees 
         angle = math.degrees(math.atan2(-dy,dx)) 
-        sprite_width = self.sprite_buffer.get_width() - self.sprite_width_discrepency
+        sprite_width = self.sprite_buffer.width - self.sprite_width_discrepency
         
         #separate angle varialble for the gun's opening - to apply angle cap and to pass onto firing bullet 
         self.angle_opening = angle 
@@ -189,7 +191,7 @@ class Weapon:
         if (angle > 90 and angle <= 180) or (angle < -90 and angle >= -180):
             if rotate_cap_right:
                 if self.flipped:
-                    self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
+                    #self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
                     self.flipped = False
                     blitz = True 
                 if (angle > 90 and angle <= 180):
@@ -199,7 +201,7 @@ class Weapon:
                 self.angle_opening = -angle 
             else: 
                 if self.flipped != True: 
-                    self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
+                    #self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
                     self.flipped = True 
                     blitz = True 
                 angle += 180    
@@ -207,7 +209,7 @@ class Weapon:
         else: 
             if rotate_cap_left:
                 if self.flipped == False: 
-                    self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
+                    #self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
                     self.flipped = True
                     blitz = True 
                 if (angle >0 and angle <= 90) : 
@@ -217,15 +219,18 @@ class Weapon:
                 self.angle_opening = 180-angle 
             else: 
                 if self.flipped != False: 
-                    self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
+                    #self.sprite_buffer = pygame.transform.flip(self.sprite_buffer,True,False)
                     self.flipped = False  
                     blitz = True 
                 angle = -angle
 
         #if self.flipped: sprite_buffer = pygame.transform.flip(sprite_buffer,True,False)
+        
+        """
         weapon_display = pygame.Surface((self.sprite_buffer.get_width(),self.sprite_buffer.get_height()),pygame.SRCALPHA)
         weapon_display.blit(self.sprite_buffer,(0,0))
         rotated_image,rect = self.rotate(weapon_display,angle if set_angle == None else set_angle,self.pivot,self.render_offset)
+        """
 
         #the gun's opening position  
         #self.opening_pos[0] = self.pivot[0] + math.cos(math.radians(-self.angle_opening)) * sprite_width
@@ -245,11 +250,18 @@ class Weapon:
         if self.knockback[1] > 0 :
             self.knockback[1] = max(self.knockback[1] -1.45, 0)
 
-        #testSurf = pygame.Surface((2,2))
+        if not blitz:
+            render_engine_ref.render_texture(
+                self.sprite_buffer,Layer_.BACKGROUND,
+                dest =  pygame.Rect(self.opening_pos[0] - offset[0], self.opening_pos[1] - offset[1], self.sprite_buffer.width,self.sprite_buffer.height),
+                source = pygame.Rect(0,0, self.sprite_buffer.width,self.sprite_buffer.height),
+                angle = math.radians(self.angle_opening),
+                flip= (self.flipped,False)
+            )
 
-        if not blitz: 
+        #if not blitz: 
             #surf.blit(testSurf,(self.opening_pos[0]-offset[0],self.opening_pos[1]-offset[1]))
-            surf.blit(rotated_image,(rect.topleft[0] + self.knockback[0],rect.topleft[1] + self.knockback[1]))
+        #    surf.blit(rotated_image,(rect.topleft[0] + self.knockback[0],rect.topleft[1] + self.knockback[1]))
          
 
 class AK_47(Weapon):

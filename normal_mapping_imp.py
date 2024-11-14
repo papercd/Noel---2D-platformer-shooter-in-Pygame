@@ -63,6 +63,7 @@ class myGame():
         self._rot_func_t = 0
         self._enemies = []
         self._bullets_on_screen  = []
+        self._particles = []
         self._enemy_bullets = []
         self._collectable_items = []
 

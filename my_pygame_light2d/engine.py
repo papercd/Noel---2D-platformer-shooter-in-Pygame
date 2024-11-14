@@ -732,6 +732,94 @@ class LightingEngine:
         vao.release()
 
 
+    def _second_test_render_tex_to_fbo(self, tex: moderngl.Texture, fbo: moderngl.Framebuffer, dest: pygame.Rect, source: pygame.Rect,
+                            rotation: float = 0.0, flip: tuple[bool, bool] = (False, False)):
+        # Center of rotation (pivot point) in texture space
+        pivot_x = dest.w / 2
+        pivot_y = dest.h / 2
+
+        # Compute the vertices around the pivot
+        angle_cos = np.cos(rotation)
+        angle_sin = np.sin(rotation)
+        
+        # Offset vertices by -pivot, rotate, and translate back
+        rotated_vertices = [
+            ((-pivot_x) * angle_cos - (-pivot_y) * angle_sin + pivot_x, (-pivot_x) * angle_sin + (-pivot_y) * angle_cos + pivot_y),
+            ((pivot_x) * angle_cos - (-pivot_y) * angle_sin + pivot_x, (pivot_x) * angle_sin + (-pivot_y) * angle_cos + pivot_y),
+            ((-pivot_x) * angle_cos - (pivot_y) * angle_sin + pivot_x, (-pivot_x) * angle_sin + (pivot_y) * angle_cos + pivot_y),
+            ((pivot_x) * angle_cos - (pivot_y) * angle_sin + pivot_x, (pivot_x) * angle_sin + (pivot_y) * angle_cos + pivot_y),
+        ]
+
+        # Find bounding box for rotated vertices
+        x_coords, y_coords = zip(*rotated_vertices)
+        min_x, max_x = min(x_coords), max(x_coords)
+        min_y, max_y = min(y_coords), max(y_coords)
+
+        # Compute width and height of the new bounding box
+        new_width = max_x - min_x
+        new_height = max_y - min_y
+
+        # Translate dest rect so that its top-left corner aligns with the rotated bounding box's top-left corner
+        dest_x = dest.x - min_x
+        dest_y = dest.y - min_y
+
+        # Map destination rect to screen space coordinates
+        width, height = fbo.size
+        x = 2. * dest_x / width - 1.
+        y = 1. - 2. * dest_y / height
+        w = 2. * new_width / width
+        h = 2. * new_height / height
+
+        vertices = np.array([
+            (x, y), (x + w, y), (x, y - h),
+            (x, y - h), (x + w, y), (x + w, y - h)
+        ], dtype=np.float32)
+
+        # Texture coordinates (apply flipping)
+        tx = source.x / tex.size[0]
+        ty = source.y / tex.size[1]
+        tw = source.w / tex.size[0]
+        th = source.h / tex.size[1]
+
+        tex_coords = np.array([
+            (tx, ty + th), (tx + tw, ty + th), (tx, ty),
+            (tx, ty), (tx + tw, ty + th), (tx + tw, ty)
+        ], dtype=np.float32)
+
+        """"
+        # Apply flip if specified
+        if flip[0]:  # Horizontal flip
+            tex_coords[:, 0] = 1.0 - tex_coords[:, 0]
+        if flip[1]:  # Vertical flip
+            tex_coords[:, 1] = 1.0 - tex_coords[:, 1]
+        """
+
+        # Create buffers and load into VAO
+        buffer_data = np.hstack([vertices, tex_coords])
+        vbo = self.ctx.buffer(buffer_data)
+        vao = self.ctx.vertex_array(self._prog_draw, [
+            (vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
+        ])
+
+        # Set rotation and flip uniforms
+        self._prog_draw['rotation'].value = rotation
+        self._prog_draw['flip_horizontal'].value = flip[0]
+        self._prog_draw['flip_vertical'].value = flip[1]
+
+        # Use buffers and render
+        tex.use()
+        fbo.use()
+        vao.render()
+
+        # Free vertex data
+        vbo.release()
+        vao.release()
+
+        # Reset uniforms
+        self._prog_draw['rotation'].value = 0
+        self._prog_draw['flip_horizontal'].value = False
+        self._prog_draw['flip_vertical'].value = False
+
     def _test_render_tex_to_fbo(self, tex: moderngl.Texture, fbo: moderngl.Framebuffer, dest: pygame.Rect, source: pygame.Rect,
                        rotation: float = 0.0, flip: tuple[bool,bool] = (False,False)):
         # Mesh for destination rect on screen

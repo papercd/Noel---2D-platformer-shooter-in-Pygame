@@ -204,7 +204,7 @@ class PhysicsEntity:
             tex,Layer_.BACKGROUND,
             dest = pygame.Rect(int(self.pos[0] - offset[0] +self.anim_offset[0]) , int(self.pos[1] -offset[1]+self.anim_offset[1]),tex.width,tex.height),
             source = pygame.Rect(0,0,tex.width,tex.height),
-            flip= (self.flip, False)
+            flip= (self.flip, False),
         )
         
         """
@@ -412,12 +412,15 @@ class Enemy(PhysicsEntity):
             current_tex = self.animation.tex()
             outline_tex = render_engine_ref.create_outline_texture(current_tex)
 
+
             for offset_ in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                pos = render_engine_ref.calculate_render_position_with_offset(self.pos,(offset[0] - offset_[0],offset[1] - offset_[1]))
-                render_engine_ref.render_texture_with_trans(
-                    outline_tex,Layer_.BACKGROUND,
-                    position= pos,
-                    flip= (self.flip, False)
+                render_engine_ref.render_texture(
+                    outline_tex, Layer_.BACKGROUND,
+                    dest= pygame.Rect(int(self.pos[0] - offset[0] + offset_[0]), int(self.pos[1] - offset[1] + offset_[1]),\
+                                        outline_tex.width, outline_tex.height),
+                    source = pygame.Rect(0,0,outline_tex.width,outline_tex.height),
+                    flip = (self.flip, False)
+                    
                 )
             """
             current_image = self.animation.img()
@@ -433,13 +436,14 @@ class Enemy(PhysicsEntity):
 
             if self.show_hit_mask:
                 mask_tex = render_engine_ref.create_outline_texture(current_tex,white= True)
-                for offset_ in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                    pos = render_engine_ref.calculate_render_position_with_offset(self,pos,(offset[0] - offset_[0],offset[1] - offset_[1]))
-                    render_engine_ref.render_texture_with_trans(
-                        mask_tex,Layer_.BACKGROUND,
-                        position= pos,
-                        flip = (self.flip, False)
-                    )
+                render_engine_ref.render_texture(
+                    mask_tex, Layer_.BACKGROUND,
+                    dest= pygame.Rect(int(self.pos[0] - offset[0] + offset_[0]), int(self.pos[1] - offset[1] + offset_[1]),\
+                                        mask_tex.width, mask_tex.height),
+                    source = pygame.Rect(0,0,mask_tex.width,mask_tex.height),
+                    flip = (self.flip, False)
+                    
+                )
                 self.show_hit_mask = False
 
 
@@ -830,7 +834,7 @@ class Wheel_bot(Enemy):
             self.hp -= hit_damage
             self.first_hit = True
             self.hurt = True
-            self.hit_mask = pygame.mask.from_surface(self.animation.img() if not self.flip else pygame.transform.flip(self.animation.img(), True, False))
+            self.show_hit_mask = True 
 
     def render(self,render_engine_ref, offset=(0,0)):
         if self.alerted:
@@ -839,7 +843,7 @@ class Wheel_bot(Enemy):
         super().render(render_engine_ref, (offset[0] - self.weapon.knockback[0] / 4, offset[1] - self.weapon.knockback[1] / 4))
 
         if self.state in {'new_charge', 'shoot', 'hit'}:
-            self.weapon.render(surf, offset)
+            self.weapon.render(render_engine_ref, offset)
 
 
 class Tormentor(Enemy):
@@ -1636,8 +1640,8 @@ class PlayerEntity(PhysicsEntity):
 
 
         #TODO: recover weapon rendering 
-        #if self.cur_weapon_node: 
-        """
+        if self.cur_weapon_node: 
+            """
             if self.changing_done == 0:
                 self.cur_weapon_node.weapon.render(surf,offset,set_angle = None)
             else: 
@@ -1649,7 +1653,7 @@ class PlayerEntity(PhysicsEntity):
                         
                 arm_pos_angle = angles[self.changing_done]
             """
-            #self.cur_weapon_node.weapon.render(surf,offset) 
+            self.cur_weapon_node.weapon.render(render_engine_ref,offset) 
             
     
     def interact(self):
