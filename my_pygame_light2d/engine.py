@@ -6,7 +6,6 @@ import pygame
 import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
-from scripts.background import Background
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
 from my_pygame_light2d.hull import Hull
@@ -375,7 +374,7 @@ class LightingEngine:
 
         # Render texture onto Layer_ with the draw shader
         fbo = self._get_fbo(Layer_)
-        self._test_render_tex_to_fbo(tex, fbo, dest, source , angle,flip)
+        self._render_tex_to_fbo(tex, fbo, dest, source )
 
     def surface_to_texture(self, sfc: pygame.Surface) -> moderngl.Texture:
         """
@@ -447,12 +446,11 @@ class LightingEngine:
         self._fbo_bg.clear(R, G, B, A)
         self._fbo_fg.clear(0, 0, 0, 0)
 
-    def render_background_view(self,background:Background,offset = (0,0)):
+    def render_background_view(self,background,offset = (0,0)):
         
         scroll = offset[0]
         speed = 1
         
-    
         for texture in background.bg_layers:
             for panels in range(-1, 2):
                 self.render_texture_with_trans(
@@ -463,7 +461,7 @@ class LightingEngine:
                 )
             speed += 1
 
-
+        
     def render_tilemap(self,tilemap,offset:tuple[int,int],in_editor : bool = False) -> None:
         if in_editor:
             texture_source = self.game.assets

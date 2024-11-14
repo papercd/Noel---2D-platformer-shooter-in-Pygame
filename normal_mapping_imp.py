@@ -7,6 +7,7 @@ import time
 import sys 
 import os 
 import platform
+import cProfile
 from screeninfo import get_monitors
 from scripts import * 
 
@@ -101,8 +102,8 @@ class myGame():
 
     def _set_initial_display_settings(self):
         os.environ['SDL_VIDEO_CENTERED'] = '1'
-        #self._screen_size = self._system_display_info['resolution']
-        self._screen_size = (700,550)
+        self._screen_size = self._system_display_info['resolution']
+        #self._screen_size = (700,550)
 
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
         self._screen_to_native_ratio = 4.5 
@@ -321,9 +322,10 @@ class myGame():
 
         #print(self.backgrounds['test_background'].bg_layers[0].width)
         
-        self.render_engine.render_background_view(
-            self.backgrounds['new_building'], render_scroll
-        )
+        
+         
+        self.backgrounds['new_building'].render(self.render_engine,Layer_.BACKGROUND,render_scroll)
+
 
         self.render_engine.render_tilemap(
             self.Tilemap,render_scroll
@@ -333,7 +335,6 @@ class myGame():
                 if self._ambient_node_ptr.prev: 
                     self._ambient_node_ptr = self._ambient_node_ptr.prev
                     if isinstance(self._ambient_node_ptr,interpolatedLightNode):
-                        print("check")
                         self.render_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
                     else:
                         self.render_engine.set_ambient(*self._ambient_node_ptr.colorValue) 
@@ -342,7 +343,6 @@ class myGame():
             if self._ambient_node_ptr.next: 
                 self._ambient_node_ptr = self._ambient_node_ptr.next
                 if isinstance(self._ambient_node_ptr,interpolatedLightNode):
-                    print("check")
                     self.render_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
                 else:
                     self.render_engine.set_ambient(*self._ambient_node_ptr.colorValue) 
@@ -469,6 +469,7 @@ class myGame():
         
         pygame.display.flip()
         fps = self._clock.get_fps()
+        print(fps)
         pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
         self._clock.tick(60)
 
@@ -512,4 +513,6 @@ class myGame():
         pass
 
 game = myGame()
+#cProfile.run("game.start_game()")
 game.start_game()
+
