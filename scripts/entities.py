@@ -2082,12 +2082,13 @@ class Bullet(PhysicsEntity):
 
     def render(self, render_engine_ref: LightingEngine, offset=(0, 0)):
         #bullet_glow_mask = pygame.mask.from_surface(self.sprite)
-        pos = render_engine_ref.calculate_render_position_with_offset(self.pos,offset)
-        render_engine_ref.render_texture_with_trans(
+        
+        render_engine_ref.render_texture(
             self.sprite,Layer_.BACKGROUND,
-            position= pos,
-            angle= self.angle,
-            flip= self.flip
+            dest= pygame.Rect(self.pos[0] - offset[0], self.pos[1] - offset[1],self.sprite.width,self.sprite.height),
+            source = pygame.Rect(0,0,self.sprite.width,self.sprite.height),
+            angle = math.radians(self.angle),
+            flip = (self.flip, False)
         )
 
         #rf.blit(self.sprite, (self.pos[0] - offset[0], self.pos[1] - offset[1]), special_flags=pygame.BLEND_RGB_ADD)

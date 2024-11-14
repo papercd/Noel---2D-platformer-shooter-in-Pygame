@@ -375,17 +375,17 @@ class myGame():
                                 
                                 # Set up for collision particle effect
                                 og_end_point_vec = pygame.math.Vector2((6, 0)).rotate(bullet.angle)
-                                center_pos = [bullet.pos[0] + bullet.sprite.get_width() / 2, bullet.pos[1] + bullet.sprite.get_height() / 2]
+                                center_pos = [bullet.pos[0] + bullet.sprite.width / 2, bullet.pos[1] + bullet.sprite.height / 2]
                                 end_point = [
-                                    center_pos[0] + og_end_point_vec[0] - (bullet.sprite.get_width() / 2 if bullet.velocity[0] >= 0 else 0),
+                                    center_pos[0] + og_end_point_vec[0] - (bullet.sprite.width / 2 if bullet.velocity[0] >= 0 else 0),
                                     center_pos[1] + og_end_point_vec[1]
                                 ]
-
+                                """
                                 collide_particle = Particle(self, 'bullet_collide/rifle', end_point, 'player')
                                 rotated_collide_particle_images = [pygame.transform.rotate(image, 180 + bullet.angle) for image in collide_particle.animation.images]
                                 collide_particle.animation.images = rotated_collide_particle_images
                                 self._particles.append(collide_particle)
-                                
+                                """
                                 # Ensure bullet is removed if still in list
                                 if i < len(self._bullets_on_screen) and self._bullets_on_screen[i] == bullet:
                                     del self._bullets_on_screen[i]
@@ -393,6 +393,31 @@ class myGame():
         #TODO: implement rendering for particles 
         #
         #
+        # Process enemy bullets
+        for i in range(len(self._enemy_bullets) - 1, -1, -1):
+            bullet = self._enemy_bullets[i]
+            kill = bullet.update_pos(self.Tilemap)
+            bullet.render(self.render_engine, offset=render_scroll)
+            if kill:
+                del self._enemy_bullets[i]
+
+        # Process particles
+        for i in range(len(self._particles) - 1, -1, -1):
+            particle = self._particles[i]
+            if particle is None:
+                del self._particles[i]
+                continue
+
+            kill = particle.update()
+            particle.render(self.render_engine, offset=render_scroll)
+            if particle.type == 'leaf':
+                particle.pos[0] += math.sin(particle.animation.frame * 0.035) * 0.3
+            if particle.source == 'player' and particle.type.startswith('smoke'):
+                if self.player.cur_weapon_node:
+                    particle.pos = self.player.cur_weapon_node.weapon.opening_pos
+            if kill:
+                del self._particles[i]
+
         self.player.accelerate(self.player_movement_input)
         self.player.update_pos(self.Tilemap,quadtree,[50,50],self.frame_count)
         self.player.render(self.render_engine,render_scroll)

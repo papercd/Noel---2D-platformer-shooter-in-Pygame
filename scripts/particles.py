@@ -1,4 +1,5 @@
 import pygame
+from my_pygame_light2d.engine import Layer_,LightingEngine
 import random 
 import math 
 
@@ -27,14 +28,20 @@ class Particle:
 
         return kill 
     
-    def render(self,surf, offset= (0,0)):
-        img = self.animation.img()
-        surf.blit(img, (self.pos[0]-offset[0]-img.get_width()//2,self.pos[1]- offset[1]-img.get_height()//2))
+    def render(self,render_engine_ref:LightingEngine, offset= (0,0)):
+        tex = self.animation.curr_tex()
+        render_engine_ref.render_texture(
+            tex,Layer_.BACKGROUND,
+            dest = pygame.Rect(self.pos[0]-offset[0]-tex.width//2,self.pos[1]- offset[1]-tex.height//2,tex.width,tex.height),
+            source = pygame.Rect(0,0,tex.width,tex.height)
+        )
+        #surf.blit(img, (self.pos[0]-offset[0]-img.get_width()//2,self.pos[1]- offset[1]-img.get_height()//2))
 
 class glass():
     def __init__(self,pos,size,speed,angle,idle_time):
         self.random_seed = random.random()
         self.size = size * self.random_seed 
+        self.buffer_surf = pygame.Surface((self.size[0] * 2, self.size[1] * 2),pygame.SRCALPHA)
         self.pos =self.center = pos
         self.angle =angle 
         self.speed =speed * self.random_seed 
@@ -149,13 +156,24 @@ class glass():
 
 
 
-    def render(self, surf, offset=(0, 0)):
+    def render(self, render_engine_ref:LightingEngine, offset=(0, 0)):
         points = []
+        self.buffer_surf.fill((0,0,0,0))
+        center = (self.size,self.size)
         for distance, angle in self.vertice_data:
-            points.append((
-                int(self.pos[0] + distance * math.cos(angle+self.rot_angle) -offset[0]),int(self.pos[1] + distance * math.sin(angle+self.rot_angle) - offset[1])
-            ))    
-        pygame.draw.polygon(surf,(255,255,255),points)
+            self.vertice_data[i] = (int(center[0] + distance * math.cos(angle+self.rot_angle)),int(center[1] + distance * math.sin(angle+self.rot_angle)))
+            points.append(
+                (int(center[0] + distance * math.cos(angle+self.rot_angle)),int(center[1] + distance * math.sin(angle+self.rot_angle)))
+            ) 
+               
+        pygame.draw.polygon(self.buffer_surf,(255,255,255),points)
+
+        tex = render_engine_ref.surface_to_texture(self.buffer_surf)
+        render_engine_ref.render_texture(
+            tex, Layer_.BACKGROUND,
+            dest = pygame.Rect(self.pos[0] - self.size- offset[0], self.pos[1]- self.size - offset[1], tex.width,tex.height),
+            source=  pygame.Rect(0,0,tex.width,tex.height),
+        )
                                 
 
 
@@ -213,8 +231,17 @@ class non_animated_particle():
         self.rect.topleft = self.pos 
         return False 
     
-    def render(self,surf,offset = (0,0)):
-        surf.blit(self.image,(self.pos[0]- offset[0],self.pos[1]-offset[1]))
+    def render(self, render_engine_ref,offset = (0,0)):
+        tex = render_engine_ref.surface_to_texture(self.buffer_surf)
+        render_engine_ref.render_texture(
+            tex, Layer_.BACKGROUND,
+            dest = pygame.Rect(self.pos[0] - self.size- offset[0], self.pos[1]- self.size - offset[1], tex.width,tex.height),
+            source=  pygame.Rect(0,0,tex.width,tex.height),
+        )
+                                
+
+
+        #surf.blit(self.image,(self.pos[0]- offset[0],self.pos[1]-offset[1]))
 
 
 
@@ -280,7 +307,8 @@ class bullet_collide_particle:
         self.speed = max(0, self.speed - 0.1)
         return False 
     
-    def render(self, surf, offset=(0, 0)):
+    def render(self,render_engine_ref , offset=(0, 0)):
+        return 
         surf.blit(self.image,(self.pos[0]- offset[0],self.pos[1]-offset[1]))
 
 class bullet_trail_particle_wheelbot:
@@ -297,6 +325,6 @@ class bullet_trail_particle_wheelbot:
         return self.radius <= 0  
 
 
-    def render(self,surf,offset = (0,0)):
+    def render(self,render_engine_ref,offset = (0,0)):
         pygame.draw.circle(surf,self.color,(self.pos[0]-offset[0],self.pos[1]-offset[1]),self.radius) 
     
