@@ -6,6 +6,7 @@ import pygame
 import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
+from scripts.layer import Layer_
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
 from my_pygame_light2d.hull import Hull
@@ -15,30 +16,29 @@ from my_pygame_light2d.util import create_rotated_rect,to_dest_coords
 
 BASE_PATH = 'data/images/'
 
-class Layer_(Enum):
-    BACKGROUND = 1,
-    FOREGROUND = 2,
-
 
 class RenderEngine:
-    """A class for managing lighting effects within a Pygame environment."""
+    """A class for managing rendering for my game within a Pygame environment."""
 
-    def __init__(self,game,context, screen_res: tuple[int, int],screen_to_native_ratio : float, native_res: tuple[int, int], lightmap_res: tuple[int, int]) -> None:
+    def __init__(self,game,context:moderngl.Context, screen_res: tuple[int, int],true_to_screen_res_ratio: float, true_res: tuple[int, int]  ) -> None:
         """
-        Initialize the lighting engine.
+        Initialize the render engine.
 
         Args:
-            native_res (tuple[int, int]): Native resolution of the game (width, height).
-            lightmap_res (tuple[int, int]): Lightmap resolution (width, height).
+            game : the game. 
+            context : the moderngl context 
+            screen_res : the resolution of the display
+            true_to_screen_res_ratio : the ratio of the screen resolution from the true resolution. 
+            true_res:  (tuple[int, int]): true (native) resolution of the game (width, height) -pixel resolution.
         """
 
         # Initialize private members
-        self._screen_to_native_ratio = screen_to_native_ratio
+        self._true_to_native_ratio = true_to_screen_res_ratio 
         self._screen_res = screen_res
-        self._native_res = native_res
-        self._diagonal = math.sqrt(self._native_res[0]**2 + self._native_res[1] **2)
+        self._native_res = true_res 
+        self._true_res_diagonal_length = math.sqrt(self._native_res[0]**2 + self._native_res[1] **2)
 
-        self._lightmap_res = lightmap_res
+        self._lightmap_res = true_res 
         self._ambient = (.25, .25, .25, .25)
 
         # Initialize public members
@@ -46,9 +46,6 @@ class RenderEngine:
         self.hulls: list[Hull] = []
         self.shadow_blur_radius: int = 5
         self.game = game
-
-        # Configure pygame
-        #self._check_and_configure_pygame()
 
         # Create an OpenGL context
         self.ctx = context
@@ -359,7 +356,7 @@ class RenderEngine:
         glBlitNamedFramebuffer(fb.glo, fbo.glo, source.x, source.y, source.w, source.h,
                                dest.x, dest.y, dest.w, dest.h, GL_COLOR_BUFFER_BIT, GL_NEAREST)
 
-    def render_texture(self, tex: moderngl.Texture, Layer_: Layer_, dest: pygame.Rect, source: pygame.Rect,angle:float=0.0,flip : tuple[bool,bool]= (False,False)):
+    def render_texture(self, tex: moderngl.Texture, layer: Layer_, dest: pygame.Rect, source: pygame.Rect,angle:float=0.0,flip : tuple[bool,bool]= (False,False)):
         """
         Render a texture onto a specified Layer_'s framebuffer using the draw shader.
 
@@ -373,7 +370,7 @@ class RenderEngine:
         """
 
         # Render texture onto Layer_ with the draw shader
-        fbo = self._get_fbo(Layer_)
+        fbo = self._get_fbo(layer)
         self._render_tex_to_fbo(tex, fbo, dest, source )
 
     def surface_to_texture(self, sfc: pygame.Surface) -> moderngl.Texture:
