@@ -6,7 +6,7 @@ from scripts.fire import Flame_particle
 from scripts.particles import Particle,non_animated_particle
 from scripts.entities import Bullet, shotgun_Bullet, RocketShell
 from my_pygame_light2d.light import PointLight
-from my_pygame_light2d.engine import Layer_,LightingEngine 
+from my_pygame_light2d.engine import Layer_,RenderEngine
 
 WEAPONS_WITH_KNOCKBACK = {'rifle'}
 WEAPONS_THAT_CAN_RAPID_FIRE = {'rifle','weapon'}
@@ -129,7 +129,7 @@ class Weapon:
     def update(self,cursor_pos):
         self.mpos = cursor_pos
 
-    def render(self,render_engine_ref:LightingEngine,offset = (0,0),set_angle = None):
+    def render(self,render_engine_ref:RenderEngine,offset = (0,0),set_angle = None):
 
         #you need to define the anchor point positions for every state of the player. 
 

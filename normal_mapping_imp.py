@@ -8,11 +8,12 @@ import sys
 import os 
 import platform
 import cProfile
+from moderngl import create_context
+
 from screeninfo import get_monitors
 from scripts import * 
-
 from assets import GameAssets
-from my_pygame_light2d.engine import LightingEngine, Layer_
+from my_pygame_light2d.engine import RenderEngine, Layer_
 from my_pygame_light2d.light import PointLight
 from scripts.tilemap import Light
 from my_pygame_light2d.hull import Hull
@@ -40,18 +41,18 @@ class myGame():
         self.Tilemap = Tilemap(self,tile_size=16,offgrid_layers=2)
         
         # cursor 
-        pygame.mouse.set_visible(False)
-        self.cursor = Cursor(self,(50,50),(4,4),'default')
+        #pygame.mouse.set_visible(False)
+        #self.cursor = Cursor(self,(50,50),(4,4),'default')
 
         # grass manager 
-        self.gm = GrassManager(self.render_engine,self,'data/images/tiles/new_live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
-                               max_unique=5,place_range=[1,1],burn_spread_speed=3,burn_rate=1.2)
+        #self.gm = GrassManager(self.render_engine,self,'data/images/tiles/new_live_grass',tile_size=self.Tilemap.tile_size,stiffness=600,\
+        #                       max_unique=5,place_range=[1,1],burn_spread_speed=3,burn_rate=1.2)
 
         # player 
-        self.player = PlayerEntity(self,(74,10),(14,16))
-        self.player.set_accel_rate(0.7)
-        self.player.set_default_speed(2.2)
-        self.player_movement_input = [False,False] 
+        #self.player = PlayerEntity(self,(45,1),(14,16))
+        #self.player.set_accel_rate(0.7)
+        #self.player.set_default_speed(2.2)
+        #self.player_movement_input = [False,False] 
 
         
   
@@ -86,17 +87,38 @@ class myGame():
 
 
 
-       
+    def _check_and_configure_pygame(self):
+        # Check that pygame has been initialized
+        assert pygame.get_init(), 'Error: Pygame is not initialized. Please ensure you call pygame.init() before using the lighting engine.'
+
+        pygame.mixer.pre_init(44100, -16, 2, 512)
+
+        # Set OpenGL version to 3.3 core
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
+        pygame.display.gl_set_attribute(
+            pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
+
+        # Configure pygame display
+        self._pygame_display = pygame.display.set_mode(
+            self._screen_size, pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF)
+        
+        
+
+      
         
         
     def _initialize_game_settings(self):
         pygame.init()
-        pygame.mixer.pre_init(44100, -16, 2, 512)
-        self._clock = pygame.time.Clock()
         self._system_display_info = self._get_system_display_info()
+        self._set_initial_display_settings()
+        self._check_and_configure_pygame()
+        
+        self._ctx = create_context()
+
+        self._clock = pygame.time.Clock()
         self._default_screen_to_native_ratio = 4
 
-        self._set_initial_display_settings()
         self._setup_engine_and_render_surfs()
         self._load_game_assets()
 
@@ -110,7 +132,8 @@ class myGame():
         self._native_res = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
 
     def _setup_engine_and_render_surfs(self):
-        self.render_engine = LightingEngine(self,screen_res=self._screen_size,screen_to_native_ratio = self._screen_to_native_ratio,native_res=self._native_res,lightmap_res=self._native_res)
+        self.render_engine = RenderEngine(self, self._ctx, screen_res=self._screen_size,screen_to_native_ratio = self._screen_to_native_ratio,native_res=self._native_res,\
+                                            lightmap_res=self._native_res)
 
         self._background_surf_dim = self._foreground_surf_dim = self.buffer_surf_dim =  self._native_res 
         self.buffer_surf = pygame.Surface(self.buffer_surf_dim,pygame.SRCALPHA)
@@ -464,12 +487,13 @@ class myGame():
         self.cursor.update_render(self.render_engine)
        
 
+        #print(render_scroll)
 
         self.render_engine.render(self._ambient_node_ptr.range,render_scroll, (0,0))
         
         pygame.display.flip()
         fps = self._clock.get_fps()
-        print(fps)
+        #print(self.player.pos)
         pygame.display.set_caption(f'Noel - FPS: {fps:.2f}')
         self._clock.tick(60)
 

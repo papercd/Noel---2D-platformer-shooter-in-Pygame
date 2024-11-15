@@ -1,5 +1,5 @@
 import pygame
-from my_pygame_light2d.engine import Layer_,LightingEngine
+from my_pygame_light2d.engine import Layer_,RenderEngine
 from random import random
 
 class Bar():
@@ -15,7 +15,7 @@ class Bar():
         self.x = x
         self.y = y
 
-    def render(self,render_engine_ref:LightingEngine,offset = (0,0)):
+    def render(self,render_engine_ref:RenderEngine,offset = (0,0)):
         #calculate health ratio 
         ratio = self.hp/ self.max_hp
 
@@ -73,7 +73,7 @@ class HealthBar(Bar):
             
             self.last_cur -= (self.last_cur-self.cur_resource )/4
         
-    def _render_surface_as_texture(self,surf,render_engine:LightingEngine,offset = (0,0)):
+    def _render_surface_as_texture(self,surf,render_engine:RenderEngine,offset = (0,0)):
         # convert surface into moderngl.Texture using render engine
         tex = render_engine.surface_to_texture(surf)
 
@@ -88,7 +88,7 @@ class HealthBar(Bar):
         tex.release()
 
 
-    def render(self,render_engine_ref:LightingEngine,offset = (0,0)):
+    def render(self,render_engine_ref:RenderEngine,offset = (0,0)):
         #calculate health ratio 
        
        
@@ -137,7 +137,7 @@ class StaminaBar(Bar):
         pass 
 
 
-    def _render_surface_as_texture(self,surf,render_engine:LightingEngine,offset=(0,0)):
+    def _render_surface_as_texture(self,surf,render_engine:RenderEngine,offset=(0,0)):
         tex = render_engine.surface_to_texture(surf)
         render_engine.render_texture(
             tex,Layer_.BACKGROUND,

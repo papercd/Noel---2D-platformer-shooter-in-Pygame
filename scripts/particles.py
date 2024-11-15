@@ -1,5 +1,5 @@
 import pygame
-from my_pygame_light2d.engine import Layer_,LightingEngine
+from my_pygame_light2d.engine import Layer_,RenderEngine
 import random 
 import math 
 
@@ -28,7 +28,7 @@ class Particle:
 
         return kill 
     
-    def render(self,render_engine_ref:LightingEngine, offset= (0,0)):
+    def render(self,render_engine_ref:RenderEngine, offset= (0,0)):
         tex = self.animation.curr_tex()
         render_engine_ref.render_texture(
             tex,Layer_.BACKGROUND,
@@ -156,7 +156,7 @@ class glass():
 
 
 
-    def render(self, render_engine_ref:LightingEngine, offset=(0, 0)):
+    def render(self, render_engine_ref:RenderEngine, offset=(0, 0)):
         points = []
         self.buffer_surf.fill((0,0,0,0))
         center = (self.size,self.size)

@@ -4,7 +4,7 @@ import random
 import pygame 
 import math
 
-from my_pygame_light2d.engine import Layer_ ,LightingEngine
+from my_pygame_light2d.engine import Layer_, RenderEngine
 from scripts.utils import rect_corners,obb_collision
 from pygame.math import Vector2
 from scripts.spark import Spark
@@ -196,7 +196,7 @@ class PhysicsEntity:
         
         return interactables
 
-    def render(self, render_engine_ref:LightingEngine, offset = (0,0)):
+    def render(self, render_engine_ref:RenderEngine, offset = (0,0)):
         tex = self.animation.curr_tex()
         #pos = render_engine_ref.calculate_render_position_with_offset(self.pos,(offset[0] -self.anim_offset[0], offset[1] -self.anim_offset[1]))
         
@@ -362,7 +362,7 @@ class CollectableItem:
 
 
 
-    def render(self,render_engine_ref:LightingEngine,offset = (0,0)):
+    def render(self,render_engine_ref:RenderEngine,offset = (0,0)):
         if self.life < 60:
             alpha_value = min(1,0,max(0.0,self.life / 60.0))
             render_engine_ref.set_alpha_value_draw_shader(alpha_value)
@@ -399,7 +399,7 @@ class Enemy(PhysicsEntity):
             self.animation = self.game.enemy_sprites[self.type + '/' + self.state].copy()
 
 
-    def render(self,render_engine_ref:LightingEngine,offset=(0, 0), shake=0):
+    def render(self,render_engine_ref:RenderEngine,offset=(0, 0), shake=0):
         native_res = render_engine_ref.get_native_res()
         x_min = offset[0] - self.size[0]
         x_max = offset[0] + native_res[0] + self.size[0]
@@ -1599,7 +1599,7 @@ class PlayerEntity(PhysicsEntity):
     
         
     
-    def render(self,render_engine_ref:LightingEngine, offset = (0,0)):
+    def render(self,render_engine_ref:RenderEngine, offset = (0,0)):
         #change weapon to weapon node later after testing 
 
         knockback = (0,0) if not self.cur_weapon_node else (self.cur_weapon_node.knockback[0]/5,self.cur_weapon_node.knockback[1]/9)
@@ -2094,7 +2094,7 @@ class Bullet(PhysicsEntity):
 
 
 
-    def render(self, render_engine_ref: LightingEngine, offset=(0, 0)):
+    def render(self, render_engine_ref: RenderEngine, offset=(0, 0)):
         #bullet_glow_mask = pygame.mask.from_surface(self.sprite)
         
         render_engine_ref.render_texture(

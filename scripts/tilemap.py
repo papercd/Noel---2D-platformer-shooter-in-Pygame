@@ -597,7 +597,6 @@ class Tilemap:
         self.decorations = []
         self.path_graph = {}
         self.ambientNodes = ambientNodeList()
- 
         
          
         # fill in tilemap dictionary from json data 
@@ -624,6 +623,7 @@ class Tilemap:
                             self.tilemap[tile_key] = door 
                             split_key = tile_key.split(';')
                             self.tilemap[split_key[0]+';'+ str(int(split_key[1]) + 1)] = door 
+                            
                 
                 # process for every other tile
                 else: 

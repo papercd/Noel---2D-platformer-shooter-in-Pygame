@@ -1,5 +1,5 @@
 import pygame 
-from my_pygame_light2d.engine import LightingEngine,Layer_
+from my_pygame_light2d.engine import RenderEngine,Layer_
 from pygame.locals import * 
 
 
@@ -40,7 +40,7 @@ class Cursor:
     def set_cooldown(self) -> None:
         self.cooldown = 10
 
-    def update_render(self,render_engine_ref:LightingEngine):
+    def update_render(self,render_engine_ref:RenderEngine):
         
         self.pos = pygame.mouse.get_pos()
         self.pos = ((self.pos[0]/2),(self.pos[1]/2))
