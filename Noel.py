@@ -143,9 +143,7 @@ class myGame():
         self._particles = []
         self._fire_particles = []
         self._non_animated_particles = []
-        self._sparks = []
-
-        # dash variables
+        self._sparks = [] # dash variables
         self._boost_ready = False 
         self._timer = 0
         self._time_increment = False
@@ -192,8 +190,7 @@ class myGame():
     def _set_initial_display_settings(self):
         os.environ['SDL_VIDEO_CENTERED'] = '1'
         self._screen_size = self._system_display_info['resolution']
-
-        #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
+#TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
         self._screen_to_native_ratio = 4.5 
         self._native_res = (int(self._screen_size[0]/self._screen_to_native_ratio),int(self._screen_size[1]/self._screen_to_native_ratio))
 

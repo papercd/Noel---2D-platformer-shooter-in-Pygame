@@ -83,6 +83,9 @@ BUILDING_AUTOTILE ={
 
 class Tilemap: 
     def __init__(self,game,tile_size = 16, offgrid_layers = 1):
+        self.PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs','building_door','trap_door',\
+                              'ladder'}
+
         self.tile_size = tile_size
         self.game = game
         
@@ -127,12 +130,45 @@ class Tilemap:
                 
         return shadow_objs
             
-      
-    def update_shadow_objs(self,surf,offset = (0,0)):
+    """
+    def update_shadow_objs(self, native_res, offset=(0, 0)):
         hulls = []
         
-        for x_cor in range(offset[0] // self.tile_size - 10, (offset[0] + surf.get_width()) // self.tile_size +10):
-            for y_cor in range(offset[1] // self.tile_size -10, (offset[1] + surf.get_height()) // self.tile_size +10): 
+        # Precompute boundaries
+        x_start = offset[0] // self.tile_size - 10
+        x_end = (offset[0] + native_res[0]) // self.tile_size + 10
+        y_start = offset[1] // self.tile_size - 10
+        y_end = (offset[1] + native_res[1]) // self.tile_size + 10
+        
+        for x_cor in range(x_start, x_end):
+            for y_cor in range(y_start, y_end):
+                coor = f"{x_cor};{y_cor}"  # Use tuple as key
+                
+                if coor in self.tilemap:
+                    tile = self.tilemap[coor]
+                    
+                    if tile.type in ["spawners", "lights"]:
+                        continue  # Skip tiles of type "spawners" or "lights"
+                    
+                    if tile.hull:
+                        if tile.type.endswith('door') and tile.open:
+                            continue
+                        
+                        tile_variant = tile.variant.split(';')  # Cache the split result
+                        
+                        if tile_variant[0] == '8' and not tile.enclosed:
+                            hulls.append(tile.hull[0])
+                        else:
+                            hulls.extend(tile.hull)  # Append all hulls
+
+        return hulls
+    """
+    
+    def update_shadow_objs(self,native_res,offset = (0,0)):
+        hulls = []
+        
+        for x_cor in range(offset[0] // self.tile_size - 10, (offset[0] + native_res[0]) // self.tile_size +10):
+            for y_cor in range(offset[1] // self.tile_size -10, (offset[1] + native_res[1]) // self.tile_size +10): 
                 coor = str(x_cor) + ';' + str(y_cor)
                 if coor in self.tilemap:
                     tile = self.tilemap[coor]
@@ -561,7 +597,6 @@ class Tilemap:
         self.decorations = []
         self.path_graph = {}
         self.ambientNodes = ambientNodeList()
- 
         
          
         # fill in tilemap dictionary from json data 
@@ -588,6 +623,7 @@ class Tilemap:
                             self.tilemap[tile_key] = door 
                             split_key = tile_key.split(';')
                             self.tilemap[split_key[0]+';'+ str(int(split_key[1]) + 1)] = door 
+                            
                 
                 # process for every other tile
                 else: 
@@ -922,11 +958,11 @@ class Tilemap:
                
         
             elif spawner.variant == '2;0':
-                
                 self.game.add_enemy(Wheel_bot(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(20,22)))
 
             elif spawner.variant == "4;0":
                 self.game.add_enemy(Ball_slinger(self.game,(spawner.pos[0] *self.tile_size,spawner.pos[1] *self.tile_size), (13,19)))
+
  
 
     def extract(self,id_pairs, keep = False):
@@ -1241,18 +1277,29 @@ class Tilemap:
     #the only thing that needs updating for tiles are the decals for now, So there is no separate update function for now. 
     #if the tiles can be destroyed, I guess that is when I will add an update function.
 
-    def render(self, surf, offset = (0,0),editor = False):
-        
-        sprite_source = None
-        if editor:  
-            sprite_source = self.game.assets 
+    def _render_tile_texture(self, tex,render_engine_ref,layer,tile_pos,offset = (0,0),pos_in_pixel_coords = False):
+        if not pos_in_pixel_coords: 
+            pos  =  (tile_pos[0] * self.tile_size - offset[0] , tile_pos[1] * self.tile_size - offset[1])
         else: 
-            sprite_source = self.game.general_sprites 
+            pos = (tile_pos[0] - offset[0] , tile_pos[1] - offset[1])
+
+        render_engine_ref.render_texture(
+            tex,layer,
+            dest=pygame.Rect(*pos,tex.width,tex.height),
+            source=pygame.Rect(0,0,tex.width,tex.height)
+        )
+
+    def render(self, render_engine_ref, layer, offset = (0,0),editor = False):
+        
+        if editor:  
+            texture_source = self.game.assets 
+        else: 
+            texture_source = self.game.general_sprites 
             
+        native_res = render_engine_ref.get_native_res()
 
-
-        for x_cor in range(offset[0] // self.tile_size, (offset[0] + surf.get_width()) // self.tile_size +1):
-            for y_cor in range(offset[1] // self.tile_size, (offset[1] + surf.get_height()) // self.tile_size +1): 
+        for x_cor in range(offset[0] // self.tile_size, (offset[0] + native_res[0]) // self.tile_size +1):
+            for y_cor in range(offset[1] // self.tile_size, (offset[1] + native_res[0]) // self.tile_size +1): 
                 coor = str(x_cor) + ';' + str(y_cor)
                 for dict in self.offgrid_tiles:
                     
@@ -1261,26 +1308,26 @@ class Tilemap:
                         variant_sub = tile.variant.split(';')
 
                         if tile.type.endswith('door') and tile.type.split('_')[0] != 'trap':
-                            surf.blit(sprite_source[tile.type + '_' + variant_sub[0]][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])) 
+                            tex = texture_source[tile.type + '_' + variant_sub[0]][int(variant_sub[0])]
+                            self._render_tile_texture(tex,render_engine_ref,layer,tile.pos,offset,pos_in_pixel_coords=False)    
 
                         else: 
-                            if isinstance(sprite_source[tile.type][int(variant_sub[0])],list):
-                            #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
-                        
-                                surf.blit(sprite_source[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                            if isinstance(texture_source[tile.type][int(variant_sub[0])],list):
+                                tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
+                                self._render_tile_texture(tex,render_engine_ref,layer,tile.pos,offset,pos_in_pixel_coords=False)
                             else: 
-                                surf.blit(sprite_source[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                                tex = texture_source[tile.type][int(variant_sub[0])]
+                                self._render_tile_texture(tex,render_engine_ref,layer,tile.pos,offset,pos_in_pixel_coords=False)
     
 
                                                 
                         #you also gotta blit an alpha surface depending on their exposure ( how many neighbors they have. )
                         #render the mask 
-                        #surf.blit(self.game.assets['masks'][int(variant_sub[0])], (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
             
         #tiles rendering, render the decals here as well. 
 
-        for x_cor in range(offset[0] // self.tile_size, (offset[0] + surf.get_width()) // self.tile_size +1):
-            for y_cor in range(offset[1] // self.tile_size, (offset[1] + surf.get_height()) // self.tile_size +1): 
+        for x_cor in range(offset[0] // self.tile_size, (offset[0] + native_res[0]) // self.tile_size +1):
+            for y_cor in range(offset[1] // self.tile_size, (offset[1] +native_res[1]) // self.tile_size +1): 
                 coor = str(x_cor) + ';' + str(y_cor)
                 if coor in self.tilemap: 
                     tile = self.tilemap[coor]
@@ -1290,48 +1337,55 @@ class Tilemap:
                         # Blit the animation frame. 
                         if tile.open:
                             tile.cur_frame = min(tile.animation.count-1, tile.cur_frame+1)
-                            surf.blit(tile.animation.images[tile.cur_frame],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]) )
+                            tex = tile.animation.textures[tile.cur_frame]
+                            self._render_tile_texture(tex,render_engine_ref,layer,tile.pos,offset,pos_in_pixel_coords=False)
                         else: 
                             tile.cur_frame = max(0, tile.cur_frame -1)
-                            surf.blit(tile.animation.images[tile.cur_frame],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1])) 
+                            tex = tile.animation.textures[tile.cur_frame]
+                            self._render_tile_texture(tex,render_engine_ref,layer,tile.pos,offset,pos_in_pixel_coords=False)
                         
-                        #surf.blit(self.game.interactables[tile.type + '_' +variant_sub[0]].images[tile.cur_frame],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))  
 
                     else: 
-                        if isinstance(sprite_source[tile.type][int(variant_sub[0])],list):
-                        #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
-                            
-                            surf.blit(sprite_source[tile.type][int(variant_sub[0])][int(variant_sub[1])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                        if isinstance(texture_source[tile.type][int(variant_sub[0])],list):
+                            tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
+                            self._render_tile_texture(tex,render_engine_ref,layer,tile.pos,offset,pos_in_pixel_coords=False)
                         else: 
-                            surf.blit(sprite_source[tile.type][int(variant_sub[0])],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
+                            tex =  texture_source[tile.type][int(variant_sub[0])]
+                            self._render_tile_texture(tex,render_engine_ref,layer,tile.pos,offset,pos_in_pixel_coords=False)
 
                         if editor and tile.type in PHYSICS_APPLIED_TILE_TYPES and tile.dirty: 
-                            pygame.draw.rect(surf,(255,12,12), (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1],self.tile_size,self.tile_size),width = 1)
+                            temp_surf = pygame.Surface((self.tile_size,self.tile_size),pygame.SRCALPHA)
+                            pygame.draw.rect(temp_surf,(255,12,12),(0,0,self.tile_size,self.tile_size),width= 1)
+                            red_square_tex = self.surface_to_texture(temp_surf) 
+                            self._render_tile_texture(tex,render_engine_ref,layer,tile.pos,offset,pos_in_pixel_coords=False)
+                            red_square_tex.release()
+                            #pygame.draw.rect(surf,(255,12,12), (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1],self.tile_size,self.tile_size),width = 1)
 
                         #you also gotta blit an alpha surface depending on their exposure ( how many neighbors they have. )
                         #render the mask 
                         #surf.blit(self.game.assets['masks'][int(variant_sub[0])], (tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
                         for decal in tile.decals.copy():
                             #so decals need to be surface objects. 
-                            
+                            pass 
+                            """
                             surf.blit(decal[0],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
                             decal[1] += 1
                             if decal[1] >= 40:
                                 tile.decals.remove(decal)
-                         
+                            """
 
         #decorations rendering 
         
         for tile in self.decorations: 
             
                 variant_sub = tile.variant.split(';')
-                if isinstance(sprite_source[tile.type][int(variant_sub[0])],list):
-                #if isinstance(self.game.assets[tile.type][int(variant_sub[0])],list):
-                    
-                    surf.blit(sprite_source[tile.type][int(variant_sub[0])][int(variant_sub[1])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
+                if isinstance(texture_source[tile.type][int(variant_sub[0])],list):
+                    tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
+                    self._render_tile_texture(tex,render_engine_ref,layer,tile.pos,offset,pos_in_pixel_coords=True)
                 else: 
                     
-                    surf.blit(sprite_source[tile.type][int(variant_sub[0])], (tile.pos[0] - offset[0],tile.pos[1]-offset[1]))
+                    tex =  texture_source[tile.type][int(variant_sub[0])]
+                    self._render_tile_texture(tex,render_engine_ref,layer,tile.pos,offset,pos_in_pixel_coords=True)
         
 
 

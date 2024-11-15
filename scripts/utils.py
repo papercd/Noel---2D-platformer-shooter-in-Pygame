@@ -2,6 +2,7 @@ import os
 import pygame 
 import math
 import numpy as np
+from moderngl import Context,Texture,NEAREST
 #from PIL import Image, ImageFilter
 
 #so in here we are going to define a function that creates pygame image objects
@@ -11,7 +12,44 @@ import numpy as np
 
 BASE_PATH = 'data/images/'
 
-def load_texture(path):
+def load_texture(path: str,ctx:Context) -> Texture:
+    """
+    Load a texture from a file.
+
+    Args:
+        path (str): Path to the texture file.
+        ctx (moderngl.Context) : a moderngl context. 
+
+    Returns:
+        moderngl.Texture: Loaded texture.
+    """
+
+    img = pygame.image.load(path).convert_alpha()
+    
+    return surface_to_texture(img,ctx)
+
+
+
+def surface_to_texture(img:pygame.Surface,ctx :Context) -> Texture:
+    """
+    Convert a pygame.Surface to a moderngl.Texture.
+
+    Args:
+        sfc (pygame.Surface): Surface to convert.
+
+    Returns:
+        moderngl.Texture: Converted texture.
+
+    """
+    img_flip = pygame.transform.flip(img, False, True)
+    img_data = pygame.image.tostring(img_flip, "RGBA")
+
+    tex = ctx.texture(img.get_size(), components=4, data=img_data)
+    tex.filter = (NEAREST, NEAREST)
+    return tex
+
+
+def load_pygame_srf(path):
     
     """
     if background == 'black':
@@ -20,7 +58,7 @@ def load_texture(path):
        
     elif background == 'transparent': 
     """
-    sprite= pygame.image.load(BASE_PATH + path)
+    sprite= pygame.image.load(BASE_PATH + path).convert_alpha()
     return sprite 
 
 
