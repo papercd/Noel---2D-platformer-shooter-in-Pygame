@@ -1,3 +1,11 @@
+TILE_ATLAS_POSITIONS ={
+
+
+
+
+}
+
+
 
 
 class Tilemap:
@@ -8,5 +16,6 @@ class Tilemap:
 
 
     def _load_map(self,json_data):
-        for tile_key in json_data['tilemap']:
-            pass 
+
+        # one step at a time. create another test, and 
+        pass 

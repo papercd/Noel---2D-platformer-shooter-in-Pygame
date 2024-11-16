@@ -3,7 +3,7 @@ import json
 import random 
 import pygame
 import heapq
-from scripts.entities import Canine, Wheel_bot,Ball_slinger
+#from scripts.entities import Canine, Wheel_bot,Ball_slinger
 from my_pygame_light2d.hull import Hull
 from my_pygame_light2d.light import PointLight
 from scripts.weapon_list import ambientNodeList
@@ -585,9 +585,7 @@ class Tilemap:
 
     
 
-    def load_map_return_lights(self,path):
-        f = open(path,'r')
-        tilemap_data = json.load(f)
+    def load_map_return_lights(self,tilemap_data):
 
         #empty obj containers 
         lights = []
@@ -705,7 +703,6 @@ class Tilemap:
             
             self.grass[grass_key] = Tile(tilemap_data['grass'][grass_key]["type"],tilemap_data['grass'][grass_key]["variant"],tilemap_data['grass'][grass_key]["pos"] )
         
-        f.close
         return lights
 
         
@@ -954,15 +951,15 @@ class Tilemap:
                 self.game.player.pos = [spawner.pos[0] * self.tile_size, spawner.pos[1] * self.tile_size]
                 
             elif spawner.variant == '1;0': 
-                self.game.add_enemy(Canine(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(34,23),'black'))
-               
+                #self.game.add_enemy(Canine(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(34,23),'black'))
+                pass 
         
             elif spawner.variant == '2;0':
-                self.game.add_enemy(Wheel_bot(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(20,22)))
-
+                #self.game.add_enemy(Wheel_bot(self.game,(spawner.pos[0] * self.tile_size,spawner.pos[1] * self.tile_size),(20,22)))
+                pass 
             elif spawner.variant == "4;0":
-                self.game.add_enemy(Ball_slinger(self.game,(spawner.pos[0] *self.tile_size,spawner.pos[1] *self.tile_size), (13,19)))
-
+                #self.game.add_enemy(Ball_slinger(self.game,(spawner.pos[0] *self.tile_size,spawner.pos[1] *self.tile_size), (13,19)))
+                pass 
  
 
     def extract(self,id_pairs, keep = False):

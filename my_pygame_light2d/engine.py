@@ -1,4 +1,5 @@
 from importlib import resources
+from scripts.background import Background
 from enum import Enum
 import numpy as np
 import moderngl
@@ -443,185 +444,103 @@ class RenderEngine:
         self._fbo_bg.clear(R, G, B, A)
         self._fbo_fg.clear(0, 0, 0, 0)
 
-    def render_background_view(self,background,offset = (0,0)):
-        
+
+    def render_background_view(self,background:Background,infinite:bool = False,offset = (0,0)):
+        """
+        Render the background (list of textures) to the Background layer.
+    
+        """
         scroll = offset[0]
         speed = 1
-        
-        for texture in background.bg_layers:
-            for panels in range(-1, 2):
-                self.render_texture_with_trans(
-                    texture, Layer_.BACKGROUND,
-                    position= (panels*texture.width -scroll *0.05*speed,\
-                               0 - min(0, offset[1] * 0.05)),                
-                
-                )
-            speed += 1
+        for tex in background.bg_textures:
+            if infinite:
+                # Calculate the width of the texture and the number of tiles needed to cover the screen
+                texture_width = tex.width
+                num_tiles = (self._native_res[0] // texture_width) + 2  # +2 to ensure seamless wrap
 
-    def _render_tile_texture(self,tex: moderngl.Texture,fbo:moderngl.Framebuffer,vao: moderngl.VertexArray,dest_pos):
-         # Mesh for destination rect on screen
-        width, height = fbo.size
-        x = 2. * dest_pos[0] / width - 1.
-        y = 1. - 2. * dest_pos[1] / height
-        w = 2. * tex.width / width
-        h = 2. * tex.height / height
-        vertices = np.array([(x, y), (x + w, y), (x, y - h),
-                            (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
+                # Loop through enough panels to cover the screen
+                for panel in range(-1, num_tiles):
+                    x_pos = int(panel * texture_width - (scroll * 0.05 * speed) % texture_width)
+                    self.render_texture(
+                        tex,
+                        Layer_.BACKGROUND,
+                        dest=pygame.Rect(x_pos, int(-min(0, offset[1]) * 0.05), texture_width, self._native_res[1]),
+                        source=pygame.Rect(0, 0, texture_width, tex.height)
+                    )
+            else: 
+                for panels in range(-1,2):
+                    self.render_texture(
+                        tex,Layer_.BACKGROUND,
+                        dest= pygame.Rect(int(panels*self._native_res[0]-scroll * 0.05 * speed),int(-min(0,offset[1]) * 0.05),self._native_res[0],self._native_res[1]),
+                        source= pygame.Rect(0,0,tex.width,tex.height)   
+                    )
+                speed += 1 
+            
+    
+    def render_tilemap(self, tilemap, offset, in_editor=False):
+        # Cache texture coordinates and tile positions
+        fbo = self._get_fbo(Layer_.BACKGROUND)
+        fbo_w,fbo_h = fbo.size
 
-        # Mesh for source within the texture
-        x = 0 
-        y = 0  
-        w = 1 
-        h = 1 
+        vertices_list = []
+        texture_coords_list = []
 
-        p1 = (x, y + h)
-        p2 = (x + w, y + h)
-        p3 = (x, y)
-        p4 = (x + w, y)
-        tex_coords = np.array([p1, p2, p3,
-                               p3, p2, p4], dtype=np.float32)
-
-        buffer_data = np.hstack([vertices,tex_coords])
-        vbo = self.ctx.buffer(buffer_data)
-
-        
-        
-
-
-    def render_tilemap(self,tilemap,layer:Layer_,offset:tuple[int,int],in_editor : bool = False) -> None:
-        fbo = self._get_fbo(layer)
-        
-        if in_editor:
-            texture_source = self.game.assets
-        else: 
-            texture_source = self.game.general_sprites
-        
-        for x_cor in range(offset[0] // tilemap.tile_size, (offset[0] + self._native_res[0]) // tilemap.tile_size+1):
-            for y_cor in range(offset[1] // tilemap.tile_size, (offset[1] + self._native_res[1]) // tilemap.tile_size+1): 
-                coor = str(x_cor) + ';' + str(y_cor)
-                for dict in tilemap.offgrid_tiles:
-                    
-                    if coor in dict: 
-                        tile = dict[coor]
-                        variant_sub = tile.variant.split(';')
-
-                        if tile.type.endswith('door') and tile.type.split('_')[0] != 'trap':
-                            tex = texture_source[tile.type + '_' + variant_sub[0]][int(variant_sub[0])]
-                            self._render_tile_texture(tex,fbo,(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1]))
-                            self.render_texture(
-                                tex,Layer_.BACKGROUND,
-                                dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
-                                source=pygame.Rect(0,0,tex.width,tex.height)
-                            )
-                            
-
-                        else: 
-                            if isinstance(texture_source[tile.type][int(variant_sub[0])],list):
-                                tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
-
-                                self.render_texture(
-                                    tex,Layer_.BACKGROUND,
-                                    dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
-                                    source=pygame.Rect(0,0,tex.width,tex.height)
-                                )
-
-                        
-                            else: 
-                                tex = texture_source[tile.type][int(variant_sub[0])]
-                                self.render_texture(
-                                    tex,Layer_.BACKGROUND,
-                                    dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
-                                    source=pygame.Rect(0,0,tex.width,tex.height)
-                                )
-
-        for x_cor in range(offset[0] // tilemap.tile_size, (offset[0] + self._native_res[0]) // tilemap.tile_size+1):
-            for y_cor in range(offset[1] // tilemap.tile_size, (offset[1] + self._native_res[1]) //tilemap.tile_size +1): 
-                coor = str(x_cor) + ';' + str(y_cor)
-                if coor in tilemap.tilemap: 
+        # Create a buffer for vertices and texture coordinates
+        for x in range(offset[0] // tilemap.tile_size, (offset[0] + self._native_res[0]) // tilemap.tile_size + 1):
+            for y in range(offset[1] // tilemap.tile_size, (offset[1] + self._native_res[1]) // tilemap.tile_size + 1):
+                coor = str(x) + ";" + str(y)
+                if coor in tilemap.tilemap:  # If tile exists in the dictionary
                     tile = tilemap.tilemap[coor]
                     variant_sub = tile.variant.split(';')
+                    
+                    # Get texture coordinates for the tile (from the tile atlas)
+                    tex = self.get_texture_for_tile(tile, variant_sub, in_editor)
+                    texture_coords = np.array([(0, 1), (1, 1), (0, 0), (1, 0), (0, 0), (1, 0)], dtype=np.float32)
 
-                    if tile.type.endswith('door'):
-                        if tile.open:
-                            tile.cur_frame = min(tile.animation.count-1, tile.cur_frame+1)
-                            tex = tile.animation.textures[tile.cur_frame]
+                    # Create the vertex data (tile positions and texture coordinates)
+                    vertices = self.create_tile_vertices(tile.pos, tex,fbo_w,fbo_h)
+                    vertices_list.append(vertices)
+                    texture_coords_list.append(texture_coords)
 
-                            self.render_texture(
-                                tex,Layer_.BACKGROUND,
-                                dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
-                                source=pygame.Rect(0,0,tex.width,tex.height)
-                            )
-                           
-                        else: 
-                            tile.cur_frame = max(0, tile.cur_frame -1)
-                            tex = tile.animation.textures[tile.cur_frame]
-                            self.render_texture(
-                                tex,Layer_.BACKGROUND,
-                                dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
-                                source=pygame.Rect(0,0,tex.width,tex.height)
-                            )
-                            
-                    else: 
-                        if isinstance(texture_source[tile.type][int(variant_sub[0])],list):
-                            tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
-                            self.render_texture(
-                                tex,Layer_.BACKGROUND,
-                                dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
-                                source=pygame.Rect(0,0,tex.width,tex.height)
-                            )
-                            
+        # Flatten the lists into single arrays
+        vertices_array = np.concatenate(vertices_list, axis=0)
+        texture_coords_array = np.concatenate(texture_coords_list, axis=0)
 
-                        else:
-                            tex =  texture_source[tile.type][int(variant_sub[0])]
-                            self.render_texture(
-                                tex,Layer_.BACKGROUND,
-                                dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],tex.width,tex.height),
-                                source=pygame.Rect(0,0,tex.width,tex.height)
-                            )
+        # Interleave vertices and texture coordinates
+        buffer_data = np.column_stack((vertices_array, texture_coords_array)).astype(np.float32)
+        vbo = self.ctx.buffer(buffer_data)
+
+        # Render all visible tiles in one batch
+        self.render_tiles(vbo)
 
 
-                        if in_editor and tile.type in tilemap.PHYSICS_APPLIED_TILE_TYPES and tile.dirty:
-                            temp_surf = pygame.Surface((tilemap.tile_size,tilemap.tile_size),pygame.SRCALPHA)
-                            pygame.draw.rect(temp_surf,(255,12,12),(0,0,tilemap.tile_size,tilemap.tile_size),width= 1)
-                            red_square_tex = self.surface_to_texture(temp_surf) 
-                            self.render_texture(
-                                red_square_tex,Layer_.BACKGROUND,
-                                dest=pygame.Rect(tile.pos[0] * tilemap.tile_size - offset[0] , tile.pos[1] * tilemap.tile_size - offset[1],red_square_tex.width,red_square_tex.height),
-                                source=pygame.Rect(0,0,red_square_tex.width,red_square_tex.height)
-                            )
-                            red_square_tex.release()
+    def get_texture_for_tile(self, tile, variant_sub,in_editor):
+        # Fetch the texture from the atlas based on tile type and variant
+        texture_source = self.game.assets if in_editor else self.game.general_sprites
+        if isinstance(texture_source[tile.type][int(variant_sub[0])], list):
+            tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
+        else:
+            tex = texture_source[tile.type][int(variant_sub[0])]
+        return tex
 
-                        for decal in tile.decals.copy():
-                            pass
-                            """
-                            surf.blit(decal[0],(tile.pos[0] * self.tile_size-offset[0], tile.pos[1] *self.tile_size-offset[1]))
-                            decal[1] += 1
-                            if decal[1] >= 40:
-                                tile.decals.remove(decal)
-                            """
-
-        #decorations rendering 
+    def create_tile_vertices(self, pos, tex,fbo_w,fbo_h):
+        # Calculate screen-space position and texture coordinates for a tile
+        x = 2. * pos[0] * 16 / fbo_w- 1.
+        y = 1. - 2. * pos[1] * 16/ fbo_h
+        w = 2. * tex.width / fbo_w
+        h = 2. * tex.height /fbo_h 
+        vertices = np.array([(x, y), (x + w, y), (x, y - h),
+                            (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
         
-        for tile in tilemap.decorations: 
-            
-                variant_sub = tile.variant.split(';')
-                if isinstance(texture_source[tile.type][int(variant_sub[0])],list):
-                    tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
-                    self.render_texture(
-                                tex,Layer_.BACKGROUND,
-                                dest=pygame.Rect(tile.pos[0] - offset[0] , tile.pos[1] - offset[1],tex.width,tex.height),
-                                source=pygame.Rect(0,0,tex.width,tex.height)
-                            )
-                   
-                else: 
-                    tex =  texture_source[tile.type][int(variant_sub[0])]
-                    self.render_texture(
-                                tex,Layer_.BACKGROUND,
-                                dest=pygame.Rect(tile.pos[0] - offset[0] , tile.pos[1] - offset[1],tex.width,tex.height),
-                                source=pygame.Rect(0,0,tex.width,tex.height)
-                            )
-                    
-                    
+        return vertices
+
+    def render_tiles(self, vbo):
+        # Render the entire batch of tiles with a single draw call
+
+        vao = self.ctx.vertex_array(self._prog_draw, [(vbo, '2f 2f', 'vertexPos', 'vertexTexCoord')])
+        vao.render()
+
+    
         
 
 
@@ -713,10 +632,10 @@ class RenderEngine:
         w = source.w / tex.size[0]
         h = source.h / tex.size[1]
 
-        p1 = (x, y + h)
-        p2 = (x + w, y + h)
-        p3 = (x, y)
-        p4 = (x + w, y)
+        p1 = (x, y + h) 
+        p2 = (x + w, y + h) 
+        p3 = (x, y) 
+        p4 = (x + w, y) 
         tex_coords = np.array([p1, p2, p3,
                                p3, p2, p4], dtype=np.float32)
 
