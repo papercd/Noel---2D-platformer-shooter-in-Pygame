@@ -35,14 +35,13 @@ class Noel():
         self._curr_gameState = GameState.GameLoop
         self._dt = 0
         self._prev_frame_time = 0
-
+        self.scroll = [0,0]
 
 
         self._backgrounds:dict[str,Background] = self._load_backgrounds(TEXTURE_BASE_PATH+'backgrounds')
         self._tilemap_jsons = self._load_tilemap_jsons('map_jsons')
     
-        self.Tilemap = Tilemap(self._tilemap_jsons['test.json'])
-
+        self._tilemap = Tilemap(self._tilemap_jsons['tilemap_atlas_test.json'])
 
 
 
@@ -210,7 +209,16 @@ class Noel():
             for event in pygame.event.get():
                 self._handle_common_events(event)
                 if event.type ==pygame.KEYDOWN:
-                    pass 
+                    if event.key == pygame.K_a:
+                        self.scroll[0] -= 100
+                    if event.key == pygame.K_d:
+                        self.scroll[0] += 100
+                    if event.key == pygame.K_w:
+                        self.scroll[0] -= 100
+                    if event.key == pygame.K_s:
+                        self.scroll[0] += 100
+                    
+
                     
 
 
@@ -224,9 +232,9 @@ class Noel():
 
             self.render_engine.clear(0,0,0,255)
 
-            self.render_engine.render_background_view(self._backgrounds['start'])
-
-            #self.render_engine.render_tilemap(self._curr_tilemap,(0,0))
+            self.render_engine.render_background_view(self._backgrounds['start'],offset=self.scroll)
+            
+            self.render_engine.render_tilemap(self._tilemap,self.scroll)
 
             self.render_engine.render((0,0),(0,0),(0,0))
             #self.render_engine.render_game_scene(self._curr_game_scene)

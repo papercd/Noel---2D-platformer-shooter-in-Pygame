@@ -8,6 +8,8 @@ import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
 from scripts.layer import Layer_
+from scripts.atlass_positions import TILE_ATLAS_POSITIONS
+from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
 from my_pygame_light2d.hull import Hull
@@ -477,70 +479,88 @@ class RenderEngine:
                 speed += 1 
             
     
-    def render_tilemap(self, tilemap, offset, in_editor=False):
+    def render_tilemap(self, tilemap:Tilemap, offset):
         # Cache texture coordinates and tile positions
         fbo = self._get_fbo(Layer_.BACKGROUND)
         fbo_w,fbo_h = fbo.size
+        
+        # fetch texture atlass 
+        texture_atlass = self.game.atlas_dict['tiles']
+        atl_size = texture_atlass.size
 
         vertices_list = []
         texture_coords_list = []
 
         # Create a buffer for vertices and texture coordinates
-        for x in range(offset[0] // tilemap.tile_size, (offset[0] + self._native_res[0]) // tilemap.tile_size + 1):
-            for y in range(offset[1] // tilemap.tile_size, (offset[1] + self._native_res[1]) // tilemap.tile_size + 1):
-                coor = str(x) + ";" + str(y)
-                if coor in tilemap.tilemap:  # If tile exists in the dictionary
-                    tile = tilemap.tilemap[coor]
-                    variant_sub = tile.variant.split(';')
+        for x in range(offset[0] // tilemap._regular_tile_size, (offset[0] + self._native_res[0]) // tilemap._regular_tile_size+ 1):
+            for y in range(offset[1] // tilemap._regular_tile_size, (offset[1] + self._native_res[1]) // tilemap._regular_tile_size + 1):
+                coor = (x,y) 
+                if coor in tilemap.physical_tiles:  # If tile exists in the dictionary
+                    tile_info = tilemap.physical_tiles[coor]
                     
                     # Get texture coordinates for the tile (from the tile atlas)
-                    tex = self.get_texture_for_tile(tile, variant_sub, in_editor)
-                    texture_coords = np.array([(0, 1), (1, 1), (0, 0), (1, 0), (0, 0), (1, 0)], dtype=np.float32)
+                    texture_coords = self.get_texture_coords_for_tile(tile_info,atl_size)
 
                     # Create the vertex data (tile positions and texture coordinates)
-                    vertices = self.create_tile_vertices(tile.pos, tex,fbo_w,fbo_h)
+                    vertices = self.create_tile_vertices(tile_info,fbo_w,fbo_h)
                     vertices_list.append(vertices)
                     texture_coords_list.append(texture_coords)
+        
+        if vertices_list:
 
-        # Flatten the lists into single arrays
-        vertices_array = np.concatenate(vertices_list, axis=0)
-        texture_coords_array = np.concatenate(texture_coords_list, axis=0)
+            # Flatten the lists into single arrays
+            vertices_array = np.concatenate(vertices_list, axis=0)
+            texture_coords_array = np.concatenate(texture_coords_list, axis=0)
 
-        # Interleave vertices and texture coordinates
-        buffer_data = np.column_stack((vertices_array, texture_coords_array)).astype(np.float32)
-        vbo = self.ctx.buffer(buffer_data)
+            # Interleave vertices and texture coordinates
+            buffer_data = np.column_stack((vertices_array, texture_coords_array)).astype(np.float32)
+            vbo = self.ctx.buffer(buffer_data)
 
-        # Render all visible tiles in one batch
-        self.render_tiles(vbo)
+            # Render all visible tiles in one batch
+            self.render_tiles(vbo,fbo,texture_atlass)
 
 
-    def get_texture_for_tile(self, tile, variant_sub,in_editor):
+    def get_texture_coords_for_tile(self,tile_info,atl_size):
         # Fetch the texture from the atlas based on tile type and variant
-        texture_source = self.game.assets if in_editor else self.game.general_sprites
-        if isinstance(texture_source[tile.type][int(variant_sub[0])], list):
-            tex = texture_source[tile.type][int(variant_sub[0])][int(variant_sub[1])]
-        else:
-            tex = texture_source[tile.type][int(variant_sub[0])]
-        return tex
+        tile_variant = tile_info[1].split(';')
 
-    def create_tile_vertices(self, pos, tex,fbo_w,fbo_h):
+        x = (TILE_ATLAS_POSITIONS[tile_info[0]][0] + int(tile_variant[1]) * 16) / atl_size[0] 
+        y = (TILE_ATLAS_POSITIONS[tile_info[0]][1] + int(tile_variant[0]) * 16) / atl_size[1] 
+        w = 16 / atl_size[0]
+        h = 16 / atl_size[1]
+
+        p1 = (x, y + h) 
+        p2 = (x + w, y + h) 
+        p3 = (x, y) 
+        p4 = (x + w, y) 
+        tex_coords = np.array([p1, p2, p3,
+                               p3, p2, p4], dtype=np.float32)
+        
+        return tex_coords
+
+    def create_tile_vertices(self, tile_info , fbo_w,fbo_h):
         # Calculate screen-space position and texture coordinates for a tile
-        x = 2. * pos[0] * 16 / fbo_w- 1.
-        y = 1. - 2. * pos[1] * 16/ fbo_h
-        w = 2. * tex.width / fbo_w
-        h = 2. * tex.height /fbo_h 
+        x = 2. * tile_info[2][0] * 16 / fbo_w- 1.
+        y = 1. - 2. * tile_info[2][1] * 16/ fbo_h
+        w = 2. * 16 / fbo_w
+        h = 2. * 16 /fbo_h 
         vertices = np.array([(x, y), (x + w, y), (x, y - h),
                             (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
         
         return vertices
 
-    def render_tiles(self, vbo):
+    def render_tiles(self, vbo,fbo, texture_atlass):
         # Render the entire batch of tiles with a single draw call
-
+        
         vao = self.ctx.vertex_array(self._prog_draw, [(vbo, '2f 2f', 'vertexPos', 'vertexTexCoord')])
+        
+        texture_atlass.use()
+        fbo.use()
         vao.render()
 
-    
+        vbo.release()
+        vao.release()
+
         
 
 
