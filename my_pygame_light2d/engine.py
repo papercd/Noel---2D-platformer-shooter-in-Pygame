@@ -502,12 +502,13 @@ class RenderEngine:
                     texture_coords = self.get_texture_coords_for_tile(tile_info,atl_size)
 
                     # Create the vertex data (tile positions and texture coordinates)
-                    vertices = self.create_tile_vertices(tile_info,fbo_w,fbo_h)
+                    vertices = self.create_tile_vertices(tile_info,offset,fbo_w,fbo_h)
                     vertices_list.append(vertices)
                     texture_coords_list.append(texture_coords)
         
-        if vertices_list:
 
+        if vertices_list:
+            
             # Flatten the lists into single arrays
             vertices_array = np.concatenate(vertices_list, axis=0)
             texture_coords_array = np.concatenate(texture_coords_list, axis=0)
@@ -515,7 +516,6 @@ class RenderEngine:
             # Interleave vertices and texture coordinates
             buffer_data = np.column_stack((vertices_array, texture_coords_array)).astype(np.float32)
             vbo = self.ctx.buffer(buffer_data)
-
             # Render all visible tiles in one batch
             self.render_tiles(vbo,fbo,texture_atlass)
 
@@ -528,6 +528,8 @@ class RenderEngine:
         y = (TILE_ATLAS_POSITIONS[tile_info[0]][1] + int(tile_variant[0]) * 16) / atl_size[1] 
         w = 16 / atl_size[0]
         h = 16 / atl_size[1]
+        
+        print(w,h)
 
         p1 = (x, y + h) 
         p2 = (x + w, y + h) 
@@ -538,10 +540,10 @@ class RenderEngine:
         
         return tex_coords
 
-    def create_tile_vertices(self, tile_info , fbo_w,fbo_h):
+    def create_tile_vertices(self, tile_info ,offset, fbo_w,fbo_h):
         # Calculate screen-space position and texture coordinates for a tile
-        x = 2. * tile_info[2][0] * 16 / fbo_w- 1.
-        y = 1. - 2. * tile_info[2][1] * 16/ fbo_h
+        x = 2. * (tile_info[2][0] * 16 -offset[0] )/ fbo_w- 1.
+        y = 1. - 2. * (tile_info[2][1] * 16 - offset[1])/ fbo_h
         w = 2. * 16 / fbo_w
         h = 2. * 16 /fbo_h 
         vertices = np.array([(x, y), (x + w, y), (x, y - h),
