@@ -1,5 +1,5 @@
 from pygame import Rect
-from new_tilemap import Tilemap
+from scripts.new_tilemap import Tilemap
 
 class PhysicsEntity: 
     def __init__(self,type:str,pos:list[float,float],size:tuple[int,int]):
@@ -157,7 +157,7 @@ class PhysicsEntity:
 
 
 class Player(PhysicsEntity):
-    def __init__(self, type: str, pos: list[float], size: tuple[int, int]):
+    def __init__(self, pos: list[float], size: tuple[int, int]):
         super().__init__('player', pos, size)
         self._accel_rate = 0
         self._default_speed = 0

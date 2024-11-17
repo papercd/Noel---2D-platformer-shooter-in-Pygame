@@ -3,7 +3,7 @@ import platform
 from os import environ,listdir
 from json import load  as jsLoad
 
-#from scripts.new_entities import Player
+from scripts.new_entities import Player
 from scripts.new_tilemap import Tilemap
 from scripts.layer import Layer_
 from scripts.utils import load_texture 
@@ -45,7 +45,7 @@ class Noel():
         self._tilemap = Tilemap(self._ctx,self._atlas_dict['tiles'])
         self._tilemap._load_map(self._tilemap_jsons['new_renderer_test.json'])
 
-        self.player = None
+        self.player = Player([50,50],(14,16)) 
 
     def _initalize_game_settings(self):
         self._system_display_info = self._get_system_display_info()
@@ -92,7 +92,7 @@ class Noel():
         self._default_true_to_screen_res_ratio = 4 
 
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
-        self._true_to_screen_res_ratio = 4.5 
+        self._true_to_screen_res_ratio = 4 
         self._true_res = (int(self._screen_res[0]/self._true_to_screen_res_ratio),int(self._screen_res[1]/self._true_to_screen_res_ratio))
     
     def _configure_pygame(self):
