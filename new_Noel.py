@@ -3,6 +3,7 @@ import platform
 from os import environ,listdir
 from json import load  as jsLoad
 
+#from scripts.new_entities import Player
 from scripts.new_tilemap import Tilemap
 from scripts.layer import Layer_
 from scripts.utils import load_texture 
@@ -39,10 +40,12 @@ class Noel():
         self._backgrounds:dict[str,list[Texture]] = self._load_backgrounds(TEXTURE_BASE_PATH+'backgrounds')
         self._tilemap_jsons = self._load_tilemap_jsons('map_jsons')
 
-        self._tilemap = Tilemap(self._ctx)
+        self._atlas_dict = self._create_texture_atlasses()
+
+        self._tilemap = Tilemap(self._ctx,self._atlas_dict['tiles'])
         self._tilemap._load_map(self._tilemap_jsons['new_renderer_test.json'])
 
-
+        self.player = None
 
     def _initalize_game_settings(self):
         self._system_display_info = self._get_system_display_info()
@@ -167,7 +170,16 @@ class Noel():
             a Tilemap object 
         """ 
         return Tilemap(self._tilemap_jsons[json_file_name])
+    
+    def _create_texture_atlasses(self) -> dict[str,Texture]:
         
+        dict = {}
+
+        dict['tiles'] = load_texture(TEXTURE_BASE_PATH+ 'tiles/tile_atlas.png',self._ctx)
+        #dict['entities'] = load_texture(TEXTURE_BASE_PATH)
+
+        return dict
+
     
     def _handle_common_events(self,event):
         if event.type == pygame.KEYDOWN:
@@ -210,6 +222,10 @@ class Noel():
             self.render_engine.render_background_view(self._backgrounds['start'],offset=self.scroll)
             
             self.render_engine.render_tilemap(self._tilemap,self.scroll)
+
+            #self.player.update()
+
+            #self.render_engine.render_player(self.player)
 
             self.render_engine.render((0,0),self.scroll,(0,0))
             

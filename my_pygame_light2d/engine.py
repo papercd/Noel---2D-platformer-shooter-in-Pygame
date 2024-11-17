@@ -7,6 +7,7 @@ import pygame
 import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
+from scripts.custom_data_types import TileInfo
 from scripts.layer import Layer_
 from scripts.atlass_positions import TILE_ATLAS_POSITIONS
 from scripts.new_tilemap import Tilemap
@@ -489,7 +490,7 @@ class RenderEngine:
         fbo_w,fbo_h = fbo.size
         
         # fetch texture atlass 
-        texture_atlass = tilemap.get_atlas('tiles')
+        texture_atlass = tilemap.get_atlas()
         atl_size = texture_atlass.size
 
         vertices_list = []
@@ -524,11 +525,11 @@ class RenderEngine:
             self._render_tiles(vbo,fbo,texture_atlass)
 
 
-    def _get_texture_coords_for_tile(self,tile_info,atl_size):
+    def _get_texture_coords_for_tile(self,tile_info:TileInfo,atl_size):
         # Fetch the texture from the atlas based on tile type and variant
 
-        rel_pos,variant =map(int,tile_info[1].split(';'))
-        tile_type = tile_info[0] 
+        rel_pos,variant = map(int,tile_info.variant.split(';'))
+        tile_type = tile_info.type
 
         x = (TILE_ATLAS_POSITIONS[tile_type][0] + variant * 16) / atl_size[0] 
         y = (TILE_ATLAS_POSITIONS[tile_type][1] + rel_pos * 16) / atl_size[1] 
@@ -545,10 +546,12 @@ class RenderEngine:
         
         return tex_coords
 
-    def _create_tile_vertices(self, tile_info ,offset, fbo_w,fbo_h):
+    def _create_tile_vertices(self, tile_info:TileInfo ,offset, fbo_w,fbo_h):
         # Calculate screen-space position and texture coordinates for a tile
-        x = 2. * (tile_info[2][0] * 16 -offset[0] )/ fbo_w- 1.
-        y = 1. - 2. * (tile_info[2][1] * 16 - offset[1])/ fbo_h
+        tile_pos = tile_info.tile_pos
+
+        x = 2. * (tile_pos[0] * 16 -offset[0] )/ fbo_w- 1.
+        y = 1. - 2. * (tile_pos[1] * 16 - offset[1])/ fbo_h
         w = 2. * 16 / fbo_w
         h = 2. * 16 /fbo_h 
         vertices = np.array([(x, y), (x + w, y), (x, y - h),
