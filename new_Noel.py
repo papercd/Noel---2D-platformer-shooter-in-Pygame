@@ -3,7 +3,6 @@ import platform
 from os import environ,listdir
 from json import load  as jsLoad
 
-from scripts.background import Background
 from scripts.new_tilemap import Tilemap
 from scripts.layer import Layer_
 from scripts.utils import load_texture 
@@ -12,7 +11,6 @@ from enum import Enum
 from my_pygame_light2d.engine import RenderEngine
 from moderngl import create_context,Texture
 from screeninfo import get_monitors
-from scripts.gameSceneManager import GameSceneManager
 
 class GameState(Enum): 
     StartSequence = 0
@@ -38,10 +36,11 @@ class Noel():
         self.scroll = [0,0]
 
 
-        self._backgrounds:dict[str,Background] = self._load_backgrounds(TEXTURE_BASE_PATH+'backgrounds')
+        self._backgrounds:dict[str,list[Texture]] = self._load_backgrounds(TEXTURE_BASE_PATH+'backgrounds')
         self._tilemap_jsons = self._load_tilemap_jsons('map_jsons')
-    
-        self._tilemap = Tilemap(self._tilemap_jsons['new_renderer_test.json'])
+
+        self._tilemap = Tilemap(self._ctx)
+        self._tilemap._load_map(self._tilemap_jsons['new_renderer_test.json'])
 
 
 
@@ -53,15 +52,6 @@ class Noel():
        # create moderngl context
         self._ctx = create_context()
        
-       # load game assets 
-        self.atlas_dict  =  self._create_atlasses()
-        """
-        self.game_assets = GameAssets(self._ctx)
-        self.general_sprites = self.game_assets.general_sprites
-        self.interactable_obj_sprites = self.game_assets.interactable_obj_sprites
-        self.enemy_sprites = self.game_assets.enemies
-        """
-
        # setup render engine 
         self.render_engine = RenderEngine(self,self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
@@ -122,23 +112,8 @@ class Noel():
         self._pygame_display = pygame.display.set_mode(
             self._screen_res, pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF)
 
-    def _create_atlasses(self) -> dict[str,Texture]:
-        """
-        Create a dictionary for the atlasses (texture map) you want to use. 
-        
-        Access the atlass with the name of the atlass type (str) ex: 'tiles', 'spawners'
 
-        """
-        dict = {}
-        
-        # load tile atlas 
-        dict['tiles'] = load_texture(TEXTURE_BASE_PATH + 'tiles/tile_atlas.png',self._ctx)
-
-        
-        return dict
-
-
-    def _load_backgrounds(self,path:str) -> dict[str,Background]:
+    def _load_backgrounds(self,path:str) -> dict[str,list[Texture]]:
         """
         load background textures and create a dictionary with (path,Bacgkround) key-value pair 
 
@@ -146,7 +121,7 @@ class Noel():
             path (str) : the path to your directory containing folders with the background textures. 
         
         Returns: 
-            A dictionary with (path, Background) key-value pair 
+            A dictionary with (path, textures) key-value pair 
         """
         
         backgrounds_dict = {}
@@ -157,7 +132,7 @@ class Noel():
                 tex = load_texture(path+ '/' +folder + '/' + tex_path,self._ctx)
                 textures.append(tex)
 
-            backgrounds_dict[folder] = Background(textures)
+            backgrounds_dict[folder] = textures
         
         return backgrounds_dict
 
@@ -228,16 +203,15 @@ class Noel():
         self._dt = time() - self._prev_frame_time
         self._prev_frame_time = time()
         self.render_engine.set_ambient(255,255,255,255)
+        self.render_engine.clear(0,0,0,255)
+
         if self._curr_gameState == GameState.GameLoop:
-
-            self.render_engine.clear(0,0,0,255)
-
+            
             self.render_engine.render_background_view(self._backgrounds['start'],offset=self.scroll)
             
             self.render_engine.render_tilemap(self._tilemap,self.scroll)
 
             self.render_engine.render((0,0),self.scroll,(0,0))
-            #self.render_engine.render_game_scene(self._curr_game_scene)
             
             pygame.display.flip()
             fps = self._clock.get_fps()

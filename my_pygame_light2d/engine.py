@@ -38,8 +38,8 @@ class RenderEngine:
         # Initialize private members
         self._true_to_native_ratio = true_to_screen_res_ratio 
         self._screen_res = screen_res
-        self._native_res = true_res 
-        self._true_res_diagonal_length = math.sqrt(self._native_res[0]**2 + self._native_res[1] **2)
+        self._true_res = true_res 
+        self._true_res_diagonal_length = math.sqrt(self._true_res[0]**2 + self._true_res[1] **2)
 
         self._lightmap_res = true_res 
         self._ambient = (.25, .25, .25, .25)
@@ -239,11 +239,11 @@ class RenderEngine:
 
     def _create_frame_buffers(self):
         # Frame buffers
-        self._tex_bg = self.ctx.texture(self._native_res, components=4)
+        self._tex_bg = self.ctx.texture(self._true_res, components=4)
         self._tex_bg.filter = (moderngl.NEAREST, moderngl.NEAREST)
         self._fbo_bg = self.ctx.framebuffer([self._tex_bg])
 
-        self._tex_fg = self.ctx.texture(self._native_res, components=4)
+        self._tex_fg = self.ctx.texture(self._true_res, components=4)
         self._tex_fg.filter = (moderngl.NEAREST, moderngl.NEAREST)
         self._fbo_fg = self.ctx.framebuffer([self._tex_fg])
 
@@ -326,7 +326,7 @@ class RenderEngine:
             tuple[int,int] 
 
         """
-        return self._native_res 
+        return self._true_res 
 
 
     def get_ambient(self) -> tuple[int, int, int, int]:
@@ -447,18 +447,18 @@ class RenderEngine:
         self._fbo_fg.clear(0, 0, 0, 0)
 
 
-    def render_background_view(self,background:Background,infinite:bool = False,offset = (0,0)):
+    def render_background_view(self,background:list[moderngl.Texture],infinite:bool = False,offset = (0,0)):
         """
         Render the background (list of textures) to the Background layer.
     
         """
         scroll = offset[0]
         speed = 1
-        for tex in background.bg_textures:
+        for tex in background:
             if infinite:
                 # Calculate the width of the texture and the number of tiles needed to cover the screen
                 texture_width = tex.width
-                num_tiles = (self._native_res[0] // texture_width) + 2  # +2 to ensure seamless wrap
+                num_tiles = (self._true_res[0] // texture_width) + 2  # +2 to ensure seamless wrap
 
                 # Loop through enough panels to cover the screen
                 for panel in range(-1, num_tiles):
@@ -466,43 +466,47 @@ class RenderEngine:
                     self.render_texture(
                         tex,
                         Layer_.BACKGROUND,
-                        dest=pygame.Rect(x_pos, int(-min(0, offset[1]) * 0.05), texture_width, self._native_res[1]),
+                        dest=pygame.Rect(x_pos, int(-min(0, offset[1]) * 0.05), texture_width, self._true_res[1]),
                         source=pygame.Rect(0, 0, texture_width, tex.height)
                     )
             else: 
                 for panels in range(-1,2):
                     self.render_texture(
                         tex,Layer_.BACKGROUND,
-                        dest= pygame.Rect(int(panels*self._native_res[0]-scroll * 0.05 * speed),int(-min(0,offset[1]) * 0.05),self._native_res[0],self._native_res[1]),
+                        dest= pygame.Rect(int(panels*self._true_res[0]-scroll * 0.05 * speed),int(-min(0,offset[1]) * 0.05),self._true_res[0],self._true_res[1]),
                         source= pygame.Rect(0,0,tex.width,tex.height)   
                     )
                 speed += 1 
             
-    
+    def test_render_atlas(self,texture_atlas):
+        fbo  = self._get_fbo(Layer_.BACKGROUND)
+        self._render_tex_to_fbo(texture_atlas,fbo,pygame.Rect(self._true_res[1]/2,self._true_res[1]/2,16,16),pygame.Rect(0,16,16,16))
+
+
     def render_tilemap(self, tilemap:Tilemap, offset):
-        # Cache texture coordinates and tile positions
+        # fetch the background framebuffer
         fbo = self._get_fbo(Layer_.BACKGROUND)
         fbo_w,fbo_h = fbo.size
         
         # fetch texture atlass 
-        texture_atlass = self.game.atlas_dict['tiles']
+        texture_atlass = tilemap.get_atlas('tiles')
         atl_size = texture_atlass.size
 
         vertices_list = []
         texture_coords_list = []
 
         # Create a buffer for vertices and texture coordinates
-        for x in range(offset[0] // tilemap._regular_tile_size, (offset[0] + self._native_res[0]) // tilemap._regular_tile_size+ 1):
-            for y in range(offset[1] // tilemap._regular_tile_size, (offset[1] + self._native_res[1]) // tilemap._regular_tile_size + 1):
+        for x in range(offset[0] // tilemap._regular_tile_size, (offset[0] + self._true_res[0]) // tilemap._regular_tile_size+ 1):
+            for y in range(offset[1] // tilemap._regular_tile_size, (offset[1] + self._true_res[1]) // tilemap._regular_tile_size + 1):
                 coor = (x,y) 
                 if coor in tilemap.physical_tiles:  # If tile exists in the dictionary
                     tile_info = tilemap.physical_tiles[coor]
                     
                     # Get texture coordinates for the tile (from the tile atlas)
-                    texture_coords = self.get_texture_coords_for_tile(tile_info,atl_size)
+                    texture_coords = self._get_texture_coords_for_tile(tile_info,atl_size)
 
                     # Create the vertex data (tile positions and texture coordinates)
-                    vertices = self.create_tile_vertices(tile_info,offset,fbo_w,fbo_h)
+                    vertices = self._create_tile_vertices(tile_info,offset,fbo_w,fbo_h)
                     vertices_list.append(vertices)
                     texture_coords_list.append(texture_coords)
         
@@ -517,20 +521,21 @@ class RenderEngine:
             buffer_data = np.column_stack((vertices_array, texture_coords_array)).astype(np.float32)
             vbo = self.ctx.buffer(buffer_data)
             # Render all visible tiles in one batch
-            self.render_tiles(vbo,fbo,texture_atlass)
+            self._render_tiles(vbo,fbo,texture_atlass)
 
 
-    def get_texture_coords_for_tile(self,tile_info,atl_size):
+    def _get_texture_coords_for_tile(self,tile_info,atl_size):
         # Fetch the texture from the atlas based on tile type and variant
-        tile_variant = tile_info[1].split(';')
 
-        x = (TILE_ATLAS_POSITIONS[tile_info[0]][0] + int(tile_variant[1]) * 16) / atl_size[0] 
-        y = (TILE_ATLAS_POSITIONS[tile_info[0]][1] + int(tile_variant[0]) * 16) / atl_size[1] 
+        rel_pos,variant =map(int,tile_info[1].split(';'))
+        tile_type = tile_info[0] 
+
+        x = (TILE_ATLAS_POSITIONS[tile_type][0] + variant * 16) / atl_size[0] 
+        y = (TILE_ATLAS_POSITIONS[tile_type][1] + rel_pos * 16) / atl_size[1] 
+
         w = 16 / atl_size[0]
         h = 16 / atl_size[1]
         
-        print(w,h)
-
         p1 = (x, y + h) 
         p2 = (x + w, y + h) 
         p3 = (x, y) 
@@ -540,7 +545,7 @@ class RenderEngine:
         
         return tex_coords
 
-    def create_tile_vertices(self, tile_info ,offset, fbo_w,fbo_h):
+    def _create_tile_vertices(self, tile_info ,offset, fbo_w,fbo_h):
         # Calculate screen-space position and texture coordinates for a tile
         x = 2. * (tile_info[2][0] * 16 -offset[0] )/ fbo_w- 1.
         y = 1. - 2. * (tile_info[2][1] * 16 - offset[1])/ fbo_h
@@ -551,7 +556,7 @@ class RenderEngine:
         
         return vertices
 
-    def render_tiles(self, vbo,fbo, texture_atlass):
+    def _render_tiles(self, vbo,fbo, texture_atlass):
         # Render the entire batch of tiles with a single draw call
         
         vao = self.ctx.vertex_array(self._prog_draw, [(vbo, '2f 2f', 'vertexPos', 'vertexTexCoord')])
@@ -559,7 +564,6 @@ class RenderEngine:
         texture_atlass.use()
         fbo.use()
         vao.render()
-
         vbo.release()
         vao.release()
 
@@ -570,7 +574,6 @@ class RenderEngine:
         pass 
         
     
-
 
     def render(self,range,offset,screen_shake):
         """
@@ -622,7 +625,7 @@ class RenderEngine:
         self._render_foreground()
 
     def _point_to_uv(self, p: tuple[float, float]):
-        return [p[0]/self._native_res[0], 1 - (p[1]/self._native_res[1])]
+        return [p[0]/self._true_res[0], 1 - (p[1]/self._true_res[1])]
 
     def _get_fbo(self, Layer_: Layer_):
         if Layer_ == Layer_.BACKGROUND:
@@ -979,8 +982,8 @@ class RenderEngine:
             self._prog_light['lightPower'] = light.cur_power
             self._prog_light['radius'] = light.radius
             self._prog_light['castShadows'] = light.cast_shadows
-            self._prog_light['native_width'] = self._native_res[0]
-            self._prog_light['native_height'] = self._native_res[1]
+            self._prog_light['native_width'] = self._true_res[0]
+            self._prog_light['native_height'] = self._true_res[1]
 
             # Send number of hulls
             self._prog_light['numHulls'] = len(self.hulls)
@@ -1015,7 +1018,7 @@ class RenderEngine:
         self._prog_mask['lightmap'].value = 1
         self._prog_mask['ambient'].value = self._ambient
 
-        #self._prog_mask['range'].value = ((range[0] - offset[0])/self._native_res[0],(range[1] - offset[0])/self._native_res[0])
+        #self._prog_mask['range'].value = ((range[0] - offset[0])/self._true_res[0],(range[1] - offset[0])/self._true_res[0])
         
         self._vao_mask.render()
 
