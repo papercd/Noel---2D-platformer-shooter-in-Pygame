@@ -7,11 +7,11 @@ import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
 
-
+from scripts.new_entities import Player
 from scripts.new_cursor import Cursor
 from scripts.custom_data_types import TileInfo
 from scripts.layer import Layer_
-from scripts.atlass_positions import TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS
+from scripts.atlass_positions import TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS
 from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
@@ -450,14 +450,13 @@ class RenderEngine:
         self._fbo_fg.clear(0, 0, 0, 0)
 
     
-    def render_cursor(self,cursor:Cursor) -> None: 
-        fbo = self._get_fbo(Layer_.FOREGROUND)
+    def _render_cursor(self,fbo:moderngl.Framebuffer,cursor:Cursor) -> None: 
         tex_atlas = cursor.get_atlas()
         query_pos,tex_size = CURSOR_ATLAS_POSITIONS[cursor.state]
         self._render_tex_to_fbo(tex_atlas,fbo,pygame.Rect(*cursor.pos,*tex_size),pygame.Rect(*query_pos,*tex_size))
 
 
-    def render_background_view(self,background:list[moderngl.Texture],infinite:bool = False,offset = (0,0)):
+    def _render_background_view(self,fbo:moderngl.Framebuffer,background:list[moderngl.Texture],infinite:bool = False,offset = (0,0)):
         """
         Render the background (list of textures) to the Background layer.
     
@@ -473,26 +472,35 @@ class RenderEngine:
                 # Loop through enough panels to cover the screen
                 for panel in range(-1, num_tiles):
                     x_pos = int(panel * texture_width - (scroll * 0.05 * speed) % texture_width)
-                    self.render_texture(
+                    self._render_tex_to_fbo(
                         tex,
-                        Layer_.BACKGROUND,
+                        fbo,
                         dest=pygame.Rect(x_pos, int(-min(0, offset[1]) * 0.05), texture_width, self._true_res[1]),
                         source=pygame.Rect(0, 0, texture_width, tex.height)
                     )
             else: 
                 for panels in range(-1,2):
-                    self.render_texture(
-                        tex,Layer_.BACKGROUND,
+                    self._render_tex_to_fbo(
+                        tex,fbo,
                         dest= pygame.Rect(int(panels*self._true_res[0]-scroll * 0.05 * speed),int(-min(0,offset[1]) * 0.05),self._true_res[0],self._true_res[1]),
                         source= pygame.Rect(0,0,tex.width,tex.height)   
                     )
                 speed += 1 
             
+    
+    def _render_player(self,entities_atl:moderngl.Texture,fbo:moderngl.Framebuffer,player:Player,offset):
+        texture_atl_pos = ENTITIES_ATLAS_POSITIONS[player.type][player.holding_gun][player.state]
+        self._render_tex_to_fbo(
+            entities_atl,fbo,
+            dest=pygame.Rect(player.pos[0] - offset[0] ,player.pos[1] - offset[1],16,16),
+            source = pygame.Rect(texture_atl_pos[0]+16 * player._cur_animation.curr_frame(),texture_atl_pos[1],16,16),
+            flip = player.flip
+        
+        )
 
 
-    def render_tilemap(self, tilemap:Tilemap, offset):
+    def _render_tilemap(self, fbo: moderngl.Framebuffer,tilemap:Tilemap, offset):
         # fetch the background framebuffer
-        fbo = self._get_fbo(Layer_.BACKGROUND)
         fbo_w,fbo_h = fbo.size
         
         # fetch texture atlass 
@@ -506,6 +514,11 @@ class RenderEngine:
         for x in range(offset[0] // tilemap._regular_tile_size, (offset[0] + self._true_res[0]) // tilemap._regular_tile_size+ 1):
             for y in range(offset[1] // tilemap._regular_tile_size, (offset[1] + self._true_res[1]) // tilemap._regular_tile_size + 1):
                 coor = (x,y) 
+
+                for dict in tilemap.non_physical_tiles: 
+                    if coor in dict: 
+                        pass 
+
                 if coor in tilemap.physical_tiles:  # If tile exists in the dictionary
                     tile_info = tilemap.physical_tiles[coor]
                     
@@ -516,6 +529,7 @@ class RenderEngine:
                     vertices = self._create_tile_vertices(tile_info,offset,fbo_w,fbo_h)
                     vertices_list.append(vertices)
                     texture_coords_list.append(texture_coords)
+                
         
 
         if vertices_list:
@@ -577,14 +591,9 @@ class RenderEngine:
         vao.release()
 
         
-
-
-    def render_items(self,items,offset = (0,0)):
-        pass 
-        
     
 
-    def render(self,range,offset,screen_shake):
+    def render_scene_with_lighting(self,range,offset,screen_shake):
         """
         Render the lighting effects onto the screen.
 
@@ -650,7 +659,7 @@ class RenderEngine:
             return self._tex_fg
         return None
 
-    def _render_tex_to_fbo(self, tex: moderngl.Texture, fbo: moderngl.Framebuffer, dest: pygame.Rect, source: pygame.Rect):
+    def _render_tex_to_fbo(self, tex: moderngl.Texture, fbo: moderngl.Framebuffer, dest: pygame.Rect, source: pygame.Rect,flip:bool = False):
         # Mesh for destination rect on screen
         width, height = fbo.size
         x = 2. * dest.x / width - 1.
@@ -666,10 +675,17 @@ class RenderEngine:
         w = source.w / tex.size[0]
         h = source.h / tex.size[1]
 
-        p1 = (x, y + h) 
-        p2 = (x + w, y + h) 
-        p3 = (x, y) 
-        p4 = (x + w, y) 
+        if flip: 
+            p1 = (x + w, y + h)  # Top-right becomes top-left
+            p2 = (x, y + h)      # Top-left becomes top-right
+            p3 = (x + w, y)      # Bottom-right becomes bottom-left
+            p4 = (x, y)          # Bottom-left becomes bottom-right
+        else: 
+                
+            p1 = (x, y + h) 
+            p2 = (x + w, y + h) 
+            p3 = (x, y) 
+            p4 = (x + w, y) 
         tex_coords = np.array([p1, p2, p3,
                                p3, p2, p4], dtype=np.float32)
 
@@ -690,96 +706,7 @@ class RenderEngine:
         vbo.release()
         vao.release()
 
-
-    def _second_test_render_tex_to_fbo(self, tex: moderngl.Texture, fbo: moderngl.Framebuffer, dest: pygame.Rect, source: pygame.Rect,
-                            rotation: float = 0.0, flip: tuple[bool, bool] = (False, False)):
-        # Center of rotation (pivot point) in texture space
-        pivot_x = dest.w / 2
-        pivot_y = dest.h / 2
-
-        # Compute the vertices around the pivot
-        angle_cos = np.cos(rotation)
-        angle_sin = np.sin(rotation)
-        
-        # Offset vertices by -pivot, rotate, and translate back
-        rotated_vertices = [
-            ((-pivot_x) * angle_cos - (-pivot_y) * angle_sin + pivot_x, (-pivot_x) * angle_sin + (-pivot_y) * angle_cos + pivot_y),
-            ((pivot_x) * angle_cos - (-pivot_y) * angle_sin + pivot_x, (pivot_x) * angle_sin + (-pivot_y) * angle_cos + pivot_y),
-            ((-pivot_x) * angle_cos - (pivot_y) * angle_sin + pivot_x, (-pivot_x) * angle_sin + (pivot_y) * angle_cos + pivot_y),
-            ((pivot_x) * angle_cos - (pivot_y) * angle_sin + pivot_x, (pivot_x) * angle_sin + (pivot_y) * angle_cos + pivot_y),
-        ]
-
-        # Find bounding box for rotated vertices
-        x_coords, y_coords = zip(*rotated_vertices)
-        min_x, max_x = min(x_coords), max(x_coords)
-        min_y, max_y = min(y_coords), max(y_coords)
-
-        # Compute width and height of the new bounding box
-        new_width = max_x - min_x
-        new_height = max_y - min_y
-
-        # Translate dest rect so that its top-left corner aligns with the rotated bounding box's top-left corner
-        dest_x = dest.x - min_x
-        dest_y = dest.y - min_y
-
-        # Map destination rect to screen space coordinates
-        width, height = fbo.size
-        x = 2. * dest_x / width - 1.
-        y = 1. - 2. * dest_y / height
-        w = 2. * new_width / width
-        h = 2. * new_height / height
-
-        vertices = np.array([
-            (x, y), (x + w, y), (x, y - h),
-            (x, y - h), (x + w, y), (x + w, y - h)
-        ], dtype=np.float32)
-
-        # Texture coordinates (apply flipping)
-        tx = source.x / tex.size[0]
-        ty = source.y / tex.size[1]
-        tw = source.w / tex.size[0]
-        th = source.h / tex.size[1]
-
-        tex_coords = np.array([
-            (tx, ty + th), (tx + tw, ty + th), (tx, ty),
-            (tx, ty), (tx + tw, ty + th), (tx + tw, ty)
-        ], dtype=np.float32)
-
-        """"
-        # Apply flip if specified
-        if flip[0]:  # Horizontal flip
-            tex_coords[:, 0] = 1.0 - tex_coords[:, 0]
-        if flip[1]:  # Vertical flip
-            tex_coords[:, 1] = 1.0 - tex_coords[:, 1]
-        """
-
-        # Create buffers and load into VAO
-        buffer_data = np.hstack([vertices, tex_coords])
-        vbo = self.ctx.buffer(buffer_data)
-        vao = self.ctx.vertex_array(self._prog_draw, [
-            (vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
-        ])
-
-        # Set rotation and flip uniforms
-        self._prog_draw['rotation'].value = rotation
-        self._prog_draw['flip_horizontal'].value = flip[0]
-        self._prog_draw['flip_vertical'].value = flip[1]
-
-        # Use buffers and render
-        tex.use()
-        fbo.use()
-        vao.render()
-
-        # Free vertex data
-        vbo.release()
-        vao.release()
-
-        # Reset uniforms
-        self._prog_draw['rotation'].value = 0
-        self._prog_draw['flip_horizontal'].value = False
-        self._prog_draw['flip_vertical'].value = False
-
-
+    
     def create_rotated_texture(self, source_texture: moderngl.Texture, 
                             rotation_angle: float, pivot: tuple[float, float]) -> moderngl.Texture:
         """
@@ -1074,16 +1001,34 @@ class RenderEngine:
 
         return self.make_shader(vertex_src, fragment_src)
 
-    def calculate_render_position_with_offset(self,pos,offset = (0,0) )->tuple[float,float]:
+    
+    def render_background_scene_to_fbo(self,entities_atl:moderngl.Texture,background:list[moderngl.Texture],tilemap: Tilemap,
+                                       player:Player,offset = (0,0),infinite:bool = False)-> None :
         """
-        helper function to calculate what the render position of a entity 
-        texture would be with render scroll taken into consideration.
+        Render to the Background fbo with the parallax background, the tilemap, etc.
 
-        meant to be used when using the render_texture_with_trans function. 
+        Args: 
+            background (list[moderngl.Texture]) : the background textures 
+            tilemap (Tilemap) : The tilemap object with the tilemap dictionaries 
+            offset (tuple[int,int] = (0,0)) : The camera scroll
+            infinite (bool = False) : whether the background should wrap around the screen infinitely.
         
         """
-        return ((pos[0] - offset[0])/self._screen_to_native_ratio,(pos[1] - offset[1])/self._screen_to_native_ratio)
+        fbo = self._get_fbo(Layer_.BACKGROUND)
+        self._render_background_view(fbo,background,offset=offset)
+        self._render_tilemap(fbo,tilemap,offset)
+        self._render_player(entities_atl,fbo,player,offset)
 
+    def render_foreground_scene_to_fbo(self,cursor:Cursor):
+        """
+        Render to the Foreground fbo with the cursor, GUI, etc. 
+        
+        Args: 
+            cursor (Cursor) : the cursor object
+            ...
+        """
+        fbo = self._get_fbo(Layer_.FOREGROUND)
+        self._render_cursor(fbo,cursor)
 
     def render_texture_with_trans(self,
                tex: moderngl.Texture,

@@ -1,5 +1,6 @@
 from pygame import Rect
 from scripts.new_tilemap import Tilemap
+from scripts.custom_data_types import AnimationDataCollection,AnimationData
 
 class PhysicsEntity: 
     def __init__(self,type:str,pos:list[float,float],size:tuple[int,int]):
@@ -155,10 +156,24 @@ class PhysicsEntity:
                         self.collisions['down'] = True
  
 
+PLAYER_ANIMATION_DATA = [
+    AnimationData('idle',4,6,False,True),
+    AnimationData('crouch',1,4,True,False),
+    AnimationData('jump_up',1,5,True,False),
+    AnimationData('jump_down',4,5,True,False),
+    AnimationData('land',6,2,False,False),
+    AnimationData('run',6,4,False,True),
+    AnimationData('slide',1,5,True,False),
+    AnimationData('wall_slide',1,4,True,False),
+]
+
 
 class Player(PhysicsEntity):
     def __init__(self, pos: list[float], size: tuple[int, int]):
+        self._animation_data_collection = AnimationDataCollection(PLAYER_ANIMATION_DATA)
+        self._cur_animation = self._animation_data_collection.get_animation_data('idle')
         super().__init__('player', pos, size)
+        
         self._accel_rate = 0
         self._default_speed = 0
 
@@ -166,13 +181,16 @@ class Player(PhysicsEntity):
         self.recov_rate = 0.6
         self.stamina = 100
         self.health = 200
+        self.fatigued =False
 
         self.jump_count = 2
         self.wall_slide = False
         self.crouch = False 
         self.on_wall = self.collisions['left'] or self.collisions['right']
         self.air_time = 0
+        self.on_ladder = False
 
+        self.holding_gun = False 
         self.running = False 
         self.y_inertia = 0
         self.hard_land_recovery_time = 0
@@ -190,7 +208,7 @@ class Player(PhysicsEntity):
         return Rect(self.pos[0] +3, self.pos[1] + 1 ,10,15)
 
 
-    def accelerate(self,movement_input):
+    def _accelerate(self,movement_input):
         if(movement_input[1]-movement_input[0])  >0 :
             #means that the intent of the player movement is to the right.  
             self.cur_vel = min( 1.3*self._default_speed,self._accel_rate + self.cur_vel)
@@ -207,15 +225,72 @@ class Player(PhysicsEntity):
                 self.cur_vel = min(0,self.cur_vel + self._accel_rate)
     
     def set_state(self,state):
-        if state != self.state: self.state = state
+        if state != self.state: 
+            self.state = state
+            self._cur_animation.reset()
+            self._cur_animation = self._animation_data_collection.get_animation_data(state)
      
+
+    def jump_cut(self):
+        if not self.on_ladder: 
+            if self.velocity[1] < 0: 
+                if self.velocity[1] > -4.2:
+                    if self.air_time >0 and self.air_time <= 8:
+                        self.velocity[1] = -1.2
+                    if self.air_time >8 and self.air_time <=11 :
+                        self.velocity[1] = -2.2
+
+
+
+    def jump(self):
+        if self.wall_slide: 
+                self.jump_count = 1
+                
+                if self.collisions['left']:
+                    
+                    self.velocity[0] =  4.2
+                if self.collisions['right']:
+                    
+                    self.velocity[0] = -4.2
+                #self.accel_up() 
+                
+                self.velocity[1] =-4.4
+                
+
+                #air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
+                #self.game.add_particle(air)
+
+        if self.jump_count == 2:
+            if self.state == 'jump_down':
+                self.jump_count -=2
+                #self.accel_up() 
+
+                self.velocity[1] = -4.4
+                
+                #air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
+                #self.game.add_particle(air)
+            else: 
+                self.jump_count -=1
+                #self.accel_up() 
+
+                self.velocity[1] = -4.4    
+            
+        elif self.jump_count ==1: 
+            self.jump_count -=1
+            #self.accel_up() 
+            self.velocity[1] = -4.4  
+            #air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
+            #self.game.add_particle(air)
+        
+
     
     # TODO: add weapon rendering later. 
 
     def update(self,tilemap:Tilemap,cursor_pos,player_movement_input,frame_count):
+        self._accelerate(player_movement_input)
+        self._cur_animation.update()
         self.time = frame_count
         self.d_cursor_pos = cursor_pos
-
         new_movement = [self.cur_vel,0]
 
         if self.fatigued: 
@@ -245,8 +320,24 @@ class Player(PhysicsEntity):
             self.hard_land_recovery_time -= 1
             
         super().update(tilemap, new_movement,anim_offset= (3,1))
+        """
+        r = max(self.size) * 2
 
+        rangeRect = Rectangle(Vector2(self.pos[0] - self.size[0]//2 - r /2 ,self.pos[1]  - r /2 ), Vector2(r,r))
 
+        self.nearest_collectable_item = quadtree.queryRange(rangeRect,"item")
+        """
+        #every frame, the stamina is increased by 0.7
+       
+        self.stamina = min(100, self.stamina + self.recov_rate)
+        self.air_time +=1
+        
+        """
+        self.changing_done = min(2,self.change_weapon_inc + self.changing_done)
+        if self.changing_done == 2:
+             
+            self.change_weapon(self.change_scroll)
+        """        
 
         if self.velocity[1] >=2:
             self.y_inertia += 1 
@@ -339,9 +430,7 @@ class Player(PhysicsEntity):
                
             elif self.cur_vel != 0:
                 if self.state == 'land':
-                    # TODO: figure out a way to determine whether an animation has finished. 
-
-                    if self.frame_data >= 60: 
+                    if self._cur_animation.done == True: 
                         if self.fatigued: 
                             self.set_state('walk')
                         else: 
@@ -365,8 +454,7 @@ class Player(PhysicsEntity):
             else: 
                 self.y_inertia = 0
                 if self.state == 'land':
-                    # TODO: figure out a way to determine wheter an animation has finished. 
-                    if self.frame_data >= 60: 
+                    if self._cur_animation.done == True: 
                         self.set_state('idle') 
                 else: 
                     if self.crouch: 
@@ -386,4 +474,4 @@ class Player(PhysicsEntity):
         if self.cur_weapon_node:
             self.cur_weapon_node.weapon.update(self.d_cursor_pos)
         """
-
+        

@@ -4,7 +4,7 @@ from os import environ,listdir
 from json import load  as jsLoad
 
 from scripts.new_cursor import Cursor 
-from scripts.new_entities import Player
+from scripts.new_entities import Player,PhysicsEntity
 from scripts.new_tilemap import Tilemap
 from scripts.layer import Layer_
 from scripts.utils import load_texture 
@@ -33,6 +33,7 @@ class Noel():
         
         #TODO: HANDLE updates and rendering depending on gamestate 
         self._curr_gameState = GameState.GameLoop
+        self._frame_count = 0
         self._dt = 0
         self._prev_frame_time = 0
         self.scroll = [0,0]
@@ -49,7 +50,11 @@ class Noel():
         
         self._cursor = Cursor(self._atlas_dict['cursor'])
 
+        self._player_movement_input = [0,0]
+        self._entities_list: list[PhysicsEntity] = []
         self.player = Player([50,50],(14,16)) 
+        self.player.set_accel_rate(0.7)
+        self.player.set_default_speed(2.2)
 
     def _initalize_game_settings(self):
         self._system_display_info = self._get_system_display_info()
@@ -183,8 +188,7 @@ class Noel():
         dict = {}
 
         dict['tiles'] = load_texture(TEXTURE_BASE_PATH+ 'tiles/tile_atlas.png',self._ctx)
-        #dict['entities'] = load_texture(TEXTURE_BASE_PATH)
-
+        dict['entities'] = load_texture(TEXTURE_BASE_PATH + 'entities/entities_atlas.png',self._ctx)
         dict['cursor'] = load_texture(TEXTURE_BASE_PATH +'cursor/cursor_atlas.png',self._ctx)
 
         return dict
@@ -222,17 +226,27 @@ class Noel():
                 self._handle_common_events(event)
                 if event.type ==pygame.KEYDOWN:
                     if event.key == pygame.K_a:
-                        self.scroll[0] -= 100
-                    if event.key == pygame.K_d:
-                        self.scroll[0] += 100
-                    if event.key == pygame.K_w:
-                        self.scroll[1] -= 100
+                        self._player_movement_input[0] = True 
+                    if event.key == pygame.K_w: 
+                        self.player.jump()
                     if event.key == pygame.K_s:
-                        self.scroll[1] += 100
+                        self.player.crouch = True
+                    if event.key == pygame.K_d:
+                        self._player_movement_input[1] = True 
                     if event.key == pygame.K_LSHIFT:
+                        self.player.running = True
                         self._cursor.special_actions = True 
                 if event.type == pygame.KEYUP: 
+                    if event.key == pygame.K_w:
+                        self.player.jump_cut()
+                    if event.key == pygame.K_a: 
+                        self._player_movement_input[0] = False 
+                    if event.key == pygame.K_d: 
+                        self._player_movement_input[1] = False 
+                    if event.key == pygame.K_s: 
+                        self.player.crouch = False
                     if event.key == pygame.K_LSHIFT:
+                        self.player.running = False
                         self._cursor.special_actions = False 
                     
 
@@ -241,29 +255,34 @@ class Noel():
 
 
     def _update_render(self):
-        
+        self._frame_count = (self._frame_count+1) %360
         self._dt = time() - self._prev_frame_time
         self._prev_frame_time = time()
         self.render_engine.set_ambient(255,255,255,255)
         self.render_engine.clear(0,0,0,255)
 
-        if self._curr_gameState == GameState.GameLoop:
-            
-            self.render_engine.render_background_view(self._backgrounds['start'],offset=self.scroll)
-            
-            self.render_engine.render_tilemap(self._tilemap,self.scroll)
+        if self._curr_gameState == GameState.GameLoop:  
+
+            self.scroll[0] += (self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self.scroll[0])/20
+            self.scroll[1] += (self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self.scroll[1])/20
+
+            camera_scroll = (int(self.scroll[0]), int(self.scroll[1]))
 
             self._cursor.update()
-            self.render_engine.render_cursor(self._cursor)
+            self.player.update(self._tilemap,self._cursor.pos,self._player_movement_input,self._frame_count)
 
-            #self.player.update()
+            self.render_engine.render_background_scene_to_fbo(self._atlas_dict['entities'],self._backgrounds['new_building'],
+                                                              self._tilemap,self.player,camera_scroll,infinite=False)
 
-            #self.render_engine.render_player(self.player)
 
-            self.render_engine.render((0,0),self.scroll,(0,0))
+            self.render_engine.render_foreground_scene_to_fbo(self._cursor)
+
+
+            self.render_engine.render_scene_with_lighting((0,0),camera_scroll,(0,0))
             
             pygame.display.flip()
             fps = self._clock.get_fps()
+            #print(fps)
             pygame.display.set_caption(f"Noel - FPS: {fps: .2f}")
             self._clock.tick(60)
             

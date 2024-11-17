@@ -1,5 +1,5 @@
 from scripts.atlass_positions import TILE_ATLAS_POSITIONS
-from scripts.custom_data_types import TileInfo
+from scripts.custom_data_types import TileInfo,LightInfo
 from moderngl import Texture
 from pygame import Rect
 from scripts.utils import load_texture
@@ -33,8 +33,11 @@ class Tilemap:
         self._regular_tile_size = json_data['tile_size']
 
         # one step at a time.The tilemap.
+        self.non_physical_tile_layers= json_data['offgrid_layers']
 
         self.physical_tiles:dict[tuple[int,int],TileInfo] = {}
+        self.non_physical_tiles = [{} for i in range(0,self.non_physical_tile_layers)]
+
 
         for tile_key in json_data['tilemap']:
             if json_data['tilemap'][tile_key]['type'] != "lights":
@@ -50,7 +53,62 @@ class Tilemap:
                                                  tile_pos,atlass_query_pos) 
             
             else: 
-                pass
+                if isinstance(json_data['tilemap'][tile_key]["pos"][0],int):
+                    # for lights that are on the tile grid 
+                    #TODO: ADD LIGHTING LATER 
+                    """
+                    light = PointLight(position = (json_data['tilemap'][tile_key]["pos"][0]*self.tile_size+7,json_data['tilemap'][tile_key]["pos"][1]*self.tile_size+3),\
+                                         power= json_data['tilemap'][tile_key]["power"],radius = json_data['tilemap'][tile_key]["radius"] )
+                    light.set_color(*json_data['tilemap'][tile_key]["colorValue"])
+                    lights.append(light)
+                    """
+                    pass 
+                else: 
+                    # for lights that are not placed on the tile grid  
+                    # TODO : ADD LIGHTING LATER
+                    """
+                    light = PointLight(position = (json_data['tilemap'][tile_key]["pos"][0]+7,json_data['tilemap'][tile_key]["pos"][1]+3),\
+                                         power= json_data['tilemap'][tile_key]["power"],radius = json_data['tilemap'][tile_key]["radius"] )
+                    light.set_color(*json_data['tilemap'][tile_key]["colorValue"])
+                    lights.append(light)
+                    """
+                atl_pos = TILE_ATLAS_POSITIONS[json_data['tilemap']][tile_key]["type"]
+                self.physical_tiles[tile_key] = LightInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
+                                                 json_data['tilemap'][tile_key]["pos"],json_data['tilemap'][tile_key]["radius"], json_data['tilemap'][tile_key]["power"],
+                                                 json_data['tilemap'][tile_key]["colorValue"],atl_pos)
+                #self.physical_tiles[tile_key].light_ptr = light 
+        
+        for i in range(0,self.non_physical_tile_layers):
+            tilemap_key = f"offgrid_{i}"
+            for tile_key in json_data[tilemap_key]:
+                if json_data[tilemap_key][tile_key]["type"] == "lights":
+                    pass 
+                    """
+                    
+                    if isinstance(json_data['offgrid_'+ str(i)][tile_key]["pos"][0],int):
+                        light = PointLight(position = (json_data['offgrid_'+ str(i)][tile_key]["pos"][0]*self.tile_size+7,json_data['offgrid_'+ str(i)][tile_key]["pos"][1]*self.tile_size+3),\
+                                         power= json_data['offgrid_'+ str(i)][tile_key]["power"],radius = json_data['offgrid_'+ str(i)][tile_key]["radius"] )
+                        light.set_color(*json_data['offgrid_' + str(i)][tile_key]["colorValue"])
+                        lights.append(light)
+                        self.offgrid_tiles[i][tile_key] = Light(json_data['offgrid_'+str(i)][tile_key]["type"],json_data['offgrid_'+str(i)][tile_key]["variant"],json_data['offgrid_'+str(i)][tile_key]["pos"],\
+                                                                radius = json_data['offgrid_'+str(i)][tile_key]['radius'],power = json_data['offgrid_'+str(i)][tile_key]['power'],color_value=json_data['offgrid_'+str(i)][tile_key]['colorValue'] )
+                    else: 
+                        light = PointLight(position = (json_data['offgrid_'+ str(i)][tile_key]["pos"][0]+7,json_data['offgrid_'+ str(i)][tile_key]["pos"][1]+3),\
+                                         power= json_data['offgrid_'+ str(i)][tile_key]["power"],radius = json_data['offgrid_'+ str(i)][tile_key]["radius"] )
+                        light.set_color(*json_data['offgrid_' + str(i)][tile_key]["colorValue"])
+                        lights.append(light)
+                        self.offgrid_tiles[i][tile_key] = Light(json_data['offgrid_'+str(i)][tile_key]["type"],json_data['offgrid_'+str(i)][tile_key]["variant"],(json_data['offgrid_'+str(i)][tile_key]["pos"][0] // self.tile_size,json_data['offgrid_'+str(i)][tile_key]["pos"][1] // self.tile_size),\
+                                                            radius = json_data['offgrid_'+str(i)][tile_key]['radius'],power = json_data['offgrid_'+str(i)][tile_key]['power'],color_value=json_data['offgrid_'+str(i)][tile_key]['colorValue'] )
+                    """
+                else: 
+                    atlass_query_pos = TILE_ATLAS_POSITIONS[json_data[tilemap_key][tile_key]["type"]]
+                    self.non_physical_tiles[i][tile_key] = TileInfo(json_data[tilemap_key][tile_key]["type"],json_data[tilemap_key][tile_key]["variant"],
+                                                                    json_data[tilemap_key][tile_key]["pos"],atlass_query_pos)
+
+
+                
+
+        
 
 
     
@@ -121,10 +179,10 @@ class Tilemap:
                     pass 
                 else: 
                     rect = (
-                        tile.pos[0] * self.tile_size,         # left
-                        tile.pos[1] * self.tile_size,         # top
-                        self.tile_size,                       # width
-                        self.tile_size                        # height
+                        tile.tile_pos[0] * self._regular_tile_size,         # left
+                        tile.tile_pos[1] * self._regular_tile_size,         # top
+                        self._regular_tile_size,                       # width
+                        self._regular_tile_size# height
                     )
                 
                     surrounding_rects.append((Rect(*rect),tile))

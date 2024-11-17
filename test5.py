@@ -1,5 +1,9 @@
-x = 5
-y =6 
-test_ = [x,y]
-test_[0] -= 1
-print(x)
+
+
+
+from scripts.custom_data_types import AnimationData
+
+AD = AnimationData(1,2,3,4,5)
+
+
+print(AD[1:])
