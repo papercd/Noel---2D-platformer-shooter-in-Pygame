@@ -212,7 +212,7 @@ class Player(PhysicsEntity):
     
     # TODO: add weapon rendering later. 
 
-    def update(self,tilemap:Tilemap,cursor_pos,frame_count):
+    def update(self,tilemap:Tilemap,cursor_pos,player_movement_input,frame_count):
         self.time = frame_count
         self.d_cursor_pos = cursor_pos
 
@@ -339,7 +339,9 @@ class Player(PhysicsEntity):
                
             elif self.cur_vel != 0:
                 if self.state == 'land':
-                    if self.animation.done == True: 
+                    # TODO: figure out a way to determine whether an animation has finished. 
+
+                    if self.frame_data >= 60: 
                         if self.fatigued: 
                             self.set_state('walk')
                         else: 
@@ -355,7 +357,7 @@ class Player(PhysicsEntity):
                     if anim_frame == 0 or anim_frame == 3:
                         self.game.player_sfx['run'][str(random.randint(0,7))].play()
                     """
-                if self.crouch and (self.game.player_movement_input[0] or self.game.player_movement_input[1]) :
+                if self.crouch and (player_movement_input[0] or player_movement_input[1]) :
                     self.cut_movement_input = True
                     self.set_state('slide')
                 self.y_inertia = 0
@@ -363,7 +365,8 @@ class Player(PhysicsEntity):
             else: 
                 self.y_inertia = 0
                 if self.state == 'land':
-                    if self.animation.done == True: 
+                    # TODO: figure out a way to determine wheter an animation has finished. 
+                    if self.frame_data >= 60: 
                         self.set_state('idle') 
                 else: 
                     if self.crouch: 

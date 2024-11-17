@@ -1,6 +1,6 @@
 from scripts.atlass_positions import TILE_ATLAS_POSITIONS
 from scripts.custom_data_types import TileInfo
-from moderngl import Texture,Context
+from moderngl import Texture
 from pygame import Rect
 from scripts.utils import load_texture
 
@@ -11,7 +11,7 @@ PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','b
 
 
 class Tilemap:
-    def __init__(self,context:Context,texture_atlas:Texture,json_data = None):
+    def __init__(self,texture_atlas:Texture,json_data = None):
         """ 
         Initialize the Tilemap object. 
 
@@ -21,7 +21,7 @@ class Tilemap:
         
         """
 
-        self._ctx = context
+        
         self._texture_atlas = texture_atlas
 
         if json_data:

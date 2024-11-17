@@ -3,6 +3,7 @@ import platform
 from os import environ,listdir
 from json import load  as jsLoad
 
+from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player
 from scripts.new_tilemap import Tilemap
 from scripts.layer import Layer_
@@ -42,8 +43,11 @@ class Noel():
 
         self._atlas_dict = self._create_texture_atlasses()
 
-        self._tilemap = Tilemap(self._ctx,self._atlas_dict['tiles'])
+        self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap._load_map(self._tilemap_jsons['new_renderer_test.json'])
+
+        
+        self._cursor = Cursor(self._atlas_dict['cursor'])
 
         self.player = Player([50,50],(14,16)) 
 
@@ -104,6 +108,9 @@ class Noel():
 
         # setup clock 
         self._clock = pygame.time.Clock()
+
+        # change cursor to invisible 
+        pygame.mouse.set_visible(False)
 
         # Set OpenGL version to 3.3 core
         pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
@@ -178,15 +185,33 @@ class Noel():
         dict['tiles'] = load_texture(TEXTURE_BASE_PATH+ 'tiles/tile_atlas.png',self._ctx)
         #dict['entities'] = load_texture(TEXTURE_BASE_PATH)
 
+        dict['cursor'] = load_texture(TEXTURE_BASE_PATH +'cursor/cursor_atlas.png',self._ctx)
+
         return dict
 
     
     def _handle_common_events(self,event):
+        self._cursor.pos = pygame.mouse.get_pos()
+        self._cursor.pos = ((self._cursor.pos[0]/self._true_to_screen_res_ratio),(self._cursor.pos[1]/self._true_to_screen_res_ratio))
+        self._cursor.box.x,self._cursor.box.y = self._cursor.pos[0] , self._cursor.pos[1]
+
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 self.quit_game() 
             if event.key == pygame.K_F12:
                 pygame.display.toggle_fullscreen()
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                self._cursor.pressed[0] = True 
+            elif event.button == 3:
+                self._cursor.pressed[1] = True 
+        elif event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1:
+                self._cursor.pressed[0] = False 
+            elif event.button == 3:
+                self._cursor.pressed[1] = False 
+ 
+
         if event.type == pygame.QUIT:
                 self.quit_game() 
 
@@ -204,6 +229,11 @@ class Noel():
                         self.scroll[1] -= 100
                     if event.key == pygame.K_s:
                         self.scroll[1] += 100
+                    if event.key == pygame.K_LSHIFT:
+                        self._cursor.special_actions = True 
+                if event.type == pygame.KEYUP: 
+                    if event.key == pygame.K_LSHIFT:
+                        self._cursor.special_actions = False 
                     
 
                     
@@ -222,6 +252,9 @@ class Noel():
             self.render_engine.render_background_view(self._backgrounds['start'],offset=self.scroll)
             
             self.render_engine.render_tilemap(self._tilemap,self.scroll)
+
+            self._cursor.update()
+            self.render_engine.render_cursor(self._cursor)
 
             #self.player.update()
 

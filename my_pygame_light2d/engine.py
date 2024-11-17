@@ -1,5 +1,4 @@
 from importlib import resources
-from scripts.background import Background
 from enum import Enum
 import numpy as np
 import moderngl
@@ -7,9 +6,12 @@ import pygame
 import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
+
+
+from scripts.new_cursor import Cursor
 from scripts.custom_data_types import TileInfo
 from scripts.layer import Layer_
-from scripts.atlass_positions import TILE_ATLAS_POSITIONS
+from scripts.atlass_positions import TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS
 from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
@@ -447,6 +449,13 @@ class RenderEngine:
         self._fbo_bg.clear(R, G, B, A)
         self._fbo_fg.clear(0, 0, 0, 0)
 
+    
+    def render_cursor(self,cursor:Cursor) -> None: 
+        fbo = self._get_fbo(Layer_.FOREGROUND)
+        tex_atlas = cursor.get_atlas()
+        query_pos,tex_size = CURSOR_ATLAS_POSITIONS[cursor.state]
+        self._render_tex_to_fbo(tex_atlas,fbo,pygame.Rect(*cursor.pos,*tex_size),pygame.Rect(*query_pos,*tex_size))
+
 
     def render_background_view(self,background:list[moderngl.Texture],infinite:bool = False,offset = (0,0)):
         """
@@ -479,9 +488,6 @@ class RenderEngine:
                     )
                 speed += 1 
             
-    def test_render_atlas(self,texture_atlas):
-        fbo  = self._get_fbo(Layer_.BACKGROUND)
-        self._render_tex_to_fbo(texture_atlas,fbo,pygame.Rect(self._true_res[1]/2,self._true_res[1]/2,16,16),pygame.Rect(0,16,16,16))
 
 
     def render_tilemap(self, tilemap:Tilemap, offset):
