@@ -515,9 +515,16 @@ class RenderEngine:
             for y in range(offset[1] // tilemap._regular_tile_size, (offset[1] + self._true_res[1]) // tilemap._regular_tile_size + 1):
                 coor = (x,y) 
 
-                for dict in tilemap.non_physical_tiles: 
+                for i,dict in enumerate(tilemap.non_physical_tiles): 
                     if coor in dict: 
-                        pass 
+                        tile_info = tilemap.non_physical_tiles[i][coor]
+
+                        # Get texture coords for the tile (from the tile atlas)
+                        texture_coords = self._get_texture_coords_for_tile(tile_info,atl_size)
+
+                        vertices = self._create_tile_vertices(tile_info,offset,fbo_w,fbo_h)
+                        vertices_list.append(vertices)
+                        texture_coords_list.append(texture_coords)                                         
 
                 if coor in tilemap.physical_tiles:  # If tile exists in the dictionary
                     tile_info = tilemap.physical_tiles[coor]

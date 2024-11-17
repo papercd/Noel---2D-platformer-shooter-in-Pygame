@@ -72,7 +72,7 @@ class Tilemap:
                     light.set_color(*json_data['tilemap'][tile_key]["colorValue"])
                     lights.append(light)
                     """
-                atl_pos = TILE_ATLAS_POSITIONS[json_data['tilemap']][tile_key]["type"]
+                atl_pos = TILE_ATLAS_POSITIONS[json_data['tilemap'][tile_key]["type"]]
                 self.physical_tiles[tile_key] = LightInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
                                                  json_data['tilemap'][tile_key]["pos"],json_data['tilemap'][tile_key]["radius"], json_data['tilemap'][tile_key]["power"],
                                                  json_data['tilemap'][tile_key]["colorValue"],atl_pos)
@@ -101,9 +101,10 @@ class Tilemap:
                                                             radius = json_data['offgrid_'+str(i)][tile_key]['radius'],power = json_data['offgrid_'+str(i)][tile_key]['power'],color_value=json_data['offgrid_'+str(i)][tile_key]['colorValue'] )
                     """
                 else: 
+                    tile_pos = tuple(json_data[tilemap_key][tile_key]["pos"])
                     atlass_query_pos = TILE_ATLAS_POSITIONS[json_data[tilemap_key][tile_key]["type"]]
-                    self.non_physical_tiles[i][tile_key] = TileInfo(json_data[tilemap_key][tile_key]["type"],json_data[tilemap_key][tile_key]["variant"],
-                                                                    json_data[tilemap_key][tile_key]["pos"],atlass_query_pos)
+                    self.non_physical_tiles[i][tile_pos] = TileInfo(json_data[tilemap_key][tile_key]["type"],json_data[tilemap_key][tile_key]["variant"],
+                                                                    tile_pos,atlass_query_pos)
 
 
                 

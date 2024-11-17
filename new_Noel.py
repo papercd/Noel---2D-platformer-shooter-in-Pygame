@@ -45,14 +45,14 @@ class Noel():
         self._atlas_dict = self._create_texture_atlasses()
 
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
-        self._tilemap._load_map(self._tilemap_jsons['new_renderer_test.json'])
+        self._tilemap._load_map(self._tilemap_jsons['test1.json'])
 
         
         self._cursor = Cursor(self._atlas_dict['cursor'])
 
         self._player_movement_input = [0,0]
         self._entities_list: list[PhysicsEntity] = []
-        self.player = Player([50,50],(14,16)) 
+        self.player = Player([74,11],(14,16)) 
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
 
@@ -282,7 +282,7 @@ class Noel():
             
             pygame.display.flip()
             fps = self._clock.get_fps()
-            #print(fps)
+            print(fps)
             pygame.display.set_caption(f"Noel - FPS: {fps: .2f}")
             self._clock.tick(60)
             
