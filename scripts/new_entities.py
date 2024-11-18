@@ -140,15 +140,15 @@ class PhysicsEntity:
                             pos_height = max(0, -rel_x - self.size[0] // 4)
                     elif variant == '2':
                         if rel_x < 0:
-                            pos_height = min(tilemap._regular_tile_size, -rel_x + (tilemap._regular_tile_size - self.size[0] // 4))
+                            pos_height = min(tilemap.tile_size, -rel_x + (tilemap.tile_size- self.size[0] // 4))
                     elif variant == '1':
                         if rel_x > 0:
                             pos_height = max(0, rel_x - self.size[0] // 4)
                     elif variant == '3':
-                        if 0 < rel_x <= tilemap._regular_tile_size:
-                            pos_height = min(tilemap._regular_tile_size, rel_x + (tilemap._regular_tile_size- self.size[0] // 4))
+                        if 0 < rel_x <= tilemap.tile_size:
+                            pos_height = min(tilemap.tile_size, rel_x + (tilemap.tile_size- self.size[0] // 4))
 
-                    target_y = rect_tile[0].y +tilemap._regular_tile_size- pos_height
+                    target_y = rect_tile[0].y +tilemap.tile_size- pos_height
                     if self_rect.bottom > target_y:
                         self.on_ramp = 1 if variant == '0' else -1
                         self_rect.bottom = target_y
@@ -357,7 +357,7 @@ class Player(PhysicsEntity):
             if self.y_inertia > 6:
                 self.set_state('land')
             entry_pos = (self._collision_rect().centerx,self._collision_rect().bottom)
-            for offset in range(-tilemap._regular_tile_size, tilemap._regular_tile_size, 4):
+            for offset in range(-tilemap.tile_size, tilemap.tile_size, 4):
             #(0,-tile_map.tile_size,tile_map.tile_size):
                 if tilemap.solid_check((entry_pos[0]+offset,entry_pos[1])):
                     break

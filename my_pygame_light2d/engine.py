@@ -38,6 +38,7 @@ class RenderEngine:
             true_res:  (tuple[int, int]): true (native) resolution of the game (width, height) -pixel resolution.
         """
 
+
         # Initialize private members
         self._true_to_native_ratio = true_to_screen_res_ratio 
         self._screen_res = screen_res
@@ -47,6 +48,10 @@ class RenderEngine:
         self._diagonal = math.sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
         self._lightmap_res = true_res 
         self._ambient = (.25, .25, .25, .25)
+        self._tile_size = 0
+
+        # Preallocate vertex arrays for tilemap rendering 
+        
 
         # Initialize public members
         self.lights: list[PointLight] = []
@@ -511,12 +516,10 @@ class RenderEngine:
         vertices_list = []
         texture_coords_list = []
 
-        # Update the hull objects here as well. 
-        self.hulls = []
 
         # Create a buffer for vertices and texture coordinates
-        for x in range(offset[0] // tilemap._regular_tile_size - 10, (offset[0] + self._true_res[0]) // tilemap._regular_tile_size+ 10):
-            for y in range(offset[1] // tilemap._regular_tile_size - 10, (offset[1] + self._true_res[1]) // tilemap._regular_tile_size + 10):
+        for x in range(offset[0] // tilemap.tile_size- 5, (offset[0] + self._true_res[0]) // tilemap.tile_size+ 5):
+            for y in range(offset[1] // tilemap.tile_size- 5, (offset[1] + self._true_res[1]) // tilemap.tile_size+ 5):
                 coor = (x,y) 
 
                 for i,dict in enumerate(tilemap.non_physical_tiles): 
@@ -538,16 +541,9 @@ class RenderEngine:
                     tile_info  = tile_info_list[0]
                     door_data = None
                     if tile_info.type == 'trap_door':
-                        hull = tile_info_list[2]
-                        self.hulls.extend(hull)
                         door_data:bool = tile_info_list[1]
                     elif tile_info.type == 'building_door':
-                        hull = tile_info_list[2]
-                        self.hulls.extend(hull)
                         door_data:DoorAnimation= tile_info_list[1]
-                    elif tile_info.type != 'lights': 
-                        hull = tile_info_list[1]
-                        self.hulls.extend(hull)
                         
                     
                     
@@ -996,6 +992,35 @@ class RenderEngine:
         self.ctx.screen.use()
         self._tex_fg.use()
         self._vao_draw.render()
+
+    
+    def precompute_vertex_arrays(self,tilemap:Tilemap):
+        """
+        Precomputes the size of the vertex array required to 
+        render the tilemap onto the screen optimally. 
+        
+        It takes the tilesize to dynamically initialize the vertex array big enough to render
+        tiles on the screen. 
+
+        """
+
+        self._max_tiles = ((self._true_res[0] // tilemap.tile_size + 10) *
+                           (self._true_res[0] // tilemap.tile_size + 10))
+
+
+
+        self._physical_vertex_buffer = np.zeros((self._max_tiles * 6 ,2),dtype=np.float32)
+        self._physical_texture_coord_buffer = np.zeros((self._max_tiles * 6,2),dtype= np.float32)
+        
+        self._non_physical_vertex_buffers = []
+        for i in range(tilemap.non_physical_tile_layers):
+            self._non_physical_vertex_buffers.append(np.zeros((self._max_tiles * 6,2),dtype= np.float32))
+        
+        self._non_physical_texture_coord_buffers = []
+        for i in range(tilemap.non_physical_tile_layers):
+            self._non_physical_texture_coord_buffers.append(np.zeros((self._max_tiles * 6,2) ,dtype = np.float32))
+
+
 
 
     def make_shader(self, vertex_src: str, fragment_src: str) -> Shader:

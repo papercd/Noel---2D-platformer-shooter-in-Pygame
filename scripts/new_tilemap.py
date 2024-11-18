@@ -24,12 +24,11 @@ class Tilemap:
         
         """
 
-        
         self._texture_atlas = texture_atlas
 
         if json_data:
-            self._load_map(json_data)
-
+            self.load_map(json_data)
+    
     def _create_hulls(self,tile_json_data) -> list[Hull]:
         """
         Create hull objects associated with a physical tile. 
@@ -164,16 +163,16 @@ class Tilemap:
        
 
     
-    def _load_map(self,json_data):
+    def load_map(self,json_data):
         
         self._regular_tile_size = json_data['tile_size']
 
         # one step at a time.The tilemap.
-        self.non_physical_tile_layers= json_data['offgrid_layers']
+        self._non_physical_tile_layers= json_data['offgrid_layers']
         self.lights = []
 
         self.physical_tiles:dict[tuple[int,int],TileInfo] = {}
-        self.non_physical_tiles = [{} for i in range(0,self.non_physical_tile_layers)]
+        self.non_physical_tiles = [{} for i in range(0,self._non_physical_tile_layers)]
 
 
         for tile_key in json_data['tilemap']: 
@@ -238,7 +237,7 @@ class Tilemap:
                                                  json_data['tilemap'][tile_key]["colorValue"],atl_pos),light]
                 #self.physical_tiles[tile_key].light_ptr = light 
         
-        for i in range(0,self.non_physical_tile_layers):
+        for i in range(0,self._non_physical_tile_layers):
             tilemap_key = f"offgrid_{i}"
             for tile_key in json_data[tilemap_key]:
                 tile_pos = tuple(json_data[tilemap_key][tile_key]["pos"])
@@ -270,9 +269,15 @@ class Tilemap:
                                                                     tile_pos,tile_size,atl_pos)
 
 
-                
+    @property
+    def tile_size(self):
+        return self._regular_tile_size
+    
+    @property
+    def non_physical_tile_layers(self):
+        return self._non_physical_tile_layers
 
-        
+
 
     def get_lights(self) -> list[PointLight]:
         """

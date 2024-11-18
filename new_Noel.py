@@ -1,7 +1,9 @@
 import pygame 
+import cProfile
 import platform
 from os import environ,listdir
 from json import load  as jsLoad
+
 
 from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player,PhysicsEntity
@@ -42,10 +44,15 @@ class Noel():
         self._backgrounds:dict[str,list[Texture]] = self._load_backgrounds(TEXTURE_BASE_PATH+'backgrounds')
         self._tilemap_jsons = self._load_tilemap_jsons('map_jsons')
 
-        self._atlas_dict = self._create_texture_atlasses()
 
+        # MUST HAPPEN -------------------------
+        self._atlas_dict = self._create_texture_atlasses()
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
-        self._tilemap._load_map(self._tilemap_jsons['test1.json'])
+        self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
+        self.render_engine.precompute_vertex_arrays(self._tilemap)
+                                                    
+        # -------------------------------------
+
 
         # TODO: LOAD LIGHTS PROPERLY 
         self.render_engine.lights = self._tilemap.lights
@@ -59,18 +66,19 @@ class Noel():
         self.player.set_default_speed(2.2)
 
     def _initalize_game_settings(self):
-        self._system_display_info = self._get_system_display_info()
+        self._system_display_info = self._set_system_display_info()
         self._set_initial_display_settings()
         self._configure_pygame()
 
        # create moderngl context
         self._ctx = create_context()
        
-       # setup render engine 
+
+       # setup render engine
         self.render_engine = RenderEngine(self,self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
 
-    def _get_system_display_info(self):
+    def _set_system_display_info(self):
         system_info = {}
         primary_monitor = get_monitors()[0]
         system_info["resolution"] = (primary_monitor.width, primary_monitor.height)
@@ -95,6 +103,7 @@ class Noel():
             raise NotImplementedError("This Game Only runs on windows and macOS.")
 
         return system_info
+    
 
     def _set_initial_display_settings(self):
         environ['SDL_VIDEO_CENTERED'] = '1'
@@ -281,7 +290,7 @@ class Noel():
             self.render_engine.render_foreground_scene_to_fbo(self._cursor)
 
 
-            self.render_engine.render_scene_with_lighting((float('-inf'),float('inf')),camera_scroll,(0,0))
+            self.render_engine.render_scene_with_lighting((float('-inf'),float('700')),camera_scroll,(0,0))
             
             pygame.display.flip()
             fps = self._clock.get_fps()
@@ -304,8 +313,6 @@ class Noel():
         
 
 
-
-
-
 game = Noel()
+cProfile.run("game.start()")
 game.start()
