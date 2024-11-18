@@ -462,7 +462,11 @@ class RenderEngine:
         self._render_tex_to_fbo(tex_atlas,fbo,pygame.Rect(*cursor.pos,*tex_size),pygame.Rect(*query_pos,*tex_size))
 
 
-    def _render_background_view(self,fbo:moderngl.Framebuffer,background:list[moderngl.Texture],infinite:bool = False,offset = (0,0)):
+
+    
+
+    def _render_background_textures_to_fbo(self,fbo:moderngl.Framebuffer,background:list[moderngl.Texture],infinite:bool = False,offset = (0,0)):
+
         """
         Render the background (list of textures) to the Background layer.
     
@@ -667,7 +671,7 @@ class RenderEngine:
         self._render_aomap()
 
         # Render background masked with the lightmap
-        self._render_background(range,offset)
+        self._render_background_layer(range,offset)
 
         # Render foreground onto screen
         self._render_foreground()
@@ -972,7 +976,7 @@ class RenderEngine:
         self._vao_blur.render()
 
 
-    def _render_background(self,range,offset):
+    def _render_background_layer(self,range,offset):
         self.ctx.screen.use()
         self._tex_bg.use()
 
@@ -1060,6 +1064,9 @@ class RenderEngine:
 
         return self.make_shader(vertex_src, fragment_src)
 
+    def render_background_only_to_fbo(self,background:list[moderngl.Texture],offset = (0,0),infinite:bool = False):
+        fbo = self._get_fbo(Layer_.BACKGROUND)
+        self._render_background_textures_to_fbo(fbo,background,infinite= infinite,offset=offset)
     
     def render_background_scene_to_fbo(self,entities_atl:moderngl.Texture,background:list[moderngl.Texture],tilemap: Tilemap,
                                        player:Player,offset = (0,0),infinite:bool = False)-> None :
@@ -1074,7 +1081,7 @@ class RenderEngine:
         
         """
         fbo = self._get_fbo(Layer_.BACKGROUND)
-        self._render_background_view(fbo,background,offset=offset)
+        self._render_background_textures_to_fbo(fbo,background,offset=offset)
         self._render_tilemap(fbo,tilemap,offset)
         self._render_player(entities_atl,fbo,player,offset)
 

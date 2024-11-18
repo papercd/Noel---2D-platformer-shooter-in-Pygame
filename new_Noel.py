@@ -49,7 +49,7 @@ class Noel():
         self._atlas_dict = self._create_texture_atlasses()
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
-        self.render_engine.precompute_vertex_arrays(self._tilemap)
+        #self.render_engine.precompute_vertex_arrays(self._tilemap)
                                                     
         # -------------------------------------
 
