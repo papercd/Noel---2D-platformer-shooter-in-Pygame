@@ -47,7 +47,9 @@ class Noel():
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap._load_map(self._tilemap_jsons['test1.json'])
 
-        
+        # TODO: LOAD LIGHTS PROPERLY 
+        self.render_engine.lights = self._tilemap.lights
+
         self._cursor = Cursor(self._atlas_dict['cursor'])
 
         self._player_movement_input = [0,0]
@@ -258,31 +260,31 @@ class Noel():
         self._frame_count = (self._frame_count+1) %360
         self._dt = time() - self._prev_frame_time
         self._prev_frame_time = time()
-        self.render_engine.set_ambient(255,255,255,255)
+        self.render_engine.set_ambient(255,255,255,25)
         self.render_engine.clear(0,0,0,255)
 
         if self._curr_gameState == GameState.GameLoop:  
-
+            
             self.scroll[0] += (self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self.scroll[0])/20
             self.scroll[1] += (self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self.scroll[1])/20
 
             camera_scroll = (int(self.scroll[0]), int(self.scroll[1]))
-
+            
+            self.render_engine.hulls = self._tilemap.update_shadow_objs(self._true_res,camera_scroll)
             self._cursor.update()
             self.player.update(self._tilemap,self._cursor.pos,self._player_movement_input,self._frame_count)
 
             self.render_engine.render_background_scene_to_fbo(self._atlas_dict['entities'],self._backgrounds['new_building'],
                                                               self._tilemap,self.player,camera_scroll,infinite=False)
 
-
+            print(len(self.render_engine.hulls))
             self.render_engine.render_foreground_scene_to_fbo(self._cursor)
 
 
-            self.render_engine.render_scene_with_lighting((0,0),camera_scroll,(0,0))
+            self.render_engine.render_scene_with_lighting((float('-inf'),float('inf')),camera_scroll,(0,0))
             
             pygame.display.flip()
             fps = self._clock.get_fps()
-            print(fps)
             pygame.display.set_caption(f"Noel - FPS: {fps: .2f}")
             self._clock.tick(60)
             

@@ -9,7 +9,7 @@ import math
 
 from scripts.new_entities import Player
 from scripts.new_cursor import Cursor
-from scripts.custom_data_types import TileInfo
+from scripts.custom_data_types import TileInfo,DoorAnimation
 from scripts.layer import Layer_
 from scripts.atlass_positions import TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS
 from scripts.new_tilemap import Tilemap
@@ -44,6 +44,7 @@ class RenderEngine:
         self._true_res = true_res 
         self._true_res_diagonal_length = math.sqrt(self._true_res[0]**2 + self._true_res[1] **2)
 
+        self._diagonal = math.sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
         self._lightmap_res = true_res 
         self._ambient = (.25, .25, .25, .25)
 
@@ -510,14 +511,18 @@ class RenderEngine:
         vertices_list = []
         texture_coords_list = []
 
+        # Update the hull objects here as well. 
+        self.hulls = []
+
         # Create a buffer for vertices and texture coordinates
-        for x in range(offset[0] // tilemap._regular_tile_size, (offset[0] + self._true_res[0]) // tilemap._regular_tile_size+ 1):
-            for y in range(offset[1] // tilemap._regular_tile_size, (offset[1] + self._true_res[1]) // tilemap._regular_tile_size + 1):
+        for x in range(offset[0] // tilemap._regular_tile_size - 10, (offset[0] + self._true_res[0]) // tilemap._regular_tile_size+ 10):
+            for y in range(offset[1] // tilemap._regular_tile_size - 10, (offset[1] + self._true_res[1]) // tilemap._regular_tile_size + 10):
                 coor = (x,y) 
 
                 for i,dict in enumerate(tilemap.non_physical_tiles): 
                     if coor in dict: 
                         tile_info = tilemap.non_physical_tiles[i][coor]
+                        
 
                         # Get texture coords for the tile (from the tile atlas)
                         texture_coords = self._get_texture_coords_for_tile(tile_info,atl_size)
@@ -527,16 +532,32 @@ class RenderEngine:
                         texture_coords_list.append(texture_coords)                                         
 
                 if coor in tilemap.physical_tiles:  # If tile exists in the dictionary
-                    tile_info = tilemap.physical_tiles[coor]
+
+                    # the tile info named tuple is always the first element of the list. 
+                    tile_info_list = tilemap.physical_tiles[coor]
+                    tile_info  = tile_info_list[0]
+                    door_data = None
+                    if tile_info.type == 'trap_door':
+                        hull = tile_info_list[2]
+                        self.hulls.extend(hull)
+                        door_data:bool = tile_info_list[1]
+                    elif tile_info.type == 'building_door':
+                        hull = tile_info_list[2]
+                        self.hulls.extend(hull)
+                        door_data:DoorAnimation= tile_info_list[1]
+                    elif tile_info.type != 'lights': 
+                        hull = tile_info_list[1]
+                        self.hulls.extend(hull)
+                        
+                    
                     
                     # Get texture coordinates for the tile (from the tile atlas)
-                    texture_coords = self._get_texture_coords_for_tile(tile_info,atl_size)
+                    texture_coords = self._get_texture_coords_for_tile(tile_info,atl_size,door_data)
 
                     # Create the vertex data (tile positions and texture coordinates)
                     vertices = self._create_tile_vertices(tile_info,offset,fbo_w,fbo_h)
                     vertices_list.append(vertices)
                     texture_coords_list.append(texture_coords)
-                
         
 
         if vertices_list:
@@ -552,25 +573,31 @@ class RenderEngine:
             self._render_tiles(vbo,fbo,texture_atlass)
 
 
-    def _get_texture_coords_for_tile(self,tile_info:TileInfo,atl_size):
+    def _get_texture_coords_for_tile(self,tile_info:TileInfo,atl_size,door_data:DoorAnimation|bool= None):
         # Fetch the texture from the atlas based on tile type and variant
+        if not door_data:
+            rel_pos,variant = map(int,tile_info.variant.split(';'))
+            tile_type = tile_info.type
 
-        rel_pos,variant = map(int,tile_info.variant.split(';'))
-        tile_type = tile_info.type
+            x = (TILE_ATLAS_POSITIONS[tile_type][0] + variant * 16) / atl_size[0] 
+            y = (TILE_ATLAS_POSITIONS[tile_type][1] + rel_pos * 16) / atl_size[1] 
 
-        x = (TILE_ATLAS_POSITIONS[tile_type][0] + variant * 16) / atl_size[0] 
-        y = (TILE_ATLAS_POSITIONS[tile_type][1] + rel_pos * 16) / atl_size[1] 
-
-        w = 16 / atl_size[0]
-        h = 16 / atl_size[1]
+            w = 16 / atl_size[0]
+            h = 16 / atl_size[1]
+            
+            p1 = (x, y + h) 
+            p2 = (x + w, y + h) 
+            p3 = (x, y) 
+            p4 = (x + w, y) 
+            tex_coords = np.array([p1, p2, p3,
+                                p3, p2, p4], dtype=np.float32)
         
-        p1 = (x, y + h) 
-        p2 = (x + w, y + h) 
-        p3 = (x, y) 
-        p4 = (x + w, y) 
-        tex_coords = np.array([p1, p2, p3,
-                               p3, p2, p4], dtype=np.float32)
-        
+        else: 
+            if isinstance(door_data,DoorAnimation):
+                pass 
+            else: 
+                pass 
+
         return tex_coords
 
     def _create_tile_vertices(self, tile_info:TileInfo ,offset, fbo_w,fbo_h):
