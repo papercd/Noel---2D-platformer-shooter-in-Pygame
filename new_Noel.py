@@ -178,7 +178,7 @@ class Noel():
         Args: 
             json_file_name (str) : the name of the json file to read from. 
 
-        Returns: 
+        Returns: AAAAAAAAAAA
             a Tilemap object 
         """ 
         return Tilemap(self._tilemap_jsons[json_file_name])
