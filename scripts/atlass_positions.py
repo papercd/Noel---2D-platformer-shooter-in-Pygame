@@ -10,7 +10,7 @@ TILE_ATLAS_POSITIONS ={
     'dungeon_back' : (0,656),
     'building_stairs': (48,0),
     'building_back': (48,80),
-    'spawners' : ((80,0),(48,32)),
+    'spawners' : (80,0),
     'lights':(128,0)
 }
 
@@ -39,8 +39,11 @@ ENTITIES_ATLAS_POSITIONS ={
                 }                        
                 } 
 
+}
 
-
-
+IRREGULAR_TILE_SIZES = {
+    "spawners": (48,32),
+    "building_door": (18,32)
 
 }
+

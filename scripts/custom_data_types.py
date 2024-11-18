@@ -1,9 +1,9 @@
 from collections import namedtuple
 
-TileInfo = namedtuple('TileInfo',['type','variant','tile_pos','atl_pos'])
-LightInfo = namedtuple('LightInfo',['type','variant','tile_pos','radius','power','colorValue','atl_pos'])
+TileInfo = namedtuple('TileInfo',['type','variant','tile_pos','tile_size','atl_pos'])
+LightInfo = namedtuple('LightInfo',['type','variant','tile_pos','tile_size','rect','radius','power','colorValue','atl_pos'])
 AnimationData = namedtuple('AnimationData',['state','n_textures','img_dur','halt','loop'])
-DoorInfo = namedtuple('DoorInfo', ['type','variant','tile_pos','size','atl_pos'])
+DoorInfo = namedtuple('DoorInfo', ['type','variant','tile_pos','tile_size','rect','atl_pos'])
 
 
 class Animation: 
@@ -46,19 +46,19 @@ class Animation:
 class DoorAnimation(Animation):
     """ Animation class for the special case for doors. """
     def __init__(self, n_textures, img_dur = 5):
-        self.closed = False 
+        self.opened = False 
         super().__init__(n_textures, img_dur, True,False)
 
     def reset(self):
-        self.frame = 0 if not self.closed else self._img_dur * self._count -1
+        self.frame = 0 if self.opened else self._img_dur * self._count -1
         self.done = False 
     
     def open(self,is_open = False):
-        self.closed = is_open
-        self.frame = 0 if not self.closed else self._img_dur * self._count -1 
+        self.opened = is_open
+        self.frame = 0 if self.opened else self._img_dur * self._count -1 
 
     def update(self):
-        if not self.closed: 
+        if self.opened: 
             self.frame = min(self.frame+1,self._img_dur * self._count -1)
             if self.frame == self._img_dur * self._count - 1 : self.done  = True 
         else: 
