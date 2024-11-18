@@ -1,7 +1,8 @@
 from scripts.atlass_positions import TILE_ATLAS_POSITIONS
-from scripts.custom_data_types import TileInfo,LightInfo
+from scripts.custom_data_types import TileInfo,LightInfo,DoorInfo,DoorAnimation
 from moderngl import Texture
 from pygame import Rect
+from my_pygame_light2d.light import PointLight
 from scripts.utils import load_texture
 
 TEXTURE_BASE_PATH = 'data/images/'
@@ -34,6 +35,7 @@ class Tilemap:
 
         # one step at a time.The tilemap.
         self.non_physical_tile_layers= json_data['offgrid_layers']
+        self.lights = []
 
         self.physical_tiles:dict[tuple[int,int],TileInfo] = {}
         self.non_physical_tiles = [{} for i in range(0,self.non_physical_tile_layers)]
@@ -41,40 +43,59 @@ class Tilemap:
 
         for tile_key in json_data['tilemap']:
             if json_data['tilemap'][tile_key]['type'] != "lights":
+                if json_data['tilemap'][tile_key]['type'].endswith('door'):
+                    if json_data['tilemap'][tile_key]['type'].split('_')[0] == 'trap':
+                        # Tile info creation for trap door 
 
-                # TODO: DON'T THINK ABOUT LIGHTS FOR NOW, get the tile rendering working first. 
-                atlass_query_pos = TILE_ATLAS_POSITIONS[json_data['tilemap'][tile_key]["type"]]
+                        atl_pos = TILE_ATLAS_POSITIONS[json_data['tilemap'][tile_key]['type']]
+                        tile_pos = tuple(json_data['tilemap'][tile_key]["pos"])
+                        self.physical_tiles[tile_key] = [DoorInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
+                                                                 tile_pos,(16,5),atl_pos),False]
+                        pass
+                    else: 
+                        if tile_key in self.physical_tiles: continue 
+                        else: 
+                            # TODO : ADD HULLS LATER 
+                            atl_pos = TILE_ATLAS_POSITIONS[json_data['tilemap'][tile_key]['type']]
+                            tile_pos = tuple(json_data['tilemap'][tile_key]["pos"])
+                            self.physical_tiles[tile_key] = [DoorInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
+                                                                 tile_pos,(4,32),atl_pos),DoorAnimation(5,5)]
 
-                # TODO: THE TILE KEYS NEED TO BE CHANGED TO INTS, NOT STRINGS. 
-                tile_pos = tuple(json_data['tilemap'][tile_key]["pos"])
+                else:   
+                    # TODO: DON'T THINK ABOUT LIGHTS FOR NOW, get the tile rendering working first. 
+                    atlass_query_pos = TILE_ATLAS_POSITIONS[json_data['tilemap'][tile_key]["type"]]
+
+                    # TODO: THE TILE KEYS NEED TO BE CHANGED TO INTS, NOT STRINGS. 
+                    tile_pos = tuple(json_data['tilemap'][tile_key]["pos"])
 
 
-                self.physical_tiles[tile_pos] = TileInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],
-                                                 tile_pos,atlass_query_pos) 
+                    self.physical_tiles[tile_pos] = TileInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],
+                                                    tile_pos,atlass_query_pos) 
             
             else: 
                 if isinstance(json_data['tilemap'][tile_key]["pos"][0],int):
                     # for lights that are on the tile grid 
                     #TODO: ADD LIGHTING LATER 
-                    """
-                    light = PointLight(position = (json_data['tilemap'][tile_key]["pos"][0]*self.tile_size+7,json_data['tilemap'][tile_key]["pos"][1]*self.tile_size+3),\
+                    
+                    light = PointLight(position = (json_data['tilemap'][tile_key]["pos"][0]*self._regular_tile_size+7,json_data['tilemap'][tile_key]["pos"][1]*self._regular_tile_size+3),\
                                          power= json_data['tilemap'][tile_key]["power"],radius = json_data['tilemap'][tile_key]["radius"] )
                     light.set_color(*json_data['tilemap'][tile_key]["colorValue"])
-                    lights.append(light)
-                    """
+                    self.lights.append(light)
+                    
                     pass 
                 else: 
                     # for lights that are not placed on the tile grid  
                     # TODO : ADD LIGHTING LATER
-                    """
+                  
                     light = PointLight(position = (json_data['tilemap'][tile_key]["pos"][0]+7,json_data['tilemap'][tile_key]["pos"][1]+3),\
                                          power= json_data['tilemap'][tile_key]["power"],radius = json_data['tilemap'][tile_key]["radius"] )
                     light.set_color(*json_data['tilemap'][tile_key]["colorValue"])
-                    lights.append(light)
-                    """
+                    self.lights.append(light)
+                    
                 atl_pos = TILE_ATLAS_POSITIONS[json_data['tilemap'][tile_key]["type"]]
-                self.physical_tiles[tile_key] = LightInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
-                                                 json_data['tilemap'][tile_key]["pos"],json_data['tilemap'][tile_key]["radius"], json_data['tilemap'][tile_key]["power"],
+                tile_pos = tuple(json_data['tilemap'][tile_key]["pos"])
+                self.physical_tiles[tile_pos] = LightInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
+                                                 tile_pos,json_data['tilemap'][tile_key]["radius"], json_data['tilemap'][tile_key]["power"],
                                                  json_data['tilemap'][tile_key]["colorValue"],atl_pos)
                 #self.physical_tiles[tile_key].light_ptr = light 
         
@@ -111,7 +132,17 @@ class Tilemap:
 
         
 
+    def get_lights(self) -> list[PointLight]:
+        """
+        Return all the lights that are in the tilemap.
 
+        Is supposed to be used to initialize the pointlights for the render engine. 
+
+        Returns: 
+            list[PointLight] 
+        """
+
+        return self.lights
     
 
     def get_atlas(self) -> Texture: 

@@ -44,6 +44,7 @@ class RenderEngine:
         self._true_res = true_res 
         self._true_res_diagonal_length = math.sqrt(self._true_res[0]**2 + self._true_res[1] **2)
 
+        self._diagonal = math.sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
         self._lightmap_res = true_res 
         self._ambient = (.25, .25, .25, .25)
 
@@ -554,7 +555,8 @@ class RenderEngine:
 
     def _get_texture_coords_for_tile(self,tile_info:TileInfo,atl_size):
         # Fetch the texture from the atlas based on tile type and variant
-
+        if tile_info.type == 'lights':
+            print(tile_info.variant)
         rel_pos,variant = map(int,tile_info.variant.split(';'))
         tile_type = tile_info.type
 
