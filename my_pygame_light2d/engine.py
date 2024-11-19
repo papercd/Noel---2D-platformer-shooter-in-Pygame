@@ -7,11 +7,13 @@ import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
 
+from scripts.lists import TileCategories
+from scripts.new_panel import TilePanel
 from scripts.new_entities import Player
 from scripts.new_cursor import Cursor
 from scripts.custom_data_types import TileInfo,DoorAnimation
 from scripts.layer import Layer_
-from scripts.atlass_positions import TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS
+from scripts.atlass_positions import TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS,TEXT_DIMENSIONS
 from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
@@ -1067,6 +1069,83 @@ class RenderEngine:
     def render_background_only_to_fbo(self,background:list[moderngl.Texture],offset = (0,0),infinite:bool = False):
         fbo = self._get_fbo(Layer_.BACKGROUND)
         self._render_background_textures_to_fbo(fbo,background,infinite= infinite,offset=offset)
+
+
+    def render_tile_panel(self,alphabet_atl : moderngl.Texture, tile_panel:TilePanel):
+        """
+        Render the tile panel onto the foreground buffer.
+
+        Meant to be used with the editor only. 
+        
+        """
+        fbo = self._get_fbo(Layer_.FOREGROUND)
+        categories_panel:TileCategories = tile_panel.categories
+        categories_panel_scroll = tile_panel.category_panel_scroll
+        topleft = categories_panel.topleft
+
+        fbo_w,fbo_h = fbo.size 
+        atl_size = alphabet_atl.size 
+        vertices_list = []
+        texture_coords_list = []
+
+        curr = categories_panel.head 
+        while curr:
+            for i,char in enumerate(curr.data):
+                texture_coords = self._get_texture_coords_for_char(char,atl_size)
+                vertices = self._create_char_vertices(topleft,categories_panel_scroll,
+                                                        i,curr.cell_ind,fbo_w,fbo_h)
+                
+                vertices_list.append(vertices)
+                texture_coords_list.append(texture_coords)
+            curr = curr.next
+
+        if vertices_list:
+            vertices_array = np.concatenate(vertices_list,axis=0)
+            texture_coords_array = np.concatenate(texture_coords_list,axis = 0)
+            
+            buffer_data = np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
+            vbo = self.ctx.buffer(buffer_data)
+
+            self._render_categories(vbo,fbo,alphabet_atl)
+
+    def _render_categories(self,vbo,fbo,alphabet_atl):
+
+        vao = self.ctx.vertex_array(self._prog_draw, [(vbo, '2f 2f', 'vertexPos', 'vertexTexCoord')])
+        alphabet_atl.use()
+        fbo.use()
+        vao.render()
+        vbo.release()
+        vao.release()            
+
+
+    def _create_char_vertices(self,topleft, offset,char_loc,category_ind,fbo_w,fbo_h):
+        x = 2. * (topleft[0] +char_loc * TEXT_DIMENSIONS[0])/ fbo_w- 1.
+        y = 1. - 2. * (topleft[1] - offset + TEXT_DIMENSIONS[1] * category_ind)/ fbo_h
+        w = 2. * TEXT_DIMENSIONS[0] / fbo_w
+        h = 2. * TEXT_DIMENSIONS[1] /fbo_h 
+        vertices = np.array([(x, y), (x + w, y), (x, y - h),
+                            (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
+        
+        return vertices
+
+
+    def _get_texture_coords_for_char(self,char:str,atl_size):
+        ind =  ord(char) - 97
+
+        x = ( TEXT_DIMENSIONS[0] * ind ) / atl_size[0] 
+        y = 0 
+
+        w = TEXT_DIMENSIONS[0] / atl_size[0]
+        h = TEXT_DIMENSIONS[1] / atl_size[1]
+        
+        p1 = (x, y + h) 
+        p2 = (x + w, y + h) 
+        p3 = (x, y) 
+        p4 = (x + w, y) 
+        tex_coords = np.array([p1, p2, p3,
+                            p3, p2, p4], dtype=np.float32)
+    
+        return tex_coords
     
     def render_background_scene_to_fbo(self,entities_atl:moderngl.Texture,background:list[moderngl.Texture],tilemap: Tilemap,
                                        player:Player,offset = (0,0),infinite:bool = False)-> None :

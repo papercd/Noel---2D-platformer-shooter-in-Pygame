@@ -22,6 +22,11 @@ CURSOR_ATLAS_POSITIONS = {
     "crosshair" :  ((36,0),(10,10))
 }
 
+TEXT_DIMENSIONS = (5,5)
+
+TEXT_ATLAS_POSITIONS = {
+
+}
 
 ENTITIES_ATLAS_POSITIONS ={
     "player" : {False:{

@@ -314,5 +314,5 @@ class Noel():
 
 
 game = Noel()
-cProfile.run("game.start()")
+#cProfile.run("game.start()")
 game.start()

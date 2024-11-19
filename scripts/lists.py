@@ -1,28 +1,33 @@
-
+from scripts.new_cursor import Cursor
+from scripts.atlass_positions import TEXT_DIMENSIONS 
+from pygame import Rect
 
 class Node:
-    def __init__(self, cell_ind, weapon):
+    def __init__(self, cell_ind, data):
         self.cell_ind = cell_ind
-        self.weapon = weapon
+        self.data = data 
         self.next = None
         self.prev = None
 
     def __repr__(self):
-        return f"Node(cell_ind={self.cell_ind}, weapon={self.weapon})"
+        return f"Node(cell_ind={self.cell_ind}, data={self.data})"
 
 class DoublyLinkedList:
-    def __init__(self):
+    def __init__(self,objs:list= None):
         self.head = None
-        self.curr = None 
+        self.curr_node = None 
         self.tail = None
+        if objs: 
+            for i,obj in enumerate(objs):
+                self.add_node(i,obj)
 
-    def add_weapon(self, cell_ind, weapon):
-        new_node = Node(cell_ind, weapon)
+    def add_node(self, cell_ind, data):
+        new_node = Node(cell_ind, data)
         
         # If the list is empty, make the new node the head and the tail
         if self.head is None:
             self.head = self.tail = new_node
-            self.curr = new_node
+            self.curr_node = new_node
             return
         
         # Compare cell_ind values and find the correct spot
@@ -33,13 +38,13 @@ class DoublyLinkedList:
                 self._insert_before(current, new_node)
                 if current == self.head:
                     self.head = new_node
-                self.curr = new_node
+                self.curr_node = new_node
                 return
             elif new_node.cell_ind > current.cell_ind:
                 if current.next is None:
                     # Insert at the end of the list
                     self._insert_after(current, new_node)
-                    self.curr = new_node
+                    self.curr_node = new_node
                     return
             current = current.next
 
@@ -62,13 +67,13 @@ class DoublyLinkedList:
     def delete_node(self, node):
         if node is None:
             return
-        if node == self.curr: 
+        if node == self.curr_node: 
             if node.prev:
-                self.curr = node.prev 
+                self.curr_node = node.prev 
             elif node.next: 
-                self.curr = node.next  
+                self.curr_node = node.next  
             else: 
-                self.curr = None 
+                self.curr_node = None 
         if node.prev:
             node.prev.next = node.next
         if node.next:
@@ -79,7 +84,7 @@ class DoublyLinkedList:
             self.tail = node.prev
 
 
-        if node == self.curr:
+        if node == self.curr_node:
             pass 
         node.next = node.prev = None
 
@@ -96,6 +101,76 @@ class DoublyLinkedList:
             current = current.next
         return None
 
+class Category(Node):
+    def __init__(self, cell_ind, category:str):
+        self._selected = False 
+        self._hovered = False 
+        self._characters = len(category)
+        super().__init__(cell_ind, category)
+
+    @property
+    def characters(self):
+        return self._characters
+
+class TileCategories(DoublyLinkedList):
+    def __init__(self,topleft:tuple[int,int],size:tuple[int,int],objs:list[str]= None):
+        self._topleft = topleft
+        self._size = size 
+        super().__init__(objs)
+
+
+    @property 
+    def topleft(self):
+        return self._topleft
+
+    
+    def add_node(self, cell_ind, category):
+        new_node = Category(cell_ind, category)
+        
+        # If the list is empty, make the new node the head and the tail
+        if self.head is None:
+            self.head = self.tail = new_node
+            self.curr_node = new_node
+            return
+        
+        # Compare cell_ind values and find the correct spot
+        current = self.head
+        while current:
+            if new_node.cell_ind < current.cell_ind:
+                # Insert before the current node
+                self._insert_before(current, new_node)
+                if current == self.head:
+                    self.head = new_node
+                self.curr_node = new_node
+                return
+            elif new_node.cell_ind > current.cell_ind:
+                if current.next is None:
+                    # Insert at the end of the list
+                    self._insert_after(current, new_node)
+                    self.curr_node = new_node
+                    return
+            current = current.next
+    
+    def check_hover(self,cursor:Cursor,category_panel_scroll:int = 0,tile_panel_scroll:int = 0):
+        curr:Category = self.head
+        while curr: 
+            if cursor.box.colliderect(Rect(self._topleft[0],self._topleft[1]-category_panel_scroll+ TEXT_DIMENSIONS[1] * curr.cell_ind ,
+                                           curr.characters * TEXT_DIMENSIONS[0], TEXT_DIMENSIONS[1])):
+                curr._hovered = True 
+            else: 
+                curr._hovered = False 
+            curr = curr.next
+    
+    def check_click(self,cursor:Cursor,category_panel_scroll:int = 0,tile_panel_scroll:int = 0):
+        curr: Category = self.head 
+        while curr: 
+            if cursor.box.colliderect(Rect(self._topleft[0],self._topleft[1]-category_panel_scroll+ TEXT_DIMENSIONS[1] * curr.cell_ind,
+                                           curr.characters*TEXT_DIMENSIONS[0], TEXT_DIMENSIONS[1] )):
+                self.curr_node._selected = False 
+                curr._selected = True 
+                self.curr_node = curr 
+                break 
+            curr = curr.next 
 
 class ambientNode:
 

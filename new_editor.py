@@ -1,6 +1,8 @@
 from my_pygame_light2d.engine import RenderEngine
 from screeninfo import get_monitors
+from scripts.new_panel import TilePanel
 from scripts.new_tilemap import Tilemap
+from scripts.new_cursor import Cursor
 from scripts.utils import load_texture
 from os import environ,listdir
 from json import load as jsLoad
@@ -31,6 +33,9 @@ class Editor:
         self._scroll_increm = 4
         self._camera_movement = [0,0,0,0]
         self._scroll = [0,0]
+
+        self._main_tile_panel = TilePanel(self._true_res)
+        self._cursor = Cursor(self._atlas_dict['cursor'],in_editor= True)
 
 
     def _initalize_game_settings(self):
@@ -161,16 +166,32 @@ class Editor:
         dict['tiles'] = load_texture(TEXTURE_BASE_PATH+ 'tiles/tile_atlas.png',self._ctx)
         dict['entities'] = load_texture(TEXTURE_BASE_PATH + 'entities/entities_atlas.png',self._ctx)
         dict['cursor'] = load_texture(TEXTURE_BASE_PATH +'cursor/cursor_atlas.png',self._ctx)
+        dict['alphabet'] = load_texture(TEXTURE_BASE_PATH +'text/alphabet.png',self._ctx)
 
         return dict
 
 
-    def _handle_events(self):
+    def _handle_events(self):   
+        self._cursor.pos = pygame.mouse.get_pos()
+        self._cursor.pos = ((self._cursor.pos[0]/self._true_to_screen_res_ratio),(self._cursor.pos[1]/self._true_to_screen_res_ratio))
+        self._cursor.box.x,self._cursor.box.y = self._cursor.pos[0],self._cursor.pos[1]
+
         events = pygame.event.get()
         for event in events: 
             if event.type == pygame.QUIT: 
                 pygame.quit()
                 sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    self._main_tile_panel.check_click(self._cursor)
+                    self._cursor.pressed[0] = True
+                if event.button == 3:
+                    self._cursor.pressed[1] = True
+            if event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:
+                    self._cursor.pressed[0] = False 
+                if event.button == 3:
+                    self._cursor.pressed[1] = False  
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_a: 
                     self._camera_movement[0] = True 
@@ -205,8 +226,15 @@ class Editor:
         self._scroll[1] += (self._camera_movement[3] - self._camera_movement[2]) * (self._scroll_speed+self._scroll_increm)
 
         camera_scroll = (int(self._scroll[0]),int(self._scroll[1]))
+        self._cursor.update()
 
-        self.render_engine.render_background_only_to_fbo(self._backgrounds['start'],camera_scroll,)
+        self._main_tile_panel.update(self._cursor)
+
+        self.render_engine.render_background_only_to_fbo(self._backgrounds['new_building'],camera_scroll)
+
+        self.render_engine.render_tile_panel(self._atlas_dict['alphabet'],self._main_tile_panel)
+
+        self.render_engine.render_foreground_scene_to_fbo(self._cursor)
 
         self.render_engine.render_scene_with_lighting((float('-inf'),float('inf')),camera_scroll,(0,0))
         pygame.display.flip()
