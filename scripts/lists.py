@@ -109,6 +109,10 @@ class Category(Node):
         super().__init__(cell_ind, category)
 
     @property
+    def hovered(self):
+        return self._hovered
+
+    @property
     def characters(self):
         return self._characters
 
@@ -118,6 +122,10 @@ class TileCategories(DoublyLinkedList):
         self._size = size 
         super().__init__(objs)
 
+
+    @property
+    def size(self):
+        return self._size 
 
     @property 
     def topleft(self):

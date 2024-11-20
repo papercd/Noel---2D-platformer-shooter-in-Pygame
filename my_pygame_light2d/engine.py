@@ -1092,7 +1092,7 @@ class RenderEngine:
         while curr:
             for i,char in enumerate(curr.data):
                 texture_coords = self._get_texture_coords_for_char(char,atl_size)
-                vertices = self._create_char_vertices(topleft,categories_panel_scroll,
+                vertices = self._create_char_vertices(topleft,categories_panel_scroll,curr.hovered,
                                                         i,curr.cell_ind,fbo_w,fbo_h)
                 
                 vertices_list.append(vertices)
@@ -1118,8 +1118,8 @@ class RenderEngine:
         vao.release()            
 
 
-    def _create_char_vertices(self,topleft, offset,char_loc,category_ind,fbo_w,fbo_h):
-        x = 2. * (topleft[0] +char_loc * TEXT_DIMENSIONS[0])/ fbo_w- 1.
+    def _create_char_vertices(self,topleft, offset,hovered,char_loc,category_ind,fbo_w,fbo_h):
+        x = 2. * (topleft[0] +char_loc * TEXT_DIMENSIONS[0] + hovered)/ fbo_w- 1.
         y = 1. - 2. * (topleft[1] - offset + TEXT_DIMENSIONS[1] * category_ind)/ fbo_h
         w = 2. * TEXT_DIMENSIONS[0] / fbo_w
         h = 2. * TEXT_DIMENSIONS[1] /fbo_h 
