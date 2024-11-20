@@ -20,9 +20,12 @@ class TilePanel:
         
 
         self._categories = TileCategories((0,0),self._category_panel_size,TILE_ATLAS_POSITIONS.keys())
+        self._tiles_display = TilesDisplay()
         self._indicator_labels = ('stick_grid','on_grid','randomize_autotile','create_selection_box','selection_box_del_option','mark_tiles_for_AT')
         self._tile_panel_scroll = 0
         self._categories_scroll = 0
+
+
 
 
 
@@ -40,6 +43,7 @@ class TilePanel:
         return self._categories
 
 
+
     def _mouse_within_bounds(self,cursor):
         if (0<= cursor.pos[0] <= self._size[0]):
             if   (0<=cursor.pos[1]<= self._category_panel_size[1]):
@@ -50,6 +54,9 @@ class TilePanel:
                 return 3 
         else: 
             return 0 
+        
+    def fill_tiles_display(self):
+        pass 
         
     def check_click(self,cursor:Cursor):
         mouse_pos_section = self._mouse_within_bounds(cursor)

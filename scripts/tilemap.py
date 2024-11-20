@@ -6,7 +6,7 @@ import heapq
 #from scripts.entities import Canine, Wheel_bot,Ball_slinger
 from my_pygame_light2d.hull import Hull
 from my_pygame_light2d.light import PointLight
-from scripts.weapon_list import ambientNodeList
+from scripts.lists import ambientNodeList
 
 
 PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs','building_door','trap_door',\
