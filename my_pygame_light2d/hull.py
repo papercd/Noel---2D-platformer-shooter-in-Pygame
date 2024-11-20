@@ -22,3 +22,6 @@ class Hull:
         self.vertices = vertices
         self.illuminate_interior = illuminate_interior
         self.enabled = enabled
+
+    
+    # vertices = toplef, topright, bottomright, bottomleft 

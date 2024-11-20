@@ -50,11 +50,9 @@ class Noel():
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
         #self.render_engine.precompute_vertex_arrays(self._tilemap)
-                                                    
         # -------------------------------------
 
-
-        # TODO: LOAD LIGHTS PROPERLY 
+       # TODO: LOAD LIGHTS PROPERLY 
         self.render_engine.lights = self._tilemap.lights
 
         self._cursor = Cursor(self._atlas_dict['cursor'])
@@ -279,14 +277,14 @@ class Noel():
 
             camera_scroll = (int(self.scroll[0]), int(self.scroll[1]))
             
-            self.render_engine.hulls = self._tilemap.update_shadow_objs(self._true_res,camera_scroll)
+            #self.render_engine.hulls = self._tilemap.update_shadow_objs(self._true_res,camera_scroll)
             self._cursor.update()
             self.player.update(self._tilemap,self._cursor.pos,self._player_movement_input,self._frame_count)
 
             self.render_engine.render_background_scene_to_fbo(self._atlas_dict['entities'],self._backgrounds['new_building'],
                                                               self._tilemap,self.player,camera_scroll,infinite=False)
 
-            print(len(self.render_engine.hulls))
+ #            print(len(self.render_engine.hulls))
             self.render_engine.render_foreground_scene_to_fbo(self._cursor)
 
 

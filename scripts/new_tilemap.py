@@ -1,8 +1,8 @@
 from scripts.atlass_positions import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES
 from scripts.custom_data_types import TileInfo,LightInfo,DoorInfo,DoorAnimation
+from my_pygame_light2d.hull import Hull 
 from moderngl import Texture
 from pygame import Rect
-from my_pygame_light2d.hull import Hull
 from my_pygame_light2d.light import PointLight
 from scripts.utils import load_texture
 
@@ -267,6 +267,7 @@ class Tilemap:
                 else: 
                     self.non_physical_tiles[i][tile_pos] = TileInfo(json_data[tilemap_key][tile_key]["type"],json_data[tilemap_key][tile_key]["variant"],
                                                                     tile_pos,tile_size,atl_pos)
+       # self._get_hull_grid_mapping()
 
 
     @property
@@ -276,6 +277,114 @@ class Tilemap:
     @property
     def non_physical_tile_layers(self):
         return self._non_physical_tile_layers
+
+
+    def get_minimal_rectangles(self):
+        # Sorting the keys (grid positions) in increasing order
+        sorted_positions = sorted(self.physical_tiles.keys())
+        
+        rectangles = []
+        current_rectangle = None
+        
+        def add_rectangle(x1, y1, x2, y2):
+            rectangles.append((x1, y1, x2, y2))
+        
+        for position in sorted_positions:
+            x, y = position[0]*16,position[1] * 16
+            tile = self.physical_tiles[position]  # Get the tile info (e.g., type, size)
+            
+            # We assume tile size is always 16x16 for simplicity
+            tile_width, tile_height = 16, 16
+            
+            # If current_rectangle is None, start a new rectangle
+            if current_rectangle is None:
+                current_rectangle = (x, y, x + tile_width, y + tile_height)
+            else:
+                # Get the current rectangle boundaries
+                current_x1, current_y1, current_x2, current_y2 = current_rectangle
+                
+                # Check if the current tile can be part of the current rectangle
+                # They must be either horizontally or vertically aligned.
+                if (x == current_x2 or y == current_y2): 
+                    # Extend the current rectangle if possible
+                    current_rectangle = (min(current_x1, x),
+                                        min(current_y1, y),
+                                        max(current_x2, x + tile_width),
+                                        max(current_y2, y + tile_height))
+                else:
+                    # Otherwise, finalize the current rectangle and start a new one
+                    add_rectangle(*current_rectangle)
+                    current_rectangle = (x, y, x + tile_width, y + tile_height)
+        
+        # Add the last rectangle if any
+        if current_rectangle is not None:
+            add_rectangle(*current_rectangle)
+        
+        return rectangles
+
+    def _get_hull_grid_mapping(self):
+        """
+        Groups tiles into the smallest possible rectangles and maps grid positions to their corresponding hulls.
+
+        :param tile_dict: Dictionary where keys are grid positions (x, y) and values are tile objects.
+        :return: Dictionary mapping grid positions to their corresponding hull objects.
+        """
+        # Sorting the grid positions
+        sorted_positions = sorted(self.physical_tiles.keys())
+
+        # List to store rectangles and dictionary for grid mapping
+        hulls = []
+        self._hull_grid_mapping = {}
+
+        current_rectangle = None
+
+
+        def create_rectangle(x1, y1, x2, y2):
+            vertices = ((x1,y1),(x2,y1),(x2,y2),(x1,y2))
+            hull = Hull(vertices,enabled= True)
+            hulls.append(hull)
+
+
+            # Calculate the grid cells spanned by this rectangle
+            grid_start_x = x1 // self._regular_tile_size
+            grid_start_y = y1 // self._regular_tile_size
+            grid_end_x = (x2 - 1) // self._regular_tile_size  # Subtract 1 to avoid overshooting
+            grid_end_y = (y2 - 1) // self._regular_tile_size
+
+            # Map all grid cells covered by the rectangle to this hull
+            for grid_x in range(grid_start_x, grid_end_x + 1):
+                for grid_y in range(grid_start_y, grid_end_y + 1):
+                    if (grid_x, grid_y) not in self._hull_grid_mapping:  # Avoid duplicates
+                        self._hull_grid_mapping[(grid_x, grid_y)] = hull
+
+        for position in sorted_positions:
+            x, y =position 
+            tile_width, tile_height = self._regular_tile_size,self._regular_tile_size 
+
+            # If no current rectangle, start one
+            if current_rectangle is None:
+                current_rectangle = (x * self._regular_tile_size, y * self._regular_tile_size, 
+                                    (x+1) * self._regular_tile_size,(y +1) * self._regular_tile_size)
+            else:
+                # Check if the tile can be added to the current rectangle
+                current_x1, current_y1, current_x2, current_y2 = current_rectangle
+                if y == current_y1 //self._regular_tile_size or x == current_x2 //self._regular_tile_size:
+                    current_rectangle = (
+                        current_x1,current_y1, 
+                        current_x2 + tile_width, current_y2
+                    )
+                else:
+                    # Finalize the current rectangle and start a new one
+                    create_rectangle(*current_rectangle)
+                    current_rectangle = (x * self._regular_tile_size, y * self._regular_tile_size, 
+                                        (x+1) * self._regular_tile_size, (y+1)  * self._regular_tile_size)
+
+        # Add the last rectangle if any
+        if current_rectangle:
+            create_rectangle(*current_rectangle)
+
+
+
 
 
 
@@ -304,7 +413,21 @@ class Tilemap:
         return self._texture_atlas
 
     def update_shadow_objs(self, native_res,camera_scroll):
-        return [] 
+        queried_hulls = []
+
+        x_start = camera_scroll[0] // self.tile_size - 10
+        x_end = (camera_scroll[0] + native_res[0]) // self.tile_size + 10
+        y_start = camera_scroll[1] // self.tile_size - 10
+        y_end = (camera_scroll[1] + native_res[1]) // self.tile_size + 10
+        
+        for x_cor in range(x_start, x_end):
+            for y_cor in range(y_start, y_end):
+                coor = (x_cor,y_cor)
+                if coor in self._hull_grid_mapping:
+                    queried_hulls.append(self._hull_grid_mapping[coor])
+        return queried_hulls
+                    
+
 
     def tiles_around(self,pos,size) -> list[TileInfo]:
         
