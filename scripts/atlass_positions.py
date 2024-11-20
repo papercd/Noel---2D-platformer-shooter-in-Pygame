@@ -22,9 +22,18 @@ CURSOR_ATLAS_POSITIONS = {
     "crosshair" :  ((36,0),(10,10))
 }
 
-TEXT_DIMENSIONS = (5,5)
-
+TEXT_DIMENSIONS = {
+    "CAPITAL" : (6,7),
+    "LOWER": (5,5),
+    "UNDERSCORE" : (5,5),
+    "NUMBERS" : (5,5)
+    
+}
 TEXT_ATLAS_POSITIONS = {
+    "CAPITAL" : (0,5),
+    "LOWER" : (0,0),
+    "UNDERSCORE" : (130,0),
+    "NUMBERS":(0,12)
 
 }
 

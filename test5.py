@@ -1,9 +1,9 @@
+print(ord("0"))
 
+print(ord("A"))
 
+print(ord("a"))
 
-from scripts.custom_data_types import AnimationData
+print(ord("_"))
 
-AD = AnimationData(1,2,3,4,5)
-
-
-print(AD[1:])
+print(ord("9"))

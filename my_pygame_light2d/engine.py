@@ -13,7 +13,7 @@ from scripts.new_entities import Player
 from scripts.new_cursor import Cursor
 from scripts.custom_data_types import TileInfo,DoorAnimation
 from scripts.layer import Layer_
-from scripts.atlass_positions import TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS,TEXT_DIMENSIONS
+from scripts.atlass_positions import TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS,TEXT_DIMENSIONS,TEXT_ATLAS_POSITIONS
 from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
@@ -1071,7 +1071,7 @@ class RenderEngine:
         self._render_background_textures_to_fbo(fbo,background,infinite= infinite,offset=offset)
 
 
-    def render_tile_panel(self,alphabet_atl : moderngl.Texture, tile_panel:TilePanel):
+    def render_tile_panel(self,text_atl: moderngl.Texture,tile_panel:TilePanel):
         """
         Render the tile panel onto the foreground buffer.
 
@@ -1084,19 +1084,26 @@ class RenderEngine:
         topleft = categories_panel.topleft
 
         fbo_w,fbo_h = fbo.size 
-        atl_size = alphabet_atl.size 
+        atl_size = text_atl.size 
         vertices_list = []
         texture_coords_list = []
 
         curr = categories_panel.head 
+        category_stack_offset = 0
         while curr:
+            character_length_offset = 0
             for i,char in enumerate(curr.data):
-                texture_coords = self._get_texture_coords_for_char(char,atl_size)
-                vertices = self._create_char_vertices(topleft,categories_panel_scroll,
-                                                        i,curr.cell_ind,fbo_w,fbo_h)
+                text_dim,text_atlas_pos,ind = self._get_text_dim_and_atlas_pos(char)
+
+
+                texture_coords = self._get_texture_coords_for_char(text_dim,text_atlas_pos,ind,atl_size)
+                vertices = self._create_char_vertices(topleft,categories_panel_scroll,character_length_offset, category_stack_offset,
+                                                     text_dim,fbo_w,fbo_h)
                 
                 vertices_list.append(vertices)
                 texture_coords_list.append(texture_coords)
+                character_length_offset += text_dim[0]
+            category_stack_offset += curr.height + 1 
             curr = curr.next
 
         if vertices_list:
@@ -1106,7 +1113,7 @@ class RenderEngine:
             buffer_data = np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
             vbo = self.ctx.buffer(buffer_data)
 
-            self._render_categories(vbo,fbo,alphabet_atl)
+            self._render_categories(vbo,fbo,text_atl)
 
     def _render_categories(self,vbo,fbo,alphabet_atl):
 
@@ -1117,26 +1124,49 @@ class RenderEngine:
         vbo.release()
         vao.release()            
 
+    def _get_text_dim_and_atlas_pos(self,char:str):
+        ord_val = ord(char)
+        if 48 <= ord_val <= 57:
+            ind = ord_val - 48 
+            text_dim = TEXT_DIMENSIONS['NUMBERS']
+            bottom_left = (0,5)
+        elif 65 <= ord_val <= 90: 
+            ind = ord_val - 65 
+            text_dim = TEXT_DIMENSIONS['CAPITAL']
+            bottom_left = TEXT_ATLAS_POSITIONS['CAPITAL']
+        elif 97 <= ord_val <= 122:
+            ind = ord_val - 97
+            text_dim = TEXT_DIMENSIONS['LOWER']
+            bottom_left = TEXT_ATLAS_POSITIONS['LOWER']
+        else: 
+            ind = 0
+            text_dim = TEXT_DIMENSIONS["UNDERSCORE"]
+            bottom_left = TEXT_ATLAS_POSITIONS['UNDERSCORE']
 
-    def _create_char_vertices(self,topleft, offset,char_loc,category_ind,fbo_w,fbo_h):
-        x = 2. * (topleft[0] +char_loc * TEXT_DIMENSIONS[0])/ fbo_w- 1.
-        y = 1. - 2. * (topleft[1] - offset + TEXT_DIMENSIONS[1] * category_ind)/ fbo_h
-        w = 2. * TEXT_DIMENSIONS[0] / fbo_w
-        h = 2. * TEXT_DIMENSIONS[1] /fbo_h 
+        return text_dim,bottom_left,ind
+       
+
+
+    def _create_char_vertices(self,topleft, offset,char_len_offset,cat_stack_offset,text_dim,fbo_w,fbo_h):
+
+
+        x = 2. * (topleft[0] +char_len_offset)/ fbo_w- 1.
+        y = 1. - 2. * (topleft[1] - offset + cat_stack_offset)/ fbo_h
+        w = 2. * text_dim[0] / fbo_w
+        h = 2. * text_dim[1] /fbo_h 
         vertices = np.array([(x, y), (x + w, y), (x, y - h),
                             (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
         
         return vertices
 
 
-    def _get_texture_coords_for_char(self,char:str,atl_size):
-        ind =  ord(char) - 97
+    def _get_texture_coords_for_char(self,text_dim,atl_pos,ind,atl_size):
+        
+        x = (atl_pos[0] + text_dim[0] * ind ) / atl_size[0] 
+        y = (atl_pos[1] +text_dim[1]-1) / atl_size[0] 
 
-        x = ( TEXT_DIMENSIONS[0] * ind ) / atl_size[0] 
-        y = 0 
-
-        w = TEXT_DIMENSIONS[0] / atl_size[0]
-        h = TEXT_DIMENSIONS[1] / atl_size[1]
+        w = text_dim[0] / atl_size[0]
+        h = text_dim[1] / atl_size[1]
         
         p1 = (x, y + h) 
         p2 = (x + w, y + h) 

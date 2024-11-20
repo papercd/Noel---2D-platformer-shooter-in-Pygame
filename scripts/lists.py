@@ -106,12 +106,38 @@ class Category(Node):
         self._selected = False 
         self._hovered = False 
         self._characters = len(category)
+        self._calculate_length_height(category)
         super().__init__(cell_ind, category)
+    
+    def _calculate_length_height(self,category:str):
+        self._length = 0 
+        max_height = 0 
+        for char in category: 
+            ord_val = ord(char)
+            if 48 <= ord_val <= 57:
+                dim =  TEXT_DIMENSIONS['NUMBERS']
+            elif 65 <= ord_val <= 90: 
+                dim = TEXT_DIMENSIONS['CAPITAL']
+
+            elif 97 <= ord_val <= 122:
+                dim = TEXT_DIMENSIONS['LOWER']
+            else: 
+                dim=  TEXT_DIMENSIONS["UNDERSCORE"]
+            self._length += dim[0] 
+            if dim[1] > max_height: max_height = dim[1]
+        self._height = max_height
+
+    @property
+    def height(self):
+        return self._height
 
     @property
     def characters(self):
         return self._characters
 
+    @property 
+    def length(self):
+        return self._length
 class TileCategories(DoublyLinkedList):
     def __init__(self,topleft:tuple[int,int],size:tuple[int,int],objs:list[str]= None):
         self._topleft = topleft
@@ -153,23 +179,30 @@ class TileCategories(DoublyLinkedList):
     
     def check_hover(self,cursor:Cursor,category_panel_scroll:int = 0,tile_panel_scroll:int = 0):
         curr:Category = self.head
+        category_stack_offset = 0 
         while curr: 
-            if cursor.box.colliderect(Rect(self._topleft[0],self._topleft[1]-category_panel_scroll+ TEXT_DIMENSIONS[1] * curr.cell_ind ,
-                                           curr.characters * TEXT_DIMENSIONS[0], TEXT_DIMENSIONS[1])):
+                
+            if cursor.box.colliderect(Rect(self._topleft[0],self._topleft[1]-category_panel_scroll+ category_stack_offset,
+                                           curr.length, curr.height)):
                 curr._hovered = True 
             else: 
                 curr._hovered = False 
+            
+            category_stack_offset += curr.height +1 
             curr = curr.next
     
     def check_click(self,cursor:Cursor,category_panel_scroll:int = 0,tile_panel_scroll:int = 0):
         curr: Category = self.head 
+        category_stack_offset = 0
         while curr: 
-            if cursor.box.colliderect(Rect(self._topleft[0],self._topleft[1]-category_panel_scroll+ TEXT_DIMENSIONS[1] * curr.cell_ind,
-                                           curr.characters*TEXT_DIMENSIONS[0], TEXT_DIMENSIONS[1] )):
+            if cursor.box.colliderect(Rect(self._topleft[0],self._topleft[1]-category_panel_scroll+ category_stack_offset, 
+                                           curr.length, curr.height)):
                 self.curr_node._selected = False 
                 curr._selected = True 
                 self.curr_node = curr 
                 break 
+
+            category_stack_offset += curr.height + 1 
             curr = curr.next 
 
 class ambientNode:
