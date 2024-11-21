@@ -330,7 +330,7 @@ class RenderEngine:
         visible_end_y = min(grid_height- 1, visible_end_y)
 
         indices_ = []    
-        for x in range(visible_start_x,visible_end_x +0):   
+        for x in range(visible_start_x,visible_end_x +1):   
             for y in range(visible_start_y,visible_end_y +1):
             
                 tile_index = (y * grid_width + x) * 6
@@ -866,9 +866,10 @@ class RenderEngine:
 
     def _precompute_static_tiles_VBO(self) -> None:
         atl_size = self._tilemap.texture_atlas.size
-        vertex_data = []
+        vertices_list = []
+        texture_coords_list = []
 
-        for (x,y),tile_info_list in self._tilemap.physical_tiles.items():
+        for (x,y),tile_info_list in sorted(self._tilemap.physical_tiles.items()):
             x_pos = x * self._tilemap.tile_size
             y_pos = y * self._tilemap.tile_size
             
@@ -881,27 +882,24 @@ class RenderEngine:
             
 
             tex_coords =  self._get_texture_coords_for_tile(tile_info,atl_size,door_data)
-            vertex_data.extend([
-            # Top-left corner
-            x_pos, y_pos, tex_coords[0][0], tex_coords[0][1],
-            # Top-right corner
-            x_pos + self._tilemap.tile_size, y_pos, tex_coords[1][0], tex_coords[1][1],
-            # Bottom-left corner
-            x_pos, y_pos + self._tilemap.tile_size, tex_coords[2][0], tex_coords[2][1],
-            # Bottom-left corner
-            x_pos, y_pos + self._tilemap.tile_size, tex_coords[2][0], tex_coords[2][1],
-            x_pos + self._tilemap.tile_size, y_pos, tex_coords[1][0], tex_coords[1][1],
-            # Bottom-right corner
-            x_pos + self._tilemap.tile_size, y_pos + self._tilemap.tile_size, tex_coords[3][0], tex_coords[3][1],
-            ])
+            vertex_coords = np.array([(x_pos,y_pos),(x_pos +tile_info.tile_size[0],y_pos),(x_pos,y_pos - tile_info.tile_size[1]),
+                                      (x_pos, y_pos - tile_info.tile_size[1]),(x_pos + tile_info.tile_size[0],y_pos),(x_pos + tile_info.tile_size[0],y_pos - tile_info.tile_size[1])],dtype = np.float32)
+            
+            vertices_list.append(vertex_coords)
+            texture_coords_list.append(tex_coords)
 
-        self._static_tiles_vbo = self.ctx.buffer(np.array(vertex_data,dtype=np.float32))
+            vertices_array = np.concatenate(vertices_list,axis=0)
+            texture_coords_array = np.concatenate(texture_coords_list,axis = 0)
+            
+        buffer_data = np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
+        self._static_tiles_vbo = self.ctx.buffer(buffer_data)
+
         
 
     def bind_tilemap(self,tilemap:Tilemap) -> None:
         self._tilemap = tilemap
-        self._ibo = self.ctx.buffer(reserve= 6 * (self._true_res[0]//self._tilemap.tile_size) 
-                                    * (self._true_res[1] // self._tilemap.tile_size) * 6,dynamic=True )
+        self._ibo = self.ctx.buffer(reserve= 6 * (self._true_res[0]//self._tilemap.tile_size + 10) 
+                                    * (self._true_res[1] // self._tilemap.tile_size + 10) * 6,dynamic=True )
         self._precompute_static_tiles_VBO()
 
     def bind_entities_atlas(self,entities_atl:moderngl.Texture) -> None:
