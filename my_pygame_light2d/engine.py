@@ -870,6 +870,8 @@ class RenderEngine:
         texture_coords_list = []
 
         for (x,y),tile_info_list in sorted(self._tilemap.physical_tiles.items()):
+            print(x,y)
+            """
             x_pos = x * self._tilemap.tile_size
             y_pos = y * self._tilemap.tile_size
             
@@ -894,7 +896,7 @@ class RenderEngine:
         buffer_data = np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
         self._static_tiles_vbo = self.ctx.buffer(buffer_data)
 
-        
+        """
 
     def bind_tilemap(self,tilemap:Tilemap) -> None:
         self._tilemap = tilemap

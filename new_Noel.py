@@ -286,7 +286,7 @@ class Noel():
             self._cursor.update()
             self.player.update(self._tilemap,self._cursor.pos,self._player_movement_input,self._frame_count)
 
-            self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
+            #self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
 
             #self.render_engine.render_foreground_scene_to_fbo(self._cursor)
 
