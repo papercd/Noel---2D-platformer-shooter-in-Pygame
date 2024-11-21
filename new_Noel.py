@@ -46,6 +46,7 @@ class Noel():
         self._atlas_dict = self._create_texture_atlasses()
 
 
+
         self.player = Player([74,11],(14,16)) 
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
@@ -54,14 +55,14 @@ class Noel():
         # setting up tilemap and binding objects to render engine -------------------------
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
-        self.render_engine.bind_player(self.player)
         self.render_engine.bind_tilemap(self._tilemap)
         self.render_engine.bind_entities_atlas(self._atlas_dict['entities'])
         self.render_engine.bind_background(self._backgrounds['start'])
         # -------------------------------------
+        print(len(self._tilemap.physical_tiles))
+        print(len(self._tilemap.rectangles))
 
         self._cursor = Cursor(self._atlas_dict['cursor'])
-
         self._player_movement_input = [0,0]
         self._entities_list: list[PhysicsEntity] = []
         self.player = Player([74,11],(14,16)) 
@@ -284,12 +285,14 @@ class Noel():
             
             #self.render_engine.hulls = self._tilemap.update_shadow_objs(self._true_res,camera_scroll)
             self._cursor.update()
+            self.render_engine.bind_cursor(self._cursor)
             self.player.update(self._tilemap,self._cursor.pos,self._player_movement_input,self._frame_count)
+            self.render_engine.bind_player(self.player)
 
+            self.render_engine.render_rectangles(camera_scroll)
             self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
-
-            #self.render_engine.render_foreground_scene_to_fbo(self._cursor)
-
+            self.render_engine.render_foreground_scene_to_fbo()
+            
 
             self.render_engine.render_scene_with_lighting((float('-inf'),float('700')),camera_scroll,(0,0))
             
@@ -307,7 +310,6 @@ class Noel():
 
 
     def start(self):
-        self.render_engine.check_requirements()
         while(True):
             self._handle_events()
             self._update_render() 

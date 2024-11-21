@@ -7,6 +7,8 @@ class Cursor:
 
         self.in_editor = in_editor 
         self.pos = [0,0] 
+
+
         self.interacting = False 
         self.item = None
         self.state = "default"
@@ -19,8 +21,8 @@ class Cursor:
         self.special_actions = False 
         self.pressed = [0,0]
 
-    
-    def get_atlas(self) -> Texture: 
+    @property   
+    def texture_atlas(self) -> Texture: 
         return self._tex_atl
 
     def set_cooldown(self) -> None:

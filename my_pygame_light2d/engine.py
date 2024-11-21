@@ -33,7 +33,6 @@ class RenderEngine:
         Initialize the render engine.
 
         Args:
-            game : the game. 
             context : the moderngl context 
             screen_res : the resolution of the display
             true_to_screen_res_ratio : the ratio of the screen resolution from the true resolution. 
@@ -51,13 +50,12 @@ class RenderEngine:
         self._lightmap_res = true_res 
         self._ambient = (.25, .25, .25, .25)
 
-        # Objects that need to be bound to engine before rendering background: 
+        # Objects that need to be bound to engine before rendering : 
         self._tilemap:Tilemap = None
         self._player:Player = None
         self._entities_atl: moderngl.Texture= None 
         self._background: list[moderngl.Texture]= None
-        self._static_tiles_vbo:moderngl.Context.buffer = None
-        self._ibo : moderngl.Context.buffer = None 
+        self._cursor : Cursor = None 
 
         # Initialize public members
         self.lights: list[PointLight] = []
@@ -99,17 +97,9 @@ class RenderEngine:
 
     def _load_shaders(self):
         # Read source files
-        #vertex_src = resources.read_text(
-        #    'pygame_light2d', 'vertex.glsl')
         with open('my_pygame_light2d/vertex.glsl',encoding='utf-8') as file:
             vertex_src = file.read()
 
-
-        with open('my_pygame_light2d/tile_vertex.glsl',encoding='utf-8') as file:
-            tile_vertex_src = file.read()
-
-        
-        
 
         fragment_src_light = resources.read_text(
             'pygame_light2d', 'fragment_light.glsl')
@@ -123,45 +113,14 @@ class RenderEngine:
            
             fragment_src_mask = file.read()
             
-            try:
-                self._prog_mask = self.ctx.program(vertex_shader=vertex_src, fragment_shader=fragment_src_mask)
-            except Exception as e:
-                print("Shader compilation or linking error:", e)
-                return
-
-            # Print all active uniforms to verify 'range' is present
-            print("Active uniforms:")
-            for uniform in self._prog_mask:
-                print(uniform)
-            
-            try:
-                print(self._prog_mask['range'])
-            except KeyError:
-                print("Uniform 'range' not found")
 
         with open('my_pygame_light2d/fragment_draw.glsl', encoding='utf-8') as file:
            
             fragment_src_draw = file.read()
             
-            try:
-                self._prog_draw = self.ctx.program(vertex_shader=vertex_src, fragment_shader=fragment_src_draw)
-            except Exception as e:
-                print("Shader compilation or linking error:", e)
-                return
-
-            # Print all active uniforms to verify 'range' is present
-            print("Active uniforms:")
-            for uniform in self._prog_draw:
-                print(uniform)
-            
-            try:
-                print(self._prog_draw['u_alpha'])
-            except KeyError:
-                print("Uniform 'u_alpha' not found")
-
-
         # Create shader programs
-        
+        self._prog_mask = self.ctx.program(vertex_shader=vertex_src,
+                                           fragment_shader= fragment_src_mask)
 
         self._prog_light = self.ctx.program(vertex_shader=vertex_src,
                                             fragment_shader=fragment_src_light)
@@ -171,13 +130,6 @@ class RenderEngine:
         self._prog_draw = self.ctx.program(vertex_shader=vertex_src,
                                            fragment_shader=fragment_src_draw)
         
-        self._prog_tile_draw  =self.ctx.program(vertex_shader= tile_vertex_src,
-                                                fragment_shader= fragment_src_draw)
-        
-        self._prog_tile_draw['screen_res'] = self._true_res
-
-        for uniform in self._prog_tile_draw:
-            print(uniform)
 
 
 
@@ -298,112 +250,90 @@ class RenderEngine:
                 speed += 1 
             
     
-    def _render_player(self,entities_atl:moderngl.Texture,fbo:moderngl.Framebuffer,player:Player,offset):
-        texture_atl_pos = ENTITIES_ATLAS_POSITIONS[player.type][player.holding_gun][player.state]
+    def _render_player(self,fbo:moderngl.Framebuffer,offset):
+        entities_atl = self._entities_atl
+        texture_atl_pos = ENTITIES_ATLAS_POSITIONS[self._player.type][self._player.holding_gun][self._player.state]
         self._render_tex_to_fbo(
             entities_atl,fbo,
-            dest=pygame.Rect(player.pos[0] - offset[0] ,player.pos[1] - offset[1],16,16),
-            source = pygame.Rect(texture_atl_pos[0]+16 * player._cur_animation.curr_frame(),texture_atl_pos[1],16,16),
-            flip = player.flip
+            dest=pygame.Rect(self._player.pos[0] - offset[0] ,self._player.pos[1] - offset[1],16,16),
+            source = pygame.Rect(texture_atl_pos[0]+16 * self._player._cur_animation.curr_frame(),texture_atl_pos[1],16,16),
+            flip =self._player.flip
         
         )
     
-    def _render_cursor(self,fbo:moderngl.Framebuffer,cursor:Cursor) -> None: 
-        tex_atlas = cursor.get_atlas()
-        query_pos,tex_size = CURSOR_ATLAS_POSITIONS[cursor.state]
-        self._render_tex_to_fbo(tex_atlas,fbo,pygame.Rect(*cursor.pos,*tex_size),pygame.Rect(*query_pos,*tex_size))
+    def _render_cursor(self,fbo:moderngl.Framebuffer) -> None: 
+        tex_atlas = self._cursor.texture_atlas
+        query_pos,tex_size = CURSOR_ATLAS_POSITIONS[self._cursor.state]
+        self._render_tex_to_fbo(tex_atlas,fbo,pygame.Rect(*self._cursor.pos,*tex_size),pygame.Rect(*query_pos,*tex_size))
 
 
+    def _precompute_texture_coordinates(self):
+        self._texcoord_dict = {}
+        for key in self._tilemap.physical_tiles:
+            tile_info_list = self._tilemap.physical_tiles[key]
+            tile_info = tile_info_list[0]
+            door_data = None 
+            if (tile_info.type,tile_info.variant) not in self._texcoord_dict:
+                if tile_info.type == 'trap_door':
+                    door_data = tile_info_list[1]
+                elif tile_info.type == 'building_door':
+                    door_data = tile_info_list[1]
+                texture_coords = self._get_texture_coords_for_tile(tile_info,door_data)
+                self._texcoord_dict[(tile_info.type,tile_info.variant)] = texture_coords
 
-    def _test_render_tilemap(self,fbo,camera_scroll):
-        grid_width = self._true_res[0] // self._tilemap.tile_size
-        grid_height= self._true_res[1] // self._tilemap.tile_size
-        visible_start_x = int(camera_scroll[0] // self._tilemap.tile_size)
-        visible_start_y = int(camera_scroll[1] // self._tilemap.tile_size)
-        visible_end_x = int((camera_scroll[0] + self._true_res[0]) //self._tilemap.tile_size)
-        visible_end_y = int((camera_scroll[1] + self._true_res[1]) // self._tilemap.tile_size)
+        for i,dict in enumerate(self._tilemap.non_physical_tiles):
+            for key in dict:
+                tile_info = dict[key]
+                if (tile_info.type,tile_info.variant) not in self._texcoord_dict:
+                    texture_coords = self._get_texture_coords_for_tile(tile_info)
+                    self._texcoord_dict[(tile_info.type,tile_info.variant)] = texture_coords
+                
 
-        # Clamp to grid boundaries
-        visible_start_x = max(0, visible_start_x)
-        visible_start_y = max(0, visible_start_y)
-        visible_end_x = min(grid_width- 1, visible_end_x)
-        visible_end_y = min(grid_height- 1, visible_end_y)
-
-        indices_ = []    
-        for x in range(visible_start_x,visible_end_x +0):   
-            for y in range(visible_start_y,visible_end_y +1):
-            
-                tile_index = (y * grid_width + x) * 6
-
-                indices_.extend([
-
-                    tile_index,tile_index+1,tile_index+2,
-                    tile_index +2,tile_index+1,tile_index+3
-                ])
-        self._ibo.write(np.array(indices_,dtype = 'i4'))
-
-        fbo.use()
-        self._tilemap.texture_atlas.use()
-        self._prog_tile_draw['camera_scroll'] = camera_scroll
-        vao = self.ctx.vertex_array(self._prog_tile_draw,[(self._static_tiles_vbo,'2f 2f','vertexPos', 'vertexTexCoord')],self._ibo)
-        vao.render(moderngl.TRIANGLES,instances=len(indices_))       
-
-        vao.release()
-
-
-
-       
-    def _render_tilemap(self, fbo: moderngl.Framebuffer,tilemap:Tilemap, offset):
+    def _render_tilemap(self, fbo: moderngl.Framebuffer, offset):
         # fetch the background framebuffer
         fbo_w,fbo_h = fbo.size
         
-        # fetch texture atlass 
-        texture_atlass = tilemap.get_atlas()
-        atl_size = texture_atlass.size
-
+        # setup vertex data and texture coordinate lists 
         vertices_list = []
         texture_coords_list = []
 
 
-        # Create a buffer for vertices and texture coordinates
-        for x in range(offset[0] // tilemap.tile_size- 5, (offset[0] + self._true_res[0]) // tilemap.tile_size+ 5):
-            for y in range(offset[1] // tilemap.tile_size- 5, (offset[1] + self._true_res[1]) // tilemap.tile_size+ 5):
+        # create a vertex buffer that contains the vertex and fragment coordinates for the tiles within the screen  
+        for x in range(offset[0] // self._tilemap.tile_size- 1, (offset[0] + self._true_res[0]) // self._tilemap.tile_size+ 1):
+            for y in range(offset[1] // self._tilemap.tile_size- 1, (offset[1] + self._true_res[1]) // self._tilemap.tile_size+1):
                 coor = (x,y) 
 
-                for i,dict in enumerate(tilemap.non_physical_tiles): 
+                # add non-physical tiles first 
+                for i,dict in enumerate(self._tilemap.non_physical_tiles): 
                     if coor in dict: 
-                        tile_info = tilemap.non_physical_tiles[i][coor]
+                        tile_info = self._tilemap.non_physical_tiles[i][coor]
                         
 
-                        # Get texture coords for the tile (from the tile atlas)
-                        texture_coords = self._get_texture_coords_for_tile(tile_info,atl_size)
+                        # Get texture coords for the tile 
+                        texture_coords = self._texcoord_dict[(tile_info.type,tile_info.variant)]
 
+                        # Get the tile vertex coordinates 
                         vertices = self._create_tile_vertices(tile_info,offset,fbo_w,fbo_h)
                         vertices_list.append(vertices)
                         texture_coords_list.append(texture_coords)                                         
 
-                if coor in tilemap.physical_tiles:  # If tile exists in the dictionary
+                # add physica tiles 
+                if coor in self._tilemap.physical_tiles:  
 
                     # the tile info named tuple is always the first element of the list. 
-                    tile_info_list = tilemap.physical_tiles[coor]
+                    tile_info_list = self._tilemap.physical_tiles[coor]
                     tile_info  = tile_info_list[0]
-                    door_data = None
-                    if tile_info.type == 'trap_door':
-                        door_data:bool = tile_info_list[1]
-                    elif tile_info.type == 'building_door':
-                        door_data:DoorAnimation= tile_info_list[1]
                         
                     
-                    
-                    # Get texture coordinates for the tile (from the tile atlas)
-                    texture_coords = self._get_texture_coords_for_tile(tile_info,atl_size,door_data)
+                    # Get texture coordinates for the tile 
+                    texture_coords = self._texcoord_dict[(tile_info.type,tile_info.variant)]
 
                     # Create the vertex data (tile positions and texture coordinates)
                     vertices = self._create_tile_vertices(tile_info,offset,fbo_w,fbo_h)
                     vertices_list.append(vertices)
                     texture_coords_list.append(texture_coords)
         
-
+        # if there is anything to render 
         if vertices_list:
             
             # Flatten the lists into single arrays
@@ -414,20 +344,20 @@ class RenderEngine:
             buffer_data = np.column_stack((vertices_array, texture_coords_array)).astype(np.float32)
             vbo = self.ctx.buffer(buffer_data)
             # Render all visible tiles in one batch
-            self._render_tiles(vbo,fbo,texture_atlass)
+            self._render_tiles(vbo,fbo)
 
 
-    def _get_texture_coords_for_tile(self,tile_info:TileInfo,atl_size,door_data:DoorAnimation|bool= None):
+    def _get_texture_coords_for_tile(self,tile_info:TileInfo,door_data:DoorAnimation|bool= None):
         # Fetch the texture from the atlas based on tile type and variant
         if not door_data:
             rel_pos,variant = map(int,tile_info.variant.split(';'))
             tile_type = tile_info.type
 
-            x = (TILE_ATLAS_POSITIONS[tile_type][0] + variant * 16) / atl_size[0] 
-            y = (TILE_ATLAS_POSITIONS[tile_type][1] + rel_pos * 16) / atl_size[1] 
+            x = (TILE_ATLAS_POSITIONS[tile_type][0] + variant * 16) / self._tilemap.texture_atlas.size[0] 
+            y = (TILE_ATLAS_POSITIONS[tile_type][1] + rel_pos * 16) / self._tilemap.texture_atlas.size[1] 
 
-            w = 16 / atl_size[0]
-            h = 16 / atl_size[1]
+            w = 16 /self._tilemap.texture_atlas.size[0]
+            h = 16 / self._tilemap.texture_atlas.size[1]
             
             p1 = (x, y + h) 
             p2 = (x + w, y + h) 
@@ -457,12 +387,13 @@ class RenderEngine:
         
         return vertices
 
-    def _render_tiles(self, vbo,fbo, texture_atlass):
+    def _render_tiles(self, vbo,fbo ):
         # Render the entire batch of tiles with a single draw call
         
         vao = self.ctx.vertex_array(self._prog_draw, [(vbo, '2f 2f', 'vertexPos', 'vertexTexCoord')])
         
-        texture_atlass.use()
+
+        self._tilemap.texture_atlas.use()
         fbo.use()
         vao.render()
         vbo.release()
@@ -862,47 +793,12 @@ class RenderEngine:
     def bind_player(self,player:Player) -> None: 
         self._player = player 
 
-
-
-    def _precompute_static_tiles_VBO(self) -> None:
-        atl_size = self._tilemap.texture_atlas.size
-        vertex_data = []
-
-        for (x,y),tile_info_list in self._tilemap.physical_tiles.items():
-            x_pos = x * self._tilemap.tile_size
-            y_pos = y * self._tilemap.tile_size
-            
-            tile_info  = tile_info_list[0]
-            door_data = None
-            if tile_info.type == 'trap_door':
-                door_data:bool = tile_info_list[1]
-            elif tile_info.type == 'building_door':
-                door_data:DoorAnimation= tile_info_list[1]
-            
-
-            tex_coords =  self._get_texture_coords_for_tile(tile_info,atl_size,door_data)
-            vertex_data.extend([
-            # Top-left corner
-            x_pos, y_pos, tex_coords[0][0], tex_coords[0][1],
-            # Top-right corner
-            x_pos + self._tilemap.tile_size, y_pos, tex_coords[1][0], tex_coords[1][1],
-            # Bottom-left corner
-            x_pos, y_pos + self._tilemap.tile_size, tex_coords[2][0], tex_coords[2][1],
-            # Bottom-left corner
-            x_pos, y_pos + self._tilemap.tile_size, tex_coords[2][0], tex_coords[2][1],
-            x_pos + self._tilemap.tile_size, y_pos, tex_coords[1][0], tex_coords[1][1],
-            # Bottom-right corner
-            x_pos + self._tilemap.tile_size, y_pos + self._tilemap.tile_size, tex_coords[3][0], tex_coords[3][1],
-            ])
-
-        self._static_tiles_vbo = self.ctx.buffer(np.array(vertex_data,dtype=np.float32))
-        
+    def bind_cursor(self,cursor:Cursor) -> None: 
+        self._cursor = cursor
 
     def bind_tilemap(self,tilemap:Tilemap) -> None:
         self._tilemap = tilemap
-        self._ibo = self.ctx.buffer(reserve= 6 * (self._true_res[0]//self._tilemap.tile_size) 
-                                    * (self._true_res[1] // self._tilemap.tile_size) * 6,dynamic=True )
-        self._precompute_static_tiles_VBO()
+        self._precompute_texture_coordinates()
 
     def bind_entities_atlas(self,entities_atl:moderngl.Texture) -> None:
         self._entities_atl = entities_atl
@@ -914,7 +810,6 @@ class RenderEngine:
         assert self._background and self._tilemap and self._entities_atl and self._player, f"Error,engine has unbound objects: {self._get_unbound_objects()}"
 
     
-
     def render_scene_with_lighting(self,range,offset,screen_shake):
         """
         Render the lighting effects onto the screen.
@@ -966,38 +861,6 @@ class RenderEngine:
 
         
    
-   
-
-        
-    def precompute_vertex_arrays(self,tilemap:Tilemap):
-        """
-        Precomputes the size of the vertex array required to 
-        render the tilemap onto the screen optimally. 
-        
-        It takes the tilesize to dynamically initialize the vertex array big enough to render
-        tiles on the screen. 
-
-        """
-
-        self._max_tiles = ((self._true_res[0] // tilemap.tile_size + 10) *
-                           (self._true_res[0] // tilemap.tile_size + 10))
-
-
-
-        self._physical_vertex_buffer = np.zeros((self._max_tiles * 6 ,2),dtype=np.float32)
-        self._physical_texture_coord_buffer = np.zeros((self._max_tiles * 6,2),dtype= np.float32)
-        
-        self._non_physical_vertex_buffers = []
-        for i in range(tilemap.non_physical_tile_layers):
-            self._non_physical_vertex_buffers.append(np.zeros((self._max_tiles * 6,2),dtype= np.float32))
-        
-        self._non_physical_texture_coord_buffers = []
-        for i in range(tilemap.non_physical_tile_layers):
-            self._non_physical_texture_coord_buffers.append(np.zeros((self._max_tiles * 6,2) ,dtype = np.float32))
-
-
-
-
     def make_shader(self, vertex_src: str, fragment_src: str) -> Shader:
         """
         Creates a shader program using the provided vertex and fragment shader source code.
@@ -1146,6 +1009,23 @@ class RenderEngine:
     
         return tex_coords
     
+
+
+    def render_rectangles(self,offset):
+        for rectangle in self._tilemap.rectangles:
+            surf = pygame.Surface((rectangle[2]- rectangle[0], rectangle[3] -rectangle[1])).convert_alpha()
+            surf.fill((0,0,0,0))
+            pygame.draw.rect(surf,(244,244,244,244),(0,0,rectangle[2] - rectangle[1], rectangle[3] - rectangle[1]),width= 1, border_radius=2)
+            tex = self.surface_to_texture(surf)
+            self.render_texture(
+                tex,Layer_.FOREGROUND,
+                dest = pygame.Rect(rectangle[0] - offset[0], rectangle[1] - offset[1], rectangle[2] - rectangle[0],rectangle[3]- rectangle[1]),
+                source= pygame.Rect(0 , 0, rectangle[2] - rectangle[0],rectangle[3]- rectangle[1])
+                )
+            tex.release()
+
+            
+    
     def render_background_scene_to_fbo(self,offset = (0,0),infinite:bool = False)-> None :
         """
         Render to the Background fbo with the parallax background, the tilemap, etc.
@@ -1160,19 +1040,16 @@ class RenderEngine:
 
         fbo = self._get_fbo(Layer_.BACKGROUND)
         self._render_background_textures_to_fbo(fbo,offset=offset,infinite=infinite)
-        self._test_render_tilemap(fbo,offset)
-        #self._render_player(fbo,offset)
+        self._render_tilemap(fbo,offset)
+        self._render_player(fbo,offset)
 
-    def render_foreground_scene_to_fbo(self,cursor:Cursor):
+    def render_foreground_scene_to_fbo(self):
         """
         Render to the Foreground fbo with the cursor, GUI, etc. 
         
-        Args: 
-            cursor (Cursor) : the cursor object
-            ...
         """
         fbo = self._get_fbo(Layer_.FOREGROUND)
-        self._render_cursor(fbo,cursor)
+        self._render_cursor(fbo)
 
     def render_texture_with_trans(self,
                tex: moderngl.Texture,
