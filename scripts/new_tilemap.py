@@ -266,8 +266,9 @@ class Tilemap:
                     """
                 else: 
                     self.non_physical_tiles[i][tile_pos] = TileInfo(json_data[tilemap_key][tile_key]["type"],json_data[tilemap_key][tile_key]["variant"],
-                                                                    tile_pos,tile_size,atl_pos)
+                                                            tile_pos,tile_size,atl_pos)
        # self._get_hull_grid_mapping()
+        self.rectangles = self.get_minimal_rectangles()
 
 
     @property
@@ -329,6 +330,74 @@ class Tilemap:
             add_rectangle(*current_rectangle)
         
         return rectangles
+    
+    def merge_regular_rectangles(rect_dict, tile_size=16):
+        """
+        Merges rectangles in a dictionary where only rectangles of type "regular" are merged.
+        
+        :param rect_dict: Dictionary with keys as top-left grid-aligned positions (x, y) and 
+                        values as (width, height, type).
+        :param tile_size: Dimension of a grid square (default is 16).
+        :return: List of merged rectangles [(x1, y1, x2, y2)].
+        """
+        # Convert rect_dict into a list of rectangles with positions
+        rectangles = []
+        for pos, tile_info_list  in self._physical_tiles.items():
+            tile_info = tile_info_list[0]
+            
+            if tile_info.type.endswith("door") or tile_info.type == "lights":
+                continue 
+            else: 
+                x1 = pos[0]* tile_size
+                y1 = pos[1]* tile_size
+                x2 = x1 + tile_info.tile_size[0] 
+                y2 = y1 + tile_info.tile_size[1] 
+                rectangles.append((x1, y1, x2, y2))
+
+        merged = True
+        while merged:
+            merged = False
+            new_rectangles = []
+            skip = set()
+
+            for i, rect1 in enumerate(rectangles):
+                if i in skip:
+                    continue
+                x1, y1, x2, y2 = rect1
+                merged_with_other = False
+
+                for j, rect2 in enumerate(rectangles):
+                    if i == j or j in skip:
+                        continue
+
+                    a1, b1, a2, b2 = rect2
+
+                    # Check if rectangles are touching and aligned
+                    if (y1 == b1 and y2 == b2 and (x1 == a2 or x2 == a1)):  # Horizontal touch
+                        # Merge horizontally
+                        new_rectangles.append((min(x1, a1), y1, max(x2, a2), y2))
+                        skip.add(i)
+                        skip.add(j)
+                        merged_with_other = True
+                        merged = True
+                        break
+                    elif (x1 == a1 and x2 == a2 and (y1 == b2 or y2 == b1)):  # Vertical touch
+                        # Merge vertically
+                        new_rectangles.append((x1, min(y1, b1), x2, max(y2, b2)))
+                        skip.add(i)
+                        skip.add(j)
+                        merged_with_other = True
+                        merged = True
+                        break
+
+                if not merged_with_other:
+                    new_rectangles.append(rect1)
+
+            # Update rectangles with the newly merged ones
+            rectangles = new_rectangles
+
+        return rectangles
+
 
     def _get_hull_grid_mapping(self):
         """
