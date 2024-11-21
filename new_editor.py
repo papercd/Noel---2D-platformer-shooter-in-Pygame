@@ -27,6 +27,9 @@ class Editor:
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])
 
+    
+
+
         self._dt = 0
         self._prev_frame_time = 0
         self._scroll_speed = 3
