@@ -20,7 +20,7 @@ class TilePanel:
         
 
         self._categories = TileCategories((0,0),self._category_panel_size,TILE_ATLAS_POSITIONS.keys())
-        self._tiles_display = TilesDisplay()
+        #self._tiles_display = TilesDisplay()
         self._indicator_labels = ('stick_grid','on_grid','randomize_autotile','create_selection_box','selection_box_del_option','mark_tiles_for_AT')
         self._tile_panel_scroll = 0
         self._categories_scroll = 0
