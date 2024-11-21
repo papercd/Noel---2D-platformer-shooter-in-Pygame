@@ -171,7 +171,7 @@ class Tilemap:
         self._non_physical_tile_layers= json_data['offgrid_layers']
         self.lights = []
 
-        self.physical_tiles:dict[tuple[int,int],TileInfo] = {}
+        self._physical_tiles= {}
         self.non_physical_tiles = [{} for i in range(0,self._non_physical_tile_layers)]
 
 
@@ -190,25 +190,25 @@ class Tilemap:
 
                         rect = Rect(tile_pos[0] * self._regular_tile_size, self.pos[1] * self._regular_tile_size, self._regular_tile_size,5)
             
-                        self.physical_tiles[tile_key] = [DoorInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
+                        self._physical_tiles[tile_key] = [DoorInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
                                                                  tile_pos,tile_size,rect,atl_pos),False,hull]
                     else: 
-                        if tile_key in self.physical_tiles: continue 
+                        if tile_key in self._physical_tiles: continue 
                         else: 
                             # TODO : ADD HULLS LATER 
                             rect = Rect(tile_pos[0] * self._regular_tile_size + 3, tile_pos[1] * self._regular_tile_size ,6,32)
 
                             door = [DoorInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
                                                                  tile_pos,tile_size,rect,atl_pos),DoorAnimation(5,5),hull]
-                            self.physical_tiles[tile_pos] = door 
+                            self._physical_tiles[tile_pos] = door 
                             pos_below = (tile_pos[0],tile_pos[1] +1)
-                            self.physical_tiles[pos_below]  = door 
+                            self._physical_tiles[pos_below]  = door 
 
                 else:   
                     hull = self._create_hulls(json_data['tilemap'][tile_key])
                     # TODO: THE TILE KEYS NEED TO BE CHANGED TO INTS, NOT STRINGS. 
 
-                    self.physical_tiles[tile_pos] = [TileInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],
+                    self._physical_tiles[tile_pos] = [TileInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],
                                                     tile_pos,tile_size,atl_pos),hull] 
             
             else: 
@@ -232,10 +232,10 @@ class Tilemap:
                     self.lights.append(light)
                     
                 rect = Rect(tile_pos[0] * self._regular_tile_size +3, tile_pos[1] * self._regular_tile_size, 10,6)
-                self.physical_tiles[tile_pos] = [LightInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
+                self._physical_tiles[tile_pos] = [LightInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
                                                  tile_pos,tile_size,rect,json_data['tilemap'][tile_key]["radius"], json_data['tilemap'][tile_key]["power"],
                                                  json_data['tilemap'][tile_key]["colorValue"],atl_pos),light]
-                #self.physical_tiles[tile_key].light_ptr = light 
+                #self._physical_tiles[tile_key].light_ptr = light 
         
         for i in range(0,self._non_physical_tile_layers):
             tilemap_key = f"offgrid_{i}"
@@ -271,6 +271,14 @@ class Tilemap:
 
 
     @property
+    def texture_atlas(self):
+        return self._texture_atlas
+
+    @property
+    def physical_tiles(self):
+        return self._physical_tiles
+
+    @property
     def tile_size(self):
         return self._regular_tile_size
     
@@ -281,7 +289,7 @@ class Tilemap:
 
     def get_minimal_rectangles(self):
         # Sorting the keys (grid positions) in increasing order
-        sorted_positions = sorted(self.physical_tiles.keys())
+        sorted_positions = sorted(self._physical_tiles.keys())
         
         rectangles = []
         current_rectangle = None
@@ -291,7 +299,7 @@ class Tilemap:
         
         for position in sorted_positions:
             x, y = position[0]*16,position[1] * 16
-            tile = self.physical_tiles[position]  # Get the tile info (e.g., type, size)
+            tile = self._physical_tiles[position]  # Get the tile info (e.g., type, size)
             
             # We assume tile size is always 16x16 for simplicity
             tile_width, tile_height = 16, 16
@@ -330,7 +338,7 @@ class Tilemap:
         :return: Dictionary mapping grid positions to their corresponding hull objects.
         """
         # Sorting the grid positions
-        sorted_positions = sorted(self.physical_tiles.keys())
+        sorted_positions = sorted(self._physical_tiles.keys())
 
         # List to store rectangles and dictionary for grid mapping
         hulls = []
@@ -401,17 +409,6 @@ class Tilemap:
         return self.lights
     
 
-    def get_atlas(self) -> Texture: 
-        """
-        Return the tilemap's texture atlas.
-        
-        Returns: 
-            texture atlas (moderngl.Texture)
-            
-        """
-        
-        return self._texture_atlas
-
     def update_shadow_objs(self, native_res,camera_scroll):
         queried_hulls = []
 
@@ -447,19 +444,19 @@ class Tilemap:
             for y in range(y_start, y_end + 1):
                 tile_key = (x,y) 
 
-                if tile_key in self.physical_tiles:
-                    tile ,hull = self.physical_tiles[tile_key]
+                if tile_key in self._physical_tiles:
+                    tile ,hull = self._physical_tiles[tile_key]
 
                     # TODO : differentiate tile info objects based on tile type
                     if tile.type.endswith('door') and not tile.open:
                         # Check whether there is a door tile above, and if there isn't, add it to the list. 
-                        if (x,y) in self.physical_tiles:
-                            if not self.physical_tiles[(x,y)].type.endswith('door'):
-                                tiles.append(self.physical_tiles[tile_key])
+                        if (x,y) in self._physical_tiles:
+                            if not self._physical_tiles[(x,y)].type.endswith('door'):
+                                tiles.append(self._physical_tiles[tile_key])
                         else: 
-                            tiles.append(self.physical_tiles[tile_key])
+                            tiles.append(self._physical_tiles[tile_key])
                     else: 
-                        tiles.append(self.physical_tiles[tile_key])
+                        tiles.append(self._physical_tiles[tile_key])
                 
                 # TODO: add grass tiles later.  
 

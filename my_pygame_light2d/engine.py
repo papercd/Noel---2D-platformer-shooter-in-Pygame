@@ -28,7 +28,7 @@ BASE_PATH = 'data/images/'
 class RenderEngine:
     """A class for managing rendering for my game within a Pygame environment."""
 
-    def __init__(self,game,context:moderngl.Context, screen_res: tuple[int, int],true_to_screen_res_ratio: float, true_res: tuple[int, int]  ) -> None:
+    def __init__(self,context:moderngl.Context, screen_res: tuple[int, int],true_to_screen_res_ratio: float, true_res: tuple[int, int]  ) -> None:
         """
         Initialize the render engine.
 
@@ -50,16 +50,19 @@ class RenderEngine:
         self._diagonal = math.sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
         self._lightmap_res = true_res 
         self._ambient = (.25, .25, .25, .25)
-        self._tile_size = 0
 
-        # Preallocate vertex arrays for tilemap rendering 
-        
+        # Objects that need to be bound to engine before rendering background: 
+        self._tilemap:Tilemap = None
+        self._player:Player = None
+        self._entities_atl: moderngl.Texture= None 
+        self._background: list[moderngl.Texture]= None
+        self._static_tiles_vbo:moderngl.Context.buffer = None
+        self._ibo : moderngl.Context.buffer = None 
 
         # Initialize public members
         self.lights: list[PointLight] = []
         self.hulls: list[Hull] = []
         self.shadow_blur_radius: int = 5
-        self.game = game
 
         # Create an OpenGL context
         self.ctx = context
@@ -101,12 +104,12 @@ class RenderEngine:
         with open('my_pygame_light2d/vertex.glsl',encoding='utf-8') as file:
             vertex_src = file.read()
 
-        with open('my_pygame_light2d/rotate_vertex.glsl',encoding='utf-8') as file:
-            rotate_vertex_src = file.read()
 
-        with open('my_pygame_light2d/fragment_rotate.glsl',encoding='utf-8') as file:
-            fragment_src_rotate= file.read()
+        with open('my_pygame_light2d/tile_vertex.glsl',encoding='utf-8') as file:
+            tile_vertex_src = file.read()
 
+        
+        
 
         fragment_src_light = resources.read_text(
             'pygame_light2d', 'fragment_light.glsl')
@@ -156,6 +159,7 @@ class RenderEngine:
             except KeyError:
                 print("Uniform 'u_alpha' not found")
 
+
         # Create shader programs
         
 
@@ -167,21 +171,14 @@ class RenderEngine:
         self._prog_draw = self.ctx.program(vertex_shader=vertex_src,
                                            fragment_shader=fragment_src_draw)
         
-        self._prog_rotate = self.ctx.program(vertex_shader= rotate_vertex_src,
-                                             fragment_shader=fragment_src_rotate)
-
-
-    def set_alpha_value_draw_shader(self,alpha_value : float) -> None:
-        """
-        set the alpha value uniform for the draw shader.        
+        self._prog_tile_draw  =self.ctx.program(vertex_shader= tile_vertex_src,
+                                                fragment_shader= fragment_src_draw)
         
-        """
-        assert  0<= alpha_value <=1
+        self._prog_tile_draw['screen_res'] = self._true_res
 
-        self._prog_draw['u_alpha'].value = alpha_value
+        for uniform in self._prog_tile_draw:
+            print(uniform)
 
-
-        
 
 
     def _create_screen_vertex_buffers(self):
@@ -206,47 +203,6 @@ class RenderEngine:
         self._vao_draw = self.ctx.vertex_array(self._prog_draw, [
             (screen_vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
         ])
-
-   
-
-    def release_objects(self):
-        self._prog_rotate.release()
-        self._prog_light.release()
-        self._prog_blur.release()
-        self._prog_mask.release()
-        self._vao_light.release()
-        self._prog_draw.release()
-        self._tex_bg.release()
-        self._fbo_bg.release()
-        self._tex_fg.release()
-        self._fbo_fg.release()
-        self._buf_lt.release()
-        self._tex_ao.release()
-        self._fbo_ao.release()
-        
-
-        self._ssbo_v.release()
-        self._ssbo_ind.release()
-
-
-    def _release_frame_buffers(self):
-        self._tex_bg.release()
-        #self._tex_bg.filter = (moderngl.NEAREST, moderngl.NEAREST)
-        self._fbo_bg.release()
-
-        self._tex_fg.release()
-        #self._tex_fg.filter = (moderngl.NEAREST, moderngl.NEAREST)
-        self._fbo_fg.release()
-
-        # Double buffer for lights
-        self._buf_lt.release()
-
-        # Ambient occlussion map
-        self._tex_ao.release()
-        
-        self._fbo_ao.release()
-
-        
 
     def _create_frame_buffers(self):
         # Frame buffers
@@ -280,8 +236,7 @@ class RenderEngine:
         self._tex_fg.repeat_x = False
         self._tex_fg.repeat_y = False 
 
-
-
+    
     def _create_ssbos(self):
         # Set block indices for the SSBOS in the shader program
         prog_glo = self._prog_light.glo
@@ -298,176 +253,19 @@ class RenderEngine:
         self._ssbo_ind = self.ctx.buffer(reserve=20*256)
         self._ssbo_ind.bind_to_uniform_block(2)
 
-    def set_filter(self, Layer_: Layer_, filter) -> None:
-        """
-        Set the filter for a specific Layer_'s texture.
 
-        Args:
-            Layer_ (Layer_): The Layer_ to apply the filter to.
-            filter (tuple[Constant, Constant]): The filter to apply to the texture, can be `NEAREST` or `LINEAR`.
-        """
-        self._get_tex(Layer_).filter = filter
 
-    def set_aomap_filter(self, filter) -> None:
-        """
-        Set the aomap's filter.
+    def _get_unbound_objects(self) -> str:
+        string = "" 
+        if not self._player: string += 'player; '
+        if not self._tilemap : string += 'tilemap; '
+        if not self._background : string += 'background; '
+        if not self._entities_atl : string += 'entities atlas;'
 
-        Args:
-            filter (tuple[Constant, Constant]): The filter to apply to the texture, can be `NEAREST` or `LINEAR`.
-        """
-        self._tex_ao.filter = filter
-
-    def set_ambient(self, R: (int | tuple[int]) = 0, G: int = 0, B: int = 0, A: int = 255) -> None:
-        """
-        Set the ambient light color.
-
-        Args:
-            R (int or tuple[int]): Red component value or tuple containing RGB or RGBA values (0-255).
-            G (int): Green component value (0-255).
-            B (int): Blue component value (0-255).
-            A (int): Alpha component value (0-255).
-        """
-        self._ambient = normalize_color_arguments(R, G, B, A)
-
-    def get_native_res(self) -> tuple[int,int]:
-        """
-        Get the native resolution.
+        return string
         
-        Returns: 
-            tuple[int,int] 
-
-        """
-        return self._true_res 
-
-
-    def get_ambient(self) -> tuple[int, int, int, int]:
-        """
-        Get the ambient light color.
-
-        Returns:
-            tuple[int, int, int, int]: Ambient light color in 0-255 scale (R, G, B, A).
-        """
-        return denormalize_color(self._ambient)
-
-    def blit_texture(self, tex: moderngl.Texture, Layer_: Layer_, dest: pygame.Rect, source: pygame.Rect):
-        """
-        Blit a texture onto a specified Layer_'s framebuffer.
-
-        Args:
-            tex (moderngl.Texture): Texture to blit.
-            Layer_ (Layer_): Layer_ to blit the texture onto.
-            dest (pygame.Rect): Destination rectangle.
-            source (pygame.Rect): Source rectangle from the texture.
-        """
-
-        # Create a framebuffer with the texture
-        fb = self.ctx.framebuffer([tex])
-
-        # Select destination framebuffer correcponding to Layer_
-        fbo = self._get_fbo(Layer_)
-
-        # Blit texture onto destination
-        glBlitNamedFramebuffer(fb.glo, fbo.glo, source.x, source.y, source.w, source.h,
-                               dest.x, dest.y, dest.w, dest.h, GL_COLOR_BUFFER_BIT, GL_NEAREST)
-
-    def render_texture(self, tex: moderngl.Texture, layer: Layer_, dest: pygame.Rect, source: pygame.Rect,angle:float=0.0,flip : tuple[bool,bool]= (False,False)):
-        """
-        Render a texture onto a specified Layer_'s framebuffer using the draw shader.
-
-        Args:
-            tex (moderngl.Texture): Texture to render.
-            Layer_ (Layer_): Layer_ to render the texture onto.
-            dest (pygame.Rect): Destination rectangle.
-            source (pygame.Rect): Source rectangle from the texture.
-            angle (float) : angle to rotate around center in radians 
-            flip (tuple[bool,bool]) : values to indicate flip vertically and horizontally 
-        """
-
-        # Render texture onto Layer_ with the draw shader
-        fbo = self._get_fbo(layer)
-        self._render_tex_to_fbo(tex, fbo, dest, source )
-
-    def surface_to_texture(self, sfc: pygame.Surface) -> moderngl.Texture:
-        """
-        Convert a pygame.Surface to a moderngl.Texture.
-
-        Args:
-            sfc (pygame.Surface): Surface to convert.
-
-        Returns:
-            moderngl.Texture: Converted texture.
-        """
-
-        img_flip = pygame.transform.flip(sfc, False, True)
-        img_data = pygame.image.tostring(img_flip, "RGBA")
-
-        tex = self.ctx.texture(sfc.get_size(), components=4, data=img_data)
-        tex.filter = (moderngl.NEAREST, moderngl.NEAREST)
-        return tex
-
-    def load_texture(self, path: str) -> moderngl.Texture:
-        """
-        Load a texture from a file.
-
-        Args:
-            path (str): Path to the texture file.
-
-        Returns:
-            moderngl.Texture: Loaded texture.
-        """
-
-        img = pygame.image.load(BASE_PATH+ path).convert_alpha()
-        return self.surface_to_texture(img)
-
-
-    def create_outline_texture(self,tex: moderngl.Texture,white :bool= False) ->moderngl.Texture:
-        """
-        Create a completely white/black texture from a texture with colored bits.
-
-        """
-
-        width,height = tex.size
-
-        texture_data = tex.read()
-
-        image_array = np.frombuffer(texture_data,dtype=np.uint8).reshape((height,width,4))
-        
-        new_array = np.copy(image_array)
-        if white:
-            new_array[new_array[:,:,3] >0] = [255,255,255,255]
-        else: 
-            new_array[new_array[:,:,3] >0] = [0,0,0,255]
-
-        new_tex = self.ctx.texture((width,height),4,new_array.tobytes())
-
-        return new_tex
-       
-
-    def clear(self, R: (int | tuple[int]) = 0, G: int = 0, B: int = 0, A: int = 255):
-        """
-        Clear the background with a color.
-
-        Args:
-            R (int or tuple[int]): Red component value or tuple containing RGB or RGBA values (0-255).
-            G (int): Green component value (0-255).
-            B (int): Blue component value (0-255).
-            A (int): Alpha component value (0-255).
-        """
-        R, G, B, A = normalize_color_arguments(R, G, B, A)
-        self._fbo_bg.clear(R, G, B, A)
-        self._fbo_fg.clear(0, 0, 0, 0)
-
     
-    def _render_cursor(self,fbo:moderngl.Framebuffer,cursor:Cursor) -> None: 
-        tex_atlas = cursor.get_atlas()
-        query_pos,tex_size = CURSOR_ATLAS_POSITIONS[cursor.state]
-        self._render_tex_to_fbo(tex_atlas,fbo,pygame.Rect(*cursor.pos,*tex_size),pygame.Rect(*query_pos,*tex_size))
-
-
-
-    
-
-    def _render_background_textures_to_fbo(self,fbo:moderngl.Framebuffer,background:list[moderngl.Texture],infinite:bool = False,offset = (0,0)):
+    def _render_background_textures_to_fbo(self,fbo:moderngl.Framebuffer,infinite:bool = False,offset = (0,0)):
 
         """
         Render the background (list of textures) to the Background layer.
@@ -475,7 +273,7 @@ class RenderEngine:
         """
         scroll = offset[0]
         speed = 1
-        for tex in background:
+        for tex in self._background:
             if infinite:
                 # Calculate the width of the texture and the number of tiles needed to cover the screen
                 texture_width = tex.width
@@ -509,8 +307,52 @@ class RenderEngine:
             flip = player.flip
         
         )
+    
+    def _render_cursor(self,fbo:moderngl.Framebuffer,cursor:Cursor) -> None: 
+        tex_atlas = cursor.get_atlas()
+        query_pos,tex_size = CURSOR_ATLAS_POSITIONS[cursor.state]
+        self._render_tex_to_fbo(tex_atlas,fbo,pygame.Rect(*cursor.pos,*tex_size),pygame.Rect(*query_pos,*tex_size))
 
 
+
+    def _test_render_tilemap(self,fbo,camera_scroll):
+        grid_width = self._true_res[0] // self._tilemap.tile_size
+        grid_height= self._true_res[1] // self._tilemap.tile_size
+        visible_start_x = int(camera_scroll[0] // self._tilemap.tile_size)
+        visible_start_y = int(camera_scroll[1] // self._tilemap.tile_size)
+        visible_end_x = int((camera_scroll[0] + self._true_res[0]) //self._tilemap.tile_size)
+        visible_end_y = int((camera_scroll[1] + self._true_res[1]) // self._tilemap.tile_size)
+
+        # Clamp to grid boundaries
+        visible_start_x = max(0, visible_start_x)
+        visible_start_y = max(0, visible_start_y)
+        visible_end_x = min(grid_width- 1, visible_end_x)
+        visible_end_y = min(grid_height- 1, visible_end_y)
+
+        indices_ = []    
+        for x in range(visible_start_x,visible_end_x +0):   
+            for y in range(visible_start_y,visible_end_y +1):
+            
+                tile_index = (y * grid_width + x) * 6
+
+                indices_.extend([
+
+                    tile_index,tile_index+1,tile_index+2,
+                    tile_index +2,tile_index+1,tile_index+3
+                ])
+        self._ibo.write(np.array(indices_,dtype = 'i4'))
+
+        fbo.use()
+        self._tilemap.texture_atlas.use()
+        self._prog_tile_draw['camera_scroll'] = camera_scroll
+        vao = self.ctx.vertex_array(self._prog_tile_draw,[(self._static_tiles_vbo,'2f 2f','vertexPos', 'vertexTexCoord')],self._ibo)
+        vao.render(moderngl.TRIANGLES,instances=len(indices_))       
+
+        vao.release()
+
+
+
+       
     def _render_tilemap(self, fbo: moderngl.Framebuffer,tilemap:Tilemap, offset):
         # fetch the background framebuffer
         fbo_w,fbo_h = fbo.size
@@ -626,58 +468,6 @@ class RenderEngine:
         vbo.release()
         vao.release()
 
-        
-    
-
-    def render_scene_with_lighting(self,range,offset,screen_shake):
-        """
-        Render the lighting effects onto the screen.
-
-        Clears intermediate buffers, renders lights onto the double buffer,
-        blurs the lightmap for soft shadows, and renders background and foreground.
-
-        This method is responsible for the final rendering of lighting effects onto the screen.
-        """
-
-        """
-        
-        offset parameter is added for adjusting the light positions based on camera movement.
-        
-        
-        """
-
-
-        # Clear intermediate buffers
-        self.ctx.screen.clear(0, 0, 0, 1)
-        self._fbo_ao.clear(0, 0, 0, 0)
-        self._buf_lt.clear(0, 0, 0, 0)
-
-
-        render_shake = (int((offset[0] -screen_shake[0])),int((offset[1] -screen_shake[1])))
-
-
-        """
-        
-        position of 'hulls' or shadow objects, and the lights  are  offsetted.
-
-        """
-
-
-        # Send hull data to SSBOs
-        self._send_hull_data(render_shake)
-
-        # Render lights onto double buffer
-        self._render_to_buf_lt(range,render_shake)
-
-        # Blur lightmap for soft shadows and render onto aomap
-        self._render_aomap()
-
-        # Render background masked with the lightmap
-        self._render_background_layer(range,offset)
-
-        # Render foreground onto screen
-        self._render_foreground()
-
     def _point_to_uv(self, p: tuple[float, float]):
         return [p[0]/self._true_res[0], 1 - (p[1]/self._true_res[1])]
 
@@ -741,135 +531,6 @@ class RenderEngine:
         # Free vertex data
         vbo.release()
         vao.release()
-
-    
-    def create_rotated_texture(self, source_texture: moderngl.Texture, 
-                            rotation_angle: float, pivot: tuple[float, float]) -> moderngl.Texture:
-        """
-        Creates a rotated texture from a given texture and returns the new rotated texture
-        contained within a fitting bounding box.
-        
-        Args:
-            source_texture (moderngl.Texture): The source texture to rotate.
-            rotation_angle (float): Rotation angle in radians.
-            pivot (tuple[float, float]): The pivot point for the rotation, given as (x, y) coordinates.
-            
-        Returns:
-            moderngl.Texture: A new texture containing the rotated image within a fitting bounding box.
-        """
-        src_width, src_height = source_texture.size
-
-        # Calculate the bounding box size after rotation
-        cos_angle = abs(np.cos(rotation_angle))
-        sin_angle = abs(np.sin(rotation_angle))
-        new_width = int(src_width * cos_angle + src_height * sin_angle)
-        new_height = int(src_width * sin_angle + src_height * cos_angle)
-
-        # Create a framebuffer and a new texture for the rotated output
-        rotated_texture = self.ctx.texture((new_width, new_height), 4)
-        rotated_texture.filter = (moderngl.NEAREST, moderngl.NEAREST)
-        fbo = self.ctx.framebuffer(rotated_texture)
-
-        # Compute the translation to center the pivot in the new bounding box
-        pivot_offset_x = pivot[0] - src_width / 2.0
-        pivot_offset_y = pivot[1] - src_height / 2.0
-        translation_x = new_width / 2.0 - pivot_offset_x
-        translation_y = new_height / 2.0 - pivot_offset_y
-
-        # Prepare the vertices and texture coordinates
-        vertices = np.array([
-            (-src_width / 2, src_height / 2), (src_width / 2, src_height / 2), (-src_width / 2, -src_height / 2),
-            (-src_width / 2, -src_height / 2), (src_width / 2, src_height / 2), (src_width / 2, -src_height / 2),
-        ], dtype=np.float32)
-
-        tex_coords = np.array([
-            (0.0, 1.0), (1.0, 1.0), (0.0, 0.0),
-            (0.0, 0.0), (1.0, 1.0), (1.0, 0.0),
-        ], dtype=np.float32)
-
-        # Create buffer data and set up vertex array object
-        buffer_data = np.hstack([vertices, tex_coords])
-        vbo = self.ctx.buffer(buffer_data)
-        vao = self.ctx.vertex_array(self._prog_rotate,[
-            (vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
-        ])
-
-        # Set rotation matrix for pivot rotation
-        rotation_matrix = np.array([
-            [cos_angle, -np.sin(rotation_angle), 0.0],
-            [np.sin(rotation_angle), cos_angle, 0.0],
-            [0.0, 0.0, 1.0]
-        ], dtype=np.float32)
-
-        # Set uniforms for rotation, translation, and texture
-        vao.program['rotation_matrix'].write(rotation_matrix.tobytes())
-        vao.program['translation'].value = (translation_x / new_width * 2.0 - 1.0, 1.0 - translation_y / new_height * 2.0)
-        vao.program['source_texture'].value = 0
-
-        # Render the rotated texture to the new framebuffer
-        source_texture.use(0)
-        fbo.use()
-        fbo.clear(0.0, 0.0, 0.0, 0.0)
-        vao.render()
-
-        # Clean up resources
-        vbo.release()
-        vao.release()
-        fbo.release()
-
-        return rotated_texture
-
-
-    def _test_render_tex_to_fbo(self, tex: moderngl.Texture, fbo: moderngl.Framebuffer, dest: pygame.Rect, source: pygame.Rect,
-                       rotation: float = 0.0, flip: tuple[bool,bool] = (False,False)):
-        # Mesh for destination rect on screen
-        width, height = fbo.size
-        x = 2. * dest.x / width - 1.
-        y = 1. - 2. * dest.y / height
-        w = 2. * dest.w / width
-        h = 2. * dest.h / height
-
-        vertices = np.array([
-            (x, y), (x + w, y), (x, y - h),
-            (x, y - h), (x + w, y), (x + w, y - h)
-        ], dtype=np.float32)
-
-        # Texture coordinates (top-left to bottom-right)
-        tx = source.x / tex.size[0]
-        ty = source.y / tex.size[1]
-        tw = source.w / tex.size[0]
-        th = source.h / tex.size[1]
-
-        tex_coords = np.array([
-            (tx, ty + th), (tx + tw, ty + th), (tx, ty),
-            (tx, ty), (tx + tw, ty + th), (tx + tw, ty)
-        ], dtype=np.float32)
-
-        buffer_data = np.hstack([vertices, tex_coords])
-        vbo = self.ctx.buffer(buffer_data)
-        vao = self.ctx.vertex_array(self._prog_draw, [
-            (vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
-        ])
-
-        # Set rotation and flip uniforms
-        self._prog_draw['rotation'].value = rotation
-        self._prog_draw['flip_horizontal'].value = flip[0]
-        self._prog_draw['flip_vertical'].value = flip[1]
-
-        # Use buffers and render
-        tex.use()
-        fbo.use()
-        vao.render()
-
-        # Free vertex data
-        vbo.release()
-        vao.release()
-
-        self._prog_draw['rotation'].value = 0
-        self._prog_draw['flip_horizontal'].value = False
-        self._prog_draw['flip_vertical'].value = False 
-
-
 
     def _send_hull_data(self,offset):
         # Lists with hull vertices and indices
@@ -999,7 +660,315 @@ class RenderEngine:
         self._tex_fg.use()
         self._vao_draw.render()
 
+
+
+
+
+    def set_alpha_value_draw_shader(self,alpha_value : float) -> None:
+        """
+        set the alpha value uniform for the draw shader.        
+        
+        """
+        assert  0<= alpha_value <=1
+
+        self._prog_draw['u_alpha'].value = alpha_value
+
+
+
+    def release_objects(self):
+        self._prog_light.release()
+        self._prog_blur.release()
+        self._prog_mask.release()
+        self._vao_light.release()
+        self._prog_draw.release()
+        self._tex_bg.release()
+        self._fbo_bg.release()
+        self._tex_fg.release()
+        self._fbo_fg.release()
+        self._buf_lt.release()
+        self._tex_ao.release()
+        self._fbo_ao.release()
+        
+
+        self._ssbo_v.release()
+        self._ssbo_ind.release()
+
     
+
+
+
+    def set_filter(self, Layer_: Layer_, filter) -> None:
+        """
+        Set the filter for a specific Layer_'s texture.
+
+        Args:
+            Layer_ (Layer_): The Layer_ to apply the filter to.
+            filter (tuple[Constant, Constant]): The filter to apply to the texture, can be `NEAREST` or `LINEAR`.
+        """
+        self._get_tex(Layer_).filter = filter
+
+
+    def set_aomap_filter(self, filter) -> None:
+        """
+        Set the aomap's filter.
+
+        Args:
+            filter (tuple[Constant, Constant]): The filter to apply to the texture, can be `NEAREST` or `LINEAR`.
+        """
+        self._tex_ao.filter = filter
+
+    def set_ambient(self, R: (int | tuple[int]) = 0, G: int = 0, B: int = 0, A: int = 255) -> None:
+        """
+        Set the ambient light color.
+
+        Args:
+            R (int or tuple[int]): Red component value or tuple containing RGB or RGBA values (0-255).
+            G (int): Green component value (0-255).
+            B (int): Blue component value (0-255).
+            A (int): Alpha component value (0-255).
+        """
+        self._ambient = normalize_color_arguments(R, G, B, A)
+
+    
+    def get_native_res(self) -> tuple[int,int]:
+        """
+        Get the native resolution.
+        
+        Returns: 
+            tuple[int,int] 
+
+        """
+        return self._true_res 
+
+
+    def get_ambient(self) -> tuple[int, int, int, int]:
+        """
+        Get the ambient light color.
+
+        Returns:
+            tuple[int, int, int, int]: Ambient light color in 0-255 scale (R, G, B, A).
+        """
+        return denormalize_color(self._ambient)
+
+    def blit_texture(self, tex: moderngl.Texture, Layer_: Layer_, dest: pygame.Rect, source: pygame.Rect):
+        """
+        Blit a texture onto a specified Layer_'s framebuffer.
+
+        Args:
+            tex (moderngl.Texture): Texture to blit.
+            Layer_ (Layer_): Layer_ to blit the texture onto.
+            dest (pygame.Rect): Destination rectangle.
+            source (pygame.Rect): Source rectangle from the texture.
+        """
+
+        # Create a framebuffer with the texture
+        fb = self.ctx.framebuffer([tex])
+
+        # Select destination framebuffer correcponding to Layer_
+        fbo = self._get_fbo(Layer_)
+
+        # Blit texture onto destination
+        glBlitNamedFramebuffer(fb.glo, fbo.glo, source.x, source.y, source.w, source.h,
+                               dest.x, dest.y, dest.w, dest.h, GL_COLOR_BUFFER_BIT, GL_NEAREST)
+
+    def render_texture(self, tex: moderngl.Texture, layer: Layer_, dest: pygame.Rect, source: pygame.Rect,angle:float=0.0,flip : tuple[bool,bool]= (False,False)):
+        """
+        Render a texture onto a specified Layer_'s framebuffer using the draw shader.
+
+        Args:
+            tex (moderngl.Texture): Texture to render.
+            Layer_ (Layer_): Layer_ to render the texture onto.
+            dest (pygame.Rect): Destination rectangle.
+            source (pygame.Rect): Source rectangle from the texture.
+            angle (float) : angle to rotate around center in radians 
+            flip (tuple[bool,bool]) : values to indicate flip vertically and horizontally 
+        """
+
+        # Render texture onto Layer_ with the draw shader
+        fbo = self._get_fbo(layer)
+        self._render_tex_to_fbo(tex, fbo, dest, source )
+
+    def surface_to_texture(self, sfc: pygame.Surface) -> moderngl.Texture:
+        """
+        Convert a pygame.Surface to a moderngl.Texture.
+
+        Args:
+            sfc (pygame.Surface): Surface to convert.
+
+        Returns:
+            moderngl.Texture: Converted texture.
+        """
+
+        img_flip = pygame.transform.flip(sfc, False, True)
+        img_data = pygame.image.tostring(img_flip, "RGBA")
+
+        tex = self.ctx.texture(sfc.get_size(), components=4, data=img_data)
+        tex.filter = (moderngl.NEAREST, moderngl.NEAREST)
+        return tex
+
+    def load_texture(self, path: str) -> moderngl.Texture:
+        """
+        Load a texture from a file.
+
+        Args:
+            path (str): Path to the texture file.
+
+        Returns:
+            moderngl.Texture: Loaded texture.
+        """
+
+        img = pygame.image.load(BASE_PATH+ path).convert_alpha()
+        return self.surface_to_texture(img)
+
+
+    def create_outline_texture(self,tex: moderngl.Texture,white :bool= False) ->moderngl.Texture:
+        """
+        Create a completely white/black texture from a texture with colored bits.
+
+        """
+
+        width,height = tex.size
+
+        texture_data = tex.read()
+
+        image_array = np.frombuffer(texture_data,dtype=np.uint8).reshape((height,width,4))
+        
+        new_array = np.copy(image_array)
+        if white:
+            new_array[new_array[:,:,3] >0] = [255,255,255,255]
+        else: 
+            new_array[new_array[:,:,3] >0] = [0,0,0,255]
+
+        new_tex = self.ctx.texture((width,height),4,new_array.tobytes())
+
+        return new_tex
+       
+
+    def clear(self, R: (int | tuple[int]) = 0, G: int = 0, B: int = 0, A: int = 255):
+        """
+        Clear the background with a color.
+
+        Args:
+            R (int or tuple[int]): Red component value or tuple containing RGB or RGBA values (0-255).
+            G (int): Green component value (0-255).
+            B (int): Blue component value (0-255).
+            A (int): Alpha component value (0-255).
+        """
+        R, G, B, A = normalize_color_arguments(R, G, B, A)
+        self._fbo_bg.clear(R, G, B, A)
+        self._fbo_fg.clear(0, 0, 0, 0)
+
+
+    def bind_player(self,player:Player) -> None: 
+        self._player = player 
+
+
+
+    def _precompute_static_tiles_VBO(self) -> None:
+        atl_size = self._tilemap.texture_atlas.size
+        vertex_data = []
+
+        for (x,y),tile_info_list in self._tilemap.physical_tiles.items():
+            x_pos = x * self._tilemap.tile_size
+            y_pos = y * self._tilemap.tile_size
+            
+            tile_info  = tile_info_list[0]
+            door_data = None
+            if tile_info.type == 'trap_door':
+                door_data:bool = tile_info_list[1]
+            elif tile_info.type == 'building_door':
+                door_data:DoorAnimation= tile_info_list[1]
+            
+
+            tex_coords =  self._get_texture_coords_for_tile(tile_info,atl_size,door_data)
+            vertex_data.extend([
+            # Top-left corner
+            x_pos, y_pos, tex_coords[0][0], tex_coords[0][1],
+            # Top-right corner
+            x_pos + self._tilemap.tile_size, y_pos, tex_coords[1][0], tex_coords[1][1],
+            # Bottom-left corner
+            x_pos, y_pos + self._tilemap.tile_size, tex_coords[2][0], tex_coords[2][1],
+            # Bottom-left corner
+            x_pos, y_pos + self._tilemap.tile_size, tex_coords[2][0], tex_coords[2][1],
+            x_pos + self._tilemap.tile_size, y_pos, tex_coords[1][0], tex_coords[1][1],
+            # Bottom-right corner
+            x_pos + self._tilemap.tile_size, y_pos + self._tilemap.tile_size, tex_coords[3][0], tex_coords[3][1],
+            ])
+
+        self._static_tiles_vbo = self.ctx.buffer(np.array(vertex_data,dtype=np.float32))
+        
+
+    def bind_tilemap(self,tilemap:Tilemap) -> None:
+        self._tilemap = tilemap
+        self._ibo = self.ctx.buffer(reserve= 6 * (self._true_res[0]//self._tilemap.tile_size) 
+                                    * (self._true_res[1] // self._tilemap.tile_size) * 6,dynamic=True )
+        self._precompute_static_tiles_VBO()
+
+    def bind_entities_atlas(self,entities_atl:moderngl.Texture) -> None:
+        self._entities_atl = entities_atl
+    
+    def bind_background(self,background:list[moderngl.Texture]) -> None: 
+        self._background = background
+    
+    def check_requirements(self): 
+        assert self._background and self._tilemap and self._entities_atl and self._player, f"Error,engine has unbound objects: {self._get_unbound_objects()}"
+
+    
+
+    def render_scene_with_lighting(self,range,offset,screen_shake):
+        """
+        Render the lighting effects onto the screen.
+
+        Clears intermediate buffers, renders lights onto the double buffer,
+        blurs the lightmap for soft shadows, and renders background and foreground.
+
+        This method is responsible for the final rendering of lighting effects onto the screen.
+        """
+
+        """
+        
+        offset parameter is added for adjusting the light positions based on camera movement.
+        
+        
+        """
+
+
+        # Clear intermediate buffers
+        self.ctx.screen.clear(0, 0, 0, 1)
+        self._fbo_ao.clear(0, 0, 0, 0)
+        self._buf_lt.clear(0, 0, 0, 0)
+
+
+        render_shake = (int((offset[0] -screen_shake[0])),int((offset[1] -screen_shake[1])))
+
+
+        """
+        
+        position of 'hulls' or shadow objects, and the lights  are  offsetted.
+
+        """
+
+
+        # Send hull data to SSBOs
+        self._send_hull_data(render_shake)
+
+        # Render lights onto double buffer
+        self._render_to_buf_lt(range,render_shake)
+
+        # Blur lightmap for soft shadows and render onto aomap
+        self._render_aomap()
+
+        # Render background masked with the lightmap
+        self._render_background_layer(range,offset)
+
+        # Render foreground onto screen
+        self._render_foreground()
+
+        
+   
+   
+
+        
     def precompute_vertex_arrays(self,tilemap:Tilemap):
         """
         Precomputes the size of the vertex array required to 
@@ -1177,8 +1146,7 @@ class RenderEngine:
     
         return tex_coords
     
-    def render_background_scene_to_fbo(self,entities_atl:moderngl.Texture,background:list[moderngl.Texture],tilemap: Tilemap,
-                                       player:Player,offset = (0,0),infinite:bool = False)-> None :
+    def render_background_scene_to_fbo(self,offset = (0,0),infinite:bool = False)-> None :
         """
         Render to the Background fbo with the parallax background, the tilemap, etc.
 
@@ -1189,10 +1157,11 @@ class RenderEngine:
             infinite (bool = False) : whether the background should wrap around the screen infinitely.
         
         """
+
         fbo = self._get_fbo(Layer_.BACKGROUND)
-        self._render_background_textures_to_fbo(fbo,background,offset=offset)
-        self._render_tilemap(fbo,tilemap,offset)
-        self._render_player(entities_atl,fbo,player,offset)
+        self._render_background_textures_to_fbo(fbo,offset=offset,infinite=infinite)
+        self._test_render_tilemap(fbo,offset)
+        #self._render_player(fbo,offset)
 
     def render_foreground_scene_to_fbo(self,cursor:Cursor):
         """

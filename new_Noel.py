@@ -43,17 +43,22 @@ class Noel():
 
         self._backgrounds:dict[str,list[Texture]] = self._load_backgrounds(TEXTURE_BASE_PATH+'backgrounds')
         self._tilemap_jsons = self._load_tilemap_jsons('map_jsons')
-
-
-        # MUST HAPPEN -------------------------
         self._atlas_dict = self._create_texture_atlasses()
+
+
+        self.player = Player([74,11],(14,16)) 
+        self.player.set_accel_rate(0.7)
+        self.player.set_default_speed(2.2)
+
+
+        # setting up tilemap and binding objects to render engine -------------------------
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
-        #self.render_engine.precompute_vertex_arrays(self._tilemap)
+        self.render_engine.bind_player(self.player)
+        self.render_engine.bind_tilemap(self._tilemap)
+        self.render_engine.bind_entities_atlas(self._atlas_dict['entities'])
+        self.render_engine.bind_background(self._backgrounds['start'])
         # -------------------------------------
-
-       # TODO: LOAD LIGHTS PROPERLY 
-        self.render_engine.lights = self._tilemap.lights
 
         self._cursor = Cursor(self._atlas_dict['cursor'])
 
@@ -64,7 +69,7 @@ class Noel():
         self.player.set_default_speed(2.2)
 
     def _initalize_game_settings(self):
-        self._system_display_info = self._set_system_display_info()
+        self._system_display_info = self._get_system_display_info()
         self._set_initial_display_settings()
         self._configure_pygame()
 
@@ -73,10 +78,10 @@ class Noel():
        
 
        # setup render engine
-        self.render_engine = RenderEngine(self,self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
+        self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
 
-    def _set_system_display_info(self):
+    def _get_system_display_info(self):
         system_info = {}
         primary_monitor = get_monitors()[0]
         system_info["resolution"] = (primary_monitor.width, primary_monitor.height)
@@ -267,7 +272,7 @@ class Noel():
         self._frame_count = (self._frame_count+1) %360
         self._dt = time() - self._prev_frame_time
         self._prev_frame_time = time()
-        self.render_engine.set_ambient(255,255,255,25)
+        self.render_engine.set_ambient(255,255,255,255)
         self.render_engine.clear(0,0,0,255)
 
         if self._curr_gameState == GameState.GameLoop:  
@@ -281,11 +286,9 @@ class Noel():
             self._cursor.update()
             self.player.update(self._tilemap,self._cursor.pos,self._player_movement_input,self._frame_count)
 
-            self.render_engine.render_background_scene_to_fbo(self._atlas_dict['entities'],self._backgrounds['new_building'],
-                                                              self._tilemap,self.player,camera_scroll,infinite=False)
+            self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
 
- #            print(len(self.render_engine.hulls))
-            self.render_engine.render_foreground_scene_to_fbo(self._cursor)
+            #self.render_engine.render_foreground_scene_to_fbo(self._cursor)
 
 
             self.render_engine.render_scene_with_lighting((float('-inf'),float('700')),camera_scroll,(0,0))
@@ -304,6 +307,7 @@ class Noel():
 
 
     def start(self):
+        self.render_engine.check_requirements()
         while(True):
             self._handle_events()
             self._update_render() 
