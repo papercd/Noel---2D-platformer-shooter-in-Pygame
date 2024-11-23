@@ -4,6 +4,7 @@ import platform
 from os import environ,listdir
 from json import load  as jsLoad
 
+from scripts.new_particles import ParticleSystem
 from scripts.spatial_grid import SpatialGrid
 from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player,PhysicsEntity
@@ -59,7 +60,9 @@ class Noel():
         self.render_engine.bind_entities_atlas(self._atlas_dict['entities'])
         self.render_engine.bind_background(self._backgrounds['start'])
         # ------------------------------------- 
-        
+
+
+        self.particle_system =  ParticleSystem()
         self.render_engine.lights = self._tilemap.lights
 
         self._cursor = Cursor(self._atlas_dict['cursor'])
@@ -68,7 +71,6 @@ class Noel():
         self.player = Player([74,11],(14,16)) 
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
-        print(self._tilemap._tile_colors)
 
     def _initalize_game_settings(self):
         self._system_display_info = self._get_system_display_info()
@@ -279,6 +281,9 @@ class Noel():
             self.render_engine.bind_cursor(self._cursor)
             self.player.update(self._tilemap,self._cursor.pos,self._player_movement_input,self._frame_count)
             self.render_engine.bind_player(self.player)
+
+
+        
 
             self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
             self.render_engine.render_foreground_scene_to_fbo()
