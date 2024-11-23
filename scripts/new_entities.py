@@ -1,7 +1,8 @@
 from pygame import Rect
 from scripts.new_tilemap import Tilemap
-from scripts.custom_data_types import AnimationDataCollection,AnimationData
+from scripts.animationData import PlayerAnimationDataCollection
 from random import choice as random_choice
+
 
 class PhysicsEntity: 
     def __init__(self,type:str,pos:list[float,float],size:tuple[int,int]):
@@ -157,21 +158,9 @@ class PhysicsEntity:
                         self.collisions['down'] = True
  
 
-PLAYER_ANIMATION_DATA = [
-    AnimationData('idle',4,6,False,True),
-    AnimationData('crouch',1,4,True,False),
-    AnimationData('jump_up',1,5,True,False),
-    AnimationData('jump_down',4,5,True,False),
-    AnimationData('land',6,2,False,False),
-    AnimationData('run',6,4,False,True),
-    AnimationData('slide',1,5,True,False),
-    AnimationData('wall_slide',1,4,True,False),
-]
-
-
 class Player(PhysicsEntity):
     def __init__(self, pos: list[float], size: tuple[int, int]):
-        self._animation_data_collection = AnimationDataCollection(PLAYER_ANIMATION_DATA)
+        self._animation_data_collection = PlayerAnimationDataCollection
         self._cur_animation = self._animation_data_collection.get_animation_data('idle')
         super().__init__('player', pos, size)
         

@@ -4,12 +4,11 @@ import platform
 from os import environ,listdir
 from json import load  as jsLoad
 
+from scripts.new_grass import GrassManager
 from scripts.new_particles import ParticleSystem
-from scripts.spatial_grid import SpatialGrid
 from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player,PhysicsEntity
 from scripts.new_tilemap import Tilemap
-from scripts.layer import Layer_
 from scripts.utils import load_texture 
 from time import time
 from enum import Enum
@@ -71,6 +70,8 @@ class Noel():
         self.player = Player([74,11],(14,16)) 
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
+
+        self._grass_manager = GrassManager()
 
     def _initalize_game_settings(self):
         self._system_display_info = self._get_system_display_info()
@@ -277,15 +278,17 @@ class Noel():
             
             self.render_engine.hulls = self._tilemap._hull_grid.query(camera_scroll[0]-self._tilemap.tile_size * 10 ,camera_scroll[1]- self._tilemap.tile_size * 10,camera_scroll[0] \
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
+            self.particle_system.update(self._tilemap,self._grass_manager)
             self._cursor.update()
             self.render_engine.bind_cursor(self._cursor)
             self.player.update(self._tilemap,self._cursor.pos,self._player_movement_input,self._frame_count)
             self.render_engine.bind_player(self.player)
 
 
-        
+                   
 
             self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
+            #self.render_engine.render_particles_to_fbo()
             self.render_engine.render_foreground_scene_to_fbo()
             
 

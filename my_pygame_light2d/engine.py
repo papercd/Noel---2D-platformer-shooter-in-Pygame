@@ -976,8 +976,11 @@ class RenderEngine:
         # Release the texture
         tex.release()
 
+    def render_particles_to_fbo(self):
+        pass 
             
     
+
     def render_background_scene_to_fbo(self,offset = (0,0),infinite:bool = False)-> None :
         """
         Render to the Background fbo with the parallax background, the tilemap, etc.
