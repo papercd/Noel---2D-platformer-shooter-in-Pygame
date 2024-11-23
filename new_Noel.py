@@ -4,7 +4,7 @@ import platform
 from os import environ,listdir
 from json import load  as jsLoad
 
-
+from scripts.spatial_grid import SpatialGrid
 from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player,PhysicsEntity
 from scripts.new_tilemap import Tilemap
@@ -58,9 +58,9 @@ class Noel():
         self.render_engine.bind_tilemap(self._tilemap)
         self.render_engine.bind_entities_atlas(self._atlas_dict['entities'])
         self.render_engine.bind_background(self._backgrounds['start'])
-        # -------------------------------------
-        print(len(self._tilemap.physical_tiles))
-        print(len(self._tilemap.rectangles))
+        # ------------------------------------- 
+        
+        self.render_engine.lights = self._tilemap.lights
 
         self._cursor = Cursor(self._atlas_dict['cursor'])
         self._player_movement_input = [0,0]
@@ -68,6 +68,7 @@ class Noel():
         self.player = Player([74,11],(14,16)) 
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
+        print(self._tilemap._tile_colors)
 
     def _initalize_game_settings(self):
         self._system_display_info = self._get_system_display_info()
@@ -78,7 +79,8 @@ class Noel():
         self._ctx = create_context()
        
 
-       # setup render engine
+       # setup render engine and background buffer surface 
+        self._background_buffer_srf = pygame.Surface(self._true_res)
         self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
 
@@ -121,7 +123,7 @@ class Noel():
     
     def _configure_pygame(self):
         # Check that pygame has been initialized
-        assert pygame.get_init(), 'Error: Pygame is not initialized. Please ensure you call pygame.init() before using the lighting engine.'
+        assert pygame.get_init(), 'Error: Pygame is not initialized.'
 
         # setup sound mixer 
         pygame.mixer.pre_init(44100, -16, 2, 512)
@@ -186,18 +188,6 @@ class Noel():
 
         return tilemap_data_dict
 
-    def _load_tilemap(self,json_file_name:str) -> Tilemap:
-        """
-        create and return a Tilemap object from the json file specified by the file name. 
-       
-        Args: 
-            json_file_name (str) : the name of the json file to read from. 
-
-        Returns: AAAAAAAAAAA
-            a Tilemap object 
-        """ 
-        return Tilemap(self._tilemap_jsons[json_file_name])
-    
     def _create_texture_atlasses(self) -> dict[str,Texture]:
         
         dict = {}
@@ -273,7 +263,7 @@ class Noel():
         self._frame_count = (self._frame_count+1) %360
         self._dt = time() - self._prev_frame_time
         self._prev_frame_time = time()
-        self.render_engine.set_ambient(255,255,255,255)
+        self.render_engine.set_ambient(255,255,255, 25)
         self.render_engine.clear(0,0,0,255)
 
         if self._curr_gameState == GameState.GameLoop:  
@@ -283,18 +273,18 @@ class Noel():
 
             camera_scroll = (int(self.scroll[0]), int(self.scroll[1]))
             
-            #self.render_engine.hulls = self._tilemap.update_shadow_objs(self._true_res,camera_scroll)
+            self.render_engine.hulls = self._tilemap._hull_grid.query(camera_scroll[0]-self._tilemap.tile_size * 10 ,camera_scroll[1]- self._tilemap.tile_size * 10,camera_scroll[0] \
+                                                             + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
             self._cursor.update()
             self.render_engine.bind_cursor(self._cursor)
             self.player.update(self._tilemap,self._cursor.pos,self._player_movement_input,self._frame_count)
             self.render_engine.bind_player(self.player)
 
-            self.render_engine.render_rectangles(camera_scroll)
             self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
             self.render_engine.render_foreground_scene_to_fbo()
             
 
-            self.render_engine.render_scene_with_lighting((float('-inf'),float('700')),camera_scroll,(0,0))
+            self.render_engine.render_scene_with_lighting((float('-inf'),float('inf')),camera_scroll,(0,0))
             
             pygame.display.flip()
             fps = self._clock.get_fps()

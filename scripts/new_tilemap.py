@@ -1,17 +1,17 @@
 from scripts.atlass_positions import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES
 from scripts.custom_data_types import TileInfo,LightInfo,DoorInfo,DoorAnimation
+from scripts.tileformatdata import get_tile_rectangle, PHYSICS_APPLIED_TILE_TYPES,TILE_SIDE_TO_SAMPLE_POS
+from scripts.spatial_grid import SpatialGrid
 from my_pygame_light2d.hull import Hull 
 from moderngl import Texture
 from pygame import Rect
 from my_pygame_light2d.light import PointLight
 from scripts.utils import load_texture
+import numpy as np 
 
 TEXTURE_BASE_PATH = 'data/images/'
-PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs','building_door','trap_door',\
-                              'ladder'}
 
-HULL_EDGE_OFFSET_EVEN_REL_POS = [(1,1),(-1,1),(-1,-1),(1,-1)]
-HULL_EDGE_OFFSET_ODD_REL_POS = [(0,1),(-1,0),(0,-1),(1,0)]
+
 
 class Tilemap:
     def __init__(self,texture_atlas:Texture,json_data = None):
@@ -23,149 +23,17 @@ class Tilemap:
             for empty Tilemap object. 
         
         """
-
+    
         self._texture_atlas = texture_atlas
-
+       
         if json_data:
             self.load_map(json_data)
-    
-    def _create_hulls(self,tile_json_data) -> list[Hull]:
-        """
-        Create hull objects associated with a physical tile. 
 
-        Args: 
-            tile_json_data : tile's data in json format
 
-        Returns: 
-            list[Hull] : hulls (my_pygame_light2D.Hull hull) associated with a physical tile in the tilemap.
-        """
-        
-        hulls = []
-
-        if tile_json_data['type'] != "spawners":
-            tile_type_check = len(tile_json_data['type'].split('_')) == 1
-            if not tile_type_check and tile_json_data['type'].split('_')[1] == 'stairs':
-                variant = tile_json_data['variant'].split(';')
-                if variant[0] == '0':
-                    vertices = ((tile_json_data['pos'][0] * self._regular_tile_size +4   ,tile_json_data['pos'][1]   * self._regular_tile_size+13 ) , 
-                                ((tile_json_data['pos'][0]+1) *self._regular_tile_size -1 ,tile_json_data['pos'][1] *self._regular_tile_size +13  ) , 
-                                ((tile_json_data['pos'][0]+1)*self._regular_tile_size-1 ,(tile_json_data['pos'][1]+1) *self._regular_tile_size  ) ,
-                                ((tile_json_data['pos'][0]) *self._regular_tile_size+4,(tile_json_data['pos'][1]+1) *self._regular_tile_size  ) ,
-                                ),((tile_json_data['pos'][0] * self._regular_tile_size +8   ,tile_json_data['pos'][1]   * self._regular_tile_size+9 ) , 
-                                ((tile_json_data['pos'][0]+1) *self._regular_tile_size -1 ,tile_json_data['pos'][1] *self._regular_tile_size +9  ) , 
-                                ((tile_json_data['pos'][0]+1)*self._regular_tile_size-1 ,(tile_json_data['pos'][1]+1) *self._regular_tile_size-2  ) ,
-                                ((tile_json_data['pos'][0]) *self._regular_tile_size+8,(tile_json_data['pos'][1]+1) *self._regular_tile_size-2  ) ,
-                                ),((tile_json_data['pos'][0] * self._regular_tile_size +12   ,tile_json_data['pos'][1]   * self._regular_tile_size+5 ) , 
-                                ((tile_json_data['pos'][0]+1) *self._regular_tile_size -1 ,tile_json_data['pos'][1] *self._regular_tile_size +5  ) , 
-                                ((tile_json_data['pos'][0]+1)*self._regular_tile_size-1 ,(tile_json_data['pos'][1]+1) *self._regular_tile_size-7  ) ,
-                                ((tile_json_data['pos'][0]) *self._regular_tile_size+12,(tile_json_data['pos'][1]+1) *self._regular_tile_size-7  ) ,
-                                ),((tile_json_data['pos'][0] * self._regular_tile_size +17   ,tile_json_data['pos'][1]   * self._regular_tile_size+1 ) , 
-                                ((tile_json_data['pos'][0]+1) *self._regular_tile_size -1 ,tile_json_data['pos'][1] *self._regular_tile_size +1  ) , 
-                                ((tile_json_data['pos'][0]+1)*self._regular_tile_size-1 ,(tile_json_data['pos'][1]+1) *self._regular_tile_size-11  ) ,
-                                ((tile_json_data['pos'][0]) *self._regular_tile_size+17,(tile_json_data['pos'][1]+1) *self._regular_tile_size -11 ) ,
-                                )
-                    for vertice in vertices:
-                        hulls.append(Hull(vertice))
-                elif variant[0] == '1':
-                    vertices = ((tile_json_data['pos'][0] * self._regular_tile_size    ,tile_json_data['pos'][1]   * self._regular_tile_size+13 ) , 
-                                ((tile_json_data['pos'][0]+1) *self._regular_tile_size -1 ,tile_json_data['pos'][1] *self._regular_tile_size +13  ) , 
-                                ((tile_json_data['pos'][0]+1)*self._regular_tile_size-1 ,(tile_json_data['pos'][1]+1) *self._regular_tile_size  ) ,
-                                ((tile_json_data['pos'][0]) *self._regular_tile_size,(tile_json_data['pos'][1]+1) *self._regular_tile_size  ) ,
-                                ),((tile_json_data['pos'][0] * self._regular_tile_size    ,tile_json_data['pos'][1]   * self._regular_tile_size+9 ) , 
-                                ((tile_json_data['pos'][0]+1) *self._regular_tile_size -5 ,tile_json_data['pos'][1] *self._regular_tile_size +9  ) , 
-                                ((tile_json_data['pos'][0]+1)*self._regular_tile_size-5 ,(tile_json_data['pos'][1]+1) *self._regular_tile_size-3  ) ,
-                                ((tile_json_data['pos'][0]) *self._regular_tile_size,(tile_json_data['pos'][1]+1) *self._regular_tile_size-3  ) ,
-                                ),((tile_json_data['pos'][0] * self._regular_tile_size    ,tile_json_data['pos'][1]   * self._regular_tile_size+5 ) , 
-                                ((tile_json_data['pos'][0]+1) *self._regular_tile_size -9 ,tile_json_data['pos'][1] *self._regular_tile_size +5  ) , 
-                                ((tile_json_data['pos'][0]+1)*self._regular_tile_size-9 ,(tile_json_data['pos'][1]+1) *self._regular_tile_size-7  ) ,
-                                ((tile_json_data['pos'][0]) *self._regular_tile_size,(tile_json_data['pos'][1]+1) *self._regular_tile_size-7  ) ,
-                                ),((tile_json_data['pos'][0] * self._regular_tile_size    ,tile_json_data['pos'][1]   * self._regular_tile_size+1 ) , 
-                                ((tile_json_data['pos'][0]) *self._regular_tile_size +2 ,tile_json_data['pos'][1] *self._regular_tile_size +1  ) , 
-                                ((tile_json_data['pos'][0])*self._regular_tile_size+2 ,(tile_json_data['pos'][1]) *self._regular_tile_size+4  ) ,
-                                ((tile_json_data['pos'][0]) *self._regular_tile_size,(tile_json_data['pos'][1]) *self._regular_tile_size+4 ) ,
-                                )
-                    for vertice in vertices:
-                        hulls.append(Hull(vertice))
-                    
-                else: 
-                    if variant[1] == '1':
-                        vertices = ((tile_json_data['pos'][0] *   self._regular_tile_size  ,tile_json_data['pos'][1]   * self._regular_tile_size + 4 ) , 
-                                    ((tile_json_data['pos'][0]+1) *self._regular_tile_size  ,tile_json_data['pos'][1] *self._regular_tile_size+4  ) , 
-                                    ((tile_json_data['pos'][0]+1)*self._regular_tile_size  ,(tile_json_data['pos'][1]+1) *self._regular_tile_size ) ,
-                                    ((tile_json_data['pos'][0]) *self._regular_tile_size ,(tile_json_data['pos'][1]+1) *self._regular_tile_size  ) ,
-                                    )
-                            
-                                        
-                    else: 
-                        vertices = ((tile_json_data['pos'][0] *   self._regular_tile_size   ,tile_json_data['pos'][1]   * self._regular_tile_size ) , 
-                                    ((tile_json_data['pos'][0]+1) *self._regular_tile_size ,tile_json_data['pos'][1] *self._regular_tile_size  ) , 
-                                    ((tile_json_data['pos'][0]+1)*self._regular_tile_size ,(tile_json_data['pos'][1]+1) *self._regular_tile_size  ) ,
-                                    ((tile_json_data['pos'][0]) *self._regular_tile_size ,(tile_json_data['pos'][1]+1) *self._regular_tile_size  ) ,
-                                    )
-                    hulls.append(Hull(vertices))
-                
-                return hulls                      
-            else:
-                if tile_json_data['type'].endswith('door'):
-                    if tile_json_data['type'].split('_')[0] == 'trap':
-                        # trap door
-                        
-                        vertices = [(tile_json_data['pos'][0] * self._regular_tile_size ,tile_json_data['pos'][1] * self._regular_tile_size +4), 
-                                        ((tile_json_data['pos'][0] + 1) * self._regular_tile_size ,tile_json_data['pos'][1] * self._regular_tile_size +4),
-                                        ((tile_json_data['pos'][0] +1) * self._regular_tile_size ,tile_json_data['pos'][1] * self._regular_tile_size +5),
-                                        (tile_json_data['pos'][0]  * self._regular_tile_size ,tile_json_data['pos'][1] * self._regular_tile_size +5 ),
-                                        ]
-
-                        hulls.append(Hull(vertices))
-                        return hulls 
-
-                    else:                         
-                        variant_num = int(tile_json_data['variant'].split(';')[0])
-                        if variant_num == 0:
-                            # Left facing door 
-                            
-                            vertices = [(tile_json_data['pos'][0] * self._regular_tile_size + 4,tile_json_data['pos'][1] * self._regular_tile_size -1), 
-                                        (tile_json_data['pos'][0] * self._regular_tile_size + 5,tile_json_data['pos'][1] * self._regular_tile_size -1),
-                                        (tile_json_data['pos'][0] * self._regular_tile_size + 5,(tile_json_data['pos'][1]+2) * self._regular_tile_size ),
-                                        (tile_json_data['pos'][0] * self._regular_tile_size + 4,(tile_json_data['pos'][1]+2) * self._regular_tile_size ),
-                                        ]
-                            
-                            hulls.append(Hull(vertices))
-
-                        if variant_num == 1:
-                            # Right facing door 
-                            # Not made yet 
-                            
-                            pass
-                        return hulls 
-
-                else: 
-                    variant_num = int(tile_json_data['variant'].split(';')[0])
-                    
-                    if variant_num == 8:
-                        vertices = [(tile_json_data['pos'][0] *   self._regular_tile_size + 2  ,tile_json_data['pos'][1]   * self._regular_tile_size+ 2 ) , 
-                                    ((tile_json_data['pos'][0]+1) *self._regular_tile_size - 2 ,tile_json_data['pos'][1] *self._regular_tile_size+ 2  ) , 
-                                    ((tile_json_data['pos'][0]+1)*self._regular_tile_size- 2 ,(tile_json_data['pos'][1]+1) *self._regular_tile_size- 2  ) ,
-                                    ((tile_json_data['pos'][0]) *self._regular_tile_size+ 2 ,(tile_json_data['pos'][1]+1) *self._regular_tile_size- 2  ) ,
-                                    ]
-                        hulls.append(Hull(vertices))
-                    else: 
-                        step = HULL_EDGE_OFFSET_EVEN_REL_POS[ variant_num // 2] if variant_num %2 == 0 else HULL_EDGE_OFFSET_ODD_REL_POS[variant_num//2]
-                        vertices = [(tile_json_data['pos'][0] *   self._regular_tile_size + step[0]* 4  ,tile_json_data['pos'][1]   * self._regular_tile_size+step[1]* 4 ) , 
-                                    ((tile_json_data['pos'][0]+1) *self._regular_tile_size+step[0]* 4 ,tile_json_data['pos'][1] *self._regular_tile_size+step[1]* 4  ) , 
-                                    ((tile_json_data['pos'][0]+1)*self._regular_tile_size+step[0]* 4 ,(tile_json_data['pos'][1]+1) *self._regular_tile_size+step[1]* 4  ) ,
-                                    ((tile_json_data['pos'][0]) *self._regular_tile_size+step[0]* 4 ,(tile_json_data['pos'][1]+1) *self._regular_tile_size+step[1]* 4  ) ,
-                                    ]
-                        hulls.append(Hull(vertices))
-                    return hulls 
-        else: 
-            return None
-       
-
-    
     def load_map(self,json_data):
         
         self._regular_tile_size = json_data['tile_size']
+        self._hull_grid = SpatialGrid(cell_size= self._regular_tile_size)
 
         # one step at a time.The tilemap.
         self._non_physical_tile_layers= json_data['offgrid_layers']
@@ -184,32 +52,30 @@ class Tilemap:
 
             if json_data['tilemap'][tile_key]['type'] != "lights":
                 if json_data['tilemap'][tile_key]['type'].endswith('door'):
-                    hull = self._create_hulls(json_data['tilemap'][tile_key])
                     if json_data['tilemap'][tile_key]['type'].split('_')[0] == 'trap':
                         # Tile info creation for trap door 
 
                         rect = Rect(tile_pos[0] * self._regular_tile_size, self.pos[1] * self._regular_tile_size, self._regular_tile_size,5)
             
                         self._physical_tiles[tile_key] = [DoorInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
-                                                                 tile_pos,tile_size,rect,atl_pos),False,hull]
+                                                                 tile_pos,tile_size,rect,atl_pos),False]
                     else: 
                         if tile_key in self._physical_tiles: continue 
                         else: 
-                            # TODO : ADD HULLS LATER 
                             rect = Rect(tile_pos[0] * self._regular_tile_size + 3, tile_pos[1] * self._regular_tile_size ,6,32)
 
                             door = [DoorInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
-                                                                 tile_pos,tile_size,rect,atl_pos),DoorAnimation(5,5),hull]
+                                                                 tile_pos,tile_size,rect,atl_pos),DoorAnimation(5,5)]
                             self._physical_tiles[tile_pos] = door 
                             pos_below = (tile_pos[0],tile_pos[1] +1)
                             self._physical_tiles[pos_below]  = door 
 
                 else:   
-                    hull = self._create_hulls(json_data['tilemap'][tile_key])
+                    #hull = self._create_hulls(json_data['tilemap'][tile_key])
                     # TODO: THE TILE KEYS NEED TO BE CHANGED TO INTS, NOT STRINGS. 
 
                     self._physical_tiles[tile_pos] = [TileInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],
-                                                    tile_pos,tile_size,atl_pos),hull] 
+                                                    tile_pos,tile_size,atl_pos),None] 
             
             else: 
                 if isinstance(json_data['tilemap'][tile_key]["pos"][0],int):
@@ -267,8 +133,14 @@ class Tilemap:
                 else: 
                     self.non_physical_tiles[i][tile_pos] = TileInfo(json_data[tilemap_key][tile_key]["type"],json_data[tilemap_key][tile_key]["variant"],
                                                             tile_pos,tile_size,atl_pos)
-       # self._get_hull_grid_mapping()
-        self.rectangles = self.get_minimal_rectangles()
+        
+        
+        self._create_hulls()
+        for hull in self._hulls:
+            self._hull_grid.insert(hull)
+
+        self._precompute_texture_coordinates()
+        self._precompute_tile_colors()
 
 
     @property
@@ -288,50 +160,99 @@ class Tilemap:
         return self._non_physical_tile_layers
 
 
-    def get_minimal_rectangles(self):
-        # Sorting the keys (grid positions) in increasing order
-        sorted_positions = sorted(self._physical_tiles.keys())
-        
-        rectangles = []
-        current_rectangle = None
-        
-        def add_rectangle(x1, y1, x2, y2):
-            rectangles.append((x1, y1, x2, y2))
-        
-        for position in sorted_positions:
-            x, y = position[0]*16,position[1] * 16
-            tile = self._physical_tiles[position]  # Get the tile info (e.g., type, size)
-            
-            # We assume tile size is always 16x16 for simplicity
-            tile_width, tile_height = 16, 16
-            
-            # If current_rectangle is None, start a new rectangle
-            if current_rectangle is None:
-                current_rectangle = (x, y, x + tile_width, y + tile_height)
-            else:
-                # Get the current rectangle boundaries
-                current_x1, current_y1, current_x2, current_y2 = current_rectangle
-                
-                # Check if the current tile can be part of the current rectangle
-                # They must be either horizontally or vertically aligned.
-                if (x == current_x2 or y == current_y2): 
-                    # Extend the current rectangle if possible
-                    current_rectangle = (min(current_x1, x),
-                                        min(current_y1, y),
-                                        max(current_x2, x + tile_width),
-                                        max(current_y2, y + tile_height))
-                else:
-                    # Otherwise, finalize the current rectangle and start a new one
-                    add_rectangle(*current_rectangle)
-                    current_rectangle = (x, y, x + tile_width, y + tile_height)
-        
-        # Add the last rectangle if any
-        if current_rectangle is not None:
-            add_rectangle(*current_rectangle)
-        
-        return rectangles
+    def _precompute_tile_colors(self):
+        raw_data = self._texture_atlas.read(alignment=4)
+        width,height = self._texture_atlas.size
+        image_data = np.frombuffer(raw_data,dtype= np.uint8).reshape((height,width,4))
+ 
+        self._tile_colors = {}
+
+        for key in self._physical_tiles:
+            tile_info_list = self._physical_tiles[key]
+            tile_info = tile_info_list[0]
+            rel_pos,variant = map(int,tile_info.variant.split(';'))
+
+            if tile_info.type.endswith('stairs'):
+                for side in ['top','bottom','left','right']:
+                    if (tile_info.type,(rel_pos,variant),side) not in self._tile_colors:
+                        sample_side_ratio = TILE_SIDE_TO_SAMPLE_POS['stairs']
+                        texture_coords = (TILE_ATLAS_POSITIONS[tile_info.type][0] + variant * tile_info.tile_size[0] + int((tile_info.tile_size[0]-1) *sample_side_ratio[0]),\
+                                                TILE_ATLAS_POSITIONS[tile_info.type][1] + rel_pos* tile_info.tile_size[1] + int((tile_info.tile_size[1]-1) * sample_side_ratio[1]))
+                        color = tuple(image_data[texture_coords[1],texture_coords[0]])
+                        self._tile_colors[(tile_info.type,(rel_pos,variant),side)] = color
+
+                   
+            elif tile_info.type.endswith('door'):
+                pass 
+            else: 
+                for side in ['top','bottom','left','right']:
+                    sample_side_ratio = TILE_SIDE_TO_SAMPLE_POS['regular'][side]
+                    if (tile_info.type,(rel_pos,variant),side) not in self._tile_colors:
+                        texture_coords = (TILE_ATLAS_POSITIONS[tile_info.type][0] + variant * tile_info.tile_size[0] + int((tile_info.tile_size[0]-1) *sample_side_ratio[0]),\
+                                        TILE_ATLAS_POSITIONS[tile_info.type][1] + rel_pos* tile_info.tile_size[1] + int((tile_info.tile_size[1]-1) * sample_side_ratio[1]))
+                        color = tuple(image_data[texture_coords[1],texture_coords[0]])
+                        self._tile_colors[(tile_info.type,(rel_pos,variant),side)] = color
+
+
+
+
+
     
-    def merge_regular_rectangles(rect_dict, tile_size=16):
+    def _precompute_texture_coordinates(self):
+        self._texcoord_dict = {}
+        for key in self.physical_tiles:
+            tile_info_list = self.physical_tiles[key]
+            tile_info = tile_info_list[0]
+            door_data = None 
+            if (tile_info.type,tile_info.variant) not in self._texcoord_dict:
+                if tile_info.type == 'trap_door':
+                    door_data = tile_info_list[1]
+                elif tile_info.type == 'building_door':
+                    door_data = tile_info_list[1]
+                texture_coords = self._get_texture_coords_for_tile(tile_info,door_data)
+                self._texcoord_dict[(tile_info.type,tile_info.variant)] = texture_coords
+
+        for i,dict in enumerate(self.non_physical_tiles):
+            for key in dict:
+                tile_info = dict[key]
+                if (tile_info.type,tile_info.variant) not in self._texcoord_dict:
+                    texture_coords = self._get_texture_coords_for_tile(tile_info)
+                    self._texcoord_dict[(tile_info.type,tile_info.variant)] = texture_coords
+ 
+    def _get_texture_coords_for_tile(self,tile_info:TileInfo,door_data:DoorAnimation|bool= None):
+        # Fetch the texture from the atlas based on tile type and variant
+        if not door_data:
+            rel_pos,variant = map(int,tile_info.variant.split(';'))
+            tile_type = tile_info.type
+
+            x = (TILE_ATLAS_POSITIONS[tile_type][0] + variant * tile_info.tile_size[0]) / self._texture_atlas.size[0] 
+            y = (TILE_ATLAS_POSITIONS[tile_type][1] + rel_pos * tile_info.tile_size[1]) / self._texture_atlas.size[1] 
+
+            w = tile_info.tile_size[0] /self._texture_atlas.size[0]
+            h = tile_info.tile_size[1] / self._texture_atlas.size[1]
+            
+            p1 = (x, y + h) 
+            p2 = (x + w, y + h) 
+            p3 = (x, y) 
+            p4 = (x + w, y) 
+            tex_coords = np.array([p1, p2, p3,
+                                p3, p2, p4], dtype=np.float32)
+        
+        else: 
+            if isinstance(door_data,DoorAnimation):
+                pass 
+            else: 
+                pass 
+
+        return tex_coords
+
+
+
+    def _create_rectangles(self,tile_info: TileInfo) -> tuple[int,int,int,int]:
+        return get_tile_rectangle(tile_info,self.tile_size,self.physical_tiles)
+        
+          
+    def _create_hulls(self):
         """
         Merges rectangles in a dictionary where only rectangles of type "regular" are merged.
         
@@ -341,18 +262,14 @@ class Tilemap:
         :return: List of merged rectangles [(x1, y1, x2, y2)].
         """
         # Convert rect_dict into a list of rectangles with positions
-        rectangles = []
-        for pos, tile_info_list  in self._physical_tiles.items():
+        self._rectangles = []
+        for pos,tile_info_list  in sorted(self._physical_tiles.items()):
             tile_info = tile_info_list[0]
-            
-            if tile_info.type.endswith("door") or tile_info.type == "lights":
-                continue 
-            else: 
-                x1 = pos[0]* tile_size
-                y1 = pos[1]* tile_size
-                x2 = x1 + tile_info.tile_size[0] 
-                y2 = y1 + tile_info.tile_size[1] 
-                rectangles.append((x1, y1, x2, y2))
+            if tile_info.type != 'spawners' and tile_info.type != 'lights':
+                self._rectangles.extend(self._create_rectangles(tile_info))
+
+        # extend rectangle sides for tiles with neighbors
+        
 
         merged = True
         while merged:
@@ -360,13 +277,13 @@ class Tilemap:
             new_rectangles = []
             skip = set()
 
-            for i, rect1 in enumerate(rectangles):
+            for i, rect1 in enumerate(self._rectangles):
                 if i in skip:
                     continue
                 x1, y1, x2, y2 = rect1
                 merged_with_other = False
 
-                for j, rect2 in enumerate(rectangles):
+                for j, rect2 in enumerate(self._rectangles):
                     if i == j or j in skip:
                         continue
 
@@ -381,6 +298,7 @@ class Tilemap:
                         merged_with_other = True
                         merged = True
                         break
+                    # check if rectangles are horizontally next to each other, and extend axis if needed 
                     elif (x1 == a1 and x2 == a2 and (y1 == b2 or y2 == b1)):  # Vertical touch
                         # Merge vertically
                         new_rectangles.append((x1, min(y1, b1), x2, max(y2, b2)))
@@ -389,81 +307,25 @@ class Tilemap:
                         merged_with_other = True
                         merged = True
                         break
+                    elif (): 
+                        pass 
 
                 if not merged_with_other:
                     new_rectangles.append(rect1)
 
             # Update rectangles with the newly merged ones
-            rectangles = new_rectangles
+            self._rectangles = new_rectangles
 
-        return rectangles
+        # hull vertices order: topleft, topright, bottomright, bottomleft
 
+        self._hulls = [] 
 
-    def _get_hull_grid_mapping(self):
-        """
-        Groups tiles into the smallest possible rectangles and maps grid positions to their corresponding hulls.
+         
+        for rectangle in self._rectangles:
 
-        :param tile_dict: Dictionary where keys are grid positions (x, y) and values are tile objects.
-        :return: Dictionary mapping grid positions to their corresponding hull objects.
-        """
-        # Sorting the grid positions
-        sorted_positions = sorted(self._physical_tiles.keys())
-
-        # List to store rectangles and dictionary for grid mapping
-        hulls = []
-        self._hull_grid_mapping = {}
-
-        current_rectangle = None
-
-
-        def create_rectangle(x1, y1, x2, y2):
-            vertices = ((x1,y1),(x2,y1),(x2,y2),(x1,y2))
-            hull = Hull(vertices,enabled= True)
-            hulls.append(hull)
-
-
-            # Calculate the grid cells spanned by this rectangle
-            grid_start_x = x1 // self._regular_tile_size
-            grid_start_y = y1 // self._regular_tile_size
-            grid_end_x = (x2 - 1) // self._regular_tile_size  # Subtract 1 to avoid overshooting
-            grid_end_y = (y2 - 1) // self._regular_tile_size
-
-            # Map all grid cells covered by the rectangle to this hull
-            for grid_x in range(grid_start_x, grid_end_x + 1):
-                for grid_y in range(grid_start_y, grid_end_y + 1):
-                    if (grid_x, grid_y) not in self._hull_grid_mapping:  # Avoid duplicates
-                        self._hull_grid_mapping[(grid_x, grid_y)] = hull
-
-        for position in sorted_positions:
-            x, y =position 
-            tile_width, tile_height = self._regular_tile_size,self._regular_tile_size 
-
-            # If no current rectangle, start one
-            if current_rectangle is None:
-                current_rectangle = (x * self._regular_tile_size, y * self._regular_tile_size, 
-                                    (x+1) * self._regular_tile_size,(y +1) * self._regular_tile_size)
-            else:
-                # Check if the tile can be added to the current rectangle
-                current_x1, current_y1, current_x2, current_y2 = current_rectangle
-                if y == current_y1 //self._regular_tile_size or x == current_x2 //self._regular_tile_size:
-                    current_rectangle = (
-                        current_x1,current_y1, 
-                        current_x2 + tile_width, current_y2
-                    )
-                else:
-                    # Finalize the current rectangle and start a new one
-                    create_rectangle(*current_rectangle)
-                    current_rectangle = (x * self._regular_tile_size, y * self._regular_tile_size, 
-                                        (x+1) * self._regular_tile_size, (y+1)  * self._regular_tile_size)
-
-        # Add the last rectangle if any
-        if current_rectangle:
-            create_rectangle(*current_rectangle)
-
-
-
-
-
+            x1, y1, x2, y2 = rectangle
+            self._hulls.append(Hull( vertices=[(x1, y1), (x2, y1), (x2, y2), (x1, y2)]))
+    
 
     def get_lights(self) -> list[PointLight]:
         """
@@ -477,22 +339,6 @@ class Tilemap:
 
         return self.lights
     
-
-    def update_shadow_objs(self, native_res,camera_scroll):
-        queried_hulls = []
-
-        x_start = camera_scroll[0] // self.tile_size - 10
-        x_end = (camera_scroll[0] + native_res[0]) // self.tile_size + 10
-        y_start = camera_scroll[1] // self.tile_size - 10
-        y_end = (camera_scroll[1] + native_res[1]) // self.tile_size + 10
-        
-        for x_cor in range(x_start, x_end):
-            for y_cor in range(y_start, y_end):
-                coor = (x_cor,y_cor)
-                if coor in self._hull_grid_mapping:
-                    queried_hulls.append(self._hull_grid_mapping[coor])
-        return queried_hulls
-                    
 
 
     def tiles_around(self,pos,size) -> list[TileInfo]:
@@ -532,11 +378,20 @@ class Tilemap:
 
         return tiles
 
+
+    def get_at(self,check_pos,side):
+        coor =(check_pos[0] // self.tile_size , check_pos[1] //self.tile_size)       
+        tile_info_list = self._physical_tiles[coor]
+        tile_info = tile_info_list[0] 
+        rel_pos,variant = map(int,tile_info.variant.split(';'))
+        return self._tile_colors[(tile_info.type,(rel_pos,variant),side)]
+
+
     
     def solid_check(self,check_pos) -> bool:
-        return False 
-        
-
+        coor =(check_pos[0]//self.tile_size,check_pos[1]//self.tile_size)
+        return coor  in self.physical_tiles\
+                and self.physical_tiles[coor][0].type in PHYSICS_APPLIED_TILE_TYPES
 
     def phy_rects_around(self,pos,size)->tuple[Rect,TileInfo]:
         surrounding_rects = []

@@ -1,6 +1,7 @@
 from pygame import Rect
 from scripts.new_tilemap import Tilemap
 from scripts.custom_data_types import AnimationDataCollection,AnimationData
+from random import choice as random_choice
 
 class PhysicsEntity: 
     def __init__(self,type:str,pos:list[float,float],size:tuple[int,int]):
@@ -190,6 +191,8 @@ class Player(PhysicsEntity):
         self.air_time = 0
         self.on_ladder = False
 
+        self.changing_done = False 
+        self.change_weapon_inc = False 
         self.holding_gun = False 
         self.running = False 
         self.y_inertia = 0
@@ -252,7 +255,6 @@ class Player(PhysicsEntity):
                 if self.collisions['right']:
                     
                     self.velocity[0] = -4.2
-                #self.accel_up() 
                 
                 self.velocity[1] =-4.4
                 
@@ -263,7 +265,6 @@ class Player(PhysicsEntity):
         if self.jump_count == 2:
             if self.state == 'jump_down':
                 self.jump_count -=2
-                #self.accel_up() 
 
                 self.velocity[1] = -4.4
                 
@@ -271,13 +272,11 @@ class Player(PhysicsEntity):
                 #self.game.add_particle(air)
             else: 
                 self.jump_count -=1
-                #self.accel_up() 
 
                 self.velocity[1] = -4.4    
             
         elif self.jump_count ==1: 
             self.jump_count -=1
-            #self.accel_up() 
             self.velocity[1] = -4.4  
             #air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
             #self.game.add_particle(air)
@@ -332,12 +331,12 @@ class Player(PhysicsEntity):
         self.stamina = min(100, self.stamina + self.recov_rate)
         self.air_time +=1
         
-        """
+        
         self.changing_done = min(2,self.change_weapon_inc + self.changing_done)
         if self.changing_done == 2:
              
             self.change_weapon(self.change_scroll)
-        """        
+                
 
         if self.velocity[1] >=2:
             self.y_inertia += 1 
@@ -358,18 +357,15 @@ class Player(PhysicsEntity):
                 self.set_state('land')
             entry_pos = (self._collision_rect().centerx,self._collision_rect().bottom)
             for offset in range(-tilemap.tile_size, tilemap.tile_size, 4):
-            #(0,-tile_map.tile_size,tile_map.tile_size):
                 if tilemap.solid_check((entry_pos[0]+offset,entry_pos[1])):
-                    break
-                    color = tile_map.return_color((entry_pos[0]+offset,entry_pos[1]),side ='top')
+                    color = tilemap.get_at((entry_pos[0]+offset,entry_pos[1]),side ='top')
 
 
 
             offsets = [(-2,0),(-1,0), (0,0), (1,0),(2,0)]                
             for i in range(min(8,self.y_inertia//2)):
-                break
-                offset = random.choice(offsets)
-                self.game.add_non_anim_particle(bullet_collide_particle(random.choice([(1,1),(2,1),(1,2),(3,1),(1,3),(2,2)]), (entry_pos[0] - offset[0],entry_pos[1] ) ,-90 + random.randint(-88,88),2.4+random.random(),color,tile_map,gravity_factor= 1.4 * min(8,self.y_inertia//2)/5))
+                offset = random_choice(offsets)
+                #self.game.add_non_anim_particle(bullet_collide_particle(random.choice([(1,1),(2,1),(1,2),(3,1),(1,3),(2,2)]), (entry_pos[0] - offset[0],entry_pos[1] ) ,-90 + random.randint(-88,88),2.4+random.random(),color,tile_map,gravity_factor= 1.4 * min(8,self.y_inertia//2)/5))
         
 
 

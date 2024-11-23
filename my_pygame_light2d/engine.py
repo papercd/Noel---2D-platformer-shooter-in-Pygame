@@ -44,7 +44,6 @@ class RenderEngine:
         self._true_to_native_ratio = true_to_screen_res_ratio 
         self._screen_res = screen_res
         self._true_res = true_res 
-        self._true_res_diagonal_length = math.sqrt(self._true_res[0]**2 + self._true_res[1] **2)
 
         self._diagonal = math.sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
         self._lightmap_res = true_res 
@@ -60,7 +59,7 @@ class RenderEngine:
         # Initialize public members
         self.lights: list[PointLight] = []
         self.hulls: list[Hull] = []
-        self.shadow_blur_radius: int = 5
+        self.shadow_blur_radius: int =5
 
         # Create an OpenGL context
         self.ctx = context
@@ -77,45 +76,21 @@ class RenderEngine:
         # Create SSBO for hull vertices
         self._create_ssbos()
 
-    def _check_and_configure_pygame(self):
-        # Check that pygame has been initialized
-        assert pygame.get_init(), 'Error: Pygame is not initialized. Please ensure you call pygame.init() before using the lighting engine.'
-
-        # Set OpenGL version to 3.3 core
-        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
-        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
-        pygame.display.gl_set_attribute(
-            pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
-
-        # Configure pygame display
-        self._pygame_display = pygame.display.set_mode(
-            self._screen_res, pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF)
-        
-        
-
-        # initialize thorpy for gui elements 
 
     def _load_shaders(self):
         # Read source files
         with open('my_pygame_light2d/vertex.glsl',encoding='utf-8') as file:
             vertex_src = file.read()
+        with open('my_pygame_light2d/fragment_light.glsl',encoding='utf-8') as file:
+            fragment_src_light= file.read()
 
-
-        fragment_src_light = resources.read_text(
-            'pygame_light2d', 'fragment_light.glsl')
-        fragment_src_blur = resources.read_text(
-            'pygame_light2d', 'fragment_blur.glsl')
-
-               
-        # Read source files
+        with open('my_pygame_light2d/fragment_blur.glsl',encoding='utf-8') as file:
+            fragment_src_blur= file.read()
 
         with open('my_pygame_light2d/fragment_mask.glsl', encoding='utf-8') as file:
-           
             fragment_src_mask = file.read()
-            
 
         with open('my_pygame_light2d/fragment_draw.glsl', encoding='utf-8') as file:
-           
             fragment_src_draw = file.read()
             
         # Create shader programs
@@ -266,28 +241,7 @@ class RenderEngine:
         query_pos,tex_size = CURSOR_ATLAS_POSITIONS[self._cursor.state]
         self._render_tex_to_fbo(tex_atlas,fbo,pygame.Rect(*self._cursor.pos,*tex_size),pygame.Rect(*query_pos,*tex_size))
 
-
-    def _precompute_texture_coordinates(self):
-        self._texcoord_dict = {}
-        for key in self._tilemap.physical_tiles:
-            tile_info_list = self._tilemap.physical_tiles[key]
-            tile_info = tile_info_list[0]
-            door_data = None 
-            if (tile_info.type,tile_info.variant) not in self._texcoord_dict:
-                if tile_info.type == 'trap_door':
-                    door_data = tile_info_list[1]
-                elif tile_info.type == 'building_door':
-                    door_data = tile_info_list[1]
-                texture_coords = self._get_texture_coords_for_tile(tile_info,door_data)
-                self._texcoord_dict[(tile_info.type,tile_info.variant)] = texture_coords
-
-        for i,dict in enumerate(self._tilemap.non_physical_tiles):
-            for key in dict:
-                tile_info = dict[key]
-                if (tile_info.type,tile_info.variant) not in self._texcoord_dict:
-                    texture_coords = self._get_texture_coords_for_tile(tile_info)
-                    self._texcoord_dict[(tile_info.type,tile_info.variant)] = texture_coords
-                
+               
 
     def _render_tilemap(self, fbo: moderngl.Framebuffer, offset):
         # fetch the background framebuffer
@@ -310,7 +264,7 @@ class RenderEngine:
                         
 
                         # Get texture coords for the tile 
-                        texture_coords = self._texcoord_dict[(tile_info.type,tile_info.variant)]
+                        texture_coords = self._tilemap._texcoord_dict[(tile_info.type,tile_info.variant)]
 
                         # Get the tile vertex coordinates 
                         vertices = self._create_tile_vertices(tile_info,offset,fbo_w,fbo_h)
@@ -326,7 +280,7 @@ class RenderEngine:
                         
                     
                     # Get texture coordinates for the tile 
-                    texture_coords = self._texcoord_dict[(tile_info.type,tile_info.variant)]
+                    texture_coords = self._tilemap._texcoord_dict[(tile_info.type,tile_info.variant)]
 
                     # Create the vertex data (tile positions and texture coordinates)
                     vertices = self._create_tile_vertices(tile_info,offset,fbo_w,fbo_h)
@@ -347,33 +301,7 @@ class RenderEngine:
             self._render_tiles(vbo,fbo)
 
 
-    def _get_texture_coords_for_tile(self,tile_info:TileInfo,door_data:DoorAnimation|bool= None):
-        # Fetch the texture from the atlas based on tile type and variant
-        if not door_data:
-            rel_pos,variant = map(int,tile_info.variant.split(';'))
-            tile_type = tile_info.type
-
-            x = (TILE_ATLAS_POSITIONS[tile_type][0] + variant * 16) / self._tilemap.texture_atlas.size[0] 
-            y = (TILE_ATLAS_POSITIONS[tile_type][1] + rel_pos * 16) / self._tilemap.texture_atlas.size[1] 
-
-            w = 16 /self._tilemap.texture_atlas.size[0]
-            h = 16 / self._tilemap.texture_atlas.size[1]
-            
-            p1 = (x, y + h) 
-            p2 = (x + w, y + h) 
-            p3 = (x, y) 
-            p4 = (x + w, y) 
-            tex_coords = np.array([p1, p2, p3,
-                                p3, p2, p4], dtype=np.float32)
-        
-        else: 
-            if isinstance(door_data,DoorAnimation):
-                pass 
-            else: 
-                pass 
-
-        return tex_coords
-
+   
     def _create_tile_vertices(self, tile_info:TileInfo ,offset, fbo_w,fbo_h):
         # Calculate screen-space position and texture coordinates for a tile
         tile_pos = tile_info.tile_pos
@@ -798,7 +726,6 @@ class RenderEngine:
 
     def bind_tilemap(self,tilemap:Tilemap) -> None:
         self._tilemap = tilemap
-        self._precompute_texture_coordinates()
 
     def bind_entities_atlas(self,entities_atl:moderngl.Texture) -> None:
         self._entities_atl = entities_atl
@@ -806,9 +733,6 @@ class RenderEngine:
     def bind_background(self,background:list[moderngl.Texture]) -> None: 
         self._background = background
     
-    def check_requirements(self): 
-        assert self._background and self._tilemap and self._entities_atl and self._player, f"Error,engine has unbound objects: {self._get_unbound_objects()}"
-
     
     def render_scene_with_lighting(self,range,offset,screen_shake):
         """
@@ -1011,18 +935,46 @@ class RenderEngine:
     
 
 
-    def render_rectangles(self,offset):
-        for rectangle in self._tilemap.rectangles:
-            surf = pygame.Surface((rectangle[2]- rectangle[0], rectangle[3] -rectangle[1])).convert_alpha()
-            surf.fill((0,0,0,0))
-            pygame.draw.rect(surf,(244,244,244,244),(0,0,rectangle[2] - rectangle[1], rectangle[3] - rectangle[1]),width= 1, border_radius=2)
-            tex = self.surface_to_texture(surf)
-            self.render_texture(
-                tex,Layer_.FOREGROUND,
-                dest = pygame.Rect(rectangle[0] - offset[0], rectangle[1] - offset[1], rectangle[2] - rectangle[0],rectangle[3]- rectangle[1]),
-                source= pygame.Rect(0 , 0, rectangle[2] - rectangle[0],rectangle[3]- rectangle[1])
+    def render_rectangles(self, offset):
+        # Create a buffer surface for drawing all rectangles at once
+        buffer_surf = pygame.Surface(self._true_res).convert_alpha()
+        buffer_surf.fill((0, 0, 0, 0))
+
+        # Iterate over rectangles
+        for rectangle in self._tilemap._rectangles:
+            # Rectangle properties
+            rect_x, rect_y, rect_x2, rect_y2 = rectangle
+            rect_w = rect_x2 - rect_x
+            rect_h = rect_y2 - rect_y
+
+
+            # Calculate screen position relative to the offset
+            screen_x = rect_x - offset[0]
+            screen_y = rect_y - offset[1]
+
+            # Check if the rectangle is within the visible screen
+            if 0 <= screen_x < self._true_res[0] and 0 <= screen_y < self._true_res[1]:
+                # Draw the rectangle directly onto the buffer surface
+                pygame.draw.rect(
+                    buffer_surf,
+                    (244, 244, 244, 244),  # Color with alpha
+                    pygame.Rect(screen_x, screen_y, rect_w, rect_h),  # Position and size
+                    width=1,  # Line width
                 )
-            tex.release()
+
+        # Convert the buffer surface to a texture
+        tex = self.surface_to_texture(buffer_surf)
+
+        # Render the texture
+        self.render_texture(
+            tex,
+            Layer_.FOREGROUND,
+            dest=pygame.Rect(0, 0, tex.width, tex.height),
+            source=pygame.Rect(0, 0, tex.width, tex.height),
+        )
+
+        # Release the texture
+        tex.release()
 
             
     
