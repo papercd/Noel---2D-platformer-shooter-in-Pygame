@@ -14,8 +14,8 @@ PLAYER_ANIMATION_DATA = [
 
 PARTICLE_ANIMATION_DATA = {
     'jump': AnimationData('jump',9,2,True,False),
-    'land': AnimationData('land',3,5,True,False),
-    'big_land': AnimationData('big_land',2,5,True,False),
+    'land': AnimationData('land',4,2,True,False),
+    'big_land': AnimationData('big_land',11,2,True,False),
 }
 
 

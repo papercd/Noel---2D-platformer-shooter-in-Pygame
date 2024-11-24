@@ -341,31 +341,32 @@ class Player(PhysicsEntity):
 
 
         if self.collisions['down']:
+            particle_system = ParticleSystem.get_instance()
             if self.y_inertia > 6:
                 self.set_state('land')
 
-            particle_system = ParticleSystem.get_instance()
 
-            entry_pos = (self._collision_rect().centerx,self._collision_rect().bottom)
-            for offset in range(-tilemap.tile_size, tilemap.tile_size, 4):
-                if tilemap.solid_check((entry_pos[0]+offset,entry_pos[1])):
-                    color = tilemap.get_at((entry_pos[0]+offset,entry_pos[1]),side ='top')
-
+                entry_pos = (self._collision_rect().centerx,self._collision_rect().bottom)
+                for offset in range(-tilemap.tile_size, tilemap.tile_size, 4):
+                    if tilemap.solid_check((entry_pos[0]+offset,entry_pos[1])):
+                        color = tilemap.get_at((entry_pos[0]+offset,entry_pos[1]),side ='top')
 
 
-            offsets = [(-2,0),(-1,0), (0,0), (1,0),(2,0)]                
-            for i in range(min(8,self.y_inertia//2)):
-                offset = random_choice(offsets)
-                random_factor = random()
-                particle_data = CollideParticleData(random_choice([(1,1),(2,1),(1,2),(3,1),(1,3),(2,2)]), [entry_pos[0] - offset[0],entry_pos[1]] ,\
-                                                    -90 + randint(-88,88),2.4+random_factor,color,life= 40 + 20 * random_factor , gravity_factor= 1.4 * min(8,self.y_inertia//2)/5)
-                particle_system.add_particle(particle_data)
+
+                offsets = [(-2,0),(-1,0), (0,0), (1,0),(2,0)]                
+                for i in range(max(8,self.y_inertia//2)):
+                    offset = random_choice(offsets)
+                    random_factor = random()
+                    particle_data = CollideParticleData((1,1), [entry_pos[0] - offset[0],entry_pos[1] - 2] ,\
+                                                        -90 + randint(-88,88),2.4+random_factor,color,life= 40 + 20 * random_factor , gravity_factor= 1.2)
+                    particle_system.add_particle(particle_data)
         
 
 
             if self.y_inertia > 12 and self.y_inertia <35:
-                
-                pass
+                particle_data = AnimationParticleData('land',[self.pos[0] +8,self.pos[1]+14],velocity=[0,0],source='player')
+                particle_system.add_particle(particle_data)
+                self.hard_land_recovery_time = 7
                 """
                 land_smoke = Particle(self.game,'land',(self.pos[0] +8,self.pos[1]+14),'player')
                 self.game.add_particle(land_smoke)
@@ -374,12 +375,11 @@ class Player(PhysicsEntity):
                 """
                 #self.set_state('land')
                 
-
-                
-                
                 
             elif self.y_inertia >= 35:
-                pass 
+                particle_data = AnimationParticleData('big_land',[self.pos[0] +7,self.pos[1]+7],velocity=[0,0],source='player')
+                particle_system.add_particle(particle_data)
+                self.hard_land_recovery_time = 20
                 """
                 land_smoke = Particle(self.game,'big_land',(self.pos[0] +7,self.pos[1]+7),'player')
                 self.game.add_particle(land_smoke)

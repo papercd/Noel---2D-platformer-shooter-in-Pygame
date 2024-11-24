@@ -1,5 +1,6 @@
 from random import choice ,randint
 from scripts.new_tilemap import Tilemap
+from pygame import Surface
 from pygame.math import Vector2 as vec2 
 from pygame import Rect
 from math import cos,sin,radians,sqrt,degrees,atan2
@@ -120,10 +121,13 @@ class PhysicalParticle:
         self._life = particle_data.life 
         self._color = particle_data.color
         self._gravity_factor = particle_data.gravity_factor
+        self._rect = Rect(self._pos[0],self._pos[1],self._size[0],self._size[1])
+        self._buffer_surf = Surface(self._size).convert_alpha()
         self._active = False 
 
     def set_new_data(self,particle_data:CollideParticleData):
-        self._size = particle_data.size 
+        # size is not changed as it is predetermined 
+
         self._pos = particle_data.pos
         self._angle  =particle_data.angle 
         self._speed = particle_data.speed
@@ -131,6 +135,8 @@ class PhysicalParticle:
         self._color = particle_data.color
         self._gravity_factor = particle_data.gravity_factor
         self._velocity = [0,0]
+        self._buffer_surf.fill(self._color)
+        self._rect = Rect(self._pos[0],self._pos[1],self._size[0],self._size[1])
 
     def update(self,tilemap:Tilemap):
         # testing 
@@ -138,17 +144,42 @@ class PhysicalParticle:
         if self._life <= 0:
             return True
         
-        self._velocity[1] = min(5,self._velocity[1] +0.20 / self._gravity_factor)
+        self._velocity[1] = min(6,self._velocity[1] +0.20 * self._gravity_factor)
 
         for rect_tile in tilemap.phy_rects_around(self._pos,self._size):
             if self._rect.colliderect(rect_tile[0]):
-                return True 
+                rel_pos,variant = map(int,rect_tile[1].variant.split(';'))
+                if rect_tile[1].type == 'stairs' and rel_pos in [0,1]:
+                    if rel_pos == 0:
+                        check_rects = [Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
+                                       Rect(rect_tile[0].left + 12,rect_tile[0].top,4,12),
+                                       Rect(rect_tile[0].left + 6,rect_tile[0].top + 6,6,6)
+                                       ]
+                        for check_rect in check_rects:
+                            if self._rect.colliderect(check_rect):
+                                return True 
+                    else:
+                        check_rects = [Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
+                                       Rect(rect_tile[0].left,rect_tile[0].top,4,12),
+                                       Rect(rect_tile[0].left + 4,rect_tile[0].top + 6,6,6)
+                                       ]
+                        for check_rect in check_rects:
+                            if self._rect.colliderect(check_rect):
+                                return True 
+                else: 
+                    return True 
+        self._pos[0] += cos(radians(self._angle)) * self._speed
+        self._pos[1] += sin(radians(self._angle)) * self._speed
+        self._pos[1] += self._velocity[1]
+        self._rect.topleft = self._pos
+
+        self._speed = max(0,self._speed -0.1)
+
         return False 
     
 class FireParticle:
     def __init__(self,particle_data:FireParticleData):
        
-       #save opening pos for later collision detection 
         self.origin = (particle_data.x,particle_data.y) 
        
         # -------------   predetermined particle parameters 
@@ -306,7 +337,6 @@ class FireParticle:
 
 
     def update_pos(self,tilemap,j):
-        #print(self.rise_normal.angle_to(pygame.math.Vector2(1,0)))
         self.damage = max(2,int(self.damage * (self.life/self.maxlife)))
 
         self.life -=1
@@ -320,10 +350,6 @@ class FireParticle:
        
         self.i = int((self.life/self.maxlife)*6)
        
-        #collision detection with tiles - make these ballistic particles. 
-        #surround the particle with a rectangle with side length of twice its radius and check for rects 
-        ##change the direction of the particle.
-
 
 
         frame_movement = [
@@ -343,7 +369,6 @@ class FireParticle:
              
             side_point,collided = self.collide_with_rect(rect_tile[0])
             if collided: 
-                #print(rect_tile[1].type)
                 if not rect_tile[1].type == 'stairs':
                     if rect_tile[1].type =='live_grass':
                         loc = (rect_tile[1].pos[0]//16,rect_tile[1].pos[1]//16)
@@ -418,81 +443,7 @@ class FireParticle:
                                 break 
 
                         
-
-                     
                          
-
-        """
-        entity_rect = self.rect()
-        for rect_tile in tilemap.physics_rects_around((self.pos[0] - self.r,self.pos[1] - self.r),(self.r * 2,self.r * 2)):
-            if self.collide_with_rect(rect_tile[0]):
-                if not rect_tile[1].type == 'stairs':
-                    incid_angle = math.degrees(math.atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
-                    print(incid_angle,self.rise_angle)
-                    self.rise_angle = -180 + incid_angle 
-                    if frame_movement[0] > 0:
-                        
-                        self.x = rect_tile[0].left - self.r 
-                 
-                        pass
-                    if frame_movement[0] < 0:
-                        self.x = rect_tile[0].right + self.r 
-                        #entity_rect.left = rect_tile[0].right 
-                       
-                        pass 
-                    #self.x = entity_rect.x + self.r
-        
-
-        
-        
-        entity_rect = self.rect()
-        for rect_tile in tilemap.physics_rects_around((self.pos[0] - self.r,self.pos[1] - self.r),(self.r * 2,self.r * 2)):
-            if self.collide_with_rect(rect_tile[0]):
-                if not rect_tile[1].type == 'stairs':
-                    incid_angle = math.degrees(math.atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
-                    self.rise_angle = incid_angle
-                    if frame_movement[1] > 0:
-                        
-                        self.y = rect_tile[0].top - self.r
-                        #self.collisions['right'] = True
-                        
-              
-                        #you need to push away the tile.
-                        pass
-                    if frame_movement[1] < 0:
-                        self.y = rect_tile[0].bottom + self.r
-                        #self.collisions['left'] = True
-                     
-                        pass 
-                    #self.y = entity_rect.y + self.r
-                else: 
-                    pass 
-                
-        """
-                
-
-        
-
-        """
-        entity_rect = self.rect()
-        for rect_tile in tilemap.physics_rects_around((self.pos[0] - self.r,self.pos[1] - self.r),(self.r * 2,self.r * 2)):
-            if self.collide_with_rect(rect_tile[0]):
-                if not rect_tile[1].type == 'stairs':
-                    
-                    if frame_movement[1] > 0: 
-                        
-                        entity_rect.bottom = rect_tile[0].top  
-                        #self.collisions['right'] = True
-                        pass 
-                    if frame_movement[1] < 0: 
-                        
-                        entity_rect.top = rect_tile[0].bottom
-                        #self.collisions['left'] = True
-                        pass 
-                    #self.y = entity_rect.y 
-        """
-
-        
         self.pos = [self.x,self.y]
 
         if not randint(0, 5): 

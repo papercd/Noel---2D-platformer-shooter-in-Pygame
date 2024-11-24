@@ -988,6 +988,15 @@ class RenderEngine:
                 dest = pygame.Rect(particle.pos[0]-size[0]//2-camera_scroll[0],particle.pos[1]-size[1]//2-camera_scroll[1],size[0],size[1]),
                 source = pygame.Rect(atlas_pos[0]+size[0]*cur_frame,atlas_pos[1],size[0],size[1])
             )
+        for particle in list(particle_system._active_collide_particles):
+            buffer_surf = particle._buffer_surf
+            tex = self.surface_to_texture(buffer_surf)
+            self.render_texture(tex,Layer_.BACKGROUND,
+                dest = pygame.Rect(particle._pos[0]-camera_scroll[0],particle._pos[1]-camera_scroll[1],tex.width,tex.height),
+                source = pygame.Rect(0,0,tex.width,tex.height)
+            )
+            tex.release()
+        
         
             
     

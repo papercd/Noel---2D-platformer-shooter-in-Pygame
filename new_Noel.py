@@ -4,6 +4,7 @@ import platform
 from os import environ,listdir
 from json import load  as jsLoad
 
+from scripts.new_HUD import HUD
 from scripts.new_grass import GrassManager
 from scripts.new_particles import ParticleSystem
 from scripts.new_cursor import Cursor 
@@ -63,6 +64,7 @@ class Noel():
         self.player.set_default_speed(2.2)
         self._player_movement_input = [0,0]
         self._grass_manager = GrassManager()
+        self._hud = HUD(self._atlas_dict['UI'],self.player,self._true_res)
 
     def _initalize_game_settings(self):
         self._system_display_info = self._get_system_display_info()
@@ -190,7 +192,7 @@ class Noel():
         dict['entities'] = load_texture(TEXTURE_BASE_PATH + 'entities/entities_atlas.png',self._ctx)
         dict['cursor'] = load_texture(TEXTURE_BASE_PATH +'cursor/cursor_atlas.png',self._ctx)
         dict['particles'] = load_texture(TEXTURE_BASE_PATH + 'particles/animation_atlas.png',self._ctx)
-
+        dict['UI'] = load_texture(TEXTURE_BASE_PATH + 'ui/ui_atlas.png',self._ctx)
 
         return dict
 
