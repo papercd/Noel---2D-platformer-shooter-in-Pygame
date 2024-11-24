@@ -116,6 +116,7 @@ class PhysicalParticle:
         self._pos = particle_data.pos
         self._angle  =particle_data.angle 
         self._speed = particle_data.speed
+        self._velocity = [0,0]
         self._life = particle_data.life 
         self._color = particle_data.color
         self._gravity_factor = particle_data.gravity_factor
@@ -129,9 +130,19 @@ class PhysicalParticle:
         self._life = particle_data.life 
         self._color = particle_data.color
         self._gravity_factor = particle_data.gravity_factor
+        self._velocity = [0,0]
 
     def update(self,tilemap:Tilemap):
         # testing 
+        self._life -=1
+        if self._life <= 0:
+            return True
+        
+        self._velocity[1] = min(5,self._velocity[1] +0.20 / self._gravity_factor)
+
+        for rect_tile in tilemap.phy_rects_around(self._pos,self._size):
+            if self._rect.colliderect(rect_tile[0]):
+                return True 
         return False 
     
 class FireParticle:

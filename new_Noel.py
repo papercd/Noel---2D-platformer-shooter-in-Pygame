@@ -251,8 +251,6 @@ class Noel():
                         self._cursor.special_actions = False 
                     
 
-                    
-
 
 
     def _update_render(self):

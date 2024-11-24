@@ -15,7 +15,7 @@ from scripts.new_entities import Player
 from scripts.new_cursor import Cursor
 from scripts.custom_data_types import TileInfo
 from scripts.layer import Layer_
-from scripts.atlass_positions import TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS,TEXT_DIMENSIONS,TEXT_ATLAS_POSITIONS
+from scripts.atlass_positions import TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS,TEXT_DIMENSIONS,TEXT_ATLAS_POSITIONS,PARTICLE_ATLAS_POSITIONS_AND_SIZES
 from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
@@ -981,13 +981,13 @@ class RenderEngine:
     def render_particles_to_fbo(self,camera_scroll):
         particle_system = ParticleSystem.get_instance()
         for particle in list(particle_system._active_animation_particles):
-            print(particle)
-            """
-            self.blit_texture(
-                tex = particle_system._texture_atl,
-                dest = pygame.Rect(),
-                source = pygame.Rect()
-            )"""
+            cur_frame = particle.animation.curr_frame()
+            atlas_pos,size = PARTICLE_ATLAS_POSITIONS_AND_SIZES[particle.type]
+            self.render_texture(
+                particle_system._texture_atl,Layer_.BACKGROUND,
+                dest = pygame.Rect(particle.pos[0]-size[0]//2-camera_scroll[0],particle.pos[1]-size[1]//2-camera_scroll[1],size[0],size[1]),
+                source = pygame.Rect(atlas_pos[0]+size[0]*cur_frame,atlas_pos[1],size[0],size[1])
+            )
         
             
     

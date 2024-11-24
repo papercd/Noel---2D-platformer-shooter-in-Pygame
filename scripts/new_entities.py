@@ -1,9 +1,9 @@
 from pygame import Rect
 from scripts.new_tilemap import Tilemap
 from scripts.new_particles import ParticleSystem
-from scripts.custom_data_types import AnimationParticleData,Animation
+from scripts.custom_data_types import AnimationParticleData,Animation,CollideParticleData
 from scripts.animationData import PlayerAnimationDataCollection
-from random import choice as random_choice
+from random import choice as random_choice,random,randint
 
 
 class PhysicsEntity: 
@@ -238,18 +238,21 @@ class Player(PhysicsEntity):
 
 
     def jump(self):
+        particle_system = ParticleSystem.get_instance()
+        WALL_JUMP_SPEED = 4.2
+        JUMP_SPEED =4.4
+
         if self.wall_slide: 
                 self.jump_count = 1
                 
                 if self.collisions['left']:
                     
-                    self.velocity[0] =  4.2
+                    self.velocity[0] =  WALL_JUMP_SPEED
                 if self.collisions['right']:
                     
-                    self.velocity[0] = -4.2
+                    self.velocity[0] = -WALL_JUMP_SPEED
                 
-                self.velocity[1] =-4.4
-                particle_system = ParticleSystem.get_instance()
+                self.velocity[1] = -JUMP_SPEED
                 particle_data = AnimationParticleData('jump',[self.pos[0] + self.size[0]//2 ,self.pos[1]+self.size[1]],[0,0.1],'player')
                 particle_system.add_particle(particle_data)
 
@@ -257,21 +260,19 @@ class Player(PhysicsEntity):
             if self.state == 'jump_down':
                 self.jump_count -=2
 
-                self.velocity[1] = -4.4
-                particle_system = ParticleSystem.get_instance()
+                self.velocity[1] = -JUMP_SPEED
                 particle_data = AnimationParticleData('jump',[self.pos[0] + self.size[0]//2 ,self.pos[1]+self.size[1]],[0,0.1],'player')
                 particle_system.add_particle(particle_data)
 
             else: 
                 self.jump_count -=1
 
-                self.velocity[1] = -4.4    
+                self.velocity[1] = -JUMP_SPEED
             
         elif self.jump_count ==1: 
             self.jump_count -=1
-            self.velocity[1] = -4.4  
+            self.velocity[1] = -JUMP_SPEED
 
-            particle_system = ParticleSystem.get_instance()
             particle_data = AnimationParticleData('jump',[self.pos[0] + self.size[0]//2 ,self.pos[1]+self.size[1]],[0,0.1],'player')
             particle_system.add_particle(particle_data)
 
@@ -338,16 +339,13 @@ class Player(PhysicsEntity):
         self.cut_movement_input = False 
 
 
-        #add particle spew effect, similar to how you've done it for the bullets when it collides with tiles. 
-        #the number of particles that are created should depend on the impact force, which can be a function of y_inertia you've 
-        #defined already. 
-
-
-        #TODO: recover this logic. get rid of breaks. 
 
         if self.collisions['down']:
             if self.y_inertia > 6:
                 self.set_state('land')
+
+            particle_system = ParticleSystem.get_instance()
+
             entry_pos = (self._collision_rect().centerx,self._collision_rect().bottom)
             for offset in range(-tilemap.tile_size, tilemap.tile_size, 4):
                 if tilemap.solid_check((entry_pos[0]+offset,entry_pos[1])):
@@ -358,7 +356,10 @@ class Player(PhysicsEntity):
             offsets = [(-2,0),(-1,0), (0,0), (1,0),(2,0)]                
             for i in range(min(8,self.y_inertia//2)):
                 offset = random_choice(offsets)
-                #self.game.add_non_anim_particle(bullet_collide_particle(random.choice([(1,1),(2,1),(1,2),(3,1),(1,3),(2,2)]), (entry_pos[0] - offset[0],entry_pos[1] ) ,-90 + random.randint(-88,88),2.4+random.random(),color,tile_map,gravity_factor= 1.4 * min(8,self.y_inertia//2)/5))
+                random_factor = random()
+                particle_data = CollideParticleData(random_choice([(1,1),(2,1),(1,2),(3,1),(1,3),(2,2)]), [entry_pos[0] - offset[0],entry_pos[1]] ,\
+                                                    -90 + randint(-88,88),2.4+random_factor,color,life= 40 + 20 * random_factor , gravity_factor= 1.4 * min(8,self.y_inertia//2)/5)
+                particle_system.add_particle(particle_data)
         
 
 
