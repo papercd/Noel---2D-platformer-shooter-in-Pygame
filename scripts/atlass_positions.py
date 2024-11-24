@@ -37,6 +37,13 @@ TEXT_ATLAS_POSITIONS = {
 
 }
 
+PARTICLE_ATLAS_POSITIONS ={
+    "jump" : (0,0),
+    "land" : (0,11),
+    "big_land" :(0,26)
+}
+
+
 ENTITIES_ATLAS_POSITIONS ={
     "player" : {False:{
                 "idle": (0,0),

@@ -7,7 +7,7 @@ from json import load  as jsLoad
 from scripts.new_grass import GrassManager
 from scripts.new_particles import ParticleSystem
 from scripts.new_cursor import Cursor 
-from scripts.new_entities import Player,PhysicsEntity
+from scripts.new_entities import Player
 from scripts.new_tilemap import Tilemap
 from scripts.utils import load_texture 
 from time import time
@@ -46,12 +46,6 @@ class Noel():
         self._atlas_dict = self._create_texture_atlasses()
 
 
-
-        self.player = Player([74,11],(14,16)) 
-        self.player.set_accel_rate(0.7)
-        self.player.set_default_speed(2.2)
-
-
         # setting up tilemap and binding objects to render engine -------------------------
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
@@ -60,17 +54,14 @@ class Noel():
         self.render_engine.bind_background(self._backgrounds['start'])
         # ------------------------------------- 
 
-
-        self.particle_system =  ParticleSystem()
         self.render_engine.lights = self._tilemap.lights
 
+        self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
         self._cursor = Cursor(self._atlas_dict['cursor'])
-        self._player_movement_input = [0,0]
-        self._entities_list: list[PhysicsEntity] = []
         self.player = Player([74,11],(14,16)) 
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
-
+        self._player_movement_input = [0,0]
         self._grass_manager = GrassManager()
 
     def _initalize_game_settings(self):
@@ -198,6 +189,8 @@ class Noel():
         dict['tiles'] = load_texture(TEXTURE_BASE_PATH+ 'tiles/tile_atlas.png',self._ctx)
         dict['entities'] = load_texture(TEXTURE_BASE_PATH + 'entities/entities_atlas.png',self._ctx)
         dict['cursor'] = load_texture(TEXTURE_BASE_PATH +'cursor/cursor_atlas.png',self._ctx)
+        dict['particles'] = load_texture(TEXTURE_BASE_PATH + 'particles/animation_atlas.png',self._ctx)
+
 
         return dict
 
@@ -278,6 +271,7 @@ class Noel():
             
             self.render_engine.hulls = self._tilemap._hull_grid.query(camera_scroll[0]-self._tilemap.tile_size * 10 ,camera_scroll[1]- self._tilemap.tile_size * 10,camera_scroll[0] \
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
+            
             self.particle_system.update(self._tilemap,self._grass_manager)
             self._cursor.update()
             self.render_engine.bind_cursor(self._cursor)
@@ -288,7 +282,7 @@ class Noel():
                    
 
             self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
-            #self.render_engine.render_particles_to_fbo()
+            self.render_engine.render_particles_to_fbo(camera_scroll)
             self.render_engine.render_foreground_scene_to_fbo()
             
 

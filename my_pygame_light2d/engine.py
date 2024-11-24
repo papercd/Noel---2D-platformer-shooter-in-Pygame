@@ -7,11 +7,13 @@ import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
 
+
+from scripts.new_particles import ParticleSystem
 from scripts.lists import TileCategories
 from scripts.new_panel import TilePanel
 from scripts.new_entities import Player
 from scripts.new_cursor import Cursor
-from scripts.custom_data_types import TileInfo,DoorAnimation
+from scripts.custom_data_types import TileInfo
 from scripts.layer import Layer_
 from scripts.atlass_positions import TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS,TEXT_DIMENSIONS,TEXT_ATLAS_POSITIONS
 from scripts.new_tilemap import Tilemap
@@ -976,8 +978,17 @@ class RenderEngine:
         # Release the texture
         tex.release()
 
-    def render_particles_to_fbo(self):
-        pass 
+    def render_particles_to_fbo(self,camera_scroll):
+        particle_system = ParticleSystem.get_instance()
+        for particle in list(particle_system._active_animation_particles):
+            print(particle)
+            """
+            self.blit_texture(
+                tex = particle_system._texture_atl,
+                dest = pygame.Rect(),
+                source = pygame.Rect()
+            )"""
+        
             
     
 

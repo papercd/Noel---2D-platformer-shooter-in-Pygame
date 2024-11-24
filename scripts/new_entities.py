@@ -1,5 +1,7 @@
 from pygame import Rect
 from scripts.new_tilemap import Tilemap
+from scripts.new_particles import ParticleSystem
+from scripts.custom_data_types import AnimationParticleData,Animation
 from scripts.animationData import PlayerAnimationDataCollection
 from random import choice as random_choice
 
@@ -20,7 +22,7 @@ class PhysicsEntity:
         self.on_ramp = False 
         self.frame_data = 0
 
-    
+
     def set_state(self,state):
         if state != self.state: 
             self.frame_data = 0
@@ -158,6 +160,7 @@ class PhysicsEntity:
                         self.collisions['down'] = True
  
 
+
 class Player(PhysicsEntity):
     def __init__(self, pos: list[float], size: tuple[int, int]):
         self._animation_data_collection = PlayerAnimationDataCollection
@@ -246,19 +249,19 @@ class Player(PhysicsEntity):
                     self.velocity[0] = -4.2
                 
                 self.velocity[1] =-4.4
-                
-
-                #air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
-                #self.game.add_particle(air)
+                particle_system = ParticleSystem.get_instance()
+                particle_data = AnimationParticleData('jump',[self.pos[0] + self.size[0]//2 ,self.pos[1]+self.size[1]],[0,0.1],'player')
+                particle_system.add_particle(particle_data)
 
         if self.jump_count == 2:
             if self.state == 'jump_down':
                 self.jump_count -=2
 
                 self.velocity[1] = -4.4
-                
-                #air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
-                #self.game.add_particle(air)
+                particle_system = ParticleSystem.get_instance()
+                particle_data = AnimationParticleData('jump',[self.pos[0] + self.size[0]//2 ,self.pos[1]+self.size[1]],[0,0.1],'player')
+                particle_system.add_particle(particle_data)
+
             else: 
                 self.jump_count -=1
 
@@ -267,9 +270,10 @@ class Player(PhysicsEntity):
         elif self.jump_count ==1: 
             self.jump_count -=1
             self.velocity[1] = -4.4  
-            #air = Particle(self.game,'jump',(self.rect().centerx,self.rect().bottom), 'player',velocity=[0,0.1],frame=0)
-            #self.game.add_particle(air)
-        
+
+            particle_system = ParticleSystem.get_instance()
+            particle_data = AnimationParticleData('jump',[self.pos[0] + self.size[0]//2 ,self.pos[1]+self.size[1]],[0,0.1],'player')
+            particle_system.add_particle(particle_data)
 
     
     # TODO: add weapon rendering later. 

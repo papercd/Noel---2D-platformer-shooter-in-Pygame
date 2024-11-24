@@ -19,6 +19,13 @@ class Animation:
         self.done = False 
         self.frame = 0
 
+    def set_new_data(self,animation_data:AnimationData):
+        self._count = animation_data.n_textures
+        self._loop = animation_data.loop
+        self._halt = animation_data.halt
+        self._img_dur = animation_data.img_dur
+        self.done = False 
+        self.frame = 0
 
     def reset(self):
         self.frame = 0
@@ -30,6 +37,7 @@ class Animation:
     def update(self):
         if self._halt: 
              self.frame = min(self.frame+1,self._img_dur * self._count -1)
+             if self.frame == self._img_dur * self._count -1 : self.done = True 
         else: 
             if self._loop:
                 self.frame = (self.frame+1) % (self._img_dur * self._count)

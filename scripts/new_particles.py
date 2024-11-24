@@ -4,28 +4,53 @@ from pygame.math import Vector2 as vec2
 from pygame import Rect
 from math import cos,sin,radians,sqrt,degrees,atan2
 from scripts.custom_data_types import CollideParticleData,FireParticleData,AnimationParticleData,Animation
+from scripts.animationData import PARTICLE_ANIMATION_DATA
+from moderngl import Texture
 
 class ParticleSystem:
-    def __init__(self) -> None:
+    _instance = None 
+    
+    @staticmethod
+    def get_instance(particle_atlas:Texture = None):
+        if ParticleSystem._instance is None: 
+            ParticleSystem._instance = ParticleSystem(particle_atlas)
+        return ParticleSystem._instance
+
+    def __init__(self,animation_texture_atl: Texture) -> None:
+        if not hasattr(self,"initialized"):
+            self.initialized = True 
+
+            # can have at most 300 collide particles (when landing, when a bullet collides with a wall)
+            self._max_collide_particle_count = 300
+            self._collide_particle_pool_index = 299
+            self._collide_particles = [] 
+
+            # can have at most 700 fire particles 
+            self._max_fire_particle_count = 700
+            self._fire_particle_pool_index = 699
+            self._fire_particles = []
+            
+            # can have at most 300 animated particles (jump, dash, ...)
+            self._max_animation_particle_count = 300
+            self._animation_particle_pool_index = 299        
+            self._animation_particles = []
 
 
-        # can have at most 300 collide particles (when landing, when a bullet collides with a wall)
-        self._max_collide_particle_count = 300
-        self._collide_particle_pool_index = 299
-        self._collide_particles = [] 
+            self._active_collide_particles = set( )
+            self._active_animation_particles = set( )
 
-        # can have at most 700 fire particles 
-        self._max_fire_particle_count = 700
-        self._fire_particle_pool_index = 699
-        self._fire_particles = []
-        
-        # can have at most 300 animated particles (jump, dash, ...)
-        self._max_animation_particle_count = 300
-        self._animation_particle_pool_index = 299        
-        self._animation_particles = []
+            # precompute texture coordinates for aniimation particles' textures
+            self._texture_atl =animation_texture_atl 
+            self._precompute_texture_coordinates()
 
-        # create particle pools
-        self._initialize_particle_containers()
+            # create particle pools
+            self._initialize_particle_containers()
+
+
+    def _precompute_texture_coordinates(self):
+        self._texcoord_dict = {}
+        for key in PARTICLE_ANIMATION_DATA: 
+            pass 
 
      
     def _initialize_particle_containers(self):
@@ -38,33 +63,37 @@ class ParticleSystem:
             self._fire_particles.append(FireParticle(particle_data))
 
         for i in range(self._max_animation_particle_count):
+            animation = Animation(0,0,False,False)
             particle_data = AnimationParticleData("None",[0,0],[0,0],None)
-            self._animation_particles.append(AnimatedParticle(None,particle_data))
+            self._animation_particles.append(AnimatedParticle(particle_data,animation))
 
 
 
-    def add_particle(self,particle_data,animation:Animation =None):
+    def add_particle(self,particle_data):
         if isinstance(particle_data,CollideParticleData):
-            self._collide_particles[self._collide_particle_pool_index]._active = True 
-            self._collide_particles[self._collide_particle_pool_index].set_new_data(particle_data)
+            particle =self._collide_particles[self._collide_particle_pool_index]
+            particle._active = True 
+            particle.set_new_data(particle_data)
+            self._active_collide_particles.add(particle)
             self._collide_particle_pool_index = (self._collide_particle_pool_index -1) % self._max_collide_particle_count 
         elif isinstance(particle_data,FireParticleData):
             self._fire_particles[self._fire_particle_pool_index]._active = True 
             self._fire_particles[self._fire_particle_pool_index].set_new_data(particle_data)
             self._fire_particle_pool_index = (self._fire_particle_pool_index -1) % self._max_fire_particle_count 
         elif isinstance(particle_data,AnimationParticleData):
-            self._animation_particles[self._animation_particle_pool_index]._active = True 
-            self._animation_particles[self._animation_particle_pool_index].set_new_data(particle_data,animation)
+            particle =self._animation_particles[self._animation_particle_pool_index]
+            particle._active = True 
+            particle.set_new_data(particle_data)
+            self._active_animation_particles.add(particle)
             self._animation_particle_pool_index = (self._animation_particle_pool_index -1) % self._max_animation_particle_count 
 
 
     def update(self,tilemap:Tilemap,grass_manager):
-        for particle in self._collide_particles:
-            if not particle._active:
-                continue 
+        for particle in list(self._active_collide_particles):
             kill =particle.update(tilemap)
             if kill: 
                 particle._active = False 
+                self._active_collide_particles.remove(particle)
 
         for particle in self._fire_particles:
             if not particle._active:
@@ -73,12 +102,13 @@ class ParticleSystem:
             if kill: 
                 particle._active = False 
         
-        for particle in self._animation_particles:
-            if not particle._active:
-                continue 
+        for particle in list(self._active_animation_particles):
             kill = particle.update()
             if kill: 
                 particle._active = False 
+                self._active_animation_particles.remove(particle)
+
+
 
 class PhysicalParticle: 
     def __init__(self,particle_data:CollideParticleData):
@@ -494,24 +524,30 @@ class FireParticle:
     
 
 class AnimatedParticle: 
-    def __init__(self,animation:Animation,particle_data:AnimationParticleData) -> None:
+    def __init__(self,particle_data:AnimationParticleData,animation:Animation) -> None:
         self.type= particle_data.type 
         self.pos = particle_data.pos 
-        self.animation = animation
         self.velocity = particle_data.velocity
         self.source = particle_data.source
+        self.animation = animation 
         self._active = False 
 
-    def set_new_data(self,particle_data:AnimationParticleData,animation:Animation):
+    def set_new_data(self,particle_data:AnimationParticleData):
         self.type= particle_data.type 
         self.pos = particle_data.pos 
-        self.animation = animation
         self.velocity = particle_data.velocity
         self.source = particle_data.source
+        
+        self.animation.set_new_data(PARTICLE_ANIMATION_DATA[self.type])
 
-    
     def update(self):
-        # testing
-        return False 
+        kill = False 
+        if self.animation.done: 
+            kill = True 
+        self.pos[0] += self.velocity[0] 
+        self.pos[1] += self.velocity[1] 
+
+        self.animation.update()
+        return kill 
 
 
