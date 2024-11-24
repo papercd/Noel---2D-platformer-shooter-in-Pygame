@@ -40,7 +40,7 @@ class ParticleSystem:
             self._active_collide_particles = set( )
             self._active_animation_particles = set( )
 
-            # precompute texture coordinates for aniimation particles' textures
+            # precompute texture coordinates for animation particles' textures
             self._texture_atl =animation_texture_atl 
             self._precompute_texture_coordinates()
 

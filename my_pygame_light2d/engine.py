@@ -7,7 +7,7 @@ import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
 
-
+from scripts.new_HUD import HUD
 from scripts.new_particles import ParticleSystem
 from scripts.lists import TileCategories
 from scripts.new_panel import TilePanel
@@ -15,7 +15,9 @@ from scripts.new_entities import Player
 from scripts.new_cursor import Cursor
 from scripts.custom_data_types import TileInfo
 from scripts.layer import Layer_
-from scripts.atlass_positions import TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS,TEXT_DIMENSIONS,TEXT_ATLAS_POSITIONS,PARTICLE_ATLAS_POSITIONS_AND_SIZES
+from scripts.atlass_positions import UI_ATLAS_POSITIONS, TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,\
+                                    ENTITIES_ATLAS_POSITIONS,TEXT_DIMENSIONS,TEXT_ATLAS_POSITIONS,PARTICLE_ATLAS_POSITIONS_AND_SIZES
+
 from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.light import PointLight
@@ -237,7 +239,26 @@ class RenderEngine:
             flip =self._player.flip
         
         )
-    
+
+    def _render_hud(self,fbo:moderngl.Framebuffer) -> None: 
+        ui_atlas = self._hud._ui_atlas
+        """
+        self._render_tex_to_fbo(
+            ui_atlas,fbo,
+            dest = pygame.Rect(0,0,16,16),
+            source = pygame.Rect(*UI_ATLAS_POSITIONS["health_bar"],16,16)
+        )"""
+
+        """
+        self._render_tex_to_fbo(
+            ui_atlas,fbo,
+            dest = pygame.Rect(0,0,16,16),
+            source = pygame.Rect(*UI_ATLAS_POSITIONS["stamina_bar"],16,16)
+        )
+        """
+
+
+
     def _render_cursor(self,fbo:moderngl.Framebuffer) -> None: 
         tex_atlas = self._cursor.texture_atlas
         query_pos,tex_size = CURSOR_ATLAS_POSITIONS[self._cursor.state]
@@ -719,6 +740,8 @@ class RenderEngine:
         self._fbo_bg.clear(R, G, B, A)
         self._fbo_fg.clear(0, 0, 0, 0)
 
+    def bind_hud(self,hud:HUD) -> None: 
+        self._hud = hud 
 
     def bind_player(self,player:Player) -> None: 
         self._player = player 
@@ -1025,6 +1048,7 @@ class RenderEngine:
         """
         fbo = self._get_fbo(Layer_.FOREGROUND)
         self._render_cursor(fbo)
+        self._render_hud(fbo)
 
     def render_texture_with_trans(self,
                tex: moderngl.Texture,

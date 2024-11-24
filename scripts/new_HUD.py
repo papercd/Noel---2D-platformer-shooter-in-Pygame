@@ -1,6 +1,6 @@
 from scripts.new_entities import Player
 from scripts.new_inventory import Inventory_Engine
-from scripts.health import HealthBar,StaminaBar
+from scripts.new_ui import HealthBar,StaminaBar
 
 
 class HUD: 
@@ -22,9 +22,9 @@ class HUD:
 
         self._health_bar = HealthBar(*self._health_bar_topleft,self._health_bar_width,32,self._player.health)
         self._stamina_bar = StaminaBar(*self._stamina_bar_topleft,self._stamina_bar_width,32,self._player.stamina)
-
         self._items_engine = Inventory_Engine(self._player)
 
 
     def update(self):
-        pass 
+        self._health_bar.update(self._player.health)
+        self._stamina_bar.update(self._player.stamina)

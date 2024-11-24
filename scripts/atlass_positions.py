@@ -37,6 +37,11 @@ TEXT_ATLAS_POSITIONS = {
 
 }
 
+UI_ATLAS_POSITIONS = {
+    "health_bar" : (0,0),
+    "stamina_bar" : (0,0)
+}
+
 PARTICLE_ATLAS_POSITIONS_AND_SIZES ={
     "jump" : ((0,0),(30,15)),
     "land" : ((0,11),(48,11)),

@@ -1,2 +1,2 @@
 
-                        self.player.jump()
+                   
