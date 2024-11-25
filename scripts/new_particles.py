@@ -6,8 +6,9 @@ from pygame import Rect
 from math import cos,sin,radians,sqrt,degrees,atan2
 from scripts.custom_data_types import CollideParticleData,FireParticleData,AnimationParticleData,Animation
 from scripts.animationData import PARTICLE_ANIMATION_DATA
+from scripts.atlass_positions import PARTICLE_ATLAS_POSITIONS_AND_SIZES
 from moderngl import Texture
-
+import numpy as np 
 class ParticleSystem:
     _instance = None 
     
@@ -42,18 +43,35 @@ class ParticleSystem:
 
             # precompute texture coordinates for animation particles' textures
             self._texture_atl =animation_texture_atl 
-            self._precompute_texture_coordinates()
 
             # create particle pools
             self._initialize_particle_containers()
+            self._precompute_particle_animation_texture_coords()
 
-
-    def _precompute_texture_coordinates(self):
-        self._texcoord_dict = {}
-        for key in PARTICLE_ANIMATION_DATA: 
-            pass 
+    def _precompute_particle_animation_texture_coords(self):
+        self._tex_dict = {}
+        for key in PARTICLE_ATLAS_POSITIONS_AND_SIZES:
+            atl_pos,tex_size = PARTICLE_ATLAS_POSITIONS_AND_SIZES[key]
+            animationData = PARTICLE_ANIMATION_DATA[key]
+            for frame in range(animationData.n_textures):
+                self._tex_dict[(key,frame)] = self._get_texture_coords_for_animation_frame(atl_pos,tex_size,frame)
 
      
+    def _get_texture_coords_for_animation_frame(self,atl_pos :tuple[int,int],tex_size:tuple[int,int],frame: int ) -> np.array:
+        x = (atl_pos[0] + tex_size[0] * frame) / self._texture_atl.width
+        y = (atl_pos[1] ) / self._texture_atl.width
+
+        w = tex_size[0] / self._texture_atl.width
+        h = tex_size[1] / self._texture_atl.height
+        
+        p1 = (x,y+h) 
+        p2 = (x+w,y+h)
+        p3 = (x,y) 
+        p4 = (x+w,y)
+
+        return np.array([p1,p2,p3,
+                         p3,p2,p4],dtype = np.float32 )
+
     def _initialize_particle_containers(self):
         for i in range(self._max_collide_particle_count):
             particle_data = CollideParticleData((1,1),[float('-inf'),float('inf')],0,0,(255,255,255,255),60,1)
