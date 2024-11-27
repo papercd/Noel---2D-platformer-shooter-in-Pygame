@@ -1003,7 +1003,10 @@ class RenderEngine:
 
     def render_particles_to_fbo(self,camera_scroll):
         particle_system = ParticleSystem.get_instance()
+        batch_vertices = []
+        batch_texture_coords = []
         for particle in list(particle_system._active_animation_particles):
+
             cur_frame = particle.animation.curr_frame()
             atlas_pos,size = PARTICLE_ATLAS_POSITIONS_AND_SIZES[particle.type]
             self.render_texture(
@@ -1020,9 +1023,8 @@ class RenderEngine:
             )
             tex.release()
         
-        
-            
-    
+
+       
 
     def render_background_scene_to_fbo(self,offset = (0,0),infinite:bool = False)-> None :
         """
