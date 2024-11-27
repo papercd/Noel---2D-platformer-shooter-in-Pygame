@@ -280,7 +280,7 @@ class Noel():
             self._hud.update()
             self.render_engine.bind_hud(self._hud)
                    
-            #self.render_engine.render_rectangles(camera_scroll)
+            self.render_engine.render_rectangles(camera_scroll)
             self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
             self.render_engine.render_foreground_scene_to_fbo()
             
@@ -289,7 +289,6 @@ class Noel():
             
             pygame.display.flip()
             fps = self._clock.get_fps()
-            print(fps)
             pygame.display.set_caption(f"Noel - FPS: {fps: .2f}")
             self._clock.tick(60)
             
