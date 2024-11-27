@@ -280,9 +280,8 @@ class Noel():
             self._hud.update()
             self.render_engine.bind_hud(self._hud)
                    
-
+            #self.render_engine.render_rectangles(camera_scroll)
             self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
-            self.render_engine.render_particles_to_fbo(camera_scroll)
             self.render_engine.render_foreground_scene_to_fbo()
             
 

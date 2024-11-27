@@ -44,7 +44,7 @@ UI_ATLAS_POSITIONS = {
 
 PARTICLE_ATLAS_POSITIONS_AND_SIZES ={
     "jump" : ((0,0),(30,15)),
-    "land" : ((0,11),(48,11)),
+    "land" : ((0,15),(48,11)),
     "big_land" :((0,26),(60,20))
 }
 

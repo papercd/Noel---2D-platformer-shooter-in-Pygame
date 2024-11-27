@@ -242,6 +242,7 @@ class RenderEngine:
 
     def _render_hud(self,fbo:moderngl.Framebuffer) -> None: 
         ui_atlas = self._hud._ui_atlas
+
         """
         self._render_tex_to_fbo(
             ui_atlas,fbo,
@@ -1001,10 +1002,31 @@ class RenderEngine:
         # Release the texture
         tex.release()
 
-    def render_particles_to_fbo(self,camera_scroll):
+    def _render_particles(self,fbo,camera_scroll):
         particle_system = ParticleSystem.get_instance()
-        batch_vertices = []
-        batch_texture_coords = []
+        
+        vertices_list = []
+        texture_coords_list = []
+
+        for particle in list(particle_system._active_animation_particles):
+            cur_frame = particle.animation.curr_frame()
+            animationData = PARTICLE_ATLAS_POSITIONS_AND_SIZES[particle.type]
+
+            vertices = self._create_animation_particle_vertices(particle.pos,animationData[1],camera_scroll,fbo.width,fbo.height)
+            texture_coords = particle_system._tex_dict[(particle.type,cur_frame)]
+
+            vertices_list.append(vertices)
+            texture_coords_list.append(texture_coords)
+
+        if vertices_list: 
+            vertices_array = np.concatenate(vertices_list,axis = 0)
+            texture_coords_array = np.concatenate(texture_coords_list,axis = 0)
+
+            buffer_data = np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
+            vbo = self.ctx.buffer(buffer_data)
+
+            self._render_animated_particles(vbo,fbo,particle_system._texture_atl)
+        """
         for particle in list(particle_system._active_animation_particles):
 
             cur_frame = particle.animation.curr_frame()
@@ -1014,6 +1036,7 @@ class RenderEngine:
                 dest = pygame.Rect(particle.pos[0]-size[0]//2-camera_scroll[0],particle.pos[1]-size[1]//2-camera_scroll[1],size[0],size[1]),
                 source = pygame.Rect(atlas_pos[0]+size[0]*cur_frame,atlas_pos[1],size[0],size[1])
             )
+        """
         for particle in list(particle_system._active_collide_particles):
             buffer_surf = particle._buffer_surf
             tex = self.surface_to_texture(buffer_surf)
@@ -1023,8 +1046,27 @@ class RenderEngine:
             )
             tex.release()
         
+    
+    def _create_animation_particle_vertices(self,pos:tuple[int,int],size: tuple[int,int],camera_scroll : tuple[int,int],fbo_w,fbo_h):
+        x = 2. * (pos[0]  - size[0]//2 -camera_scroll[0]) / fbo_w -1.
+        y = 1. - 2. * (pos[1] - size[1]//2 -camera_scroll[1]) /fbo_h 
+        w = 2. * size[0] /fbo_w
+        h = 2. * size[1] /fbo_h
+        vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+        
+        return vertices
 
-       
+    def _render_animated_particles(self,vbo:moderngl.Context.buffer,fbo:moderngl.Framebuffer,texture_atl:moderngl.Texture):
+        
+        vao = self.ctx.vertex_array(self._prog_draw,[(vbo,'2f 2f', 'vertexPos','vertexTexCoord')])
+
+        texture_atl.use()
+        fbo.use()
+        vao.render()
+        vbo.release()
+        vao.release()
+    
 
     def render_background_scene_to_fbo(self,offset = (0,0),infinite:bool = False)-> None :
         """
@@ -1042,6 +1084,7 @@ class RenderEngine:
         self._render_background_textures_to_fbo(fbo,offset=offset,infinite=infinite)
         self._render_tilemap(fbo,offset)
         self._render_player(fbo,offset)
+        self._render_particles(fbo,offset)
 
     def render_foreground_scene_to_fbo(self):
         """
