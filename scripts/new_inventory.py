@@ -13,7 +13,7 @@ class Cell:
 
 
 class Inventory:
-    def __init__(self,name,rows,columns,x,y,stack_limit):
+    def __init__(self,name,rows,columns,x,y,stack_limit,expandable = False):
         self._name = name
         self._done_open = 0 
         self._rows = rows 
@@ -24,6 +24,7 @@ class Inventory:
         self._cur_capacity = 0
         self._size = (0,0)
         self._rect = Rect(*self._topleft,*self._size)
+        self._expandable =  expandable
 
 
 
@@ -34,7 +35,7 @@ class Inventory:
     def remove_current_item(self):
         pass 
 
-    def update(self, inventory_id, inventory_list, cursor,text,expanded,closing, player):
+    def update(self, inventory_id, inventory_list, cursor,text,closing, player):
         pass 
 
 
@@ -54,7 +55,7 @@ class Inventory_Engine:
         interacting = False 
 
         for i, inventory in enumerate(self._inventory_list):
-            check = inventory[1].update(i,self._inventory_list,cursor,text,inventory[0],closing,self._player)
+            check = inventory[1].update(i,self._inventory_list,cursor,text,closing,self._player)
             interacting = check or interacting 
 
         cursor.interacting = interacting 

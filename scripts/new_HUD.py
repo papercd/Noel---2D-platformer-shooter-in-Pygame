@@ -1,5 +1,5 @@
 from scripts.new_entities import Player
-from scripts.new_inventory import Inventory_Engine
+from scripts.new_inventory import Inventory_Engine,Inventory
 from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES
 from scripts.new_ui import HealthBar,StaminaBar
 import numpy as np
@@ -45,11 +45,18 @@ class HUD:
         self._health_bar_width = self._true_res[0]*4//10
         self._stamina_bar_width = self._true_res[0]*3//10
 
+        self._showing_items_topleft = None 
+        self._closed_items_topleft = None 
+        self._weapons_topleft = None
+
         self._bar_height = self._true_res[1] // 30 
 
         self._health_bar = HealthBar(*self._health_bar_topleft,self._health_bar_width,self._bar_height,self._player.health)
         self._stamina_bar = StaminaBar(*self._stamina_bar_topleft,self._stamina_bar_width,self._bar_height,self._player.stamina)
         self._inven_list = [
+            Inventory("showing_item", 1, 5, *self._showing_items_topleft, 16, expandable= False), 
+           Inventory("closed_item", 2,5,*self._closed_items_topleft, 16,expandable = True),
+           Inventory("weapon",1,4, *self._weapons_topleft, expandable = True)
 
         ]
         self._items_engine = Inventory_Engine(self._inven_list,self._player)
