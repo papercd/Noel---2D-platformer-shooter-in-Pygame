@@ -49,12 +49,15 @@ class HUD:
 
         self._health_bar = HealthBar(*self._health_bar_topleft,self._health_bar_width,self._bar_height,self._player.health)
         self._stamina_bar = StaminaBar(*self._stamina_bar_topleft,self._stamina_bar_width,self._bar_height,self._player.stamina)
-        self._items_engine = Inventory_Engine(self._player)
+        self._inven_list = [
 
+        ]
+        self._items_engine = Inventory_Engine(self._inven_list,self._player)
+        
+        
         self._elements = {
             'health_bar' : self._health_bar,
             'stamina_bar' : self._stamina_bar,
-            #'inventory' : self._items_engine
         }
 
 
