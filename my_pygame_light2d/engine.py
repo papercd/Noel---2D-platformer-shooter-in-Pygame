@@ -1124,8 +1124,8 @@ class RenderEngine:
         
         """
         fbo = self._get_fbo(Layer_.FOREGROUND)
-        self._render_cursor(fbo)
         self._render_hud(fbo)
+        self._render_cursor(fbo)
 
     def render_texture_with_trans(self,
                tex: moderngl.Texture,

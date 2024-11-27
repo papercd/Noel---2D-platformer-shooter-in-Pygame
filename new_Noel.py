@@ -228,6 +228,8 @@ class Noel():
             for event in pygame.event.get():
                 self._handle_common_events(event)
                 if event.type ==pygame.KEYDOWN:
+                    if event.key == pygame.K_e:
+                        self._hud.set_inven_open_state(not self._hud.inven_open_state)
                     if event.key == pygame.K_a:
                         self._player_movement_input[0] = True 
                     if event.key == pygame.K_w: 
@@ -277,7 +279,7 @@ class Noel():
             self.render_engine.bind_cursor(self._cursor)
             self.player.update(self._tilemap,self._cursor.pos,self._player_movement_input,self._frame_count)
             self.render_engine.bind_player(self.player)
-            self._hud.update()
+            self._hud.update(self._cursor)
             self.render_engine.bind_hud(self._hud)
                    
             #self.render_engine.render_rectangles(camera_scroll)

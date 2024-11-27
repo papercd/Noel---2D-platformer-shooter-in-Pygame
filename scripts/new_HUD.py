@@ -10,10 +10,19 @@ class HUD:
         self._player = player
         self._true_res = true_res
         self._ui_atlas = ui_atlas
+        self._inven_open_state = False
 
         self._create_display_elements()
         self._precompute_texture_coords_and_vertices()
 
+    
+
+    @property
+    def inven_open_state(self):
+        return self._inven_open_state
+    
+    def set_inven_open_state(self,state:bool):
+        self._inven_open_state = state
 
     def _precompute_texture_coords_and_vertices(self):
         self._tex_dict = {}
@@ -45,18 +54,25 @@ class HUD:
         self._health_bar_width = self._true_res[0]*5//12
         self._stamina_bar_width = self._true_res[0]*3//12
 
-        self._showing_items_topleft = None 
-        self._closed_items_topleft = None 
-        self._weapons_topleft = None
+        self._closed_items_rows_cols = (2,5)
+        self._showing_items_rows_cols = (1,5)
+        self._weapon_rows_cols = (1,4)
+
+        self._item_inventory_cell_dim = ((self._true_res[0]*5//12) // self._closed_items_rows_cols[1],self._true_res[1] * 3//40 )
+        self._weapon_inven_cell_dim = ((self._true_res[0]*5//12) // self._weapon_rows_cols[1], self._true_res[1] * 3//40 )
+        
+        self._closed_items_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//120,self._true_res[1] * 36//40 - self._item_inventory_cell_dim[1] * self._closed_items_rows_cols[0]) 
+        self._showing_items_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//120,self._true_res[1] * 36//40) 
+        self._weapons_topleft = (self._true_res[0]//12  , self._true_res[1] * 36//40 - self._weapon_inven_cell_dim[1] * 1.5)
 
         self._bar_height = self._true_res[1] // 40 
 
         self._health_bar = HealthBar(*self._health_bar_topleft,self._health_bar_width,self._bar_height,self._player.health)
         self._stamina_bar = StaminaBar(*self._stamina_bar_topleft,self._stamina_bar_width,self._bar_height,self._player.stamina)
         self._inven_list = [
-            Inventory("showing_item", 1, 5, *self._showing_items_topleft, 16, expandable= False), 
-           Inventory("closed_item", 2,5,*self._closed_items_topleft, 16,expandable = True),
-           Inventory("weapon",1,4, *self._weapons_topleft, expandable = True)
+            Inventory("showing_item", 1, 5, *self._showing_items_topleft,self._item_inventory_cell_dim,16, expandable= False), 
+           Inventory("closed_item", 2,5,*self._closed_items_topleft, self._item_inventory_cell_dim,16,expandable = True),
+           Inventory("weapon",1,4, *self._weapons_topleft,self._weapon_inven_cell_dim,1, expandable = True)
 
         ]
         self._items_engine = Inventory_Engine(self._inven_list,self._player)
@@ -68,6 +84,7 @@ class HUD:
         }
 
 
-    def update(self):
+    def update(self,cursor):
         self._health_bar.update(self._player.health)
         self._stamina_bar.update(self._player.stamina)
+        self._items_engine.update(cursor,self._inven_open_state)
