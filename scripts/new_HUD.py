@@ -39,13 +39,13 @@ class HUD:
 
 
     def _create_display_elements(self):
-        self._health_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 26 // 30)
-        self._stamina_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 27//30 + 1)
+        self._health_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 36 // 40)
+        self._stamina_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 37//40 + 1)
 
-        self._health_bar_width = self._true_res[0]*4//10
-        self._stamina_bar_width = self._true_res[0]*3//10
+        self._health_bar_width = self._true_res[0]*5//12
+        self._stamina_bar_width = self._true_res[0]*3//12
 
-        self._bar_height = self._true_res[1] // 30 
+        self._bar_height = self._true_res[1] //40 
 
         self._health_bar = HealthBar(*self._health_bar_topleft,self._health_bar_width,self._bar_height,self._player.health)
         self._stamina_bar = StaminaBar(*self._stamina_bar_topleft,self._stamina_bar_width,self._bar_height,self._player.stamina)
