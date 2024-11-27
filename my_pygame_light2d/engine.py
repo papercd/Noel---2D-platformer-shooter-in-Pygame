@@ -15,7 +15,7 @@ from scripts.new_entities import Player
 from scripts.new_cursor import Cursor
 from scripts.custom_data_types import TileInfo
 from scripts.layer import Layer_
-from scripts.atlass_positions import UI_ATLAS_POSITIONS, TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,\
+from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES, TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,\
                                     ENTITIES_ATLAS_POSITIONS,TEXT_DIMENSIONS,TEXT_ATLAS_POSITIONS,PARTICLE_ATLAS_POSITIONS_AND_SIZES
 
 from scripts.new_tilemap import Tilemap
@@ -239,26 +239,58 @@ class RenderEngine:
             flip =self._player.flip
         
         )
+        if self._player._cur_weapon_node:
+            # TODO: render the player's weapon here 
+            pass 
 
     def _render_hud(self,fbo:moderngl.Framebuffer) -> None: 
         ui_atlas = self._hud._ui_atlas
+        # TODO: the vertex buffer for the stamina bar and the health bar is fixed to two slots of info. 
+        # create the vertex buffer before hand for further optimization. 
 
-        """
-        self._render_tex_to_fbo(
-            ui_atlas,fbo,
-            dest = pygame.Rect(0,0,16,16),
-            source = pygame.Rect(*UI_ATLAS_POSITIONS["health_bar"],16,16)
-        )"""
+        vertices_list = []
+        texture_coords_list = []
+        
 
-        """
-        self._render_tex_to_fbo(
-            ui_atlas,fbo,
-            dest = pygame.Rect(0,0,16,16),
-            source = pygame.Rect(*UI_ATLAS_POSITIONS["stamina_bar"],16,16)
-        )
-        """
+        for ui_name in self._hud._elements:
+            texture_coords = self._hud._tex_dict[ui_name]
+            vertices = self._create_hud_element_vertices(self._hud._elements[ui_name],fbo)
 
+            vertices_list.append(vertices)
+            texture_coords_list.append(texture_coords)
+        
+        if vertices_list:
+            vertices_array = np.concatenate(vertices_list,axis= 0)
+            texture_coords_array = np.concatenate(texture_coords_list,axis= 0)
 
+            buffer_data = np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
+            vbo = self.ctx.buffer(buffer_data)
+
+            self._render_ui_elements(vbo,fbo,ui_atlas)
+
+    def _render_ui_elements(self,vbo:moderngl.Context.buffer,fbo:moderngl.Framebuffer,ui_atlas: moderngl.Texture)-> None:
+        vao = self.ctx.vertex_array(self._prog_draw, [(vbo,'2f 2f','vertexPos', 'vertexTexCoord')])
+
+        ui_atlas.use()
+        fbo.use()
+        vao.render()
+        vbo.release()
+        vao.release()
+
+    def _create_hud_element_vertices(self,element,fbo:moderngl.Framebuffer) -> np.array:
+        
+        topleft =  (element.x,element.y)
+        ui_width,ui_height = element.w,element.h
+
+        x = 2. * (topleft[0]) / fbo.width -1.
+        y = 1. - 2. * (topleft[1] ) /fbo.height 
+        w = 2. * ui_width /fbo.width
+        h = 2. * ui_height /fbo.height
+        vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+        
+        return vertices
+       
 
     def _render_cursor(self,fbo:moderngl.Framebuffer) -> None: 
         tex_atlas = self._cursor.texture_atlas

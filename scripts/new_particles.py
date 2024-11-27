@@ -59,7 +59,7 @@ class ParticleSystem:
      
     def _get_texture_coords_for_animation_frame(self,atl_pos :tuple[int,int],tex_size:tuple[int,int],frame: int ) -> np.array:
         x = (atl_pos[0] + tex_size[0] * frame) / self._texture_atl.width
-        y = (atl_pos[1] ) / self._texture_atl.width
+        y = (atl_pos[1] ) / self._texture_atl.height
 
         w = tex_size[0] / self._texture_atl.width
         h = tex_size[1] / self._texture_atl.height

@@ -193,6 +193,8 @@ class Player(PhysicsEntity):
         self.d_cursor_pos = [0,0]
 
 
+        self._cur_weapon_node = None 
+
     def set_default_speed(self,speed):
         self._default_speed = speed
 
@@ -367,12 +369,6 @@ class Player(PhysicsEntity):
                 particle_data = AnimationParticleData('land',[self.pos[0] +8,self.pos[1]+14],velocity=[0,0],source='player')
                 particle_system.add_particle(particle_data)
                 self.hard_land_recovery_time = 7
-                """
-                land_smoke = Particle(self.game,'land',(self.pos[0] +8,self.pos[1]+14),'player')
-                self.game.add_particle(land_smoke)
-                self.game.add_screen_shake(5) 
-                self.hard_land_recovery_time = 7
-                """
                 #self.set_state('land')
                 
                 
@@ -380,16 +376,7 @@ class Player(PhysicsEntity):
                 particle_data = AnimationParticleData('big_land',[self.pos[0] +7,self.pos[1]+7],velocity=[0,0],source='player')
                 particle_system.add_particle(particle_data)
                 self.hard_land_recovery_time = 20
-                """
-                land_smoke = Particle(self.game,'big_land',(self.pos[0] +7,self.pos[1]+7),'player')
-                self.game.add_particle(land_smoke)
-                #self.set_state('land')
-                self.game.add_screen_shake(16)
-                self.animation.img_dur = 5
-                self.hard_land_recovery_time = 20
-                """
-
-            self.y_inertia = 0
+                self.y_inertia = 0
             self.jump_count =2 
             self.air_time = 0
             
@@ -454,7 +441,8 @@ class Player(PhysicsEntity):
                         self.set_state('idle')
                 
         
-        
+        if self._cur_weapon_node: 
+            self._cur_weapon_node.update(self.d_cursor_pos)
         #testing weapon rendering  
         """
         if self.cur_weapon_node:
