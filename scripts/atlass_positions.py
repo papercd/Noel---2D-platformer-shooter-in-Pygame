@@ -37,9 +37,9 @@ TEXT_ATLAS_POSITIONS = {
 
 }
 
-UI_ATLAS_POSITIONS = {
-    "health_bar" : (0,0),
-    "stamina_bar" : (0,0)
+UI_ATLAS_POSITIONS_AND_SIZES = {
+    "health_bar" : ((0,0),(204,8)),
+    "stamina_bar" : ((0,0),(204,8))
 }
 
 PARTICLE_ATLAS_POSITIONS_AND_SIZES ={
