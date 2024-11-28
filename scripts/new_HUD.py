@@ -49,7 +49,6 @@ class HUD:
 
 
     def _create_display_elements(self):
-        print("checking")
         self._health_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 36 // 40)
         self._stamina_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 37//40 + 1)
 

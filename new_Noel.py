@@ -55,13 +55,12 @@ class Noel():
 
 
     def _initialize_game_objects(self):
-        # setting up tilemap and binding objects to render engine -------------------------
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
-        # ------------------------------------- 
 
         self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
         self._cursor = Cursor(self._atlas_dict['cursor'])
+
         self.player = Player([74,11],(14,16)) 
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
@@ -78,6 +77,7 @@ class Noel():
     
 
     def _hot_reload(self):
+        # import changed modules
         importlib.reload(scripts.new_HUD)
         importlib.reload(scripts.new_grass)
         importlib.reload(scripts.new_particles)
@@ -85,25 +85,23 @@ class Noel():
         importlib.reload(scripts.new_entities)
         importlib.reload(scripts.new_tilemap)
 
-        
+        # import changed classes
         from scripts.new_HUD import HUD
         from scripts.new_grass import GrassManager
         from scripts.new_particles import ParticleSystem
         from scripts.new_cursor import Cursor 
         from scripts.new_entities import Player
         from scripts.new_tilemap import Tilemap
-        
-        # setting up tilemap and binding objects to render engine -------------------------
+
+        # explicitly reinitialize objects       
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
-        # ------------------------------------- 
 
         self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
         self._cursor = Cursor(self._atlas_dict['cursor'])
         self._grass_manager = GrassManager()
         self._hud = HUD(self._atlas_dict['UI'],self.player,self._true_res)        
         
-
         # Update cursor's position
         self._cursor.pos = pygame.mouse.get_pos()
         self._cursor.pos = (
@@ -116,7 +114,10 @@ class Noel():
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
 
+        # reinitialize hud
         self._hud = HUD(self._atlas_dict['UI'],self.player,self._true_res)
+
+        # rebind objects to render engine
         self._bind_objects_to_render_engine()
 
 
