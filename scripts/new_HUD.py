@@ -12,6 +12,7 @@ class HUD:
         self._ui_atlas = ui_atlas
         self._inven_open_state = False
 
+      
         self._create_display_elements()
         self._precompute_texture_coords_and_vertices()
 
@@ -48,10 +49,11 @@ class HUD:
 
 
     def _create_display_elements(self):
+        print("checking")
         self._health_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 36 // 40)
         self._stamina_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 37//40 + 1)
 
-        self._health_bar_width = self._true_res[0]*5//12
+        self._health_bar_width = self._true_res[0]*8//24
         self._stamina_bar_width = self._true_res[0]*3//12
 
         self._closed_items_rows_cols = (2,5)
@@ -85,6 +87,7 @@ class HUD:
 
 
     def update(self,cursor):
+
         self._health_bar.update(self._player.health)
         self._stamina_bar.update(self._player.stamina)
         self._items_engine.update(cursor,self._inven_open_state)

@@ -1,24 +1,23 @@
 import pygame 
-import cProfile
 import platform
 import importlib
-import scripts 
-
 from os import environ,listdir
 from json import load  as jsLoad
+from scripts.utils import load_texture 
+from time import time
+from enum import Enum
+from moderngl import create_context,Texture
+from screeninfo import get_monitors
+
+import scripts 
+
 from scripts.new_HUD import HUD
 from scripts.new_grass import GrassManager
-import scripts.new_inventory
 from scripts.new_particles import ParticleSystem
 from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player
 from scripts.new_tilemap import Tilemap
-from scripts.utils import load_texture 
-from time import time
-from enum import Enum
 from my_pygame_light2d.engine import RenderEngine
-from moderngl import create_context,Texture
-from screeninfo import get_monitors
 
 
 
@@ -45,71 +44,80 @@ class Noel():
         self._dt = 0
         self._prev_frame_time = 0
         self.scroll = [0,0]
-
+        self._player_movement_input = [0,0]
 
         self._backgrounds:dict[str,list[Texture]] = self._load_backgrounds(TEXTURE_BASE_PATH+'backgrounds')
         self._tilemap_jsons = self._load_tilemap_jsons('map_jsons')
         self._atlas_dict = self._create_texture_atlasses()
 
+        self._initialize_game_objects()
+        self._bind_objects_to_render_engine()
 
+
+    def _initialize_game_objects(self):
         # setting up tilemap and binding objects to render engine -------------------------
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
-        self.render_engine.bind_tilemap(self._tilemap)
-        self.render_engine.bind_entities_atlas(self._atlas_dict['entities'])
-        self.render_engine.bind_background(self._backgrounds['start'])
         # ------------------------------------- 
-
-        self.render_engine.lights = self._tilemap.lights
 
         self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
         self._cursor = Cursor(self._atlas_dict['cursor'])
         self.player = Player([74,11],(14,16)) 
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
-        self._player_movement_input = [0,0]
+       
         self._grass_manager = GrassManager()
         self._hud = HUD(self._atlas_dict['UI'],self.player,self._true_res)
 
+    def _bind_objects_to_render_engine(self):
+        self.render_engine.bind_tilemap(self._tilemap)
+        self.render_engine.bind_entities_atlas(self._atlas_dict['entities'])
+        self.render_engine.bind_background(self._backgrounds['start'])
+        self.render_engine.bind_hud(self._hud)
+        self.render_engine.lights = self._tilemap.lights
+    
 
-
-    def hot_reload(self):
+    def _hot_reload(self):
         importlib.reload(scripts.new_HUD)
         importlib.reload(scripts.new_grass)
         importlib.reload(scripts.new_particles)
         importlib.reload(scripts.new_cursor)
         importlib.reload(scripts.new_entities)
         importlib.reload(scripts.new_tilemap)
-        importlib.reload(scripts.new_inventory)
 
-        # Setting up tilemap and binding objects to render engine
+        
+        from scripts.new_HUD import HUD
+        from scripts.new_grass import GrassManager
+        from scripts.new_particles import ParticleSystem
+        from scripts.new_cursor import Cursor 
+        from scripts.new_entities import Player
+        from scripts.new_tilemap import Tilemap
+        
+        # setting up tilemap and binding objects to render engine -------------------------
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
-        self._tilemap.load_map(self._tilemap_jsons['test1.json'])
-        self.render_engine.bind_tilemap(self._tilemap)
-        self.render_engine.bind_entities_atlas(self._atlas_dict['entities'])
-        self.render_engine.bind_background(self._backgrounds['start'])
-        self.render_engine.lights = self._tilemap.lights
+        self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
+        # ------------------------------------- 
 
-        self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles'])
+        self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
         self._cursor = Cursor(self._atlas_dict['cursor'])
+        self._grass_manager = GrassManager()
+        self._hud = HUD(self._atlas_dict['UI'],self.player,self._true_res)        
+        
 
         # Update cursor's position
         self._cursor.pos = pygame.mouse.get_pos()
         self._cursor.pos = (
-            self._cursor.pos[0]  / self._true_to_screen_res_ratio + self.scroll[0], 
-            self._cursor.pos[1]  / self._true_to_screen_res_ratio + self.scroll[1],
+            self._cursor.pos[0] / self._true_to_screen_res_ratio + self.scroll[0],
+            self._cursor.pos[1] / self._true_to_screen_res_ratio + self.scroll[1],
         )
 
         # Reinitialize Player with updated cursor position
         self.player = Player(list(self._cursor.pos), (14, 16))
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
-        self._player_movement_input = [0, 0]
 
-        self._grass_manager = GrassManager()
-        self._hud = HUD(self._atlas_dict['UI'], self.player, self._true_res)
-
-
+        self._hud = HUD(self._atlas_dict['UI'],self.player,self._true_res)
+        self._bind_objects_to_render_engine()
 
 
     def _initalize_game_settings(self):
@@ -128,7 +136,8 @@ class Noel():
 
     def _get_system_display_info(self):
         system_info = {}
-        primary_monitor = get_monitors()[0]
+        # primary monitor set to second monitor for hot reloading
+        primary_monitor = get_monitors()[1]
         system_info["resolution"] = (primary_monitor.width, primary_monitor.height)
 
         if platform.system() == "Windows":
@@ -275,8 +284,7 @@ class Noel():
                 self._handle_common_events(event)
                 if event.type ==pygame.KEYDOWN:
                     if event.key == pygame.K_F5:
-                        self.hot_reload()
-                        print("Reloaded modules")
+                        self._hot_reload()
                     if event.key == pygame.K_e:
                         self._hud.set_inven_open_state(not self._hud.inven_open_state)
                     if event.key == pygame.K_a:
@@ -360,5 +368,4 @@ class Noel():
 
 
 game = Noel()
-#cProfile.run("game.start()")
 game.start()
