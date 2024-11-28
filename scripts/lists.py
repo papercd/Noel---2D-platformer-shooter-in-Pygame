@@ -103,12 +103,53 @@ class DoublyLinkedList:
 
 
 class WeaponNode:
-    def __init__(self):
-        pass 
+    def __init__(self,cell_ind,pos,size):
+        self._cell_ind = cell_ind 
+        self._pos = pos 
+        self._hovered = False 
+        self._offset = (0,0)
+        self._size = size 
+        self._item = None
+        self._rect = Rect(*self._pos, *self._size)
 
-    def update(self):
-        pass 
-    
+        self.next = None 
+        self.prev = None 
+
+    def update(self,stack_limit,cursor,opacity,player):
+        if cursor.box.colliderect(self._rect):
+            self._offset = (-1,-1)
+            self._hovered = True 
+        else: 
+            self._offset = (0,0)
+            self._hovered = False
+
+        if opacity == 255:
+            if self._item is not None:
+                if not self._hovered:
+                    return 
+                if cursor.cooldown != 0:
+                    return
+                if cursor.magnet and cursor.item.name == self._item.name and self._item.stackable:
+                    if not (cursor.item.type == self._type):
+                        return
+                    amount = stack_limit - cursor.item.count
+                    if self._item.count + cursor.item.count <= stack_limit:
+                        cursor.item.count = cursor.item.count + self._item.count
+                        self._item = None 
+                    else: 
+                        cursor.item.count = cursor.item.count + amount 
+                        self._item.count = self._item.count - amount
+                    cursor.set_cooldown()
+                if cursor.item is None:
+                    cursor.text = (self._item.get_name(),self._item.get_description())
+                    if cursor.pressed[0] and cursor.move:
+                        temp = self._item 
+                        self._item = None 
+
+                        pass 
+
+
+
 class WeaponInvenList(DoublyLinkedList):
     def __init__(self, objs = None):
         super().__init__(objs)
@@ -116,9 +157,34 @@ class WeaponInvenList(DoublyLinkedList):
     
     
     def add_node(self,cell_ind,data):
-        pass 
+        new_node = WeaponNode(cell_ind,*data)
+
+        if self.head is None:
+            self.head = self.tail = new_node
+            self.curr_node = new_node
+            return 
+        
+        current = self.head
+        while current:
+            if new_node._cell_ind < current._cell_ind:
+                self._insert_before(current,new_node)
+                if current == self.head:
+                    self.head = new_node
+                self.curr_node = new_node
+                return 
+            elif new_node._cell_ind > current._cell_ind:
+                if current.next is None:
+                    self._insert_after(current,new_node)
+                    self.curr_node = new_node
+                    return 
+            current = current.next
 
 
+    def update(self,stack_limit,cursor,opacity,player):
+        current = self.head
+        while current:
+            current.update(stack_limit,cursor,opacity,player)
+            current = current.next
 
 class Category(Node):
     def __init__(self, cell_ind, category:str):

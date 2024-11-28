@@ -1,5 +1,5 @@
 from pygame import Rect
-from scripts.lists import DoublyLinkedList
+from scripts.lists import WeaponInvenList
 
 
 class Cell:
@@ -16,7 +16,6 @@ class Cell:
         self._rect = Rect(*self._pos,*self._size)
     
     def update(self,stack_limit,inventory_list,cursor,opacity):
-
         if cursor.box.colliderect(self._rect):
             self._offset = (-1,-1)
             self._hovered = True 
@@ -283,12 +282,12 @@ class WeaponInventory(Inventory):
     
     def set_ind(self,ind:int):
         self._ind = ind 
-        self._weapons_list = DoublyLinkedList()
+        self._weapons_list = WeaponInvenList()
         for i in range(self._rows):
             for j in range(self._columns):
                 topleft = (self._topleft[0] + (j * self._cell_dim[0]) + 2, 
                            self._topleft[1] + (i * self._cell_dim[1]) + 2)
-                self._weapons_list.add_node(i * self._columns + j, WeaponCellData(topleft,self._cell_dim))
+                self._weapons_list.add_node(i * self._columns + j, (topleft,self._cell_dim))
 
 
     def update(self,cursor,inven_open_state,player):
@@ -304,12 +303,8 @@ class WeaponInventory(Inventory):
                     self._done_open = max(0,self._done_open -1) 
                 self._cur_capacity = 255 * (self._done_open /4)
                 self._offset = self._cell_dim[1] * (self._done_open/4)
-
-            current = self._weapons_list.head
-            while current:
-                current.data.update(self._stack_limit,cursor,self._cur_capacity,player)
-                current = current.next                 
-
+            
+            self._weapons_list.update(self._stack_limit,cursor,self._cur_opacity,player)
             return interacting
         return False
 

@@ -1,11 +1,14 @@
 import pygame 
 import cProfile
 import platform
+import importlib
+import scripts 
+
 from os import environ,listdir
 from json import load  as jsLoad
-
 from scripts.new_HUD import HUD
 from scripts.new_grass import GrassManager
+import scripts.new_inventory
 from scripts.new_particles import ParticleSystem
 from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player
@@ -16,6 +19,8 @@ from enum import Enum
 from my_pygame_light2d.engine import RenderEngine
 from moderngl import create_context,Texture
 from screeninfo import get_monitors
+
+
 
 class GameState(Enum): 
     StartSequence = 0
@@ -65,6 +70,47 @@ class Noel():
         self._player_movement_input = [0,0]
         self._grass_manager = GrassManager()
         self._hud = HUD(self._atlas_dict['UI'],self.player,self._true_res)
+
+
+
+    def hot_reload(self):
+        importlib.reload(scripts.new_HUD)
+        importlib.reload(scripts.new_grass)
+        importlib.reload(scripts.new_particles)
+        importlib.reload(scripts.new_cursor)
+        importlib.reload(scripts.new_entities)
+        importlib.reload(scripts.new_tilemap)
+        importlib.reload(scripts.new_inventory)
+
+        # Setting up tilemap and binding objects to render engine
+        self._tilemap = Tilemap(self._atlas_dict['tiles'])
+        self._tilemap.load_map(self._tilemap_jsons['test1.json'])
+        self.render_engine.bind_tilemap(self._tilemap)
+        self.render_engine.bind_entities_atlas(self._atlas_dict['entities'])
+        self.render_engine.bind_background(self._backgrounds['start'])
+        self.render_engine.lights = self._tilemap.lights
+
+        self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles'])
+        self._cursor = Cursor(self._atlas_dict['cursor'])
+
+        # Update cursor's position
+        self._cursor.pos = pygame.mouse.get_pos()
+        self._cursor.pos = (
+            self._cursor.pos[0]  / self._true_to_screen_res_ratio + self.scroll[0], 
+            self._cursor.pos[1]  / self._true_to_screen_res_ratio + self.scroll[1],
+        )
+
+        # Reinitialize Player with updated cursor position
+        self.player = Player(list(self._cursor.pos), (14, 16))
+        self.player.set_accel_rate(0.7)
+        self.player.set_default_speed(2.2)
+        self._player_movement_input = [0, 0]
+
+        self._grass_manager = GrassManager()
+        self._hud = HUD(self._atlas_dict['UI'], self.player, self._true_res)
+
+
+
 
     def _initalize_game_settings(self):
         self._system_display_info = self._get_system_display_info()
@@ -228,6 +274,9 @@ class Noel():
             for event in pygame.event.get():
                 self._handle_common_events(event)
                 if event.type ==pygame.KEYDOWN:
+                    if event.key == pygame.K_F5:
+                        self.hot_reload()
+                        print("Reloaded modules")
                     if event.key == pygame.K_e:
                         self._hud.set_inven_open_state(not self._hud.inven_open_state)
                     if event.key == pygame.K_a:
