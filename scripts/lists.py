@@ -100,6 +100,17 @@ class DoublyLinkedList:
                 return current
             current = current.next
         return None
+    
+class WeaponInvenList(DoublyLinkedList):
+    def __init__(self, objs = None):
+        super().__init__(objs)
+
+    
+    
+    def add_node(self,cell_ind,data):
+        pass 
+
+
 
 class Category(Node):
     def __init__(self, cell_ind, category:str):

@@ -8,6 +8,7 @@ class Cursor:
         self.in_editor = in_editor 
         self.pos = [0,0] 
 
+        self.text = None 
 
         self.interacting = False 
         self.item = None
@@ -38,8 +39,8 @@ class Cursor:
 
             if self.text is not None:
                 #TODO : add this part later. 
-                pass 
-            
+                self.text = None 
+
             if self.interacting: 
                 if self.magnet : self.state = 'magnet'
                 elif self.move: self.state = 'move'

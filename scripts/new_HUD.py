@@ -1,5 +1,5 @@
 from scripts.new_entities import Player
-from scripts.new_inventory import Inventory_Engine,Inventory
+from scripts.new_inventory import Inventory_Engine,Inventory,WeaponInventory    
 from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES
 from scripts.new_ui import HealthBar,StaminaBar
 import numpy as np
@@ -72,7 +72,7 @@ class HUD:
         self._inven_list = [
             Inventory("showing_item", 1, 5, *self._showing_items_topleft,self._item_inventory_cell_dim,16, expandable= False), 
            Inventory("closed_item", 2,5,*self._closed_items_topleft, self._item_inventory_cell_dim,16,expandable = True),
-           Inventory("weapon",1,4, *self._weapons_topleft,self._weapon_inven_cell_dim,1, expandable = True)
+           WeaponInventory(1,4, *self._weapons_topleft,self._weapon_inven_cell_dim,1, expandable = True)
 
         ]
         self._items_engine = Inventory_Engine(self._inven_list,self._player)
