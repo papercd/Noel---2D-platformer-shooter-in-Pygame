@@ -14,7 +14,8 @@ class HUD:
 
       
         self._create_display_elements()
-        self._precompute_texture_coords_and_vertices()
+        self._precompute_texture_coords()
+        self._precompute_vertices()
 
     
 
@@ -25,17 +26,45 @@ class HUD:
     def set_inven_open_state(self,state:bool):
         self._inven_open_state = state
 
-    def _precompute_texture_coords_and_vertices(self):
+    def _precompute_texture_coords(self):
+        
         self._tex_dict = {}
+
+        for key in UI_ATLAS_POSITIONS_AND_SIZES: 
+            if key.endswith("slot"):    
+                self._tex_dict[key] = {}
+                for state in UI_ATLAS_POSITIONS_AND_SIZES[key]:
+                    pos,size = UI_ATLAS_POSITIONS_AND_SIZES[key][state]
+                    self._tex_dict[key][state] = self._get_texture_coords_for_ui(pos,size)
+            else:
+                pos,size = UI_ATLAS_POSITIONS_AND_SIZES[key]
+                self._tex_dict[key] = self._get_texture_coords_for_ui(pos,size)
+
+    
+    def _precompute_vertices(self):
         self._vertices_dict = {}
+        for inventory in self._inven_list:
+            if not inventory._expandable:
+                self._vertices_dict[inventory._name] = []
+                for i in range(inventory._rows):
+                    for j in range(inventory._columns):
+                        self._vertices_dict[inventory._name].append(self._create_vertices_for_cell(i,j,inventory))
 
-        for key in self._elements: 
-            pos,size = UI_ATLAS_POSITIONS_AND_SIZES[key]
-            self._tex_dict[key] = self._get_texture_coords_for_ui(pos,size)
-            self._vertices_dict[key] = self._get_vertices_for_ui()
 
-    def _get_vertices_for_ui(self):
-        pass 
+    def _create_vertices_for_cell(self,i:int,j:int,inventory:Inventory)->np.array:
+        topleft = inventory._topleft
+        cell_dim = inventory._cell_dim
+        space_between_cells = inventory._space_between_cells
+
+        x = 2. * (topleft[0] + j * cell_dim[0] + space_between_cells * (j-1)) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + i * cell_dim[1] + space_between_cells * (i-1)) / self._true_res[1] 
+        w = 2. * cell_dim[0] / self._true_res[0]
+        h = 2. * cell_dim[1] / self._true_res[1]
+
+        return np.array([(x,y),(x+w,y),(x,y-h),
+                         (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+
+
 
     def _get_texture_coords_for_ui(self,bottomleft:tuple[int,int],size:tuple[int,int]) ->np.array:
         x = (bottomleft[0] ) / self._ui_atlas.width
@@ -76,15 +105,15 @@ class HUD:
         self._health_bar = HealthBar(*self._health_bar_topleft,self._health_bar_width,self._bar_height,self._player.health)
         self._stamina_bar = StaminaBar(*self._stamina_bar_topleft,self._stamina_bar_width,self._bar_height,self._player.stamina)
         self._inven_list = [
-            Inventory("showing_item", 1, 5, *self._showing_items_topleft,self._item_inventory_cell_dim,16, expandable= False), 
-           Inventory("closed_item", 2,5,*self._closed_items_topleft, self._item_inventory_cell_dim,16,expandable = True),
+            Inventory("item", 1, 5, *self._showing_items_topleft,self._item_inventory_cell_dim,16, expandable= False), 
+           Inventory("item", 2,5,*self._closed_items_topleft, self._item_inventory_cell_dim,16,expandable = True),
            WeaponInventory(1,4, *self._weapons_topleft,self._weapon_inven_cell_dim,1, expandable = True)
 
         ]
         self._items_engine = Inventory_Engine(self._inven_list,self._player)
         
         
-        self._elements = {
+        self._bars = {
             'health_bar' : self._health_bar,
             'stamina_bar' : self._stamina_bar,
         }

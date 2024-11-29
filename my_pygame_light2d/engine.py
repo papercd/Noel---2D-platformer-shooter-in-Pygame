@@ -252,13 +252,29 @@ class RenderEngine:
         texture_coords_list = []
         
 
-        for ui_name in self._hud._elements:
+        for ui_name in self._hud._bars:
             texture_coords = self._hud._tex_dict[ui_name]
-            vertices = self._create_hud_element_vertices(self._hud._elements[ui_name],fbo)
+            vertices = self._create_hud_element_vertices(self._hud._bars[ui_name],fbo)
 
             vertices_list.append(vertices)
             texture_coords_list.append(texture_coords)
-        
+    
+        for inventory in self._hud._inven_list:
+           if inventory._expandable:
+               
+               pass 
+           else: 
+               # if the inventory is not expandable, then it is always open, 
+               for i in range(inventory._rows):
+                   for j in range(inventory._columns):
+                        cell = inventory._cells[i][j]
+                        texture_coords = self._hud._tex_dict[f"{inventory._name}_slot"][cell._hovered]
+                        vertices = self._hud._vertices_dict[inventory._name][i*inventory._columns + j]
+                        vertices_list.append(vertices)
+                        texture_coords_list.append(texture_coords)
+                        
+                   
+
         if vertices_list:
             vertices_array = np.concatenate(vertices_list,axis= 0)
             texture_coords_array = np.concatenate(texture_coords_list,axis= 0)

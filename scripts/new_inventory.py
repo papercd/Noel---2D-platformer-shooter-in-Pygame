@@ -188,7 +188,8 @@ class Inventory:
         self._topleft = [x,y]
         self._cell_dim = cell_dim
         self._cells =  []
-        
+        self._space_between_cells = 2
+
         self._stack_limit = stack_limit
         self._max_capacity = rows * columns
         self._cur_capacity = 0
@@ -215,8 +216,8 @@ class Inventory:
         for i in range(self._rows):
             new_row = []
             for j in range(self._columns):
-                topleft = (self._topleft[0] + (j * self._cell_dim[0]) + 2, 
-                           self._topleft[1] + (i * self._cell_dim[1]) + 2)
+                topleft = (self._topleft[0] + (j * self._cell_dim[0]) + self._space_between_cells * (j-1), 
+                           self._topleft[1] + (i * self._cell_dim[1]) + self._space_between_cells * (i-1))
                 new_row.append(Cell(i*self._columns+ j,topleft,self._cell_dim,self._ind,self._name))
             self._cells.append(new_row)
 
@@ -285,8 +286,8 @@ class WeaponInventory(Inventory):
         self._weapons_list = WeaponInvenList()
         for i in range(self._rows):
             for j in range(self._columns):
-                topleft = (self._topleft[0] + (j * self._cell_dim[0]) + 2, 
-                           self._topleft[1] + (i * self._cell_dim[1]) + 2)
+                topleft = (self._topleft[0] + (j * self._cell_dim[0]) + self._space_between_cells * (j-1), 
+                           self._topleft[1] + (i * self._cell_dim[1]) + self._space_between_cells * (i-1))
                 self._weapons_list.add_node(i * self._columns + j, (topleft,self._cell_dim))
 
 
@@ -321,7 +322,7 @@ class Inventory_Engine:
         interacting = False 
 
         for inventory in self._inventory_list:
-            if inventory._name.endswith('item'):
+            if inventory._name == 'item':
                 interact_check = inventory.update(self._inventory_list,cursor,inven_open_state)
             else: 
                 interact_check =inventory.update(cursor,inven_open_state,self._player)

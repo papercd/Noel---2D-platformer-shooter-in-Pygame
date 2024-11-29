@@ -10,6 +10,7 @@ from moderngl import create_context,Texture
 from screeninfo import get_monitors
 
 import scripts 
+import my_pygame_light2d.engine
 
 from scripts.new_HUD import HUD
 from scripts.new_grass import GrassManager
@@ -84,14 +85,19 @@ class Noel():
         importlib.reload(scripts.new_cursor)
         importlib.reload(scripts.new_entities)
         importlib.reload(scripts.new_tilemap)
+        importlib.reload(my_pygame_light2d.engine)
 
         # import changed classes
+        from my_pygame_light2d.engine import RenderEngine
         from scripts.new_HUD import HUD
         from scripts.new_grass import GrassManager
         from scripts.new_particles import ParticleSystem
         from scripts.new_cursor import Cursor 
         from scripts.new_entities import Player
         from scripts.new_tilemap import Tilemap
+
+        # reinitialize render engine 
+        self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
         # explicitly reinitialize objects       
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
