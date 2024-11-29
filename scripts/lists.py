@@ -103,7 +103,8 @@ class DoublyLinkedList:
 
 
 class WeaponNode:
-    def __init__(self,cell_ind,pos,size):
+    def __init__(self,list,cell_ind,pos,size):
+        self._list = list 
         self._cell_ind = cell_ind 
         self._pos = pos 
         self._hovered = False 
@@ -146,7 +147,53 @@ class WeaponNode:
                         temp = self._item 
                         self._item = None 
 
-                        pass 
+                        self._list.add_item(temp)
+                        cursor.set_cooldown()
+
+                    elif cursor.pressed[0]:
+                        cursor.item = self._item 
+                        self._item = None 
+                        cursor.set_cooldown()
+                    elif cursor.pressed[1] and self._item.count > 1:
+                        half = self._item.count // 2
+                        cursor.item = self._item.copy()
+                        cursor.item.count = half 
+                        self._item.count = self._item.count - half 
+                        cursor.set_cooldown()
+                else: 
+                    if cursor.cooldown != 0:
+                        return 
+                    if cursor.pressed[0] and cursor.item.name == self._item.name and self._item.count + cursor.item.count <= stack_limit and self._item.stackable:
+                        self._item.count = self._item.count + cursor.item.count
+                        cursor.item = None 
+                        cursor.set_cooldown()
+                    elif cursor.pressed[0] and cursor.item.name == self._item.name and self._item.stackable :
+                        amount = stack_limit - self._item.count
+                        self._item.count = self._item.count + amount 
+                        cursor.item.count = cursor.item.count - amount 
+                        cursor.set_cooldown()
+                    elif cursor.pressed[0]:
+                        temp = cursor.item.copy()
+                        cursor.item = self._item 
+                        self._item = temp 
+                        cursor.set_cooldown()
+        elif cursor.item is not None and cursor.box.colliderect(self._rect) and cursor.cooldown == 0:
+            if cursor.item.type != self._type:
+                return 
+            if cursor.pressed[0]:
+                self._item = cursor.item 
+                cursor.item = None 
+                cursor.set_cooldown()
+            elif cursor.pressed[1] and cursor.item.stackable:
+                if cursor.item.count >1:
+                    half = cursor.item.count // 2
+                    self._item = cursor.item.copy()
+                    self._item.count = half 
+                    cursor.item.count = cursor.item.count - half 
+                else: 
+                    self._item = cursor.item 
+                    cursor.item = None 
+                cursor.set_cooldown()
 
 
 
@@ -155,9 +202,11 @@ class WeaponInvenList(DoublyLinkedList):
         super().__init__(objs)
 
     
-    
+    def add_item(self,item):
+        pass
+        
     def add_node(self,cell_ind,data):
-        new_node = WeaponNode(cell_ind,*data)
+        new_node = WeaponNode(self,cell_ind,*data)
 
         if self.head is None:
             self.head = self.tail = new_node

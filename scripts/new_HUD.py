@@ -27,10 +27,15 @@ class HUD:
 
     def _precompute_texture_coords_and_vertices(self):
         self._tex_dict = {}
+        self._vertices_dict = {}
+
         for key in self._elements: 
             pos,size = UI_ATLAS_POSITIONS_AND_SIZES[key]
             self._tex_dict[key] = self._get_texture_coords_for_ui(pos,size)
+            self._vertices_dict[key] = self._get_vertices_for_ui()
 
+    def _get_vertices_for_ui(self):
+        pass 
 
     def _get_texture_coords_for_ui(self,bottomleft:tuple[int,int],size:tuple[int,int]) ->np.array:
         x = (bottomleft[0] ) / self._ui_atlas.width
