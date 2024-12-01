@@ -23,7 +23,7 @@ class Cell:
         else: 
             self._offset = (0,0)
             self._hovered = False 
-
+        
 
         if opacity == 255:
             if self._item is not None: 
@@ -180,7 +180,7 @@ class WeaponCellData:
         
 
 class Inventory:
-    def __init__(self,name,rows,columns,x,y,cell_dim,stack_limit,expandable = False):
+    def __init__(self,name,rows,columns,x,y,cell_dim,space_between_cells,stack_limit,expandable = False):
         self._ind = 0
         self._name = name
         self._rows = rows 
@@ -188,14 +188,15 @@ class Inventory:
         self._topleft = [x,y]
         self._cell_dim = cell_dim
         self._cells =  []
-        self._space_between_cells = 2
+        self._space_between_cells = space_between_cells
 
         self._stack_limit = stack_limit
         self._max_capacity = rows * columns
         self._cur_capacity = 0
         self._cur_opacity= 255
         #TODO: need to account for space between cells 
-        self._size = (self._columns * self._cell_dim[0],self._rows * self._cell_dim[1])
+        self._size = (self._columns * self._cell_dim[0] + ((self._space_between_cells * (self._columns-1)) if self._columns > 1 else 0),
+                      self._rows * self._cell_dim[1] + ((self._space_between_cells * (self._rows-1)) if self._rows > 1 else 0))
         self._rect = Rect(*self._topleft,*self._size)
         self._expandable =  expandable
 
@@ -216,8 +217,8 @@ class Inventory:
         for i in range(self._rows):
             new_row = []
             for j in range(self._columns):
-                topleft = (self._topleft[0] + (j * self._cell_dim[0]) + self._space_between_cells * (j-1), 
-                           self._topleft[1] + (i * self._cell_dim[1]) + self._space_between_cells * (i-1))
+                topleft = (self._topleft[0] + (j * self._cell_dim[0]) + ((self._space_between_cells * (j)) if j >0 else 0), 
+                           self._topleft[1] + (i * self._cell_dim[1]) + ((self._space_between_cells * (i)) if i >0 else 0))
                 new_row.append(Cell(i*self._columns+ j,topleft,self._cell_dim,self._ind,self._name))
             self._cells.append(new_row)
 
@@ -277,8 +278,8 @@ class Inventory:
         
 
 class WeaponInventory(Inventory):
-    def __init__(self, rows, columns, x, y, cell_dim, stack_limit, expandable=False):
-        super().__init__('weapon', rows, columns, x, y, cell_dim, stack_limit, expandable)
+    def __init__(self, rows, columns, x, y, cell_dim, space_between_cells, stack_limit, expandable=False):
+        super().__init__('weapon', rows, columns, x, y, cell_dim, space_between_cells, stack_limit, expandable)
 
     
     def set_ind(self,ind:int):
@@ -286,8 +287,8 @@ class WeaponInventory(Inventory):
         self._weapons_list = WeaponInvenList()
         for i in range(self._rows):
             for j in range(self._columns):
-                topleft = (self._topleft[0] + (j * self._cell_dim[0]) + self._space_between_cells * (j-1), 
-                           self._topleft[1] + (i * self._cell_dim[1]) + self._space_between_cells * (i-1))
+                topleft = (self._topleft[0] + (j * self._cell_dim[0]) + ((self._space_between_cells * (j)) if j >0 else 0), 
+                           self._topleft[1] + (i * self._cell_dim[1]) + ((self._space_between_cells * (i)) if i >0 else 0))
                 self._weapons_list.add_node(i * self._columns + j, (topleft,self._cell_dim))
 
 

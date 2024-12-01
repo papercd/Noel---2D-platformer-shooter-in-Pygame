@@ -1,2 +1,2 @@
 
-            self.player.update(self._tilemap,self._cursor
+    def _initalize_game_s

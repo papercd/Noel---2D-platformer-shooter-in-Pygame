@@ -85,6 +85,7 @@ class Noel():
         importlib.reload(scripts.new_cursor)
         importlib.reload(scripts.new_entities)
         importlib.reload(scripts.new_tilemap)
+        importlib.reload(scripts.new_inventory)
         importlib.reload(my_pygame_light2d.engine)
 
         # import changed classes
@@ -171,7 +172,7 @@ class Noel():
 
     def _set_initial_display_settings(self):
         environ['SDL_VIDEO_CENTERED'] = '1'
-        self._screen_res = self._system_display_info['resolution']
+        self._screen_res =self._system_display_info['resolution']
         
         self._default_true_to_screen_res_ratio = 4 
 

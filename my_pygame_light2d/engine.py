@@ -258,7 +258,7 @@ class RenderEngine:
 
             vertices_list.append(vertices)
             texture_coords_list.append(texture_coords)
-    
+        
         for inventory in self._hud._inven_list:
            if inventory._expandable:
                
@@ -269,10 +269,10 @@ class RenderEngine:
                    for j in range(inventory._columns):
                         cell = inventory._cells[i][j]
                         texture_coords = self._hud._tex_dict[f"{inventory._name}_slot"][cell._hovered]
-                        vertices = self._hud._vertices_dict[inventory._name][i*inventory._columns + j]
+                        vertices = self._hud._vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
                         vertices_list.append(vertices)
                         texture_coords_list.append(texture_coords)
-                        
+        
                    
 
         if vertices_list:

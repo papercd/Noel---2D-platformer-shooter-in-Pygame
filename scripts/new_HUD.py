@@ -45,26 +45,38 @@ class HUD:
         self._vertices_dict = {}
         for inventory in self._inven_list:
             if not inventory._expandable:
-                self._vertices_dict[inventory._name] = []
+                expanded_cell_size = UI_ATLAS_POSITIONS_AND_SIZES[f"{inventory._name}_slot"][True][1]
+                self._vertices_dict[f"{inventory._name}_{inventory._ind}"] = []
                 for i in range(inventory._rows):
                     for j in range(inventory._columns):
-                        self._vertices_dict[inventory._name].append(self._create_vertices_for_cell(i,j,inventory))
+                        self._vertices_dict[f"{inventory._name}_{inventory._ind}"].append(self._create_vertices_for_cell(i,j,inventory,expanded_cell_size))
 
 
-    def _create_vertices_for_cell(self,i:int,j:int,inventory:Inventory)->np.array:
+    def _create_vertices_for_cell(self,i:int,j:int,inventory:Inventory,expanded_cell_size:tuple[int,int])->np.array:
         topleft = inventory._topleft
-        cell_dim = inventory._cell_dim
+        non_expanded_cell_dim = inventory._cell_dim
         space_between_cells = inventory._space_between_cells
 
-        x = 2. * (topleft[0] + j * cell_dim[0] + space_between_cells * (j-1)) / self._true_res[0] -1.
-        y = 1. - 2. * (topleft[1] + i * cell_dim[1] + space_between_cells * (i-1)) / self._true_res[1] 
-        w = 2. * cell_dim[0] / self._true_res[0]
-        h = 2. * cell_dim[1] / self._true_res[1]
+        x = 2. * (topleft[0] + j * non_expanded_cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1] 
+        w = 2. * non_expanded_cell_dim[0] / self._true_res[0]
+        h = 2. * non_expanded_cell_dim[1] / self._true_res[1]
 
-        return np.array([(x,y),(x+w,y),(x,y-h),
+        non_expanded_vertices =  np.array([(x,y),(x+w,y),(x,y-h),
                          (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
 
 
+        offset = (non_expanded_cell_dim[0] - expanded_cell_size[0])//2
+
+        x = 2. * (topleft[0] + j * expanded_cell_size[0] + ((space_between_cells * (j)) if j >0 else 0) + offset) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + i * expanded_cell_size[1] + ((space_between_cells * (i)) if i >0 else 0) + offset) / self._true_res[1] 
+        w = 2. * expanded_cell_size[0] / self._true_res[0]
+        h = 2. * expanded_cell_size[1] / self._true_res[1]
+
+        expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                         (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+
+        return (non_expanded_vertices,expanded_vertices)
 
     def _get_texture_coords_for_ui(self,bottomleft:tuple[int,int],size:tuple[int,int]) ->np.array:
         x = (bottomleft[0] ) / self._ui_atlas.width
@@ -83,8 +95,7 @@ class HUD:
 
 
     def _create_display_elements(self):
-        self._health_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 36 // 40)
-        self._stamina_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 37//40 + 1)
+
 
         self._health_bar_width = self._true_res[0]*8//24
         self._stamina_bar_width = self._true_res[0]*3//12
@@ -93,21 +104,49 @@ class HUD:
         self._showing_items_rows_cols = (1,5)
         self._weapon_rows_cols = (1,4)
 
-        self._item_inventory_cell_dim = ((self._true_res[0]*5//12) // self._closed_items_rows_cols[1],self._true_res[1] * 3//40 )
-        self._weapon_inven_cell_dim = ((self._true_res[0]*5//12) // self._weapon_rows_cols[1], self._true_res[1] * 3//40 )
+        self._item_inventory_cell_side = (self._true_res[0]*5//12) // self._closed_items_rows_cols[1]
+        self._weapon_inven_cell_side = (self._true_res[0]*5//12) // self._weapon_rows_cols[1]
         
-        self._closed_items_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//120,self._true_res[1] * 36//40 - self._item_inventory_cell_dim[1] * self._closed_items_rows_cols[0]) 
-        self._showing_items_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//120,self._true_res[1] * 36//40) 
+        if self._item_inventory_cell_side < 20:
+            self._item_inventory_cell_side = 20
+        elif self._item_inventory_cell_side < 45: 
+            self._item_inventory_cell_side = 23
+        else: 
+            self._item_inventory_cell_side = 28
+
+
+
+        self._space_between_item_inventory_cells = ((self._true_res[0] *5//12 - self._item_inventory_cell_side * self._closed_items_rows_cols[1]) // self._closed_items_rows_cols[1]) // 1.5
+        self._space_between_weapon_inventory_cells = 5
+
+        self._item_inventory_cell_dim = (self._item_inventory_cell_side,self._item_inventory_cell_side )
+        self._weapon_inven_cell_dim = (self._weapon_inven_cell_side,self._weapon_inven_cell_side )
+        
+        self._closed_items_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//8,self._true_res[1] * 36//40 - 2 - self._item_inventory_cell_dim[1] * self._closed_items_rows_cols[0]) 
+        self._showing_items_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//8,self._true_res[1] * 36//40 - 2) 
         self._weapons_topleft = (self._true_res[0]//12  , self._true_res[1] * 36//40 - self._weapon_inven_cell_dim[1] * 1.5)
 
         self._bar_height = self._true_res[1] // 40 
 
+        # clamp the dimensions of the display elements to be 
+        # a multiple of a certain predefined value. 
+
+        if self._bar_height < 8: 
+            self._bar_height = 8
+        else: 
+            self._bar_height = 9
+
+
+
+        self._health_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 36 // 40)
+        self._stamina_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 36//40 + self._bar_height + 1)
+
         self._health_bar = HealthBar(*self._health_bar_topleft,self._health_bar_width,self._bar_height,self._player.health)
         self._stamina_bar = StaminaBar(*self._stamina_bar_topleft,self._stamina_bar_width,self._bar_height,self._player.stamina)
         self._inven_list = [
-            Inventory("item", 1, 5, *self._showing_items_topleft,self._item_inventory_cell_dim,16, expandable= False), 
-           Inventory("item", 2,5,*self._closed_items_topleft, self._item_inventory_cell_dim,16,expandable = True),
-           WeaponInventory(1,4, *self._weapons_topleft,self._weapon_inven_cell_dim,1, expandable = True)
+            Inventory("item", 1, 5, *self._showing_items_topleft,self._item_inventory_cell_dim,self._space_between_item_inventory_cells,16, expandable= False), 
+           Inventory("item", 2,5,*self._closed_items_topleft, self._item_inventory_cell_dim,self._space_between_item_inventory_cells,16,expandable = True),
+           WeaponInventory(1,4, *self._weapons_topleft,self._weapon_inven_cell_dim,self._space_between_weapon_inventory_cells,1, expandable = True)
 
         ]
         self._items_engine = Inventory_Engine(self._inven_list,self._player)
