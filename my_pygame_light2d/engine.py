@@ -250,7 +250,10 @@ class RenderEngine:
 
         vertices_list = []
         texture_coords_list = []
-        
+
+        opaque_vertices_list = []
+        opaque_texture_coords_list = []
+
 
         for ui_name in self._hud._bars:
             texture_coords = self._hud._tex_dict[ui_name]
@@ -259,22 +262,58 @@ class RenderEngine:
             vertices_list.append(vertices)
             texture_coords_list.append(texture_coords)
         
-        for inventory in self._hud._inven_list:
-           if inventory._expandable:
-               
-               pass 
-           else: 
-               # if the inventory is not expandable, then it is always open, 
-               for i in range(inventory._rows):
-                   for j in range(inventory._columns):
-                        cell = inventory._cells[i][j]
-                        texture_coords = self._hud._tex_dict[f"{inventory._name}_slot"][cell._hovered]
-                        vertices = self._hud._vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
-                        vertices_list.append(vertices)
-                        texture_coords_list.append(texture_coords)
-        
-                   
+        opacity = 0
 
+        for inventory in self._hud._inven_list:
+            if inventory._name.endswith('item'):
+                if inventory._expandable:
+                    if inventory.cur_opacity > 0 :
+                        opacity = inventory.cur_opacity
+                        background_texture_coords = self._hud._tex_dict["background"]
+                        background_vertices  = self._hud._vertices_dict[f"{inventory.name}_{inventory.ind}_background"][inventory.done_open]
+                        opaque_vertices_list.append(background_vertices)
+                        opaque_texture_coords_list.append(background_texture_coords)
+
+                        for i in range(inventory._rows):
+                            for j in range(inventory._columns):
+                                cell = inventory._cells[i][j]
+                                texture_coords = self._hud._tex_dict[f"{inventory._name}_slot"][cell._hovered]
+                                vertices = self._hud._vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
+                                opaque_vertices_list.append(vertices)
+                                opaque_texture_coords_list.append(texture_coords)
+
+                else: 
+                    # if the inventory is not expandable, then it is always open, 
+                    for i in range(inventory._rows):
+                        for j in range(inventory._columns):
+                                cell = inventory._cells[i][j]
+                                texture_coords = self._hud._tex_dict[f"{inventory._name}_slot"][cell._hovered]
+                                vertices = self._hud._vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
+                                vertices_list.append(vertices)
+                                texture_coords_list.append(texture_coords)
+            
+            else:
+                if inventory.cur_opacity > 0 :
+                    current = inventory._weapons_list.head 
+                    while current: 
+
+                        texture_coords = self._hud._tex_dict[f"{inventory.name}_slot"][current._hovered]
+                        vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
+                        opaque_texture_coords_list.append(texture_coords)
+                        opaque_vertices_list.append(vertices)
+                        current = current.next 
+                
+        # add the background vertices and texture coords here 
+             
+        
+        if opaque_vertices_list:
+            vertices_array = np.concatenate(opaque_vertices_list,axis= 0)
+            texture_coords_array = np.concatenate(opaque_texture_coords_list,axis= 0)
+
+            buffer_data = np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
+            vbo = self.ctx.buffer(buffer_data)
+
+            self._render_ui_elements(vbo,fbo,ui_atlas,opacity)
         if vertices_list:
             vertices_array = np.concatenate(vertices_list,axis= 0)
             texture_coords_array = np.concatenate(texture_coords_list,axis= 0)
@@ -284,14 +323,20 @@ class RenderEngine:
 
             self._render_ui_elements(vbo,fbo,ui_atlas)
 
-    def _render_ui_elements(self,vbo:moderngl.Context.buffer,fbo:moderngl.Framebuffer,ui_atlas: moderngl.Texture)-> None:
+    def _render_ui_elements(self,vbo:moderngl.Context.buffer,fbo:moderngl.Framebuffer,ui_atlas: moderngl.Texture,opacity = None)-> None:
         vao = self.ctx.vertex_array(self._prog_draw, [(vbo,'2f 2f','vertexPos', 'vertexTexCoord')])
+
+        if opacity:
+            self.set_alpha_value_draw_shader(opacity/255)
 
         ui_atlas.use()
         fbo.use()
         vao.render()
         vbo.release()
         vao.release()
+
+        if opacity:
+            self.set_alpha_value_draw_shader(1.)
 
     def _create_hud_element_vertices(self,element,fbo:moderngl.Framebuffer) -> np.array:
         
@@ -592,6 +637,13 @@ class RenderEngine:
         self._vao_draw.render()
 
 
+    def set_offset_value_draw_shader(self,offset : tuple[float,float]) -> None:
+        """
+        set the offset value for the draw shader. 
+
+
+        """
+        pass 
 
 
 

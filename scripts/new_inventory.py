@@ -200,11 +200,33 @@ class Inventory:
         self._rect = Rect(*self._topleft,*self._size)
         self._expandable =  expandable
 
-        if self._expandable:
-            self._done_open = 0
-            self._offset = 0
+        self._done_open = 0
+        self._offset = 0
 
         #TODO: if the inventory is a weapons inventory, also create a weapon linked list. 
+    @property
+    def done_open(self):
+        return self._done_open
+
+    @property 
+    def topleft(self):
+        return self._topleft
+
+    @property
+    def name(self):
+        return self._name
+
+    @property   
+    def expandable(self):
+        return self._expandable
+
+    @property
+    def cur_opacity(self):
+        return self._cur_opacity
+    
+    @property
+    def size(self):
+        return self._size
 
     @property 
     def ind(self):
@@ -252,29 +274,28 @@ class Inventory:
     def update(self, inventory_list, cursor,inven_open_state):
         inven_active = ( not self._expandable ) or (self._expandable and inven_open_state)
 
+        interacting = False
+
         if inven_active:
 
             interacting  = self._rect.colliderect(cursor.box)
 
-            if self._expandable:
-                if not inven_open_state:
-                    self._done_open = min(4,self._done_open +1)
-                else:
-                    self._done_open = max(0,self._done_open -1)
-                
-                self._cur_opacity = 255 * (self._done_open/4)
-                self._offset = self._cell_dim[1] * (self._done_open/4)
+            self._done_open = min(5,self._done_open +1)
+        else:
+            self._done_open = max(0,self._done_open -1)
+        
+        self._cur_opacity = 255 * (self._done_open/5)
+        self._offset = self._cell_dim[1] * (self._done_open/5)
 
 
-            for i, row in enumerate(self._cells):
-                for j, cell in enumerate(row):
-                    cell.update(self._stack_limit,inventory_list,cursor,self._cur_capacity)
+        for i, row in enumerate(self._cells):
+            for j, cell in enumerate(row):
+                cell.update(self._stack_limit,inventory_list,cursor,self._cur_capacity)
                                  
 
             
-            return interacting
+        return interacting
         
-        return False 
         
 
 class WeaponInventory(Inventory):
@@ -295,20 +316,20 @@ class WeaponInventory(Inventory):
     def update(self,cursor,inven_open_state,player):
         inven_active = ( not self._expandable ) or (self._expandable and inven_open_state)
         
+        interacting = False
+
         if inven_active:
             interacting = self._rect.colliderect(cursor.box)
-
-            if self._expandable:
-                if not inven_open_state:
-                    self._done_open = min(4,self._done_open +1)
-                else: 
-                    self._done_open = max(0,self._done_open -1) 
-                self._cur_capacity = 255 * (self._done_open /4)
-                self._offset = self._cell_dim[1] * (self._done_open/4)
-            
-            self._weapons_list.update(self._stack_limit,cursor,self._cur_opacity,player)
-            return interacting
-        return False
+            self._done_open = min(5,self._done_open +1)
+        
+        else: 
+            self._done_open = max(0,self._done_open -1) 
+        self._cur_opacity= 255 * (self._done_open /5)
+        self._offset = self._cell_dim[1] * (self._done_open/5)
+        
+        self._weapons_list.update(self._stack_limit,cursor,self._cur_opacity,player)
+        
+        return interacting
 
 
 class Inventory_Engine: 

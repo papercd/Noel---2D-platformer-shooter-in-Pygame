@@ -145,7 +145,7 @@ class Noel():
     def _get_system_display_info(self):
         system_info = {}
         # primary monitor set to second monitor for hot reloading
-        primary_monitor = get_monitors()[1]
+        primary_monitor = get_monitors()[0]
         system_info["resolution"] = (primary_monitor.width, primary_monitor.height)
 
         if platform.system() == "Windows":
@@ -173,8 +173,9 @@ class Noel():
     def _set_initial_display_settings(self):
         environ['SDL_VIDEO_CENTERED'] = '1'
         self._screen_res =self._system_display_info['resolution']
+        #self._screen_res = (1440,950)
         
-        self._default_true_to_screen_res_ratio = 4 
+        self._default_true_to_screen_res_ratio = 3.5 
 
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
         self._true_to_screen_res_ratio = 4 

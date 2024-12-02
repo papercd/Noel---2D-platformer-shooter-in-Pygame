@@ -7,6 +7,7 @@ uniform float rotation;          // Rotation angle in radians
 uniform bool flip_horizontal;     // Horizontal flip flag
 uniform bool flip_vertical;       // Vertical flip flag
 
+
 out vec2 fragmentTexCoord;
 
 void main()

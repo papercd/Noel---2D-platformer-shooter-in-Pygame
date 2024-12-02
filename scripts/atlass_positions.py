@@ -41,7 +41,8 @@ UI_ATLAS_POSITIONS_AND_SIZES = {
     "health_bar" : ((0,0),(204,8)),
     "stamina_bar" : ((0,0),(204,8)),
     "item_slot" : {True:((20,8),(24,24)),False:((0,8),(20,20))},
-    "weapon_slot" : {True:((78,8),(36,16)),False:((44,8),(34,14))}
+    "weapon_slot" : {True:((78,8),(36,16)),False:((44,8),(34,14))},
+    "background" : ((204,0),(176,93))
 }
 
 PARTICLE_ATLAS_POSITIONS_AND_SIZES ={

@@ -44,15 +44,33 @@ class HUD:
     def _precompute_vertices(self):
         self._vertices_dict = {}
         for inventory in self._inven_list:
-            if not inventory._expandable:
-                expanded_cell_size = UI_ATLAS_POSITIONS_AND_SIZES[f"{inventory._name}_slot"][True][1]
-                self._vertices_dict[f"{inventory._name}_{inventory._ind}"] = []
-                for i in range(inventory._rows):
-                    for j in range(inventory._columns):
-                        self._vertices_dict[f"{inventory._name}_{inventory._ind}"].append(self._create_vertices_for_cell(i,j,inventory,expanded_cell_size))
+            if inventory.expandable:
+                self._vertices_dict[f"{inventory.name}_{inventory.ind}_background"] = {}
+                for i in range(6):
+                    self._vertices_dict[f"{inventory.name}_{inventory.ind}_background"][i] = self._create_vertices_for_background(i,inventory)
+            self._vertices_dict[f"{inventory._name}_{inventory._ind}"] = []
+            for i in range(inventory._rows):
+                for j in range(inventory._columns):
+                    self._vertices_dict[f"{inventory._name}_{inventory._ind}"].append(self._create_vertices_for_cell(i,j,inventory))
 
 
-    def _create_vertices_for_cell(self,i:int,j:int,inventory:Inventory,expanded_cell_size:tuple[int,int])->np.array:
+
+    def _create_vertices_for_background(self,step:int, inventory: Inventory) -> np.array:
+        topleft = inventory.topleft
+        background_dim = inventory.size
+
+        x = 2. * (topleft[0]-5) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] -5- (5-step) * inventory._cell_dim[1]//4 ) / self._true_res[1] 
+        w = 2. *(background_dim[0]+10)/ self._true_res[0]
+        h = 2. * (background_dim[1]+10) / self._true_res[1]
+
+        return  np.array([(x,y),(x+w,y),(x,y-h),
+                         (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+
+
+
+
+    def _create_vertices_for_cell(self,i:int,j:int,inventory:Inventory)->np.array:
         topleft = inventory._topleft
         non_expanded_cell_dim = inventory._cell_dim
         space_between_cells = inventory._space_between_cells
@@ -65,13 +83,12 @@ class HUD:
         non_expanded_vertices =  np.array([(x,y),(x+w,y),(x,y-h),
                          (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
 
+        offset = (-2,-2)
 
-        offset = (non_expanded_cell_dim[0] - expanded_cell_size[0])//2
-
-        x = 2. * (topleft[0] + j * expanded_cell_size[0] + ((space_between_cells * (j)) if j >0 else 0) + offset) / self._true_res[0] -1.
-        y = 1. - 2. * (topleft[1] + i * expanded_cell_size[1] + ((space_between_cells * (i)) if i >0 else 0) + offset) / self._true_res[1] 
-        w = 2. * expanded_cell_size[0] / self._true_res[0]
-        h = 2. * expanded_cell_size[1] / self._true_res[1]
+        x = 2. * (topleft[0] + j * non_expanded_cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0) + offset[0]) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0) + offset[0]) / self._true_res[1] 
+        w = 2. * (non_expanded_cell_dim[0] + 4)/ self._true_res[0]
+        h = 2. * (non_expanded_cell_dim[1] + 4)/ self._true_res[1]
 
         expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
                          (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
@@ -79,20 +96,21 @@ class HUD:
         return (non_expanded_vertices,expanded_vertices)
 
     def _get_texture_coords_for_ui(self,bottomleft:tuple[int,int],size:tuple[int,int]) ->np.array:
-        x = (bottomleft[0] ) / self._ui_atlas.width
-        y = (bottomleft[1] ) / self._ui_atlas.height
 
-        w = size[0] / self._ui_atlas.width
-        h = size[1] / self._ui_atlas.height
+            x = (bottomleft[0] ) / self._ui_atlas.width
+            y = (bottomleft[1] ) / self._ui_atlas.height
 
-        p1 = (x,y+h) 
-        p2 = (x+w,y+h)
-        p3 = (x,y) 
-        p4 = (x+w,y)
+            w = size[0] / self._ui_atlas.width
+            h = size[1] / self._ui_atlas.height
 
-        return np.array([p1,p2,p3,
-                         p3,p2,p4],dtype = np.float32 )
+            p1 = (x,y+h) 
+            p2 = (x+w,y+h)
+            p3 = (x,y) 
+            p4 = (x+w,y)
 
+            return np.array([p1,p2,p3,
+                            p3,p2,p4],dtype = np.float32 )
+        
 
     def _create_display_elements(self):
 
@@ -105,8 +123,8 @@ class HUD:
         self._weapon_rows_cols = (1,4)
 
         self._item_inventory_cell_side = (self._true_res[0]*5//12) // self._closed_items_rows_cols[1]
-        self._weapon_inven_cell_side = (self._true_res[0]*5//12) // self._weapon_rows_cols[1]
-        
+        self._weapon_inventory_cell_length = (self._true_res[0]*5//12) // self._weapon_rows_cols[1]
+
         if self._item_inventory_cell_side < 20:
             self._item_inventory_cell_side = 20
         elif self._item_inventory_cell_side < 45: 
@@ -114,16 +132,22 @@ class HUD:
         else: 
             self._item_inventory_cell_side = 28
 
+        if self._weapon_inventory_cell_length < 34 : 
+            self._item_inventory_cell_length = 34
+        else: 
+            self._item_inventory_cell_length = 34 
+        
 
 
         self._space_between_item_inventory_cells = ((self._true_res[0] *5//12 - self._item_inventory_cell_side * self._closed_items_rows_cols[1]) // self._closed_items_rows_cols[1]) // 1.5
         self._space_between_weapon_inventory_cells = 5
 
         self._item_inventory_cell_dim = (self._item_inventory_cell_side,self._item_inventory_cell_side )
-        self._weapon_inven_cell_dim = (self._weapon_inven_cell_side,self._weapon_inven_cell_side )
+        self._weapon_inven_cell_dim = (self._weapon_inventory_cell_length, 14)
         
-        self._closed_items_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//8,self._true_res[1] * 36//40 - 2 - self._item_inventory_cell_dim[1] * self._closed_items_rows_cols[0]) 
-        self._showing_items_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//8,self._true_res[1] * 36//40 - 2) 
+        self._closed_items_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//7,self._true_res[1] * 36//40 - 2 - self._item_inventory_cell_dim[1] * self._closed_items_rows_cols[0]\
+                                      -self._space_between_item_inventory_cells * (self._closed_items_rows_cols[0])) 
+        self._showing_items_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//7,self._true_res[1] * 36//40 - 2) 
         self._weapons_topleft = (self._true_res[0]//12  , self._true_res[1] * 36//40 - self._weapon_inven_cell_dim[1] * 1.5)
 
         self._bar_height = self._true_res[1] // 40 
