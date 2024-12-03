@@ -69,7 +69,7 @@ class Noel():
         self.player.set_default_speed(2.2)
        
         self._grass_manager = GrassManager()
-        self._hud = HUD(self._atlas_dict['UI'],self.player,self._true_res)
+        self._hud = HUD(self._atlas_dict['UI_and_items'],self.player,self._true_res)
 
     def _bind_objects_to_render_engine(self):
         self.render_engine.bind_tilemap(self._tilemap)
@@ -109,7 +109,7 @@ class Noel():
         self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
         self._cursor = Cursor(self._atlas_dict['cursor'])
         self._grass_manager = GrassManager()
-        self._hud = HUD(self._atlas_dict['UI'],self.player,self._true_res)        
+        self._hud = HUD(self._atlas_dict['UI_and_items'],self.player,self._true_res)        
         
         # Update cursor's position
         self._cursor.pos = pygame.mouse.get_pos()
@@ -124,7 +124,7 @@ class Noel():
         self.player.set_default_speed(2.2)
 
         # reinitialize hud
-        self._hud = HUD(self._atlas_dict['UI'],self.player,self._true_res)
+        self._hud = HUD(self._atlas_dict['UI_and_items'],self.player,self._true_res)
 
         # rebind objects to render engine
         self._bind_objects_to_render_engine()
@@ -259,7 +259,7 @@ class Noel():
         dict['entities'] = load_texture(TEXTURE_BASE_PATH + 'entities/entities_atlas.png',self._ctx)
         dict['cursor'] = load_texture(TEXTURE_BASE_PATH +'cursor/cursor_atlas.png',self._ctx)
         dict['particles'] = load_texture(TEXTURE_BASE_PATH + 'particles/animation_atlas.png',self._ctx)
-        dict['UI'] = load_texture(TEXTURE_BASE_PATH + 'ui/ui_atlas.png',self._ctx)
+        dict['UI_and_items'] = load_texture(TEXTURE_BASE_PATH + 'ui/ui_atlas.png',self._ctx)
         dict['items'] = load_texture(TEXTURE_BASE_PATH +'items/item_atlas.png',self._ctx)
         dict['weapons'] = load_texture(TEXTURE_BASE_PATH + 'weapons/weapon_atlas.png',self._ctx)
 

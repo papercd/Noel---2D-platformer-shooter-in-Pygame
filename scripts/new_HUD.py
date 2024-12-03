@@ -1,16 +1,16 @@
 from scripts.new_entities import Player
 from scripts.new_inventory import Inventory_Engine,Inventory,WeaponInventory    
-from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES
+from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS
 from scripts.new_ui import HealthBar,StaminaBar
 from scripts.item import Item
 import numpy as np
 
 
 class HUD: 
-    def __init__(self,ui_atlas,player:Player,true_res:tuple[int,int]):
+    def __init__(self,ui_items_atlas,player:Player,true_res:tuple[int,int]):
         self._player = player
         self._true_res = true_res
-        self._ui_atlas = ui_atlas
+        self._ui_items_atlas = ui_items_atlas
         self._inven_open_state = False
 
       
@@ -30,9 +30,10 @@ class HUD:
     def _precompute_texture_coords(self):
         
         self._tex_dict = {}
+        self._item_tex_dict = {}
 
         for key in UI_ATLAS_POSITIONS_AND_SIZES: 
-            if key.endswith("slot"):    
+            if key.endswith("slot"):   
                 self._tex_dict[key] = {}
                 for state in UI_ATLAS_POSITIONS_AND_SIZES[key]:
                     pos,size = UI_ATLAS_POSITIONS_AND_SIZES[key][state]
@@ -41,18 +42,25 @@ class HUD:
                 pos,size = UI_ATLAS_POSITIONS_AND_SIZES[key]
                 self._tex_dict[key] = self._get_texture_coords_for_ui(pos,size)
 
+        for key in ITEM_ATLAS_POSITIONS:
+            pos= ITEM_ATLAS_POSITIONS[key]
+            self._item_tex_dict[key] = self._get_texture_coords_for_item(pos)
+
     
     def _precompute_vertices(self):
         self._vertices_dict = {}
+        self._item_vertices_dict = {} 
         for inventory in self._inven_list:
             if inventory.expandable:
                 self._vertices_dict[f"{inventory.name}_{inventory.ind}_background"] = {}
                 for i in range(6):
                     self._vertices_dict[f"{inventory.name}_{inventory.ind}_background"][i] = self._create_vertices_for_background(i,inventory)
             self._vertices_dict[f"{inventory._name}_{inventory._ind}"] = []
+            self._item_vertices_dict[f"{inventory._name}_{inventory._ind}"] = []
             for i in range(inventory._rows):
                 for j in range(inventory._columns):
                     self._vertices_dict[f"{inventory._name}_{inventory._ind}"].append(self._create_vertices_for_cell(i,j,inventory))
+                    self._item_vertices_dict[f"{inventory._name}_{inventory._ind}"].append(self._create_vertices_for_item(i,j,inventory))
 
 
 
@@ -69,7 +77,18 @@ class HUD:
                          (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
 
 
+    def _create_vertices_for_item(self,i:int,j:int,inventory:Inventory)->np.array:
+        topleft = inventory._topleft
+        cell_dim = inventory._cell_dim
+        space_between_cells = inventory._space_between_cells
 
+        x = 2. * (topleft[0]+ cell_dim[0]//4 + j * cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + cell_dim[1]//4 + i * cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+        w = 2. * (cell_dim[0]//2)/ self._true_res[0]
+        h = 2. * (cell_dim[1]//2) / self._true_res[1]
+
+        return np.array([(x,y),(x+w,y),(x,y-h),
+                         (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
 
     def _create_vertices_for_cell(self,i:int,j:int,inventory:Inventory)->np.array:
         topleft = inventory._topleft
@@ -98,11 +117,11 @@ class HUD:
 
     def _get_texture_coords_for_ui(self,bottomleft:tuple[int,int],size:tuple[int,int]) ->np.array:
 
-            x = (bottomleft[0] ) / self._ui_atlas.width
-            y = (bottomleft[1] ) / self._ui_atlas.height
+            x = (bottomleft[0] ) / self._ui_items_atlas.width
+            y = (bottomleft[1] ) / self._ui_items_atlas.height
 
-            w = size[0] / self._ui_atlas.width
-            h = size[1] / self._ui_atlas.height
+            w = size[0] / self._ui_items_atlas.width
+            h = size[1] / self._ui_items_atlas.height
 
             p1 = (x,y+h) 
             p2 = (x+w,y+h)
@@ -111,8 +130,24 @@ class HUD:
 
             return np.array([p1,p2,p3,
                             p3,p2,p4],dtype = np.float32 )
-        
 
+    def _get_texture_coords_for_item(self,bottomleft:tuple[int,int]) ->np.array:
+        # 16 is a magic number that is the size of the items in the atlas. 
+        x = (bottomleft[0] ) / self._ui_items_atlas.width
+        y = (bottomleft[1] ) / self._ui_items_atlas.height
+
+        w = 16 / self._ui_items_atlas.width
+        h = 16 / self._ui_items_atlas.height
+
+        p1 = (x,y+h) 
+        p2 = (x+w,y+h)
+        p3 = (x,y) 
+        p4 = (x+w,y)
+
+        return np.array([p1,p2,p3,
+                        p3,p2,p4],dtype = np.float32 )
+
+        
     def _create_display_elements(self):
 
 

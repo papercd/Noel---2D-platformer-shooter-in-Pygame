@@ -43,7 +43,7 @@ WEAPON_ATLAS_POSITIONS_AND_SIZES = {
 }
 
 ITEM_ATLAS_POSITIONS ={
-    "amethyst_arrow": (0,0)
+    "amethyst_arrow": (380,0)
 }
 
 UI_ATLAS_POSITIONS_AND_SIZES = {

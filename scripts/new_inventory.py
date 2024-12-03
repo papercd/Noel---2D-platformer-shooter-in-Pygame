@@ -24,7 +24,6 @@ class Cell:
             self._offset = (0,0)
             self._hovered = False 
         
-
         if opacity == 255:
             if self._item is not None: 
                 if not self._hovered: 
@@ -41,13 +40,13 @@ class Cell:
                         cursor.item.count = cursor.item.count + self._item.count
                         self._item = None 
                     else: 
-                        cursor.item.count = cursor._item.count + amount 
+                        cursor.item.count = cursor.item.count + amount 
                         self._item.count = self._item.count - amount
                     
                     cursor.set_cooldown()
                 
                 if cursor.item is None: 
-                    cursor.text = (self._item.name,self._item.descriptions)
+                    cursor.text = (self._item.name,self._item.description)
                     
                     if cursor.pressed[0] and cursor.move:
                         index = self._inventory_id
@@ -88,8 +87,6 @@ class Cell:
                     else: 
                         if cursor.cooldown != 0:
                             return 
-                        if cursor.item.type != self._type: 
-                            return 
                         if cursor.pressed[0] and cursor.item.name == self._item.name and \
                             self._item.count + cursor.item.count <= stack_limit and self._item.stackable: 
                             self._item.count = self._item.count + cursor.item.count 
@@ -109,8 +106,6 @@ class Cell:
                             cursor.set_cooldown()
             
             elif cursor.item is not None and cursor.box.colliderect(self._rect) and cursor.cooldown ==0:
-                if self._item.type != cursor.item.type: 
-                    return 
                 if cursor.pressed[0]:
                     self._item = cursor.item 
                     cursor.item = None 
@@ -163,7 +158,7 @@ class WeaponCellData:
                         cursor.item.count = cursor.item.count + self._item.count
                         self._item = None 
                     else: 
-                        cursor.item.count = cursor._item.count + amount 
+                        cursor.item.count = cursor.item.count + amount 
                         self._item.count = self._item.count - amount
                     
                     cursor.set_cooldown()
@@ -293,7 +288,7 @@ class Inventory:
 
         for i, row in enumerate(self._cells):
             for j, cell in enumerate(row):
-                cell.update(self._stack_limit,inventory_list,cursor,self._cur_capacity)
+                cell.update(self._stack_limit,inventory_list,cursor,self._cur_opacity)
                                  
 
             

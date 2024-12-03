@@ -244,7 +244,7 @@ class RenderEngine:
             pass 
 
     def _render_hud(self,fbo:moderngl.Framebuffer) -> None: 
-        ui_atlas = self._hud._ui_atlas
+        ui_items_atlas = self._hud._ui_items_atlas
         # TODO: the vertex buffer for the stamina bar and the health bar is fixed to two slots of info. 
         # create the vertex buffer before hand for further optimization. 
 
@@ -262,7 +262,7 @@ class RenderEngine:
             vertices_list.append(vertices)
             texture_coords_list.append(texture_coords)
         
-        opacity = 0
+        opacity =255 
 
         for inventory in self._hud._inven_list:
             if inventory._name.endswith('item'):
@@ -281,8 +281,13 @@ class RenderEngine:
                                 vertices = self._hud._vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
                                 opaque_vertices_list.append(vertices)
                                 opaque_texture_coords_list.append(texture_coords)
+                                
                                 if cell._item: 
-                                    pass 
+                                    texture_coords = self._hud._item_tex_dict[cell._item.name]
+                                    vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j]
+                                    opaque_vertices_list.append(vertices)
+                                    opaque_texture_coords_list.append(texture_coords)
+                                 
 
                 else: 
                     # if the inventory is not expandable, then it is always open, 
@@ -293,7 +298,12 @@ class RenderEngine:
                                 vertices = self._hud._vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
                                 vertices_list.append(vertices)
                                 texture_coords_list.append(texture_coords)
-            
+                                if cell._item: 
+                                    texture_coords = self._hud._item_tex_dict[cell._item.name]
+                                    vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j]
+                                    vertices_list.append(vertices)
+                                    texture_coords_list.append(texture_coords)
+
             else:
                 if inventory.cur_opacity > 0 :
                     current = inventory._weapons_list.head 
@@ -306,7 +316,7 @@ class RenderEngine:
                         current = current.next 
                 
         # add the background vertices and texture coords here 
-             
+        
         
         if opaque_vertices_list:
             vertices_array = np.concatenate(opaque_vertices_list,axis= 0)
@@ -315,7 +325,7 @@ class RenderEngine:
             buffer_data = np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
             vbo = self.ctx.buffer(buffer_data)
 
-            self._render_ui_elements(vbo,fbo,ui_atlas,opacity)
+            self._render_ui_elements(vbo,fbo,ui_items_atlas,opacity)
         if vertices_list:
             vertices_array = np.concatenate(vertices_list,axis= 0)
             texture_coords_array = np.concatenate(texture_coords_list,axis= 0)
@@ -323,15 +333,15 @@ class RenderEngine:
             buffer_data = np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
             vbo = self.ctx.buffer(buffer_data)
 
-            self._render_ui_elements(vbo,fbo,ui_atlas)
+            self._render_ui_elements(vbo,fbo,ui_items_atlas)
 
-    def _render_ui_elements(self,vbo:moderngl.Context.buffer,fbo:moderngl.Framebuffer,ui_atlas: moderngl.Texture,opacity = None)-> None:
+    def _render_ui_elements(self,vbo:moderngl.Context.buffer,fbo:moderngl.Framebuffer,ui_items_atlas: moderngl.Texture,opacity = None)-> None:
         vao = self.ctx.vertex_array(self._prog_draw, [(vbo,'2f 2f','vertexPos', 'vertexTexCoord')])
 
         if opacity:
             self.set_alpha_value_draw_shader(opacity/255)
 
-        ui_atlas.use()
+        ui_items_atlas.use()
         fbo.use()
         vao.render()
         vbo.release()
