@@ -10,6 +10,7 @@ PLAYER_ANIMATION_DATA = [
     AnimationData('run',6,4,False,True),
     AnimationData('slide',1,5,True,False),
     AnimationData('wall_slide',1,4,True,False),
+    AnimationData('sprint',6,3,False,True)
 ]
 
 PARTICLE_ANIMATION_DATA = {

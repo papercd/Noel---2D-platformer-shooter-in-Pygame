@@ -411,13 +411,19 @@ class Player(PhysicsEntity):
                         if self.fatigued: 
                             self.set_state('walk')
                         else: 
-                            self.set_state('run')
+                            if self.running: 
+                                self.set_state('sprint')
+                            else: 
+                                self.set_state('run')
                 else: 
                    
                     if self.fatigued: 
                         self.set_state('walk')
                     else: 
-                        self.set_state('run')
+                        if self.running: 
+                            self.set_state('sprint')
+                        else:    
+                            self.set_state('run')
                     """
                     anim_frame = self.animation.frame / self.animation.img_dur
                     if anim_frame == 0 or anim_frame == 3:

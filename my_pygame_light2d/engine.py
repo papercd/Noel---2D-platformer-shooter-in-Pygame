@@ -281,6 +281,8 @@ class RenderEngine:
                                 vertices = self._hud._vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
                                 opaque_vertices_list.append(vertices)
                                 opaque_texture_coords_list.append(texture_coords)
+                                if cell._item: 
+                                    pass 
 
                 else: 
                     # if the inventory is not expandable, then it is always open, 

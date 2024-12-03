@@ -70,7 +70,9 @@ ENTITIES_ATLAS_POSITIONS ={
                 "land": (0,80),
                 "run": (0,96),
                 "slide": (0,112),
-                "wall_slide": (0,128)
+                "wall_slide": (0,128),
+                "sprint": (0,144)
+
                 },
                 True: {
 

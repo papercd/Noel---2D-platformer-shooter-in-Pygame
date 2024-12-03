@@ -174,8 +174,8 @@ class Noel():
 
     def _set_initial_display_settings(self):
         environ['SDL_VIDEO_CENTERED'] = '1'
-        #self._screen_res =self._system_display_info['resolution']
-        self._screen_res = (1440,950)
+        self._screen_res =self._system_display_info['resolution']
+        #self._screen_res = (1440,950)
         
         self._default_true_to_screen_res_ratio = 3.5 
 
