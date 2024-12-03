@@ -2,6 +2,7 @@ from scripts.new_entities import Player
 from scripts.new_inventory import Inventory_Engine,Inventory,WeaponInventory    
 from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES
 from scripts.new_ui import HealthBar,StaminaBar
+from scripts.item import Item
 import numpy as np
 
 
@@ -182,6 +183,15 @@ class HUD:
             'health_bar' : self._health_bar,
             'stamina_bar' : self._stamina_bar,
         }
+
+    
+    # temporary method to test items 
+    def add_item(self, item: Item):
+        if item.type == 'weapon' :
+            pass 
+        else:
+            self._inven_list[0].add_item(item) 
+            pass 
 
 
     def update(self,cursor):

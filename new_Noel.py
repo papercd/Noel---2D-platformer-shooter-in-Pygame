@@ -12,6 +12,8 @@ from screeninfo import get_monitors
 import scripts 
 import my_pygame_light2d.engine
 
+from scripts.item import Item 
+
 from scripts.new_HUD import HUD
 from scripts.new_grass import GrassManager
 from scripts.new_particles import ParticleSystem
@@ -172,8 +174,8 @@ class Noel():
 
     def _set_initial_display_settings(self):
         environ['SDL_VIDEO_CENTERED'] = '1'
-        self._screen_res =self._system_display_info['resolution']
-        #self._screen_res = (1440,950)
+        #self._screen_res =self._system_display_info['resolution']
+        self._screen_res = (1440,950)
         
         self._default_true_to_screen_res_ratio = 3.5 
 
@@ -252,11 +254,14 @@ class Noel():
         
         dict = {}
 
+        dict['text'] = load_texture(TEXTURE_BASE_PATH + 'text/text_atl.png',self._ctx)
         dict['tiles'] = load_texture(TEXTURE_BASE_PATH+ 'tiles/tile_atlas.png',self._ctx)
         dict['entities'] = load_texture(TEXTURE_BASE_PATH + 'entities/entities_atlas.png',self._ctx)
         dict['cursor'] = load_texture(TEXTURE_BASE_PATH +'cursor/cursor_atlas.png',self._ctx)
         dict['particles'] = load_texture(TEXTURE_BASE_PATH + 'particles/animation_atlas.png',self._ctx)
         dict['UI'] = load_texture(TEXTURE_BASE_PATH + 'ui/ui_atlas.png',self._ctx)
+        dict['items'] = load_texture(TEXTURE_BASE_PATH +'items/item_atlas.png',self._ctx)
+        dict['weapons'] = load_texture(TEXTURE_BASE_PATH + 'weapons/weapon_atlas.png',self._ctx)
 
         return dict
 
@@ -298,6 +303,15 @@ class Noel():
                         self._hud.set_inven_open_state(not self._hud.inven_open_state)
                     if event.key == pygame.K_a:
                         self._player_movement_input[0] = True 
+                    if event.key == pygame.K_x: 
+                        for row in self._hud._inven_list[0]._cells: 
+                            for cell in row:
+                                if cell._item: 
+                                    print(cell._item.count)
+                    if event.key == pygame.K_c:
+                        # testing adding items to item inventory 
+                        self._hud.add_item(Item('amethyst_arrow'))
+                        pass 
                     if event.key == pygame.K_w: 
                         self.player.jump()
                     if event.key == pygame.K_s:

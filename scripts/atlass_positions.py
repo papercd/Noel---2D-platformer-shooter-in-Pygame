@@ -37,6 +37,15 @@ TEXT_ATLAS_POSITIONS = {
 
 }
 
+WEAPON_ATLAS_POSITIONS_AND_SIZES = {
+    'ak47' : {'normal' : ((0,0),(31,12)), 'shrunk': ((31,0),(25,8)) , 'holding':((56,0),(18,9))}
+
+}
+
+ITEM_ATLAS_POSITIONS ={
+    "amethyst_arrow": (0,0)
+}
+
 UI_ATLAS_POSITIONS_AND_SIZES = {
     "health_bar" : ((0,0),(204,8)),
     "stamina_bar" : ((0,0),(204,8)),
