@@ -47,7 +47,7 @@ class Cell:
                     cursor.set_cooldown()
                 
                 if cursor.item is None: 
-                    cursor.text = (self._item.get_name(),self._item.get_description())
+                    cursor.text = (self._item.name,self._item.descriptions)
                     
                     if cursor.pressed[0] and cursor.move:
                         index = self._inventory_id
@@ -169,7 +169,7 @@ class WeaponCellData:
                     cursor.set_cooldown()
                 
                 if cursor.item is None: 
-                    cursor.text = (self._item.get_name(),self._item.get_description())
+                    cursor.text = (self._item.name,self._item.description)
                     if cursor.pressed[0] and cursor.move:
                         temp = self._item 
                         self._item = None 
