@@ -204,6 +204,9 @@ class Inventory:
         self._offset = 0
 
         #TODO: if the inventory is a weapons inventory, also create a weapon linked list. 
+
+
+
     @property
     def done_open(self):
         return self._done_open

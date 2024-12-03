@@ -132,18 +132,20 @@ class HUD:
         else: 
             self._item_inventory_cell_side = 28
 
-        if self._weapon_inventory_cell_length < 34 : 
-            self._item_inventory_cell_length = 34
+        if self._weapon_inventory_cell_length < 40 : 
+            self._weapon_inventory_cell_length = 24 
+            self._weapon_inventory_cell_height = 14
+            self._space_between_weapon_inventory_cells = 5
         else: 
-            self._item_inventory_cell_length = 34 
-        
+            self._weapon_inventory_cell_length = 44 
+            self._weapon_inventory_cell_height = 23  
+            self._space_between_weapon_inventory_cells = 5  
 
 
         self._space_between_item_inventory_cells = ((self._true_res[0] *5//12 - self._item_inventory_cell_side * self._closed_items_rows_cols[1]) // self._closed_items_rows_cols[1]) // 1.5
-        self._space_between_weapon_inventory_cells = 5
 
         self._item_inventory_cell_dim = (self._item_inventory_cell_side,self._item_inventory_cell_side )
-        self._weapon_inven_cell_dim = (self._weapon_inventory_cell_length, 14)
+        self._weapon_inven_cell_dim = (self._weapon_inventory_cell_length, self._weapon_inventory_cell_height)
         
         self._closed_items_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//7,self._true_res[1] * 36//40 - 2 - self._item_inventory_cell_dim[1] * self._closed_items_rows_cols[0]\
                                       -self._space_between_item_inventory_cells * (self._closed_items_rows_cols[0])) 

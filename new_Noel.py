@@ -358,7 +358,6 @@ class Noel():
             pygame.display.flip()
             fps = self._clock.get_fps()
 
-            print(fps)
             pygame.display.set_caption(f"Noel - FPS: {fps: .2f}")
             self._clock.tick(60)
             
