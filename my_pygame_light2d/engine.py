@@ -9,7 +9,7 @@ import math
 
 from scripts.new_HUD import HUD
 from scripts.new_particles import ParticleSystem
-from scripts.lists import TileCategories
+from scripts.lists import TileCategories,interpolatedLightNode
 from scripts.new_panel import TilePanel
 from scripts.new_entities import Player
 from scripts.new_cursor import Cursor
@@ -393,6 +393,13 @@ class RenderEngine:
        
     
     def _render_tilemap(self, fbo: moderngl.Framebuffer, offset):
+        # fetch the ambient light colorvalue from the tilemap 
+        if isinstance(self._tilemap._ambient_node_ptr,interpolatedLightNode):
+            self.set_ambient(self._tilemap._ambient_node_ptr.get_interpolated_RGBA(self._player.pos[0]))
+        else:
+            self.set_ambient(*self._tilemap._ambient_node_ptr.colorValue) 
+
+
         # fetch the background framebuffer
         fbo_w,fbo_h = fbo.size
         
@@ -566,8 +573,10 @@ class RenderEngine:
         data_ind = np.array(indices, dtype=np.int32).flatten().tobytes()
         self._ssbo_ind.write(data_ind)
 
-    def _render_to_buf_lt(self,range,offset):
+    def _render_to_buf_lt(self,offset):
         # Disable alpha blending to render lights
+        range = self._tilemap._ambient_node_ptr.range
+
         self.ctx.disable(moderngl.BLEND)
         for light in self.lights.copy():
             # Skip light if disabled
@@ -647,7 +656,7 @@ class RenderEngine:
         self._vao_blur.render()
 
 
-    def _render_background_layer(self,range,offset):
+    def _render_background_layer(self,offset):
         self.ctx.screen.use()
         self._tex_bg.use()
 
@@ -890,7 +899,7 @@ class RenderEngine:
         self._background = background
     
     
-    def render_scene_with_lighting(self,range,offset,screen_shake):
+    def render_scene_with_lighting(self,offset,screen_shake):
         """
         Render the lighting effects onto the screen.
 
@@ -928,13 +937,13 @@ class RenderEngine:
         self._send_hull_data(render_shake)
 
         # Render lights onto double buffer
-        self._render_to_buf_lt(range,render_shake)
+        self._render_to_buf_lt(render_shake)
 
         # Blur lightmap for soft shadows and render onto aomap
         self._render_aomap()
 
         # Render background masked with the lightmap
-        self._render_background_layer(range,offset)
+        self._render_background_layer(offset)
 
         # Render foreground onto screen
         self._render_foreground()

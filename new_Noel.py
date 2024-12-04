@@ -13,6 +13,7 @@ import scripts
 import my_pygame_light2d.engine
 
 from scripts.item import Item 
+from scripts.lists import interpolatedLightNode
 
 from scripts.new_HUD import HUD
 from scripts.new_grass import GrassManager
@@ -61,13 +62,14 @@ class Noel():
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
 
-        self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
-        #self._cursor = Cursor(self._atlas_dict['cursor'])
+        
 
+        self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
         self.player = Player([74,11],(14,16)) 
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
-       
+
+    
         self._grass_manager = GrassManager()
         self._hud = HUD(self._atlas_dict['UI_and_items'],self.player,self._true_res)
 
@@ -89,6 +91,7 @@ class Noel():
         importlib.reload(scripts.new_tilemap)
         importlib.reload(scripts.new_inventory)
         importlib.reload(my_pygame_light2d.engine)
+        
 
         # import changed classes
         from my_pygame_light2d.engine import RenderEngine
@@ -333,7 +336,7 @@ class Noel():
                     if event.key == pygame.K_LSHIFT:
                         self.player.running = False
                         self._hud.cursor.special_actions = False 
-                    
+    
 
 
 
@@ -353,19 +356,20 @@ class Noel():
             
             self.render_engine.hulls = self._tilemap._hull_grid.query(camera_scroll[0]-self._tilemap.tile_size * 10 ,camera_scroll[1]- self._tilemap.tile_size * 10,camera_scroll[0] \
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
-            
+
+
             self.particle_system.update(self._tilemap,self._grass_manager)
             self.player.update(self._tilemap,(0,0),self._player_movement_input,self._frame_count)
             self.render_engine.bind_player(self.player)
             self._hud.update()
             self.render_engine.bind_hud(self._hud)
-                   
-            #self.render_engine.render_rectangles(camera_scroll)
+            self._tilemap.update_ambient_node_ptr(self.player.pos)
+            self.render_engine.render_rectangles(camera_scroll)
             self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
             self.render_engine.render_foreground_scene_to_fbo()
             
 
-            self.render_engine.render_scene_with_lighting((float('-inf'),float('inf')),camera_scroll,(0,0))
+            self.render_engine.render_scene_with_lighting(camera_scroll,(0,0))
             
             pygame.display.flip()
             fps = self._clock.get_fps()
