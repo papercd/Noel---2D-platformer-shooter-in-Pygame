@@ -14,13 +14,6 @@ TILE_ATLAS_POSITIONS ={
     'lights':(128,0)
 }
 
-CURSOR_ATLAS_POSITIONS = {
-    "default" : ((0,0),(9,10)),
-    "grab" :  ((9,0),(9,10)),
-    "magnet" :  ((18,0),(9,10)),
-    "move" :  ((27,0),(9,10)),
-    "crosshair" :  ((36,0),(10,10))
-}
 
 TEXT_DIMENSIONS = {
     "CAPITAL" : (6,7),
@@ -51,7 +44,14 @@ UI_ATLAS_POSITIONS_AND_SIZES = {
     "stamina_bar" : ((0,0),(204,8)),
     "item_slot" : {True:((20,8),(24,24)),False:((0,8),(20,20))},
     "weapon_slot" : {True:((82,9),(45,24)),False:((44,9),(38,18))},
-    "background" : ((204,0),(176,93))
+    "background" : ((204,0),(176,93)),
+    "cursor" : {
+        "default" : ((0,32),(9,10)),
+        "grab" :  ((9,32),(9,10)),
+        "magnet" :  ((18,32),(9,10)),
+        "move" :  ((27,32),(9,10)),
+        "crosshair" :  ((36,32),(10,10))
+    }
 }
 
 PARTICLE_ATLAS_POSITIONS_AND_SIZES ={

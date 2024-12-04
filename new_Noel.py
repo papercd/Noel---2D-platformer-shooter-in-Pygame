@@ -62,7 +62,7 @@ class Noel():
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
 
         self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
-        self._cursor = Cursor(self._atlas_dict['cursor'])
+        #self._cursor = Cursor(self._atlas_dict['cursor'])
 
         self.player = Player([74,11],(14,16)) 
         self.player.set_accel_rate(0.7)
@@ -95,7 +95,6 @@ class Noel():
         from scripts.new_HUD import HUD
         from scripts.new_grass import GrassManager
         from scripts.new_particles import ParticleSystem
-        from scripts.new_cursor import Cursor 
         from scripts.new_entities import Player
         from scripts.new_tilemap import Tilemap
 
@@ -107,19 +106,18 @@ class Noel():
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
 
         self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
-        self._cursor = Cursor(self._atlas_dict['cursor'])
         self._grass_manager = GrassManager()
-        self._hud = HUD(self._atlas_dict['UI_and_items'],self.player,self._true_res)        
         
         # Update cursor's position
-        self._cursor.pos = pygame.mouse.get_pos()
-        self._cursor.pos = (
-            self._cursor.pos[0] / self._true_to_screen_res_ratio + self.scroll[0],
-            self._cursor.pos[1] / self._true_to_screen_res_ratio + self.scroll[1],
+        
+        cursor_topleft = self._hud.cursor.topleft
+        cursor_topleft =  (
+            cursor_topleft[0] / self._true_to_screen_res_ratio + self.scroll[0],
+            cursor_topleft[1] / self._true_to_screen_res_ratio + self.scroll[1],
         )
 
         # Reinitialize Player with updated cursor position
-        self.player = Player(list(self._cursor.pos), (14, 16))
+        self.player = Player(list(cursor_topleft), (14, 16))
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
 
@@ -267,9 +265,11 @@ class Noel():
 
     
     def _handle_common_events(self,event):
-        self._cursor.pos = pygame.mouse.get_pos()
-        self._cursor.pos = ((self._cursor.pos[0]/self._true_to_screen_res_ratio),(self._cursor.pos[1]/self._true_to_screen_res_ratio))
-        self._cursor.box.x,self._cursor.box.y = self._cursor.pos[0] , self._cursor.pos[1]
+        
+        self._hud.cursor.topleft= pygame.mouse.get_pos()
+        self._hud.cursor.topleft= ((self._hud.cursor.topleft[0]/self._true_to_screen_res_ratio),(self._hud.cursor.topleft[1]/self._true_to_screen_res_ratio))
+        self._hud.cursor.box.x,self._hud.cursor.box.y = self._hud.cursor.topleft[0] , self._hud.cursor.topleft[1]
+        
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
@@ -278,14 +278,14 @@ class Noel():
                 pygame.display.toggle_fullscreen()
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
-                self._cursor.pressed[0] = True 
+                self._hud.cursor.pressed[0] = True 
             elif event.button == 3:
-                self._cursor.pressed[1] = True 
+                self._hud.cursor.pressed[1] = True 
         elif event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
-                self._cursor.pressed[0] = False 
+                self._hud.cursor.pressed[0] = False 
             elif event.button == 3:
-                self._cursor.pressed[1] = False 
+                self._hud.cursor.pressed[1] = False 
  
 
         if event.type == pygame.QUIT:
@@ -320,7 +320,7 @@ class Noel():
                         self._player_movement_input[1] = True 
                     if event.key == pygame.K_LSHIFT:
                         self.player.running = True
-                        self._cursor.special_actions = True 
+                        self._hud.cursor.special_actions = True 
                 if event.type == pygame.KEYUP: 
                     if event.key == pygame.K_w:
                         self.player.jump_cut()
@@ -332,7 +332,7 @@ class Noel():
                         self.player.crouch = False
                     if event.key == pygame.K_LSHIFT:
                         self.player.running = False
-                        self._cursor.special_actions = False 
+                        self._hud.cursor.special_actions = False 
                     
 
 
@@ -355,11 +355,9 @@ class Noel():
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
             
             self.particle_system.update(self._tilemap,self._grass_manager)
-            self._cursor.update()
-            self.render_engine.bind_cursor(self._cursor)
-            self.player.update(self._tilemap,self._cursor.pos,self._player_movement_input,self._frame_count)
+            self.player.update(self._tilemap,(0,0),self._player_movement_input,self._frame_count)
             self.render_engine.bind_player(self.player)
-            self._hud.update(self._cursor)
+            self._hud.update()
             self.render_engine.bind_hud(self._hud)
                    
             #self.render_engine.render_rectangles(camera_scroll)

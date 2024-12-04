@@ -175,12 +175,12 @@ class WeaponCellData:
         
 
 class Inventory:
-    def __init__(self,name,rows,columns,x,y,cell_dim,space_between_cells,stack_limit,expandable = False):
+    def __init__(self,name,rows,columns,topleft,cell_dim,space_between_cells,stack_limit,expandable = False):
         self._ind = 0
         self._name = name
         self._rows = rows 
         self._columns = columns
-        self._topleft = [x,y]
+        self._topleft = topleft 
         self._cell_dim = cell_dim
         self._cells =  []
         self._space_between_cells = space_between_cells
@@ -297,8 +297,8 @@ class Inventory:
         
 
 class WeaponInventory(Inventory):
-    def __init__(self, rows, columns, x, y, cell_dim, space_between_cells, stack_limit, expandable=False):
-        super().__init__('weapon', rows, columns, x, y, cell_dim, space_between_cells, stack_limit, expandable)
+    def __init__(self, rows, columns, topleft, cell_dim, space_between_cells, stack_limit, expandable=False):
+        super().__init__('weapon', rows, columns, topleft, cell_dim, space_between_cells, stack_limit, expandable)
 
     
     def set_ind(self,ind:int):

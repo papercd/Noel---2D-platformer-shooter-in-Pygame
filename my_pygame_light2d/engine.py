@@ -15,7 +15,7 @@ from scripts.new_entities import Player
 from scripts.new_cursor import Cursor
 from scripts.custom_data_types import TileInfo
 from scripts.layer import Layer_
-from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES, TILE_ATLAS_POSITIONS,CURSOR_ATLAS_POSITIONS,\
+from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES, TILE_ATLAS_POSITIONS,\
                                     ENTITIES_ATLAS_POSITIONS,TEXT_DIMENSIONS,TEXT_ATLAS_POSITIONS,PARTICLE_ATLAS_POSITIONS_AND_SIZES
 
 from scripts.new_tilemap import Tilemap
@@ -58,7 +58,6 @@ class RenderEngine:
         self._player:Player = None
         self._entities_atl: moderngl.Texture= None 
         self._background: list[moderngl.Texture]= None
-        self._cursor : Cursor = None 
 
         # Initialize public members
         self.lights: list[PointLight] = []
@@ -314,10 +313,22 @@ class RenderEngine:
                         opaque_texture_coords_list.append(texture_coords)
                         opaque_vertices_list.append(vertices)
                         current = current.next 
-                
-        # add the background vertices and texture coords here 
+               
+        if self._hud.cursor.item:
+            item_texture_coord = self._hud._item_tex_dict[self._hud.cursor.item.name]
+            item_vertices = self._create_vertices_for_item(fbo)
+            vertices_list.append(item_vertices)
+            texture_coords_list.append(item_texture_coord)
+
+         
         
-        
+        # cursor rendering 
+        cursor_texture_coord = self._hud._tex_dict["cursor"][self._hud.cursor.state]
+        cursor_vertices = self._create_hud_element_vertices(self._hud.cursor,fbo)
+
+        vertices_list.append(cursor_vertices)
+        texture_coords_list.append(cursor_texture_coord)
+
         if opaque_vertices_list:
             vertices_array = np.concatenate(opaque_vertices_list,axis= 0)
             texture_coords_array = np.concatenate(opaque_texture_coords_list,axis= 0)
@@ -335,6 +346,8 @@ class RenderEngine:
 
             self._render_ui_elements(vbo,fbo,ui_items_atlas)
 
+    
+
     def _render_ui_elements(self,vbo:moderngl.Context.buffer,fbo:moderngl.Framebuffer,ui_items_atlas: moderngl.Texture,opacity = None)-> None:
         vao = self.ctx.vertex_array(self._prog_draw, [(vbo,'2f 2f','vertexPos', 'vertexTexCoord')])
 
@@ -350,10 +363,24 @@ class RenderEngine:
         if opacity:
             self.set_alpha_value_draw_shader(1.)
 
+    def _create_vertices_for_item(self,fbo:moderngl.Framebuffer):
+        topleft = (self._hud.cursor.topleft[0]- self._hud._item_inventory_cell_dim[0] //4 ,\
+                   self._hud.cursor.topleft[1]- self._hud._item_inventory_cell_dim[1] //4)
+        width,height = self._hud._item_inventory_cell_dim[0] //2, self._hud._item_inventory_cell_dim[1] //2 
+        x = 2. * (topleft[0]) / fbo.width -1.
+        y = 1. - 2. * (topleft[1] ) /fbo.height 
+        w = 2. * width /fbo.width
+        h = 2. * height /fbo.height
+        vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+        
+        return vertices
+
+
     def _create_hud_element_vertices(self,element,fbo:moderngl.Framebuffer) -> np.array:
         
-        topleft =  (element.x,element.y)
-        ui_width,ui_height = element.w,element.h
+        topleft = element.topleft 
+        ui_width,ui_height = element.size[0],element.size[1] 
 
         x = 2. * (topleft[0]) / fbo.width -1.
         y = 1. - 2. * (topleft[1] ) /fbo.height 
@@ -364,14 +391,7 @@ class RenderEngine:
         
         return vertices
        
-
-    def _render_cursor(self,fbo:moderngl.Framebuffer) -> None: 
-        tex_atlas = self._cursor.texture_atlas
-        query_pos,tex_size = CURSOR_ATLAS_POSITIONS[self._cursor.state]
-        self._render_tex_to_fbo(tex_atlas,fbo,pygame.Rect(*self._cursor.pos,*tex_size),pygame.Rect(*query_pos,*tex_size))
-
-               
-
+    
     def _render_tilemap(self, fbo: moderngl.Framebuffer, offset):
         # fetch the background framebuffer
         fbo_w,fbo_h = fbo.size
@@ -859,8 +879,6 @@ class RenderEngine:
     def bind_player(self,player:Player) -> None: 
         self._player = player 
 
-    def bind_cursor(self,cursor:Cursor) -> None: 
-        self._cursor = cursor
 
     def bind_tilemap(self,tilemap:Tilemap) -> None:
         self._tilemap = tilemap
@@ -1200,12 +1218,11 @@ class RenderEngine:
 
     def render_foreground_scene_to_fbo(self):
         """
-        Render to the Foreground fbo with the cursor, GUI, etc. 
+        Render to the Foreground fbo with the  GUI, etc. 
         
         """
         fbo = self._get_fbo(Layer_.FOREGROUND)
         self._render_hud(fbo)
-        self._render_cursor(fbo)
 
     def render_texture_with_trans(self,
                tex: moderngl.Texture,
