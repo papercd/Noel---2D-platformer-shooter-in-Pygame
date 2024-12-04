@@ -212,30 +212,9 @@ class Tilemap:
             if pos[0] < self._ambient_node_ptr.range[0]:
                 if self._ambient_node_ptr.prev: 
                     self._ambient_node_ptr = self._ambient_node_ptr.prev
-                    """
-                    if isinstance(self._ambient_node_ptr,interpolatedLightNode):
-                        self.render_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
-                    else:
-                        self.render_engine.set_ambient(*self._ambient_node_ptr.colorValue) 
-                    """
-
             elif pos[0] > self._ambient_node_ptr.range[1]:
                 if self._ambient_node_ptr.next: 
                     self._ambient_node_ptr = self._ambient_node_ptr.next
-                    """
-                    if isinstance(self._ambient_node_ptr,interpolatedLightNode):
-                        self.render_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
-                    else:
-                        self.render_engine.set_ambient(*self._ambient_node_ptr.colorValue) 
-                    """
-            else: 
-                pass
-                """
-                if isinstance(self._ambient_node_ptr,interpolatedLightNode):
-                    self.render_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
-                """
-
-
 
     
     def _precompute_texture_coordinates(self):

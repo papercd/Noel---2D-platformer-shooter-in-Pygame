@@ -359,7 +359,7 @@ class Noel():
 
 
             self.particle_system.update(self._tilemap,self._grass_manager)
-            self.player.update(self._tilemap,(0,0),self._player_movement_input,self._frame_count)
+            self.player.update(self._tilemap,self._hud.cursor.topleft,self._player_movement_input,self._frame_count)
             self.render_engine.bind_player(self.player)
             self._hud.update()
             self.render_engine.bind_hud(self._hud)
