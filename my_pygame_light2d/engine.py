@@ -370,6 +370,8 @@ class RenderEngine:
         query_pos,tex_size = CURSOR_ATLAS_POSITIONS[self._cursor.state]
         self._render_tex_to_fbo(tex_atlas,fbo,pygame.Rect(*self._cursor.pos,*tex_size),pygame.Rect(*query_pos,*tex_size))
 
+        if self._cursor.item: 
+            pass 
                
 
     def _render_tilemap(self, fbo: moderngl.Framebuffer, offset):
