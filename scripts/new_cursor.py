@@ -2,18 +2,19 @@ from pygame import Rect,mouse
 from moderngl import Texture
 
 class Cursor: 
-    def __init__(self,texture_atl: Texture,in_editor :bool = False):
-        self._tex_atl = texture_atl
+    def __init__(self,in_editor :bool = False):
 
         self.in_editor = in_editor 
-        self.pos = [0,0] 
+        self.topleft = [0,0] 
 
         self.text = None 
+
+        self.size = (9,10)
 
         self.interacting = False 
         self.item = None
         self.state = "default"
-        self.box = Rect(*self.pos,1,1)
+        self.box = Rect(*self.topleft,1,1)
         self.cooldown = 0
         self.pressed=  0 
         self.magnet = False 
@@ -21,10 +22,6 @@ class Cursor:
         self.text = None 
         self.special_actions = False 
         self.pressed = [0,0]
-
-    @property   
-    def texture_atlas(self) -> Texture: 
-        return self._tex_atl
 
     def set_cooldown(self) -> None:
         self.cooldown = 10

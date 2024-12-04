@@ -421,9 +421,19 @@ class Player(PhysicsEntity):
                         self.set_state('walk')
                     else: 
                         if self.running: 
+                            cur_frame = None
+                            if self.state == 'run':
+                                cur_frame = self._cur_animation.frame 
                             self.set_state('sprint')
+                            if cur_frame:
+                                self._cur_animation.frame = (cur_frame -1) % self._cur_animation._count
                         else:    
+                            cur_frame = None 
+                            if self.state == 'sprint':
+                                cur_frame = self._cur_animation.frame
                             self.set_state('run')
+                            if cur_frame:
+                                self._cur_animation.frame = (cur_frame - 1) % self._cur_animation._count
                     """
                     anim_frame = self.animation.frame / self.animation.img_dur
                     if anim_frame == 0 or anim_frame == 3:

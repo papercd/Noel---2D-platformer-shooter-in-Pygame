@@ -1,3 +1,4 @@
+from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player
 from scripts.new_inventory import Inventory_Engine,Inventory,WeaponInventory    
 from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS
@@ -12,7 +13,6 @@ class HUD:
         self._true_res = true_res
         self._ui_items_atlas = ui_items_atlas
         self._inven_open_state = False
-
       
         self._create_display_elements()
         self._precompute_texture_coords()
@@ -34,6 +34,11 @@ class HUD:
 
         for key in UI_ATLAS_POSITIONS_AND_SIZES: 
             if key.endswith("slot"):   
+                self._tex_dict[key] = {}
+                for state in UI_ATLAS_POSITIONS_AND_SIZES[key]:
+                    pos,size = UI_ATLAS_POSITIONS_AND_SIZES[key][state]
+                    self._tex_dict[key][state] = self._get_texture_coords_for_ui(pos,size)
+            elif key == "cursor":
                 self._tex_dict[key] = {}
                 for state in UI_ATLAS_POSITIONS_AND_SIZES[key]:
                     pos,size = UI_ATLAS_POSITIONS_AND_SIZES[key][state]
@@ -203,12 +208,12 @@ class HUD:
         self._health_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 36 // 40)
         self._stamina_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 36//40 + self._bar_height + 1)
 
-        self._health_bar = HealthBar(*self._health_bar_topleft,self._health_bar_width,self._bar_height,self._player.health)
-        self._stamina_bar = StaminaBar(*self._stamina_bar_topleft,self._stamina_bar_width,self._bar_height,self._player.stamina)
+        self._health_bar = HealthBar(self._health_bar_topleft,(self._health_bar_width,self._bar_height),self._player.health)
+        self._stamina_bar = StaminaBar(self._stamina_bar_topleft,(self._stamina_bar_width,self._bar_height),self._player.stamina)
         self._inven_list = [
-            Inventory("item", 1, 5, *self._showing_items_topleft,self._item_inventory_cell_dim,self._space_between_item_inventory_cells,16, expandable= False), 
-           Inventory("item", 2,5,*self._closed_items_topleft, self._item_inventory_cell_dim,self._space_between_item_inventory_cells,16,expandable = True),
-           WeaponInventory(1,4, *self._weapons_topleft,self._weapon_inven_cell_dim,self._space_between_weapon_inventory_cells,1, expandable = True)
+            Inventory("item", 1, 5, self._showing_items_topleft,self._item_inventory_cell_dim,self._space_between_item_inventory_cells,16, expandable= False), 
+           Inventory("item", 2,5,self._closed_items_topleft, self._item_inventory_cell_dim,self._space_between_item_inventory_cells,16,expandable = True),
+           WeaponInventory(1,4, self._weapons_topleft,self._weapon_inven_cell_dim,self._space_between_weapon_inventory_cells,1, expandable = True)
 
         ]
         self._items_engine = Inventory_Engine(self._inven_list,self._player)
@@ -218,6 +223,8 @@ class HUD:
             'health_bar' : self._health_bar,
             'stamina_bar' : self._stamina_bar,
         }
+
+        self.cursor = Cursor(in_editor= False)
 
     
     # temporary method to test items 
@@ -229,8 +236,8 @@ class HUD:
             pass 
 
 
-    def update(self,cursor):
-
+    def update(self):
         self._health_bar.update(self._player.health)
         self._stamina_bar.update(self._player.stamina)
-        self._items_engine.update(cursor,self._inven_open_state)
+        self._items_engine.update(self.cursor,self._inven_open_state)
+        self.cursor.update()

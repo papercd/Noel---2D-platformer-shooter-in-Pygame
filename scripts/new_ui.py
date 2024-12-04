@@ -2,18 +2,16 @@
 
 
 class Bar:
-    def __init__(self,x,y,w,h,max_resource):
-        self.x = x
-        self.y = y
-        self.w = w
-        self.h = h
+    def __init__(self,topleft,size,max_resource):
+        self.topleft = topleft
+        self.size = size
         self.max_resource = max_resource
         self.cur_resource = max_resource
 
 
 class HealthBar(Bar):
-    def __init__(self,x,y,w,h,max_hp):
-        super().__init__(x,y,w,h,max_hp)
+    def __init__(self,topleft,size,max_hp):
+        super().__init__(topleft,size,max_hp)
         self.mid_cur = self.cur_resource
         self.last_cur = self.cur_resource
         self.shake = 0 
@@ -33,8 +31,8 @@ class HealthBar(Bar):
 
 
 class StaminaBar(Bar):
-    def __init__(self,x,y,w,h,max_stamina):
-        super().__init__(x,y,w,h,max_stamina)
+    def __init__(self,topleft,size,max_stamina):
+        super().__init__(topleft,size,max_stamina)
 
     def update(self,stamina):
         self.cur_resource = stamina

@@ -2,6 +2,7 @@ from scripts.atlass_positions import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES
 from scripts.custom_data_types import TileInfo,LightInfo,DoorInfo,DoorAnimation
 from scripts.tileformatdata import get_tile_rectangle, PHYSICS_APPLIED_TILE_TYPES,TILE_SIDE_TO_SAMPLE_POS
 from scripts.spatial_grid import SpatialGrid
+from scripts.lists import ambientNodeList,interpolatedLightNode
 from my_pygame_light2d.hull import Hull 
 from moderngl import Texture
 from pygame import Rect
@@ -38,6 +39,8 @@ class Tilemap:
         # one step at a time.The tilemap.
         self._non_physical_tile_layers= json_data['offgrid_layers']
         self.lights = []
+
+        self.ambientNodes = ambientNodeList()
 
         self._physical_tiles= {}
         self.non_physical_tiles = [{} for i in range(0,self._non_physical_tile_layers)]
@@ -134,7 +137,14 @@ class Tilemap:
                     self.non_physical_tiles[i][tile_pos] = TileInfo(json_data[tilemap_key][tile_key]["type"],json_data[tilemap_key][tile_key]["variant"],
                                                             tile_pos,tile_size,atl_pos)
         
+        for node_data in json_data['ambient_nodes']:
+            if len(node_data.items()) ==4:
+                self.ambientNodes.insert_interpolated_ambient_node(node_data["range"],node_data['hull_range'],node_data["leftColorValue"],node_data["rightColorValue"])
+            else: 
+                self.ambientNodes.insert_ambient_node(node_data["range"],node_data['hull_range'],node_data["colorValue"])
         
+        self._ambient_node_ptr = None
+
         self._create_hulls()
         for hull in self._hulls:
             self._hull_grid.insert(hull)
@@ -195,6 +205,36 @@ class Tilemap:
 
 
 
+    def update_ambient_node_ptr(self,pos):
+        if self._ambient_node_ptr is None: 
+            self._ambient_node_ptr = self.ambientNodes.set_ptr(pos[0])
+        else: 
+            if pos[0] < self._ambient_node_ptr.range[0]:
+                if self._ambient_node_ptr.prev: 
+                    self._ambient_node_ptr = self._ambient_node_ptr.prev
+                    """
+                    if isinstance(self._ambient_node_ptr,interpolatedLightNode):
+                        self.render_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+                    else:
+                        self.render_engine.set_ambient(*self._ambient_node_ptr.colorValue) 
+                    """
+
+            elif pos[0] > self._ambient_node_ptr.range[1]:
+                if self._ambient_node_ptr.next: 
+                    self._ambient_node_ptr = self._ambient_node_ptr.next
+                    """
+                    if isinstance(self._ambient_node_ptr,interpolatedLightNode):
+                        self.render_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+                    else:
+                        self.render_engine.set_ambient(*self._ambient_node_ptr.colorValue) 
+                    """
+            else: 
+                pass
+                """
+                if isinstance(self._ambient_node_ptr,interpolatedLightNode):
+                    self.render_engine.set_ambient(self._ambient_node_ptr.get_interpolated_RGBA(self.player.pos[0]))
+                """
+
 
 
     
@@ -245,6 +285,7 @@ class Tilemap:
                 pass 
 
         return tex_coords
+
 
 
 
