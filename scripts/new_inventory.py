@@ -104,6 +104,21 @@ class Cell:
                             self._item = temp 
 
                             cursor.set_cooldown()
+                elif cursor.item is not None and cursor.box.colliderect(self._rect) and cursor.cooldown == 0: 
+                    if cursor.pressed[0] :
+                        if cursor.item.name == self._item.name: 
+                            if self._item.count + cursor.item.count <= stack_limit and self._item.stackable: 
+                                self._item.count = self._item.count + cursor.item.count 
+                                cursor.item = None 
+                            elif self._item.count + cursor.item.count > stack_limit and self._item.stackable: 
+                                amount = stack_limit - self._item.count 
+                                self._item.count += amount 
+                                cursor.item.count -= amount 
+                        else: 
+                            temp = cursor.item.copy()
+                            cursor.item = self._item
+                            self._item = temp
+                        cursor.set_cooldown()
             
             elif cursor.item is not None and cursor.box.colliderect(self._rect) and cursor.cooldown ==0:
                 if cursor.pressed[0]:

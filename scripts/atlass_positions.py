@@ -36,8 +36,20 @@ WEAPON_ATLAS_POSITIONS_AND_SIZES = {
 }
 
 ITEM_ATLAS_POSITIONS ={
-    "amethyst_arrow": (380,0)
+    "amethyst_arrow": (381,0),
+    "amethyst_clump" : (397,0),
+    "arrow": (413,0),
+    "string": (429,0)
+        
+
 }
+
+"""
+ "amethyst_arrow": (381,0),
+    "amethyst_clump" : (397,0),
+    "arrow": (413,0),
+    "string": (429,0)
+"""
 
 UI_ATLAS_POSITIONS_AND_SIZES = {
     "health_bar" : ((0,0),(204,8)),

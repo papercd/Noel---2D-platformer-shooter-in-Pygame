@@ -9,6 +9,10 @@ from enum import Enum
 from moderngl import create_context,Texture
 from screeninfo import get_monitors
 
+# testing 
+from scripts.atlass_positions import ITEM_ATLAS_POSITIONS
+import random
+
 import scripts 
 import my_pygame_light2d.engine
 
@@ -313,7 +317,7 @@ class Noel():
                                     print(cell._item.count)
                     if event.key == pygame.K_c:
                         # testing adding items to item inventory 
-                        self._hud.add_item(Item('amethyst_arrow'))
+                        self._hud.add_item(Item(random.choice(list(ITEM_ATLAS_POSITIONS.keys()))))
                         pass 
                     if event.key == pygame.K_w: 
                         self.player.jump()

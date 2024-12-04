@@ -1,5 +1,16 @@
 ITEM_DESCRIPTIONS = {
-    "amethyst_arrow" : "Arrow made with dirty amethyst."
+    "amethyst_arrow" : "Arrow made with dirty amethyst.",
+    "amethyst_clump" : "",
+    "arrow": "",
+    "string": ""
+
+}
+
+ITEM_RARITY = {
+    "common" : 0,
+    "rare" : 1,
+    "epic" : 2,
+    "legendary" : 3
 }
 
 WPNS_WITH_RF = {
@@ -14,6 +25,7 @@ class Item:
     def __init__(self,name,count = 1,stackable = True):
         self._name = name 
         self._type = "item"
+        self._rarity = "common"
         self._stackable = stackable
         if not stackable: 
             self.count = 1

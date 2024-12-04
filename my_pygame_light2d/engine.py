@@ -6,7 +6,7 @@ import pygame
 import numbers
 from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
-
+import time
 from scripts.new_HUD import HUD
 from scripts.new_particles import ParticleSystem
 from scripts.lists import TileCategories,interpolatedLightNode
@@ -84,6 +84,9 @@ class RenderEngine:
         # Read source files
         with open('my_pygame_light2d/vertex.glsl',encoding='utf-8') as file:
             vertex_src = file.read()
+        with open('my_pygame_light2d/shimmer_vertex.glsl',encoding='utf-8') as file:
+            vertex_src_shimmer = file.read()
+
         with open('my_pygame_light2d/fragment_light.glsl',encoding='utf-8') as file:
             fragment_src_light= file.read()
 
@@ -95,7 +98,10 @@ class RenderEngine:
 
         with open('my_pygame_light2d/fragment_draw.glsl', encoding='utf-8') as file:
             fragment_src_draw = file.read()
-            
+        
+        with open('my_pygame_light2d/fragment_shimmer.glsl', encoding='utf-8') as file:
+            fragment_src_shimmer = file.read()
+   
         # Create shader programs
         self._prog_mask = self.ctx.program(vertex_shader=vertex_src,
                                            fragment_shader= fragment_src_mask)
@@ -108,6 +114,9 @@ class RenderEngine:
         self._prog_draw = self.ctx.program(vertex_shader=vertex_src,
                                            fragment_shader=fragment_src_draw)
         
+        self._prog_shimmer = self.ctx.program(vertex_shader=vertex_src_shimmer,
+                                              fragment_shader=fragment_src_shimmer)
+
 
 
 
@@ -253,6 +262,8 @@ class RenderEngine:
         opaque_vertices_list = []
         opaque_texture_coords_list = []
 
+        #rare_items_vertices_list = []
+        #rare_items_texture_coords_list = []
 
         for ui_name in self._hud._bars:
             texture_coords = self._hud._tex_dict[ui_name]
@@ -283,12 +294,13 @@ class RenderEngine:
                                 
                                 if cell._item: 
                                     texture_coords = self._hud._item_tex_dict[cell._item.name]
-                                    vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j]
+                                    vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
+                                    
                                     opaque_vertices_list.append(vertices)
                                     opaque_texture_coords_list.append(texture_coords)
-                                    number = cell._item.count 
-                                    self._create_vertex_texture_coords_for_number(number,vertices_list,texture_coords_list)
-                                                                            
+                                    
+                                    number = cell._item.count
+                                    self._create_vertex_texture_coords_for_num(inventory,i,j,number,opaque_vertices_list,opaque_texture_coords_list) 
                                  
 
                 else: 
@@ -302,12 +314,18 @@ class RenderEngine:
                                 texture_coords_list.append(texture_coords)
                                 if cell._item: 
                                     texture_coords = self._hud._item_tex_dict[cell._item.name]
-                                    vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j]
+                                    vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
+
+                                    # testing the rare effect 
+                                    #rare_items_vertices_list.append(vertices)
+                                    #rare_items_texture_coords_list.append(texture_coords)
+                                    
                                     vertices_list.append(vertices)
                                     texture_coords_list.append(texture_coords)
+                                    
                                     number = cell._item.count
-                                    self._create_vertex_texture_coords_for_number(number,vertices_list,texture_coords_list)
-
+                                    self._create_vertex_texture_coords_for_num(inventory,i,j,number,vertices_list,texture_coords_list)
+                                    
             else:
                 if inventory.cur_opacity > 0 :
                     current = inventory._weapons_list.head 
@@ -322,9 +340,10 @@ class RenderEngine:
         if self._hud.cursor.item:
             item_texture_coord = self._hud._item_tex_dict[self._hud.cursor.item.name]
             item_vertices = self._create_vertices_for_item(fbo)
+            
             vertices_list.append(item_vertices)
             texture_coords_list.append(item_texture_coord)
-
+            
          
         
         # cursor rendering 
@@ -350,19 +369,51 @@ class RenderEngine:
             vbo = self.ctx.buffer(buffer_data)
 
             self._render_ui_elements(vbo,fbo,ui_items_atlas)
+        
+        """
+        if rare_items_vertices_list:
+            rare_vertices_array = np.concatenate(rare_items_vertices_list,axis= 0)
+            rare_texture_coords_array = np.concatenate(rare_items_texture_coords_list,axis= 0)
+            buffer_data = np.column_stack((rare_vertices_array,rare_texture_coords_array)).astype(np.float32)
+            vbo = self.ctx.buffer(buffer_data)
 
-    
-    def _create_vertex_texture_coords_for_number(self,number,vertices_list,texture_coords_liset) -> None: 
-        while number > 0: 
-            digit = number % 10
-            number = number // 10 
-            texture_coords = self._hud._text_tex_dict[digit]
-            vertices = None                         
+            self._render_rare_items(vbo,fbo,ui_items_atlas)
+        """    
+    def _render_rare_items(self,vbo:moderngl.Context.buffer,fbo:moderngl.Framebuffer,ui_items_atlas:moderngl.Texture)-> None:
+        vao = self.ctx.vertex_array(self._prog_shimmer, [(vbo,'2f 2f','vertexPos', 'vertexTexCoord')])
+        
+        self._time = time.time() % 1000
+        self._prog_shimmer['time'].value = self._time
 
-            """
+        ui_items_atlas.use()
+        fbo.use()
+        vao.render()
+        vbo.release()
+        vao.release()
+
+    def _create_vertex_texture_coords_for_num(self,inventory,i,j,number,vertices_list,texture_coords_list) -> None: 
+        str_num = str(number)
+        num_length = len(str_num)
+        for pos_ind, digit in enumerate(str_num):
+            texture_coords = self._hud._text_tex_dict[int(digit)]
+            vertices = self._create_vertices_for_num(pos_ind,num_length,i,j,inventory)
+
+
             vertices_list.append(vertices)
             texture_coords_list.append(texture_coords)
-            """
+            
+    def _create_vertices_for_num(self,pos_ind:int,num_length:int,i:int,j:int,inventory) -> np.array: 
+        topleft = inventory.topleft 
+        cell_dim = inventory._cell_dim 
+        space_between_cells = inventory._space_between_cells
+
+        x = 2. * (topleft[0]+ cell_dim[0] - (num_length-pos_ind)*cell_dim[0]//5 + j * cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + cell_dim[1]*3//4 + i * cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+        w = 2. * (cell_dim[0]//5)/ self._true_res[0]
+        h = 2. * (cell_dim[1]//4) / self._true_res[1]
+
+        return np.array([(x,y),(x+w,y),(x,y-h),
+                         (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
 
         
 
