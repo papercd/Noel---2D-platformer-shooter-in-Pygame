@@ -286,6 +286,9 @@ class RenderEngine:
                                     vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j]
                                     opaque_vertices_list.append(vertices)
                                     opaque_texture_coords_list.append(texture_coords)
+                                    number = cell._item.count 
+                                    self._create_vertex_texture_coords_for_number(number,vertices_list,texture_coords_list)
+                                                                            
                                  
 
                 else: 
@@ -302,6 +305,8 @@ class RenderEngine:
                                     vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j]
                                     vertices_list.append(vertices)
                                     texture_coords_list.append(texture_coords)
+                                    number = cell._item.count
+                                    self._create_vertex_texture_coords_for_number(number,vertices_list,texture_coords_list)
 
             else:
                 if inventory.cur_opacity > 0 :
@@ -347,6 +352,20 @@ class RenderEngine:
             self._render_ui_elements(vbo,fbo,ui_items_atlas)
 
     
+    def _create_vertex_texture_coords_for_number(self,number,vertices_list,texture_coords_liset) -> None: 
+        while number > 0: 
+            digit = number % 10
+            number = number // 10 
+            texture_coords = self._hud._text_tex_dict[digit]
+            vertices = None                         
+
+            """
+            vertices_list.append(vertices)
+            texture_coords_list.append(texture_coords)
+            """
+
+        
+
 
     def _render_ui_elements(self,vbo:moderngl.Context.buffer,fbo:moderngl.Framebuffer,ui_items_atlas: moderngl.Texture,opacity = None)-> None:
         vao = self.ctx.vertex_array(self._prog_draw, [(vbo,'2f 2f','vertexPos', 'vertexTexCoord')])

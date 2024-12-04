@@ -1,7 +1,7 @@
 from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player
 from scripts.new_inventory import Inventory_Engine,Inventory,WeaponInventory    
-from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS
+from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS,TEXT_ATLAS_POSITIONS,TEXT_DIMENSIONS
 from scripts.new_ui import HealthBar,StaminaBar
 from scripts.item import Item
 import numpy as np
@@ -29,6 +29,7 @@ class HUD:
 
     def _precompute_texture_coords(self):
         
+        self._text_tex_dict = {}
         self._tex_dict = {}
         self._item_tex_dict = {}
 
@@ -50,6 +51,26 @@ class HUD:
         for key in ITEM_ATLAS_POSITIONS:
             pos= ITEM_ATLAS_POSITIONS[key]
             self._item_tex_dict[key] = self._get_texture_coords_for_item(pos)
+
+        numbers_base_pos,size = TEXT_ATLAS_POSITIONS["NUMBERS"],TEXT_DIMENSIONS["NUMBERS"]
+        for i in range(10):
+            self._text_tex_dict[i] = self._get_texture_coords_for_number(numbers_base_pos,size,i)
+            
+    
+    def _get_texture_coords_for_number(self,bottomleft,size,i) -> np.array:
+        x = (bottomleft[0] + size[0] * i) / self._ui_items_atlas.width
+        y = (bottomleft[1] ) / self._ui_items_atlas.height
+
+        w = size[0] / self._ui_items_atlas.width
+        h = size[1] / self._ui_items_atlas.height
+
+        p1 = (x,y+h) 
+        p2 = (x+w,y+h)
+        p3 = (x,y) 
+        p4 = (x+w,y)
+
+        return np.array([p1,p2,p3,
+                        p3,p2,p4],dtype = np.float32 )
 
     
     def _precompute_vertices(self):

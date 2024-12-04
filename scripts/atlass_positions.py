@@ -19,14 +19,14 @@ TEXT_DIMENSIONS = {
     "CAPITAL" : (6,7),
     "LOWER": (5,5),
     "UNDERSCORE" : (5,5),
-    "NUMBERS" : (5,5)
+    "NUMBERS" : (5,6)
     
 }
 TEXT_ATLAS_POSITIONS = {
     "CAPITAL" : (0,5),
     "LOWER" : (0,0),
     "UNDERSCORE" : (130,0),
-    "NUMBERS":(0,12)
+    "NUMBERS":(0,42)
 
 }
 
