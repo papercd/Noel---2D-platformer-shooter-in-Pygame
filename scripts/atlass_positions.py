@@ -31,7 +31,7 @@ TEXT_ATLAS_POSITIONS = {
 }
 
 WEAPON_ATLAS_POSITIONS_AND_SIZES = {
-    'ak47' : {'normal' : ((0,0),(31,12)), 'shrunk': ((31,0),(25,8)) , 'holding':((56,0),(18,9))}
+    'ak47' : ((384,92),(31,12))
 
 }
 
@@ -40,7 +40,6 @@ ITEM_ATLAS_POSITIONS ={
     "amethyst_clump" : (397,0),
     "arrow": (413,0),
     "string": (429,0)
-        
 
 }
 

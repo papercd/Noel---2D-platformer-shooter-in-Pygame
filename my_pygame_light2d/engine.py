@@ -335,7 +335,14 @@ class RenderEngine:
                         vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
                         opaque_texture_coords_list.append(texture_coords)
                         opaque_vertices_list.append(vertices)
+                        
+                        if current._item:
+                            weapon_texture_coords = self._hud._item_tex_dict[current._item.name]
+                            weapon_vertices = self._hud._item_vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
+                            opaque_vertices_list.append(weapon_vertices)
+                            opaque_texture_coords_list.append(weapon_texture_coords)
                         current = current.next 
+
                
         if self._hud.cursor.item:
             item_texture_coord = self._hud._item_tex_dict[self._hud.cursor.item.name]

@@ -325,6 +325,9 @@ class WeaponInventory(Inventory):
                            self._topleft[1] + (i * self._cell_dim[1]) + ((self._space_between_cells * (i)) if i >0 else 0))
                 self._weapons_list.add_node(i * self._columns + j, (topleft,self._cell_dim))
 
+    def add_item(self,item) -> None:
+        self._weapons_list.add_item(item)
+
 
     def update(self,cursor,inven_open_state,player):
         inven_active = ( not self._expandable ) or (self._expandable and inven_open_state)

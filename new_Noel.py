@@ -16,7 +16,7 @@ import random
 import scripts 
 import my_pygame_light2d.engine
 
-from scripts.item import Item 
+from scripts.item import Item,Weapon
 from scripts.lists import interpolatedLightNode
 
 from scripts.new_HUD import HUD
@@ -315,6 +315,8 @@ class Noel():
                             for cell in row:
                                 if cell._item: 
                                     print(cell._item.count)
+                    if event.key == pygame.K_f: 
+                        self._hud.add_item(Weapon('ak47',5,10))
                     if event.key == pygame.K_c:
                         # testing adding items to item inventory 
                         self._hud.add_item(Item(random.choice(list(ITEM_ATLAS_POSITIONS.keys()))))
