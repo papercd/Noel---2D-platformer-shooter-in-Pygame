@@ -270,7 +270,7 @@ class HUD:
             self._space_between_weapon_inventory_cells = 5  
 
 
-        self._space_between_item_inventory_cells = ((self._true_res[0] *5//12 - self._item_inventory_cell_side * self._closed_items_rows_cols[1]) // self._closed_items_rows_cols[1]) // 1.5
+        self._space_between_item_inventory_cells = ((self._true_res[0] *5//12 - self._item_inventory_cell_side * self._closed_items_rows_cols[1]) // self._closed_items_rows_cols[1]) // 2 
 
         self._item_inventory_cell_dim = (self._item_inventory_cell_side,self._item_inventory_cell_side )
         self._weapon_inven_cell_dim = (self._weapon_inventory_cell_length, self._weapon_inventory_cell_height)
