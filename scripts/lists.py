@@ -178,6 +178,8 @@ class WeaponNode:
                             self._item = temp 
                             cursor.set_cooldown()
             elif cursor.item is not None and cursor.box.colliderect(self._rect) and cursor.cooldown == 0:
+                if cursor.item.type != self._list._type:
+                    return
                 if cursor.pressed[0]:
                     self._item = cursor.item 
                     cursor.item = None 
@@ -198,6 +200,7 @@ class WeaponNode:
 class WeaponInvenList(DoublyLinkedList):
     def __init__(self, objs = None):
         super().__init__(objs)
+        self._type = 'weapon'
 
     
     def add_item(self,item):

@@ -296,7 +296,7 @@ class HUD:
         self._stamina_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 36//40 + self._bar_height + 1)
 
         self._weapon_display_topleft = (self._true_res[0] // 12 + self._health_bar_width, self._true_res[1] * 36//40 -2 ) 
-        self._weapon_display_dim = None 
+        self._weapon_display_dim = self._weapon_inven_cell_dim
 
         self._health_bar = HealthBar(self._health_bar_topleft,(self._health_bar_width,self._bar_height),self._player.health)
         self._stamina_bar = StaminaBar(self._stamina_bar_topleft,(self._stamina_bar_width,self._bar_height),self._player.stamina)

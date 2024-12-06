@@ -121,6 +121,8 @@ class Cell:
                         cursor.set_cooldown()
             
             elif cursor.item is not None and cursor.box.colliderect(self._rect) and cursor.cooldown ==0:
+                if cursor.item.type != self._type:
+                    return 
                 if cursor.pressed[0]:
                     self._item = cursor.item 
                     cursor.item = None 
