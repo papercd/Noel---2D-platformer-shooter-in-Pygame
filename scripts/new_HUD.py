@@ -1,7 +1,7 @@
 from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player
 from scripts.new_inventory import Inventory_Engine,Inventory,WeaponInventory    
-from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS,TEXT_ATLAS_POSITIONS,TEXT_DIMENSIONS,WEAPON_ATLAS_POSITIONS_AND_SIZES
+from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS,TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,WEAPON_ATLAS_POSITIONS_AND_SIZES
 from scripts.new_ui import HealthBar,StaminaBar
 from scripts.item import Item
 import numpy as np
@@ -56,10 +56,16 @@ class HUD:
             pos,size = WEAPON_ATLAS_POSITIONS_AND_SIZES[key]
             self._item_tex_dict[key] = self._get_texture_coords_for_weapon(pos,size)
 
-        numbers_base_pos,size = TEXT_ATLAS_POSITIONS["NUMBERS"],TEXT_DIMENSIONS["NUMBERS"]
-        for i in range(10):
-            self._text_tex_dict[i] = self._get_texture_coords_for_number(numbers_base_pos,size,i)
-    
+        for key in TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES:
+            pos,space,size = TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES[key]
+            self._text_tex_dict[key] = []
+            if key == 'CAPITAL' or key == 'LOWER':
+                count = 26
+            else:
+                count = 10
+            for i in range(count):
+                self._text_tex_dict[key].append(self._get_texture_coords_for_text(pos,space,size,i))
+            
 
     
     def _get_texture_coords_for_weapon(self,bottomleft,size) -> np.array:
@@ -77,8 +83,8 @@ class HUD:
             return np.array([p1,p2,p3,
                             p3,p2,p4],dtype = np.float32 )
 
-    def _get_texture_coords_for_number(self,bottomleft,size,i) -> np.array:
-        x = (bottomleft[0] + size[0] * i) / self._ui_items_atlas.width
+    def _get_texture_coords_for_text(self,bottomleft,space,size,i) -> np.array:
+        x = (bottomleft[0] + space[0] * i) / self._ui_items_atlas.width
         y = (bottomleft[1] ) / self._ui_items_atlas.height
 
         w = size[0] / self._ui_items_atlas.width
@@ -153,17 +159,17 @@ class HUD:
             non_expanded_cell_dim = inventory._cell_dim
             space_between_cells = inventory._space_between_cells
 
-            x = 2. * (topleft[0]+ non_expanded_cell_dim[0]//4 + j * non_expanded_cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
-            y = 1. - 2. * (topleft[1] + non_expanded_cell_dim[1]//4 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
-            w = 2. * (non_expanded_cell_dim[0]//2)/ self._true_res[0]
-            h = 2. * (non_expanded_cell_dim[1]//2) / self._true_res[1]
+            x = 2. * (topleft[0]+ (non_expanded_cell_dim[0]-16)//2 + j * non_expanded_cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
+            y = 1. - 2. * (topleft[1] + (non_expanded_cell_dim[1] - 16)//2 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+            w = 2. * (16)/ self._true_res[0]
+            h = 2. * (16) / self._true_res[1]
 
             non_expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
             
             #y = 1. - 2 * (topleft[1] - 2 -non_expanded_cell_dim[1] //2 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
 
-            y = 1. - 2. * (topleft[1] - 2 + non_expanded_cell_dim[1]//4 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+            y = 1. - 2. * (topleft[1] - 2 + (non_expanded_cell_dim[1] -16)//2+ i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
 
             expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
@@ -230,6 +236,7 @@ class HUD:
         
     def _create_display_elements(self):
 
+        self._numbers_dim = (10,14)
 
         self._health_bar_width = self._true_res[0]*8//24
         self._stamina_bar_width = self._true_res[0]*3//12

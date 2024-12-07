@@ -1,5 +1,5 @@
 from scripts.new_cursor import Cursor
-from scripts.atlass_positions import TEXT_DIMENSIONS 
+#from scripts.atlass_positions import TEXT_DIMENSIONS 
 from pygame import Rect
 
 class Node:
@@ -260,14 +260,18 @@ class Category(Node):
         for char in category: 
             ord_val = ord(char)
             if 48 <= ord_val <= 57:
-                dim =  TEXT_DIMENSIONS['NUMBERS']
+                pass
+                #dim =  TEXT_DIMENSIONS['NUMBERS']
             elif 65 <= ord_val <= 90: 
-                dim = TEXT_DIMENSIONS['CAPITAL']
-
+                #dim = TEXT_DIMENSIONS['CAPITAL']
+                pass
             elif 97 <= ord_val <= 122:
-                dim = TEXT_DIMENSIONS['LOWER']
+                pass
+                #dim = TEXT_DIMENSIONS['LOWER']
             else: 
-                dim=  TEXT_DIMENSIONS["UNDERSCORE"]
+                pass
+                #dim=  TEXT_DIMENSIONS["UNDERSCORE"]
+            dim = (1,1)
             self._length += dim[0] 
             if dim[1] > max_height: max_height = dim[1]
         self._height = max_height

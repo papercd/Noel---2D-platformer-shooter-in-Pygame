@@ -15,19 +15,10 @@ TILE_ATLAS_POSITIONS ={
 }
 
 
-TEXT_DIMENSIONS = {
-    "CAPITAL" : (6,7),
-    "LOWER": (5,5),
-    "UNDERSCORE" : (5,5),
-    "NUMBERS" : (5,6)
-    
-}
-TEXT_ATLAS_POSITIONS = {
-    "CAPITAL" : (0,5),
-    "LOWER" : (0,0),
-    "UNDERSCORE" : (130,0),
-    "NUMBERS":(0,42)
-
+TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES = {
+    "CAPITAL" : ((0,140),(32,32),(32,32)),
+    "LOWER": ((0,108), (32,32),(32,32)),
+    "NUMBERS" : ((0,180),(32,32),(10,14))
 }
 
 WEAPON_ATLAS_POSITIONS_AND_SIZES = {

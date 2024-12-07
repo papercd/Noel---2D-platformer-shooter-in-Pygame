@@ -259,7 +259,6 @@ class Noel():
         
         dict = {}
 
-        dict['text'] = load_texture(TEXTURE_BASE_PATH + 'text/text_atl.png',self._ctx)
         dict['tiles'] = load_texture(TEXTURE_BASE_PATH+ 'tiles/tile_atlas.png',self._ctx)
         dict['entities'] = load_texture(TEXTURE_BASE_PATH + 'entities/entities_atlas.png',self._ctx)
         dict['cursor'] = load_texture(TEXTURE_BASE_PATH +'cursor/cursor_atlas.png',self._ctx)

@@ -16,7 +16,7 @@ from scripts.new_cursor import Cursor
 from scripts.custom_data_types import TileInfo
 from scripts.layer import Layer_
 from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES, TILE_ATLAS_POSITIONS,\
-                                    ENTITIES_ATLAS_POSITIONS,TEXT_DIMENSIONS,TEXT_ATLAS_POSITIONS,PARTICLE_ATLAS_POSITIONS_AND_SIZES
+                                    ENTITIES_ATLAS_POSITIONS,PARTICLE_ATLAS_POSITIONS_AND_SIZES
 
 from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.shader import Shader 
@@ -372,8 +372,8 @@ class RenderEngine:
                 vertices_list.append(item_vertices)
                 texture_coords_list.append(item_texture_coord)
                 
-        
-        print(self._hud.cursor.text)
+        if self._hud.cursor.text:
+            pass 
          
         
         # cursor rendering 
@@ -429,7 +429,7 @@ class RenderEngine:
         str_num = str(number)
         num_length = len(str_num)
         for pos_ind, digit in enumerate(str_num):
-            texture_coords = self._hud._text_tex_dict[int(digit)]
+            texture_coords = self._hud._text_tex_dict["NUMBERS"][int(digit)]
             vertices = self._create_vertices_for_num(pos_ind,num_length,i,j,inventory)
 
 
@@ -439,12 +439,13 @@ class RenderEngine:
     def _create_vertices_for_num(self,pos_ind:int,num_length:int,i:int,j:int,inventory) -> np.array: 
         topleft = inventory.topleft 
         cell_dim = inventory._cell_dim 
+        number_dim = self._hud._numbers_dim
         space_between_cells = inventory._space_between_cells
 
-        x = 2. * (topleft[0]+ cell_dim[0] - (num_length-pos_ind)*cell_dim[0]//5 + j * cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
-        y = 1. - 2. * (topleft[1] + cell_dim[1]*3//4 + i * cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
-        w = 2. * (cell_dim[0]//5)/ self._true_res[0]
-        h = 2. * (cell_dim[1]//4) / self._true_res[1]
+        x = 2. * (topleft[0]+ cell_dim[0] - (num_length-pos_ind)*number_dim[0]//2+ j * cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + cell_dim[1] - number_dim[1]//2 + i * cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+        w = 2. * (number_dim[0]//2)/ self._true_res[0]
+        h = 2. * (number_dim[1]//2) / self._true_res[1]
 
         return np.array([(x,y),(x+w,y),(x,y-h),
                          (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
@@ -480,9 +481,9 @@ class RenderEngine:
             vertices = np.array([(x,y),(x+w,y),(x,y-h),
                                 (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
         else: 
-            topleft = (self._hud.cursor.topleft[0]- self._hud._item_inventory_cell_dim[0]//4 ,\
-                    self._hud.cursor.topleft[1]- self._hud._item_inventory_cell_dim[1]//4)
-            width,height = self._hud._item_inventory_cell_dim[0]//2,self._hud._item_inventory_cell_dim[1] //2   
+            topleft = (self._hud.cursor.topleft[0]- (self._hud._item_inventory_cell_dim[0]-16)//2 ,\
+                    self._hud.cursor.topleft[1]- (self._hud._item_inventory_cell_dim[1]-16)//2)
+            width,height = 16,16   
             x = 2. * (topleft[0]) / fbo.width -1.
             y = 1. - 2. * (topleft[1] ) /fbo.height 
             w = 2. * width /fbo.width
@@ -1161,6 +1162,7 @@ class RenderEngine:
         vbo.release()
         vao.release()            
 
+    """
     def _get_text_dim_and_atlas_pos(self,char:str):
         ord_val = ord(char)
         if 48 <= ord_val <= 57:
@@ -1182,7 +1184,7 @@ class RenderEngine:
 
         return text_dim,bottom_left,ind
        
-
+    """
 
     def _create_char_vertices(self,topleft, offset,char_len_offset,cat_stack_offset,text_dim,fbo_w,fbo_h):
 
