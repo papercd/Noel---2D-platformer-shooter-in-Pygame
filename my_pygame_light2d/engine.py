@@ -269,6 +269,7 @@ class RenderEngine:
             texture_coords = self._hud._tex_dict[ui_name]
             vertices = self._create_hud_element_vertices(self._hud._bars[ui_name],fbo)
 
+            print(1,vertices.shape)
             vertices_list.append(vertices)
             texture_coords_list.append(texture_coords)
         
@@ -295,7 +296,8 @@ class RenderEngine:
                                 if cell._item: 
                                     texture_coords = self._hud._item_tex_dict[cell._item.name]
                                     vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
-                                    
+                                    print(vertices)
+                                    print(2,vertices.shape)
                                     opaque_vertices_list.append(vertices)
                                     opaque_texture_coords_list.append(texture_coords)
                                     
@@ -319,7 +321,7 @@ class RenderEngine:
                                     # testing the rare effect 
                                     #rare_items_vertices_list.append(vertices)
                                     #rare_items_texture_coords_list.append(texture_coords)
-                                    
+                                    print(3,vertices)
                                     vertices_list.append(vertices)
                                     texture_coords_list.append(texture_coords)
                                     
@@ -340,7 +342,7 @@ class RenderEngine:
         if self._hud.cursor.item:
             item_texture_coord = self._hud._item_tex_dict[self._hud.cursor.item.name]
             item_vertices = self._create_vertices_for_item(fbo)
-            
+            print(4,vertices.shape)
             vertices_list.append(item_vertices)
             texture_coords_list.append(item_texture_coord)
             
@@ -349,7 +351,8 @@ class RenderEngine:
         # cursor rendering 
         cursor_texture_coord = self._hud._tex_dict["cursor"][self._hud.cursor.state]
         cursor_vertices = self._create_hud_element_vertices(self._hud.cursor,fbo)
-
+        
+        print(5,vertices.shape)
         vertices_list.append(cursor_vertices)
         texture_coords_list.append(cursor_texture_coord)
 
@@ -361,6 +364,11 @@ class RenderEngine:
             vbo = self.ctx.buffer(buffer_data)
 
             self._render_ui_elements(vbo,fbo,ui_items_atlas,opacity)
+        
+        #for i, arr in enumerate(vertices_list):
+         #   print(f"Array {i} shape: {arr.shape}")
+
+            
         if vertices_list:
             vertices_array = np.concatenate(vertices_list,axis= 0)
             texture_coords_array = np.concatenate(texture_coords_list,axis= 0)
@@ -369,6 +377,7 @@ class RenderEngine:
             vbo = self.ctx.buffer(buffer_data)
 
             self._render_ui_elements(vbo,fbo,ui_items_atlas)
+            
         
         """
         if rare_items_vertices_list:
