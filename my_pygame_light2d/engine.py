@@ -441,9 +441,9 @@ class RenderEngine:
             self.set_alpha_value_draw_shader(1.)
 
     def _create_vertices_for_item(self,fbo:moderngl.Framebuffer):
-        topleft = (self._hud.cursor.topleft[0]- self._hud._item_inventory_cell_dim[0] //4 ,\
-                   self._hud.cursor.topleft[1]- self._hud._item_inventory_cell_dim[1] //4)
-        width,height = self._hud._item_inventory_cell_dim[0] //2, self._hud._item_inventory_cell_dim[1] //2 
+        topleft = (self._hud.cursor.topleft[0]- 31//2 ,\
+                   self._hud.cursor.topleft[1]- 12//2)
+        width,height = 31, 12 
         x = 2. * (topleft[0]) / fbo.width -1.
         y = 1. - 2. * (topleft[1] ) /fbo.height 
         w = 2. * width /fbo.width
