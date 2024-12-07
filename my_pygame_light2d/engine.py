@@ -371,6 +371,10 @@ class RenderEngine:
                 
                 vertices_list.append(item_vertices)
                 texture_coords_list.append(item_texture_coord)
+
+                number = self._hud.cursor.item.count
+                self._create_vertex_texture_coords_for_num_on_cursor(number,vertices_list,texture_coords_list)
+
                 
         if self._hud.cursor.text:
             pass 
@@ -424,6 +428,18 @@ class RenderEngine:
         vao.render()
         vbo.release()
         vao.release()
+    
+    def _create_vertex_texture_coords_for_num_on_cursor(self,number,vertices_list,texture_coords_list):
+        str_num = str(number)
+        num_length = len(str_num)
+        for pos_ind, digit in enumerate(str_num):
+            texture_coords = self._hud._text_tex_dict["NUMBERS"][int(digit)]
+            vertices = self._create_vertices_for_num_on_cursor(pos_ind,num_length)
+
+
+            vertices_list.append(vertices)
+            texture_coords_list.append(texture_coords)
+
 
     def _create_vertex_texture_coords_for_num(self,inventory,i,j,number,vertices_list,texture_coords_list) -> None: 
         str_num = str(number)
@@ -435,6 +451,20 @@ class RenderEngine:
 
             vertices_list.append(vertices)
             texture_coords_list.append(texture_coords)
+    
+    def _create_vertices_for_num_on_cursor(self,pos_ind:int,num_length:int):
+        topleft = self._hud.cursor.topleft
+        dim = self._hud.cursor.size
+        number_dim = self._hud._numbers_dim
+
+        x = 2. * (topleft[0] - (num_length-pos_ind)*number_dim[0]/2 - 2 ) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + dim[1] //2 - number_dim[1]/2  ) / self._true_res[1]
+        w = 2. * (number_dim[0]/2)/ self._true_res[0]
+        h = 2. * (number_dim[1]/2) / self._true_res[1]
+
+        return np.array([(x,y),(x+w,y),(x,y-h),
+                         (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+
             
     def _create_vertices_for_num(self,pos_ind:int,num_length:int,i:int,j:int,inventory) -> np.array: 
         topleft = inventory.topleft 
@@ -442,10 +472,10 @@ class RenderEngine:
         number_dim = self._hud._numbers_dim
         space_between_cells = inventory._space_between_cells
 
-        x = 2. * (topleft[0]+ cell_dim[0] - (num_length-pos_ind)*number_dim[0]//2+ j * cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
-        y = 1. - 2. * (topleft[1] + cell_dim[1] - number_dim[1]//2 + i * cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
-        w = 2. * (number_dim[0]//2)/ self._true_res[0]
-        h = 2. * (number_dim[1]//2) / self._true_res[1]
+        x = 2. * (topleft[0]+ cell_dim[0] - (num_length-pos_ind)*number_dim[0]/2+ j * cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + cell_dim[1] - number_dim[1]/2 + i * cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+        w = 2. * (number_dim[0]/2)/ self._true_res[0]
+        h = 2. * (number_dim[1]/2) / self._true_res[1]
 
         return np.array([(x,y),(x+w,y),(x,y-h),
                          (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)

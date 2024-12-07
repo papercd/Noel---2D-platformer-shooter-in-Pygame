@@ -138,8 +138,8 @@ class HUD:
 
             space_between_cells = inventory._space_between_cells
 
-            x = 2. * (topleft[0] + offset[0]//2+ j * non_expanded_cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
-            y = 1. - 2. * (topleft[1] + offset[1]//2 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+            x = 2. * (topleft[0] + offset[0]/2+ j * non_expanded_cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
+            y = 1. - 2. * (topleft[1] + offset[1]/2 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
             w = 2. * (31)/ self._true_res[0]
             h = 2. * (12) / self._true_res[1]
 
@@ -148,7 +148,7 @@ class HUD:
             
             #y = 1. - 2 * (topleft[1] - 2 -non_expanded_cell_dim[1] //2 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
 
-            y = 1. - 2. * (topleft[1] +offset[1]//2- 2  + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+            y = 1. - 2. * (topleft[1] +offset[1]/2- 2  + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
 
             expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
@@ -159,8 +159,8 @@ class HUD:
             non_expanded_cell_dim = inventory._cell_dim
             space_between_cells = inventory._space_between_cells
 
-            x = 2. * (topleft[0]+ (non_expanded_cell_dim[0]-16)//2 + j * non_expanded_cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
-            y = 1. - 2. * (topleft[1] + (non_expanded_cell_dim[1] - 16)//2 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+            x = 2. * (topleft[0]+ (non_expanded_cell_dim[0]-16)/2 + j * non_expanded_cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
+            y = 1. - 2. * (topleft[1] + (non_expanded_cell_dim[1] - 16)/2 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
             w = 2. * (16)/ self._true_res[0]
             h = 2. * (16) / self._true_res[1]
 
@@ -169,7 +169,7 @@ class HUD:
             
             #y = 1. - 2 * (topleft[1] - 2 -non_expanded_cell_dim[1] //2 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
 
-            y = 1. - 2. * (topleft[1] - 2 + (non_expanded_cell_dim[1] -16)//2+ i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+            y = 1. - 2. * (topleft[1] - 2 + (non_expanded_cell_dim[1] -16)/2+ i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
 
             expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
