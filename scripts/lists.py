@@ -142,7 +142,8 @@ class WeaponNode:
                         self._item.count = self._item.count - amount
                     cursor.set_cooldown()
                 if cursor.item is None:
-                    cursor.text = (self._item.name,self._item.description)
+                    if self._hovered:
+                        cursor.text = (self._item.name,self._item.description)
                     if cursor.pressed[0] and cursor.move:
                         temp = self._item 
                         self._item = None 
@@ -177,12 +178,13 @@ class WeaponNode:
                             cursor.item = self._item 
                             self._item = temp 
                             cursor.set_cooldown()
-            elif cursor.item is not None and cursor.box.colliderect(self._rect) and cursor.cooldown == 0:
+            elif cursor.item is not None and self._hovered and cursor.cooldown == 0:
                 if cursor.item.type != self._list._type:
                     return
                 if cursor.pressed[0]:
                     self._item = cursor.item 
                     cursor.item = None 
+                    self._list.curr_node = self
                     cursor.set_cooldown()
                 elif cursor.pressed[1] and cursor.item.stackable:
                     if cursor.item.count >1:
@@ -208,6 +210,7 @@ class WeaponInvenList(DoublyLinkedList):
         while current:
            if current._item is None:
                current._item = item 
+               self.curr_node = current
                return 
            current = current.next 
         

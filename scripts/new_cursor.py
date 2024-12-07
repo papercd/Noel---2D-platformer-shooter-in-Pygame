@@ -34,9 +34,6 @@ class Cursor:
             self.magnet = self.special_actions and self.item is not None 
             self.move = self.special_actions and not self.magnet 
 
-            if self.text is not None:
-                #TODO : add this part later. 
-                self.text = None 
 
             if self.interacting: 
                 if self.magnet : self.state = 'magnet'

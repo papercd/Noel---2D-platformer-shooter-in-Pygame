@@ -46,8 +46,8 @@ class Cell:
                     cursor.set_cooldown()
                 
                 if cursor.item is None: 
-                    cursor.text = (self._item.name,self._item.description)
-                    
+                    if self._hovered:
+                        cursor.text = (self._item.name,self._item.description)
                     if cursor.pressed[0] and cursor.move:
                         index = self._inventory_id
                         len_inventory = len(inventory_list)
@@ -104,7 +104,7 @@ class Cell:
                             self._item = temp 
 
                             cursor.set_cooldown()
-                elif cursor.item is not None and cursor.box.colliderect(self._rect) and cursor.cooldown == 0: 
+                elif cursor.item is not None and self._hovered and cursor.cooldown == 0: 
                     if cursor.pressed[0] :
                         if cursor.item.name == self._item.name: 
                             if self._item.count + cursor.item.count <= stack_limit and self._item.stackable: 
@@ -120,7 +120,7 @@ class Cell:
                             self._item = temp
                         cursor.set_cooldown()
             
-            elif cursor.item is not None and cursor.box.colliderect(self._rect) and cursor.cooldown ==0:
+            elif cursor.item is not None and self._hovered and cursor.cooldown ==0:
                 if cursor.item.type != self._type:
                     return 
                 if cursor.pressed[0]:

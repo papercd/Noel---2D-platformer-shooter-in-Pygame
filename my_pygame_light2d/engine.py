@@ -269,7 +269,6 @@ class RenderEngine:
             texture_coords = self._hud._tex_dict[ui_name]
             vertices = self._create_hud_element_vertices(self._hud._bars[ui_name],fbo)
 
-            print(1,vertices.shape)
             vertices_list.append(vertices)
             texture_coords_list.append(texture_coords)
         
@@ -296,8 +295,6 @@ class RenderEngine:
                                 if cell._item: 
                                     texture_coords = self._hud._item_tex_dict[cell._item.name]
                                     vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
-                                    print(vertices)
-                                    print(2,vertices.shape)
                                     opaque_vertices_list.append(vertices)
                                     opaque_texture_coords_list.append(texture_coords)
                                     
@@ -321,7 +318,6 @@ class RenderEngine:
                                     # testing the rare effect 
                                     #rare_items_vertices_list.append(vertices)
                                     #rare_items_texture_coords_list.append(texture_coords)
-                                    print(3,vertices)
                                     vertices_list.append(vertices)
                                     texture_coords_list.append(texture_coords)
                                     
@@ -334,15 +330,26 @@ class RenderEngine:
                     while current: 
                         if current._cell_ind == inventory._weapons_list.curr_node._cell_ind:
                             # the weapon panel item rendering is done here
+
                             item = current._item 
                             if item is not None: 
-                                print("check ")
+                                texture_coords = self._hud._tex_dict[f"{inventory.name}_slot"][1]
+                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][1]
+                                opaque_texture_coords_list.append(texture_coords)
+                                opaque_vertices_list.append(vertices)
+                            else: 
+                                texture_coords = self._hud._tex_dict[f"{inventory.name}_slot"][current._hovered]
+                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
+                                opaque_texture_coords_list.append(texture_coords)
+                                opaque_vertices_list.append(vertices)
 
-                        texture_coords = self._hud._tex_dict[f"{inventory.name}_slot"][current._hovered]
-                        vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
-                        opaque_texture_coords_list.append(texture_coords)
-                        opaque_vertices_list.append(vertices)
-                        
+
+                        else:
+                            texture_coords = self._hud._tex_dict[f"{inventory.name}_slot"][current._hovered]
+                            vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
+                            opaque_texture_coords_list.append(texture_coords)
+                            opaque_vertices_list.append(vertices)
+                            
                         if current._item:
                             weapon_texture_coords = self._hud._item_tex_dict[current._item.name]
                             weapon_vertices = self._hud._item_vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
@@ -350,16 +357,8 @@ class RenderEngine:
                             opaque_texture_coords_list.append(weapon_texture_coords)
                         current = current.next 
 
-               
+        
         if self._hud.cursor.item:
-<<<<<<< HEAD
-            item_texture_coord = self._hud._item_tex_dict[self._hud.cursor.item.name]
-            item_vertices = self._create_vertices_for_item(fbo)
-            print(4,vertices.shape)
-            vertices_list.append(item_vertices)
-            texture_coords_list.append(item_texture_coord)
-            
-=======
             if self._hud.cursor.item.type == 'weapon':
                 item_texture_coord = self._hud._item_tex_dict[self._hud.cursor.item.name]
                 item_vertices = self._create_vertices_for_item(fbo,'weapon')
@@ -374,18 +373,16 @@ class RenderEngine:
                 texture_coords_list.append(item_texture_coord)
                 
         
-
-        
->>>>>>> 62f688a3223770295101beea9d6318f27a19a982
+        print(self._hud.cursor.text)
          
         
         # cursor rendering 
         cursor_texture_coord = self._hud._tex_dict["cursor"][self._hud.cursor.state]
         cursor_vertices = self._create_hud_element_vertices(self._hud.cursor,fbo)
         
-        print(5,vertices.shape)
         vertices_list.append(cursor_vertices)
         texture_coords_list.append(cursor_texture_coord)
+
 
         if opaque_vertices_list:
             vertices_array = np.concatenate(opaque_vertices_list,axis= 0)
@@ -396,9 +393,6 @@ class RenderEngine:
 
             self._render_ui_elements(vbo,fbo,ui_items_atlas,opacity)
         
-        #for i, arr in enumerate(vertices_list):
-         #   print(f"Array {i} shape: {arr.shape}")
-
             
         if vertices_list:
             vertices_array = np.concatenate(vertices_list,axis= 0)
@@ -409,7 +403,7 @@ class RenderEngine:
 
             self._render_ui_elements(vbo,fbo,ui_items_atlas)
             
-        
+        self._hud.cursor.text = None
         """
         if rare_items_vertices_list:
             rare_vertices_array = np.concatenate(rare_items_vertices_list,axis= 0)
