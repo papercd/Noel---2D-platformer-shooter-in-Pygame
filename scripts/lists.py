@@ -142,7 +142,7 @@ class WeaponNode:
                         self._item.count = self._item.count - amount
                     cursor.set_cooldown()
                 if cursor.item is None:
-                    cursor.text = (self._item.get_name(),self._item.get_description())
+                    cursor.text = (self._item.name,self._item.description)
                     if cursor.pressed[0] and cursor.move:
                         temp = self._item 
                         self._item = None 
@@ -160,50 +160,58 @@ class WeaponNode:
                         cursor.item.count = half 
                         self._item.count = self._item.count - half 
                         cursor.set_cooldown()
-                else: 
-                    if cursor.cooldown != 0:
-                        return 
-                    if cursor.pressed[0] and cursor.item.name == self._item.name and self._item.count + cursor.item.count <= stack_limit and self._item.stackable:
-                        self._item.count = self._item.count + cursor.item.count
-                        cursor.item = None 
-                        cursor.set_cooldown()
-                    elif cursor.pressed[0] and cursor.item.name == self._item.name and self._item.stackable :
-                        amount = stack_limit - self._item.count
-                        self._item.count = self._item.count + amount 
-                        cursor.item.count = cursor.item.count - amount 
-                        cursor.set_cooldown()
-                    elif cursor.pressed[0]:
-                        temp = cursor.item.copy()
-                        cursor.item = self._item 
-                        self._item = temp 
-                        cursor.set_cooldown()
-        elif cursor.item is not None and cursor.box.colliderect(self._rect) and cursor.cooldown == 0:
-            if cursor.item.type != self._type:
-                return 
-            if cursor.pressed[0]:
-                self._item = cursor.item 
-                cursor.item = None 
-                cursor.set_cooldown()
-            elif cursor.pressed[1] and cursor.item.stackable:
-                if cursor.item.count >1:
-                    half = cursor.item.count // 2
-                    self._item = cursor.item.copy()
-                    self._item.count = half 
-                    cursor.item.count = cursor.item.count - half 
-                else: 
+                    else: 
+                        if cursor.cooldown != 0:
+                            return 
+                        if cursor.pressed[0] and cursor.item.name == self._item.name and self._item.count + cursor.item.count <= stack_limit and self._item.stackable:
+                            self._item.count = self._item.count + cursor.item.count
+                            cursor.item = None 
+                            cursor.set_cooldown()
+                        elif cursor.pressed[0] and cursor.item.name == self._item.name and self._item.stackable :
+                            amount = stack_limit - self._item.count
+                            self._item.count = self._item.count + amount 
+                            cursor.item.count = cursor.item.count - amount 
+                            cursor.set_cooldown()
+                        elif cursor.pressed[0]:
+                            temp = cursor.item.copy()
+                            cursor.item = self._item 
+                            self._item = temp 
+                            cursor.set_cooldown()
+            elif cursor.item is not None and cursor.box.colliderect(self._rect) and cursor.cooldown == 0:
+                if cursor.item.type != self._list._type:
+                    return
+                if cursor.pressed[0]:
                     self._item = cursor.item 
                     cursor.item = None 
-                cursor.set_cooldown()
+                    cursor.set_cooldown()
+                elif cursor.pressed[1] and cursor.item.stackable:
+                    if cursor.item.count >1:
+                        half = cursor.item.count // 2
+                        self._item = cursor.item.copy()
+                        self._item.count = half 
+                        cursor.item.count = cursor.item.count - half 
+                    else: 
+                        self._item = cursor.item 
+                        cursor.item = None 
+                    cursor.set_cooldown()
 
 
 
 class WeaponInvenList(DoublyLinkedList):
     def __init__(self, objs = None):
         super().__init__(objs)
+        self._type = 'weapon'
 
     
     def add_item(self,item):
-        pass
+        current = self.head 
+        while current:
+           if current._item is None:
+               current._item = item 
+               return 
+           current = current.next 
+        
+
         
     def add_node(self,cell_ind,data):
         new_node = WeaponNode(self,cell_ind,*data)

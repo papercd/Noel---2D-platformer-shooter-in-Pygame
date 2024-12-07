@@ -2,7 +2,8 @@ ITEM_DESCRIPTIONS = {
     "amethyst_arrow" : "Arrow made with dirty amethyst.",
     "amethyst_clump" : "",
     "arrow": "",
-    "string": ""
+    "string": "",
+    "ak47": "A powerful weapon that shoots bullets."
 
 }
 

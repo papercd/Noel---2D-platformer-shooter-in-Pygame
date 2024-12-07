@@ -121,6 +121,8 @@ class Cell:
                         cursor.set_cooldown()
             
             elif cursor.item is not None and cursor.box.colliderect(self._rect) and cursor.cooldown ==0:
+                if cursor.item.type != self._type:
+                    return 
                 if cursor.pressed[0]:
                     self._item = cursor.item 
                     cursor.item = None 
@@ -324,6 +326,9 @@ class WeaponInventory(Inventory):
                 topleft = (self._topleft[0] + (j * self._cell_dim[0]) + ((self._space_between_cells * (j)) if j >0 else 0), 
                            self._topleft[1] + (i * self._cell_dim[1]) + ((self._space_between_cells * (i)) if i >0 else 0))
                 self._weapons_list.add_node(i * self._columns + j, (topleft,self._cell_dim))
+
+    def add_item(self,item) -> None:
+        self._weapons_list.add_item(item)
 
 
     def update(self,cursor,inven_open_state,player):

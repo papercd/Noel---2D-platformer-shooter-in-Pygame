@@ -1,7 +1,7 @@
 from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player
 from scripts.new_inventory import Inventory_Engine,Inventory,WeaponInventory    
-from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS,TEXT_ATLAS_POSITIONS,TEXT_DIMENSIONS
+from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS,TEXT_ATLAS_POSITIONS,TEXT_DIMENSIONS,WEAPON_ATLAS_POSITIONS_AND_SIZES
 from scripts.new_ui import HealthBar,StaminaBar
 from scripts.item import Item
 import numpy as np
@@ -52,11 +52,31 @@ class HUD:
             pos= ITEM_ATLAS_POSITIONS[key]
             self._item_tex_dict[key] = self._get_texture_coords_for_item(pos)
 
+        for key in WEAPON_ATLAS_POSITIONS_AND_SIZES:
+            pos,size = WEAPON_ATLAS_POSITIONS_AND_SIZES[key]
+            self._item_tex_dict[key] = self._get_texture_coords_for_weapon(pos,size)
+
         numbers_base_pos,size = TEXT_ATLAS_POSITIONS["NUMBERS"],TEXT_DIMENSIONS["NUMBERS"]
         for i in range(10):
             self._text_tex_dict[i] = self._get_texture_coords_for_number(numbers_base_pos,size,i)
-            
     
+
+    
+    def _get_texture_coords_for_weapon(self,bottomleft,size) -> np.array:
+            x = (bottomleft[0] ) / self._ui_items_atlas.width
+            y = (bottomleft[1] ) / self._ui_items_atlas.height
+
+            w = size[0] / self._ui_items_atlas.width
+            h = size[1] / self._ui_items_atlas.height
+
+            p1 = (x,y+h) 
+            p2 = (x+w,y+h)
+            p3 = (x,y) 
+            p4 = (x+w,y)
+
+            return np.array([p1,p2,p3,
+                            p3,p2,p4],dtype = np.float32 )
+
     def _get_texture_coords_for_number(self,bottomleft,size,i) -> np.array:
         x = (bottomleft[0] + size[0] * i) / self._ui_items_atlas.width
         y = (bottomleft[1] ) / self._ui_items_atlas.height
@@ -104,17 +124,51 @@ class HUD:
 
 
     def _create_vertices_for_item(self,i:int,j:int,inventory:Inventory)->np.array:
-        topleft = inventory._topleft
-        non_expanded_cell_dim = inventory._cell_dim
-        space_between_cells = inventory._space_between_cells
+        if inventory.name == "weapon":
 
-        x = 2. * (topleft[0]+ non_expanded_cell_dim[0]//4 + j * non_expanded_cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
-        y = 1. - 2. * (topleft[1] + non_expanded_cell_dim[1]//4 + i *non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
-        w = 2. * (non_expanded_cell_dim[0]//2)/ self._true_res[0]
-        h = 2. * (non_expanded_cell_dim[1]//2) / self._true_res[1]
+            topleft = inventory._topleft
+            non_expanded_cell_dim = inventory._cell_dim
+            offset = (non_expanded_cell_dim[0] - 31,non_expanded_cell_dim[1] - 12)
 
-        return np.array([(x,y),(x+w,y),(x,y-h),
-                         (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+            space_between_cells = inventory._space_between_cells
+
+            x = 2. * (topleft[0] + offset[0]//2+ j * non_expanded_cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
+            y = 1. - 2. * (topleft[1] + offset[1]//2 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+            w = 2. * (31)/ self._true_res[0]
+            h = 2. * (12) / self._true_res[1]
+
+            non_expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                            (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+            
+            #y = 1. - 2 * (topleft[1] - 2 -non_expanded_cell_dim[1] //2 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+
+            y = 1. - 2. * (topleft[1] +offset[1]//2- 2  + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+
+            expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                            (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+
+        else: 
+
+            topleft = inventory._topleft
+            non_expanded_cell_dim = inventory._cell_dim
+            space_between_cells = inventory._space_between_cells
+
+            x = 2. * (topleft[0]+ non_expanded_cell_dim[0]//4 + j * non_expanded_cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
+            y = 1. - 2. * (topleft[1] + non_expanded_cell_dim[1]//4 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+            w = 2. * (non_expanded_cell_dim[0]//2)/ self._true_res[0]
+            h = 2. * (non_expanded_cell_dim[1]//2) / self._true_res[1]
+
+            non_expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                            (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+            
+            #y = 1. - 2 * (topleft[1] - 2 -non_expanded_cell_dim[1] //2 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+
+            y = 1. - 2. * (topleft[1] - 2 + non_expanded_cell_dim[1]//4 + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+
+            expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                            (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+
+        return (non_expanded_vertices,expanded_vertices)
 
     def _create_vertices_for_cell(self,i:int,j:int,inventory:Inventory)->np.array:
         topleft = inventory._topleft
@@ -204,7 +258,7 @@ class HUD:
             self._space_between_weapon_inventory_cells = 5  
 
 
-        self._space_between_item_inventory_cells = ((self._true_res[0] *5//12 - self._item_inventory_cell_side * self._closed_items_rows_cols[1]) // self._closed_items_rows_cols[1]) // 1.5
+        self._space_between_item_inventory_cells = ((self._true_res[0] *5//12 - self._item_inventory_cell_side * self._closed_items_rows_cols[1]) // self._closed_items_rows_cols[1]) // 2 
 
         self._item_inventory_cell_dim = (self._item_inventory_cell_side,self._item_inventory_cell_side )
         self._weapon_inven_cell_dim = (self._weapon_inventory_cell_length, self._weapon_inventory_cell_height)
@@ -229,6 +283,9 @@ class HUD:
         self._health_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 36 // 40)
         self._stamina_bar_topleft = (self._true_res[0]//12,self._true_res[1] * 36//40 + self._bar_height + 1)
 
+        self._weapon_display_topleft = (self._true_res[0] // 12 + self._health_bar_width, self._true_res[1] * 36//40 -2 ) 
+        self._weapon_display_dim = self._weapon_inven_cell_dim
+
         self._health_bar = HealthBar(self._health_bar_topleft,(self._health_bar_width,self._bar_height),self._player.health)
         self._stamina_bar = StaminaBar(self._stamina_bar_topleft,(self._stamina_bar_width,self._bar_height),self._player.stamina)
         self._inven_list = [
@@ -251,10 +308,9 @@ class HUD:
     # temporary method to test items 
     def add_item(self, item: Item):
         if item.type == 'weapon' :
-            pass 
+            self._inven_list[2].add_item(item)
         else:
             self._inven_list[0].add_item(item) 
-            pass 
 
 
     def update(self):
