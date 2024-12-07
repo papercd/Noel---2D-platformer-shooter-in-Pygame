@@ -330,6 +330,11 @@ class RenderEngine:
                 if inventory.cur_opacity > 0 :
                     current = inventory._weapons_list.head 
                     while current: 
+                        if current._cell_ind == inventory._weapons_list.curr_node._cell_ind:
+                            # the weapon panel item rendering is done here
+                            item = current._item 
+                            if item is not None: 
+                                print("check ")
 
                         texture_coords = self._hud._tex_dict[f"{inventory.name}_slot"][current._hovered]
                         vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
@@ -345,12 +350,22 @@ class RenderEngine:
 
                
         if self._hud.cursor.item:
-            item_texture_coord = self._hud._item_tex_dict[self._hud.cursor.item.name]
-            item_vertices = self._create_vertices_for_item(fbo)
-            
-            vertices_list.append(item_vertices)
-            texture_coords_list.append(item_texture_coord)
-            
+            if self._hud.cursor.item.type == 'weapon':
+                item_texture_coord = self._hud._item_tex_dict[self._hud.cursor.item.name]
+                item_vertices = self._create_vertices_for_item(fbo,'weapon')
+                
+                vertices_list.append(item_vertices)
+                texture_coords_list.append(item_texture_coord)
+            else:
+                item_texture_coord = self._hud._item_tex_dict[self._hud.cursor.item.name]
+                item_vertices = self._create_vertices_for_item(fbo,'item')
+                
+                vertices_list.append(item_vertices)
+                texture_coords_list.append(item_texture_coord)
+                
+        
+
+        
          
         
         # cursor rendering 
@@ -440,17 +455,29 @@ class RenderEngine:
         if opacity:
             self.set_alpha_value_draw_shader(1.)
 
-    def _create_vertices_for_item(self,fbo:moderngl.Framebuffer):
-        topleft = (self._hud.cursor.topleft[0]- 31//2 ,\
-                   self._hud.cursor.topleft[1]- 12//2)
-        width,height = 31, 12 
-        x = 2. * (topleft[0]) / fbo.width -1.
-        y = 1. - 2. * (topleft[1] ) /fbo.height 
-        w = 2. * width /fbo.width
-        h = 2. * height /fbo.height
-        vertices = np.array([(x,y),(x+w,y),(x,y-h),
-                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
-        
+    def _create_vertices_for_item(self,fbo:moderngl.Framebuffer,item_type:str):
+        if item_type == 'weapon':
+            
+            topleft = (self._hud.cursor.topleft[0]- 31//2 ,\
+                    self._hud.cursor.topleft[1]- 12//2)
+            width,height = 31, 12 
+            x = 2. * (topleft[0]) / fbo.width -1.
+            y = 1. - 2. * (topleft[1] ) /fbo.height 
+            w = 2. * width /fbo.width
+            h = 2. * height /fbo.height
+            vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                                (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+        else: 
+            topleft = (self._hud.cursor.topleft[0]- self._hud._item_inventory_cell_dim[0]//4 ,\
+                    self._hud.cursor.topleft[1]- self._hud._item_inventory_cell_dim[1]//4)
+            width,height = self._hud._item_inventory_cell_dim[0]//2,self._hud._item_inventory_cell_dim[1] //2   
+            x = 2. * (topleft[0]) / fbo.width -1.
+            y = 1. - 2. * (topleft[1] ) /fbo.height 
+            w = 2. * width /fbo.width
+            h = 2. * height /fbo.height
+            vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                                (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+
         return vertices
 
 
