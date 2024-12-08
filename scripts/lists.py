@@ -116,6 +116,32 @@ class WeaponNode:
         self.next = None 
         self.prev = None 
 
+    def check_nearest_node_with_item(self):
+        right_current = self 
+        left_current = self 
+        right_node = None 
+        left_node = None 
+        while right_current:
+            if right_current.next: 
+                if right_current.next._item: 
+                    right_node = right_current.next
+                    break
+                right_current = right_current.next 
+            else: 
+                break
+
+        while left_current.prev: 
+            if left_current.prev: 
+                if left_current.prev._item: 
+                    left_node = left_current.prev 
+                    break 
+                left_current = left_current.prev 
+            else: 
+                break
+
+        return (left_node,right_node)
+    
+
     def update(self,stack_limit,cursor,opacity,player):
         if cursor.box.colliderect(self._rect):
             self._offset = (-1,-1)

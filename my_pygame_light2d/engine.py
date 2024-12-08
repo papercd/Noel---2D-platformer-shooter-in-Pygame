@@ -334,7 +334,8 @@ class RenderEngine:
 
                             item = current._item 
                             if item is not None: 
-
+                                
+                                
                                 texture_coords = self._hud._tex_dict[f"{inventory.name}_slot"][1]
                                 vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][1]
                                 opaque_texture_coords_list.append(texture_coords)
@@ -358,6 +359,15 @@ class RenderEngine:
                             opaque_vertices_list.append(weapon_vertices)
                             opaque_texture_coords_list.append(weapon_texture_coords)
                         current = current.next 
+
+                if inventory._weapons_list.curr_node._item: 
+                    left_node,right_node = inventory._weapons_list.curr_node.check_nearest_node_with_item()
+                    current_weapon_tex_coords = self._hud._item_tex_dict[inventory._weapons_list.curr_node._item.name]
+                    current_weapon_vertices = self._hud._item_vertices_dict["current_weapon"]
+
+                    vertices_list.append(current_weapon_vertices)
+                    texture_coords_list.append(current_weapon_tex_coords)
+
                 current_weapon_display_container = self._hud._tex_dict[f"{inventory.name}_slot"][0]
                 vertices = self._hud._vertices_dict["current_weapon"][0] 
                 
