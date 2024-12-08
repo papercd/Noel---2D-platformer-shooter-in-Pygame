@@ -140,7 +140,20 @@ class HUD:
         # precompute vertices for current weapon display 
         
         self._vertices_dict["current_weapon"] = self._create_vertices_for_curr_weapon_display(self._current_weapon_display_topleft)
+        self._item_vertices_dict["current_weapon"] = self._create_vertices_for_curr_weapon(self._current_weapon_display_topleft)
 
+    def _create_vertices_for_curr_weapon(self,topleft):
+        offset = (self._weapon_inven_cell_dim[0] -31 , self._weapon_inven_cell_dim[1] -12)
+
+        x = 2. * (topleft[0] +offset[0] /2) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + offset[1]/2 ) / self._true_res[1] 
+        w = 2. *(31)/ self._true_res[0]
+        h = 2. * (12) / self._true_res[1]
+
+        vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                         (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+
+        return vertices
 
     def _create_vertices_for_curr_weapon_display(self,topleft):
         x = 2. * (topleft[0]) / self._true_res[0] -1.
@@ -155,8 +168,8 @@ class HUD:
 
         x = 2. * (topleft[0] + offset[0]) / self._true_res[0] -1.
         y = 1. - 2. * (topleft[1] + offset[1]) / self._true_res[1] 
-        w = 2. * (31)/ self._true_res[0]
-        h = 2. * (12)/ self._true_res[1]
+        w = 2. * (self._weapon_display_dim[0] +4)/ self._true_res[0]
+        h = 2. * (self._weapon_display_dim[1] +4)/ self._true_res[1]
 
         expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
                          (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
