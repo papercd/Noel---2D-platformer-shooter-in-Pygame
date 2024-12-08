@@ -107,7 +107,7 @@ class ParticleSystem:
             self._animation_particle_pool_index = (self._animation_particle_pool_index -1) % self._max_animation_particle_count 
 
 
-    def update(self,tilemap:Tilemap,grass_manager):
+    def update(self,dt,tilemap:Tilemap,grass_manager):
         for particle in list(self._active_collide_particles):
             kill =particle.update(tilemap)
             if kill: 

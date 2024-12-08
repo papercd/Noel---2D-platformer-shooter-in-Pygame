@@ -363,7 +363,7 @@ class Noel():
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
 
 
-            self.particle_system.update(self._tilemap,self._grass_manager)
+            self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
             self.player.update(self._tilemap,self._hud.cursor.topleft,self._player_movement_input,self._frame_count)
             self.render_engine.bind_player(self.player)
             self._hud.update()
