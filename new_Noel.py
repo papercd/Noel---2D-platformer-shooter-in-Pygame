@@ -152,7 +152,7 @@ class Noel():
     def _get_system_display_info(self):
         system_info = {}
         # primary monitor set to second monitor for hot reloading
-        primary_monitor = get_monitors()[0]
+        primary_monitor = get_monitors()[1]
         system_info["resolution"] = (primary_monitor.width, primary_monitor.height)
 
         if platform.system() == "Windows":
@@ -273,7 +273,7 @@ class Noel():
     def _handle_common_events(self,event):
         
         self._hud.cursor.topleft= pygame.mouse.get_pos()
-        self._hud.cursor.topleft= ((self._hud.cursor.topleft[0]/self._true_to_screen_res_ratio),(self._hud.cursor.topleft[1]/self._true_to_screen_res_ratio))
+        self._hud.cursor.topleft= ((self._hud.cursor.topleft[0]//self._true_to_screen_res_ratio),(self._hud.cursor.topleft[1]//self._true_to_screen_res_ratio))
         self._hud.cursor.box.x,self._hud.cursor.box.y = self._hud.cursor.topleft[0] , self._hud.cursor.topleft[1]
         
 

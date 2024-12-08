@@ -236,7 +236,8 @@ class HUD:
         
     def _create_display_elements(self):
 
-        self._numbers_dim = (10,14)
+        self._text_dim = (16,16)
+        self._cursor_text_box_max_width = 200
 
         self._health_bar_width = self._true_res[0]*8//24
         self._stamina_bar_width = self._true_res[0]*3//12
