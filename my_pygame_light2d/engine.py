@@ -330,9 +330,11 @@ class RenderEngine:
                     while current: 
                         if current._cell_ind == inventory._weapons_list.curr_node._cell_ind:
                             # the weapon panel item rendering is done here
+                            
 
                             item = current._item 
                             if item is not None: 
+
                                 texture_coords = self._hud._tex_dict[f"{inventory.name}_slot"][1]
                                 vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][1]
                                 opaque_texture_coords_list.append(texture_coords)
@@ -356,7 +358,11 @@ class RenderEngine:
                             opaque_vertices_list.append(weapon_vertices)
                             opaque_texture_coords_list.append(weapon_texture_coords)
                         current = current.next 
-
+                current_weapon_display_container = self._hud._tex_dict[f"{inventory.name}_slot"][0]
+                vertices = self._hud._vertices_dict["current_weapon"][0] 
+                
+                vertices_list.append(vertices)
+                texture_coords_list.append(current_weapon_display_container)
         
         if self._hud.cursor.item:
             if self._hud.cursor.item.type == 'weapon':

@@ -65,9 +65,32 @@ class HUD:
                 count = 10
             for i in range(count):
                 self._text_tex_dict[key].append(self._get_texture_coords_for_text(pos,space,size,i))
-            
-
     
+
+
+    """   refactoring  texture coords and vertices getters     """
+
+
+    def _get_texture_coords(self,bottomleft:tuple[int,int],size:tuple[int,int]) ->np.array: 
+        x = (bottomleft[0] ) / self._ui_items_atlas.width
+        y = (bottomleft[1] ) / self._ui_items_atlas.height
+
+        w = size[0] / self._ui_items_atlas.width
+        h = size[1] / self._ui_items_atlas.height
+
+        p1 = (x,y+h) 
+        p2 = (x+w,y+h)
+        p3 = (x,y) 
+        p4 = (x+w,y)
+
+        return np.array([p1,p2,p3,
+                        p3,p2,p4],dtype = np.float32 )
+    
+
+    def _get_vertices(self,topleft:tuple[int,int],size:tuple[int,int]) -> np.array: 
+        pass 
+
+
     def _get_texture_coords_for_weapon(self,bottomleft,size) -> np.array:
             x = (bottomleft[0] ) / self._ui_items_atlas.width
             y = (bottomleft[1] ) / self._ui_items_atlas.height
@@ -113,6 +136,33 @@ class HUD:
                 for j in range(inventory._columns):
                     self._vertices_dict[f"{inventory._name}_{inventory._ind}"].append(self._create_vertices_for_cell(i,j,inventory))
                     self._item_vertices_dict[f"{inventory._name}_{inventory._ind}"].append(self._create_vertices_for_item(i,j,inventory))
+
+        # precompute vertices for current weapon display 
+        
+        self._vertices_dict["current_weapon"] = self._create_vertices_for_curr_weapon_display(self._current_weapon_display_topleft)
+
+
+    def _create_vertices_for_curr_weapon_display(self,topleft):
+        x = 2. * (topleft[0]) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1]) / self._true_res[1] 
+        w = 2. *(self._weapon_inven_cell_dim[0])/ self._true_res[0]
+        h = 2. * (self._weapon_inven_cell_dim[1]) / self._true_res[1]
+
+        non_expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                         (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+        
+        offset = (-2,-2)
+
+        x = 2. * (topleft[0] + offset[0]) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + offset[1]) / self._true_res[1] 
+        w = 2. * (31)/ self._true_res[0]
+        h = 2. * (12)/ self._true_res[1]
+
+        expanded_vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                         (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+
+
+        return (non_expanded_vertices,expanded_vertices)
 
 
 
@@ -192,7 +242,7 @@ class HUD:
         offset = (-2,-2)
 
         x = 2. * (topleft[0] + j * non_expanded_cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0) + offset[0]) / self._true_res[0] -1.
-        y = 1. - 2. * (topleft[1] + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0) + offset[0]) / self._true_res[1] 
+        y = 1. - 2. * (topleft[1] + i * non_expanded_cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0) + offset[1]) / self._true_res[1] 
         w = 2. * (non_expanded_cell_dim[0] + 4)/ self._true_res[0]
         h = 2. * (non_expanded_cell_dim[1] + 4)/ self._true_res[1]
 
@@ -275,6 +325,8 @@ class HUD:
                                       -self._space_between_item_inventory_cells * (self._closed_items_rows_cols[0])) 
         self._showing_items_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//7,self._true_res[1] * 36//40 - 2) 
         self._weapons_topleft = (self._true_res[0]//12  , self._true_res[1] * 36//40 - self._weapon_inven_cell_dim[1] * 1.5)
+
+        self._current_weapon_display_topleft = (self._true_res[0]//12 + self._health_bar_width + self._true_res[0]//14 -self._weapon_inven_cell_dim[0]//2, self._true_res[1] * 36/40 -2)
 
         self._bar_height = self._true_res[1] // 40 
 
