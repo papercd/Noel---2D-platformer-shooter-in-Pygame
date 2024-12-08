@@ -1,1 +1,2 @@
-pygame
+
+        system_info = {}

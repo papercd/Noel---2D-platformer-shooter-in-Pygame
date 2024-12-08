@@ -330,9 +330,11 @@ class RenderEngine:
                     while current: 
                         if current._cell_ind == inventory._weapons_list.curr_node._cell_ind:
                             # the weapon panel item rendering is done here
+                            
 
                             item = current._item 
                             if item is not None: 
+
                                 texture_coords = self._hud._tex_dict[f"{inventory.name}_slot"][1]
                                 vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][1]
                                 opaque_texture_coords_list.append(texture_coords)
@@ -356,7 +358,11 @@ class RenderEngine:
                             opaque_vertices_list.append(weapon_vertices)
                             opaque_texture_coords_list.append(weapon_texture_coords)
                         current = current.next 
-
+                current_weapon_display_container = self._hud._tex_dict[f"{inventory.name}_slot"][0]
+                vertices = self._hud._vertices_dict["current_weapon"][0] 
+                
+                vertices_list.append(vertices)
+                texture_coords_list.append(current_weapon_display_container)
         
         if self._hud.cursor.item:
             if self._hud.cursor.item.type == 'weapon':
@@ -377,13 +383,12 @@ class RenderEngine:
 
                 
         if self._hud.cursor.text:
-            pass 
+            self._create_cursor_text_display(fbo,vertices_list,texture_coords_list) 
          
         
         # cursor rendering 
         cursor_texture_coord = self._hud._tex_dict["cursor"][self._hud.cursor.state]
         cursor_vertices = self._create_hud_element_vertices(self._hud.cursor,fbo)
-        
         vertices_list.append(cursor_vertices)
         texture_coords_list.append(cursor_texture_coord)
 
@@ -417,6 +422,79 @@ class RenderEngine:
 
             self._render_rare_items(vbo,fbo,ui_items_atlas)
         """    
+    
+    def _create_cursor_text_display(self,fbo,vertices_list,texture_coords_list):
+        # first determine the size, topleft of the text box.
+        
+        text_len = (len(self._hud.cursor.text[0]),len(self._hud.cursor.text[1])) 
+        rows = 1 + math.ceil(text_len[1] * self._hud._text_dim[0] / self._hud._cursor_text_box_max_width)
+        text_box_width = text_len[0] * 5
+
+        x_pos_offset  = 0
+        for i in range(text_len[0]):
+            char = self._hud.cursor.text[0][i]
+            ord_val = ord(char)
+            if 48 <= ord_val <= 57:
+                ind = ord_val - 48 
+                tex_coords = self._hud._text_tex_dict["NUMBERS"][ind]
+                vertices = self._get_vertices_for_cursor_num(fbo,text_box_width,rows,0,i)
+                x_pos_offset += 5
+            elif 65 <= ord_val <= 90: 
+                ind = ord_val - 65 
+                tex_coords = self._hud._text_tex_dict["CAPITAL"][ind]
+                vertices = self._get_vertices_for_cursor_text(fbo,text_box_width,rows,0,x_pos_offset)
+                if ind == 12 or ind == 14:
+                    x_pos_offset += 7
+                else: 
+                    x_pos_offset += 5
+
+            elif 97 <= ord_val <= 122:
+                ind = ord_val - 97
+                tex_coords = self._hud._text_tex_dict["LOWER"][ind]
+                vertices = self._get_vertices_for_cursor_text(fbo,text_box_width,rows,0,x_pos_offset)
+                if ind == 12 or ind == 14:
+                    x_pos_offset += 7
+                else: 
+                    x_pos_offset += 5
+            else: 
+                x_pos_offset += 5
+
+            vertices_list.append(vertices)
+            texture_coords_list.append(tex_coords)
+    
+    def _get_vertices_for_cursor_text(self,fbo,text_box_width,rows,row_num,x_offset):
+        fbo_width,fbo_height = fbo.width,fbo.height
+        topleft = (self._hud.cursor.topleft[0] - text_box_width//2,\
+                   self._hud.cursor.topleft[1]-(self._hud._text_dim[1] + 1)) 
+        
+        width,height = self._hud._text_dim[0], self._hud._text_dim[1]  
+
+        x = 2. * (topleft[0]+x_offset) / fbo_width -1.
+        y = 1. - 2. * (topleft[1]- 5 +row_num * self._hud._text_dim[1] ) /fbo_height 
+        w = 2. * width / fbo_width
+        h = 2. * height / fbo_height
+        vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+        return vertices
+
+
+
+    def _get_vertices_for_cursor_num(self,fbo:moderngl.Framebuffer,text_box_width,rows,row_num,i):
+        fbo_width,fbo_height = fbo.width,fbo.height
+        topleft = (self._hud.cursor.topleft[0]- text_box_width//2 ,\
+                   self._hud.cursor.topleft[1]-(self._hud._text_dim[1] + 1)) 
+        
+        width,height = self._hud._text_dim[0], self._hud._text_dim[1]  
+
+        x = 2. * (topleft[0]+i*5) / fbo_width -1.
+        y = 1. - 2. * (topleft[1]-5 +row_num * self._hud._text_dim[1] ) /fbo_height 
+        w = 2. * width / fbo_width
+        h = 2. * height / fbo_height
+        vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+        return vertices
+
+
     def _render_rare_items(self,vbo:moderngl.Context.buffer,fbo:moderngl.Framebuffer,ui_items_atlas:moderngl.Texture)-> None:
         vao = self.ctx.vertex_array(self._prog_shimmer, [(vbo,'2f 2f','vertexPos', 'vertexTexCoord')])
         
@@ -454,13 +532,13 @@ class RenderEngine:
     
     def _create_vertices_for_num_on_cursor(self,pos_ind:int,num_length:int):
         topleft = self._hud.cursor.topleft
-        dim = self._hud.cursor.size
-        number_dim = self._hud._numbers_dim
+        dim = self._hud.cursor.size 
+        num_dim = self._hud._text_dim
 
-        x = 2. * (topleft[0] - (num_length-pos_ind)*number_dim[0]/2 - 2 ) / self._true_res[0] -1.
-        y = 1. - 2. * (topleft[1] + dim[1] //2 - number_dim[1]/2  ) / self._true_res[1]
-        w = 2. * (number_dim[0]/2)/ self._true_res[0]
-        h = 2. * (number_dim[1]/2) / self._true_res[1]
+        x = 2. * (topleft[0] - (num_length-pos_ind)* 5 - 4 ) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + dim[1] //2 - 10  ) / self._true_res[1]
+        w = 2. * (num_dim[0])/ self._true_res[0]
+        h = 2. * (num_dim[1]) / self._true_res[1]
 
         return np.array([(x,y),(x+w,y),(x,y-h),
                          (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
@@ -469,13 +547,13 @@ class RenderEngine:
     def _create_vertices_for_num(self,pos_ind:int,num_length:int,i:int,j:int,inventory) -> np.array: 
         topleft = inventory.topleft 
         cell_dim = inventory._cell_dim 
-        number_dim = self._hud._numbers_dim
+        num_dim = self._hud._text_dim
         space_between_cells = inventory._space_between_cells
 
-        x = 2. * (topleft[0]+ cell_dim[0] - (num_length-pos_ind)*number_dim[0]/2+ j * cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
-        y = 1. - 2. * (topleft[1] + cell_dim[1] - number_dim[1]/2 + i * cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
-        w = 2. * (number_dim[0]/2)/ self._true_res[0]
-        h = 2. * (number_dim[1]/2) / self._true_res[1]
+        x = 2. * (topleft[0]+ cell_dim[0] - (num_length-pos_ind)* 5 + j * cell_dim[0] + ((space_between_cells * (j)) if j >0 else 0)) / self._true_res[0] -1.
+        y = 1. - 2. * (topleft[1] + cell_dim[1] - 7 - 5 + i * cell_dim[1] + ((space_between_cells * (i)) if i >0 else 0)) / self._true_res[1]
+        w = 2. * (num_dim[0])/ self._true_res[0]
+        h = 2. * (num_dim[1]) / self._true_res[1]
 
         return np.array([(x,y),(x+w,y),(x,y-h),
                          (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
@@ -528,9 +606,8 @@ class RenderEngine:
         
         topleft = element.topleft 
         ui_width,ui_height = element.size[0],element.size[1] 
-
         x = 2. * (topleft[0]) / fbo.width -1.
-        y = 1. - 2. * (topleft[1] ) /fbo.height 
+        y = 1. - 2. * (topleft[1]) /fbo.height 
         w = 2. * ui_width /fbo.width
         h = 2. * ui_height /fbo.height
         vertices = np.array([(x,y),(x+w,y),(x,y-h),

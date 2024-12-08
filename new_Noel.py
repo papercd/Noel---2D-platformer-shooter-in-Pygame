@@ -273,7 +273,7 @@ class Noel():
     def _handle_common_events(self,event):
         
         self._hud.cursor.topleft= pygame.mouse.get_pos()
-        self._hud.cursor.topleft= ((self._hud.cursor.topleft[0]/self._true_to_screen_res_ratio),(self._hud.cursor.topleft[1]/self._true_to_screen_res_ratio))
+        self._hud.cursor.topleft= ((self._hud.cursor.topleft[0]//self._true_to_screen_res_ratio),(self._hud.cursor.topleft[1]//self._true_to_screen_res_ratio))
         self._hud.cursor.box.x,self._hud.cursor.box.y = self._hud.cursor.topleft[0] , self._hud.cursor.topleft[1]
         
 
@@ -377,6 +377,7 @@ class Noel():
             
             pygame.display.flip()
             fps = self._clock.get_fps()
+            print(fps)
 
             pygame.display.set_caption(f"Noel - FPS: {fps: .2f}")
             self._clock.tick(60)
