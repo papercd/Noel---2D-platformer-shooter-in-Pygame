@@ -386,6 +386,9 @@ class HUD:
             self._inven_list[0].add_item(item) 
 
 
+    def change_weapon(self,scroll):
+        self._inven_list[2]._weapons_list.change_weapon(scroll)
+
     def update(self):
         self._health_bar.update(self._player.health)
         self._stamina_bar.update(self._player.stamina)

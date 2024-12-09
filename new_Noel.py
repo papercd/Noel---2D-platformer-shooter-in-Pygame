@@ -302,6 +302,8 @@ class Noel():
         if self._curr_gameState == GameState.GameLoop:
             for event in pygame.event.get():
                 self._handle_common_events(event)
+                if event.type == pygame.MOUSEWHEEL:
+                    self._hud.change_weapon(event.y)
                 if event.type ==pygame.KEYDOWN:
                     if event.key == pygame.K_F5:
                         self._hot_reload()

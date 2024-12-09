@@ -265,6 +265,27 @@ class WeaponInvenList(DoublyLinkedList):
                     return 
             current = current.next
 
+    def change_weapon(self,scroll):
+        current = self.curr_node
+        if scroll == 1:
+            while current: 
+                if current.next: 
+                    if current.next._item: 
+                        self.curr_node = current.next
+                        break
+                    current = current.next 
+                else: 
+                    break 
+        else: 
+            while current: 
+                if current.prev: 
+                    if current.prev._item: 
+                        self.curr_node = current.prev
+                        break
+                    current = current.prev
+                else: 
+                    break 
+
 
     def update(self,stack_limit,cursor,opacity,player):
         current = self.head

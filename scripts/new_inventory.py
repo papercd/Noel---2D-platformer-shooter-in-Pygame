@@ -327,6 +327,11 @@ class WeaponInventory(Inventory):
                            self._topleft[1] + (i * self._cell_dim[1]) + ((self._space_between_cells * (i)) if i >0 else 0))
                 self._weapons_list.add_node(i * self._columns + j, (topleft,self._cell_dim))
 
+
+    def change_weapon(self,scroll):
+        self._weapons_list.change_weapon(scroll)
+
+
     def add_item(self,item) -> None:
         self._weapons_list.add_item(item)
 
