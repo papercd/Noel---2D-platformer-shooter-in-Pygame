@@ -4,7 +4,7 @@ import numpy as np
 import moderngl
 import pygame
 import numbers
-from OpenGL.GL import glBlitNamedFramebuffer, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
+from OpenGL.GL import glBlitNamedFramebuffer,glViewport, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
 import time
 from scripts.new_HUD import HUD
@@ -81,6 +81,9 @@ class RenderEngine:
 
 
     def _load_shaders(self):
+        with open('my_pygame_light2d/vertex_text.glsl',encoding='utf-8') as file: 
+            text_vertex_src = file.read()
+
         # Read source files
         with open('my_pygame_light2d/vertex.glsl',encoding='utf-8') as file:
             vertex_src = file.read()
@@ -101,7 +104,10 @@ class RenderEngine:
         
         with open('my_pygame_light2d/fragment_shimmer.glsl', encoding='utf-8') as file:
             fragment_src_shimmer = file.read()
-   
+
+        with open('my_pygame_light2d/fragment_text.glsl', encoding='utf-8') as file:
+            fragment_src_text= file.read()
+            
         # Create shader programs
         self._prog_mask = self.ctx.program(vertex_shader=vertex_src,
                                            fragment_shader= fragment_src_mask)
@@ -116,7 +122,8 @@ class RenderEngine:
         
         self._prog_shimmer = self.ctx.program(vertex_shader=vertex_src_shimmer,
                                               fragment_shader=fragment_src_shimmer)
-
+        self._prog_text= self.ctx.program(vertex_shader=text_vertex_src,
+                                              fragment_shader=fragment_src_text)
 
 
 
@@ -734,6 +741,45 @@ class RenderEngine:
             return self._tex_fg
         return None
 
+    def render_text(self):
+        # Reset OpenGL state for text rendering
+        glViewport(0, 0, self._screen_res[0], self._screen_res[1])
+
+        # Generate the text surface
+        font = pygame.font.Font(None, 100)  # Adjust font size as needed
+        text_surface = font.render("Hello, World!", True, (255, 255, 255, 255))
+        text_data = pygame.image.tostring(text_surface, "RGBA", True)
+
+        # Create an OpenGL texture for the text
+        text_texture = self.ctx.texture(text_surface.get_size(), 4, data=text_data)
+        text_texture.use(location=0)
+
+        # Render the text texture on a quad
+        self.render_text_quad(text_texture, (self._screen_res[0]/2, self._screen_res[1]/2))  # Render at (10, 10) on the screen
+
+    def render_text_quad(self, texture, position):
+        x, y = position
+        width, height = texture.size
+        screen_width, screen_height = self._screen_res
+
+        # Convert position and size to normalized device coordinates
+        x_ndc = x / screen_width * 2 - 1
+        y_ndc = 1 - y / screen_height * 2
+        w_ndc = width / screen_width * 2
+        h_ndc = height / screen_height * 2
+
+        # Render quad in NDC space
+        vertices = np.array([
+            (x_ndc, y_ndc), (x_ndc + w_ndc, y_ndc), (x_ndc, y_ndc - h_ndc),
+            (x_ndc, y_ndc - h_ndc), (x_ndc + w_ndc, y_ndc), (x_ndc + w_ndc, y_ndc - h_ndc)
+        ], dtype='f4')
+
+        self.ctx.screen.use()
+        vbo = self.ctx.buffer(vertices)
+        vao = self._vao_draw
+        vao.render(moderngl.TRIANGLES)
+
+
     def _render_tex_to_fbo(self, tex: moderngl.Texture, fbo: moderngl.Framebuffer, dest: pygame.Rect, source: pygame.Rect,flip:bool = False):
         # Mesh for destination rect on screen
         width, height = fbo.size
@@ -1181,6 +1227,8 @@ class RenderEngine:
 
         # Render foreground onto screen
         self._render_foreground()
+
+        self.render_text()
 
         
    
