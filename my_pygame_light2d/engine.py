@@ -269,6 +269,7 @@ class RenderEngine:
         opaque_vertices_list = []
         opaque_texture_coords_list = []
 
+        
         #rare_items_vertices_list = []
         #rare_items_texture_coords_list = []
 
@@ -399,9 +400,6 @@ class RenderEngine:
                 self._create_vertex_texture_coords_for_num_on_cursor(number,vertices_list,texture_coords_list)
 
                 
-        if self._hud.cursor.text:
-            self._create_cursor_text_display(fbo,vertices_list,texture_coords_list) 
-         
         
         # cursor rendering 
         cursor_texture_coord = self._hud._tex_dict["cursor"][self._hud.cursor.state]
@@ -428,8 +426,7 @@ class RenderEngine:
             vbo = self.ctx.buffer(buffer_data)
 
             self._render_ui_elements(vbo,fbo,ui_items_atlas)
-            
-        self._hud.cursor.text = None
+        
         """
         if rare_items_vertices_list:
             rare_vertices_array = np.concatenate(rare_items_vertices_list,axis= 0)
@@ -439,78 +436,7 @@ class RenderEngine:
 
             self._render_rare_items(vbo,fbo,ui_items_atlas)
         """    
-    
-    def _create_cursor_text_display(self,fbo,vertices_list,texture_coords_list):
-        # first determine the size, topleft of the text box.
-        
-        text_len = (len(self._hud.cursor.text[0]),len(self._hud.cursor.text[1])) 
-        rows = 1 + math.ceil(text_len[1] * self._hud._text_dim[0] / self._hud._cursor_text_box_max_width)
-        text_box_width = text_len[0] * 5
-
-        x_pos_offset  = 0
-        for i in range(text_len[0]):
-            char = self._hud.cursor.text[0][i]
-            ord_val = ord(char)
-            if 48 <= ord_val <= 57:
-                ind = ord_val - 48 
-                tex_coords = self._hud._text_tex_dict["NUMBERS"][ind]
-                vertices = self._get_vertices_for_cursor_num(fbo,text_box_width,rows,0,i)
-                x_pos_offset += 5
-            elif 65 <= ord_val <= 90: 
-                ind = ord_val - 65 
-                tex_coords = self._hud._text_tex_dict["CAPITAL"][ind]
-                vertices = self._get_vertices_for_cursor_text(fbo,text_box_width,rows,0,x_pos_offset)
-                if ind == 12 or ind == 14:
-                    x_pos_offset += 7
-                else: 
-                    x_pos_offset += 5
-
-            elif 97 <= ord_val <= 122:
-                ind = ord_val - 97
-                tex_coords = self._hud._text_tex_dict["LOWER"][ind]
-                vertices = self._get_vertices_for_cursor_text(fbo,text_box_width,rows,0,x_pos_offset)
-                if ind == 12 or ind == 14:
-                    x_pos_offset += 7
-                else: 
-                    x_pos_offset += 5
-            else: 
-                x_pos_offset += 5
-
-            vertices_list.append(vertices)
-            texture_coords_list.append(tex_coords)
-    
-    def _get_vertices_for_cursor_text(self,fbo,text_box_width,rows,row_num,x_offset):
-        fbo_width,fbo_height = fbo.width,fbo.height
-        topleft = (self._hud.cursor.topleft[0] - text_box_width//2,\
-                   self._hud.cursor.topleft[1]-(self._hud._text_dim[1] + 1)) 
-        
-        width,height = self._hud._text_dim[0], self._hud._text_dim[1]  
-
-        x = 2. * (topleft[0]+x_offset) / fbo_width -1.
-        y = 1. - 2. * (topleft[1]- 5 +row_num * self._hud._text_dim[1] ) /fbo_height 
-        w = 2. * width / fbo_width
-        h = 2. * height / fbo_height
-        vertices = np.array([(x,y),(x+w,y),(x,y-h),
-                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
-        return vertices
-
-
-
-    def _get_vertices_for_cursor_num(self,fbo:moderngl.Framebuffer,text_box_width,rows,row_num,i):
-        fbo_width,fbo_height = fbo.width,fbo.height
-        topleft = (self._hud.cursor.topleft[0]- text_box_width//2 ,\
-                   self._hud.cursor.topleft[1]-(self._hud._text_dim[1] + 1)) 
-        
-        width,height = self._hud._text_dim[0], self._hud._text_dim[1]  
-
-        x = 2. * (topleft[0]+i*5) / fbo_width -1.
-        y = 1. - 2. * (topleft[1]-5 +row_num * self._hud._text_dim[1] ) /fbo_height 
-        w = 2. * width / fbo_width
-        h = 2. * height / fbo_height
-        vertices = np.array([(x,y),(x+w,y),(x,y-h),
-                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
-        return vertices
-
+      
 
     def _render_rare_items(self,vbo:moderngl.Context.buffer,fbo:moderngl.Framebuffer,ui_items_atlas:moderngl.Texture)-> None:
         vao = self.ctx.vertex_array(self._prog_shimmer, [(vbo,'2f 2f','vertexPos', 'vertexTexCoord')])
@@ -741,45 +667,106 @@ class RenderEngine:
             return self._tex_fg
         return None
 
-    def render_text(self):
-        # Reset OpenGL state for text rendering
-        glViewport(0, 0, self._screen_res[0], self._screen_res[1])
+    def _render_text(self,scale =1):
+        text_vertices_list = []
+        texcoords_list = []
 
-        # Generate the text surface
-        font = pygame.font.Font(None, 1000)  # Adjust font size as needed
-        text_surface = font.render("Hello, World!", True, (255, 255, 255, 255))
-        text_data = pygame.image.tostring(text_surface, "RGBA", True)
+        if self._hud.cursor.text: 
+            text_len = (len(self._hud.cursor.text[0]),len(self._hud.cursor.text[1])) 
+            rows = 1 + math.ceil(text_len[1] * self._hud._text_dim[0] / self._hud._cursor_text_box_max_width)
+            text_box_width = text_len[0] * 5 * scale
 
-        # Create an OpenGL texture for the text
-        text_texture = self.ctx.texture(text_surface.get_size(), 4, data=text_data)
-        text_texture.use(location=0)
+            x_pos_offset  = 0
+            for i in range(text_len[0]):
+                char = self._hud.cursor.text[0][i]
+                ord_val = ord(char)
+                if 48 <= ord_val <= 57:
+                    ind = ord_val - 48 
+                    tex_coords = self._hud._text_tex_dict["NUMBERS"][ind]
+                    vertices = self._get_vertices_for_cursor_num(text_box_width,rows,0,i,scale)
+                    x_pos_offset += 5 * scale
+                elif 65 <= ord_val <= 90: 
+                    ind = ord_val - 65 
+                    tex_coords = self._hud._text_tex_dict["CAPITAL"][ind]
+                    vertices = self._get_vertices_for_cursor_text(text_box_width,rows,0,x_pos_offset,scale)
+                    if ind == 12 or ind == 14:
+                        x_pos_offset += 7 * scale
+                    else: 
+                        x_pos_offset += 5 * scale
 
-        # Render the text texture on a quad
-        self.render_text_quad(text_texture, (self._screen_res[0]/2, self._screen_res[1]/2))  # Render at (10, 10) on the screen
+                elif 97 <= ord_val <= 122:
+                    ind = ord_val - 97
+                    tex_coords = self._hud._text_tex_dict["LOWER"][ind]
+                    vertices = self._get_vertices_for_cursor_text(text_box_width,rows,0,x_pos_offset,scale)
+                    if ind == 12 or ind == 14:
+                        x_pos_offset += 7 * scale
+                    else: 
+                        x_pos_offset += 5 * scale
+                else: 
+                    x_pos_offset += 5 * scale
 
-    def render_text_quad(self, texture, position):
-        x, y = position
-        width, height = texture.size
-        screen_width, screen_height = self._screen_res
+                text_vertices_list.append(vertices)
+                texcoords_list.append(tex_coords)
 
-        # Convert position and size to normalized device coordinates
-        x_ndc = x / screen_width * 2 - 1
-        y_ndc = 1 - y / screen_height * 2
-        w_ndc = width / screen_width * 2
-        h_ndc = height / screen_height * 2
+            glViewport(0, 0, self._screen_res[0], self._screen_res[1])
+            vertices_array = np.concatenate(text_vertices_list,axis=0)
+            texture_coords_array= np.concatenate(texcoords_list,axis=0)
+            
+            buffer_data = np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
+            vbo = self.ctx.buffer(buffer_data)
 
-        # Render quad in NDC space
-        vertices = np.array([
-            (x_ndc, y_ndc), (x_ndc + w_ndc, y_ndc), (x_ndc, y_ndc - h_ndc),
-            (x_ndc, y_ndc - h_ndc), (x_ndc + w_ndc, y_ndc), (x_ndc + w_ndc, y_ndc - h_ndc)
-        ], dtype='f4')
+            
+            vao = self.ctx.vertex_array(self._prog_draw, [
+                (vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
+            ])
 
-        self.ctx.screen.use()
-        vbo = self.ctx.buffer(vertices)
-        vao = self._vao_draw
-        vao.render(moderngl.TRIANGLES)
+            # Use buffers and render
+            self._hud._ui_items_atlas.use()
+            self.ctx.screen.use()
+            vao.render()
+
+            # Free vertex data
+            vbo.release()
+            vao.release()
+            self._hud.cursor.text = None
 
 
+
+
+    def _get_vertices_for_cursor_text(self,text_box_width,rows,row_num,x_offset,scale):
+        fbo_width,fbo_height = self.ctx.screen.size
+        topleft = (self._hud.cursor.topleft[0]* self._true_to_native_ratio - text_box_width//2 ,\
+                   self._hud.cursor.topleft[1]*self._true_to_native_ratio-(self._hud._text_dim[1]* scale+ 1))  
+        
+        width,height = self._hud._text_dim[0]*scale, self._hud._text_dim[1] * scale  
+
+        x = 2. * (topleft[0]+x_offset) / fbo_width -1.
+        y = 1. - 2. * (topleft[1]- 5*scale +row_num * self._hud._text_dim[1] * scale ) /fbo_height 
+        w = 2. * width / fbo_width
+        h = 2. * height / fbo_height
+        vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+        return vertices
+
+    def _get_vertices_for_cursor_num(self,text_box_width,rows,row_num,i,scale):
+        fbo_width,fbo_height = self.ctx.screen.size
+        topleft = (self._hud.cursor.topleft[0]*self._true_to_native_ratio- text_box_width//2 ,\
+                   self._hud.cursor.topleft[1]*self._true_to_native_ratio-(self._hud._text_dim[1]*scale + 1))   
+        
+        width,height = self._hud._text_dim[0]*scale, self._hud._text_dim[1]*scale  
+
+        x = 2. * (topleft[0]+i*5*scale) / fbo_width -1.
+        y = 1. - 2. * (topleft[1]-5*scale +row_num * self._hud._text_dim[1]*scale ) /fbo_height 
+        w = 2. * width / fbo_width
+        h = 2. * height / fbo_height
+        vertices = np.array([(x,y),(x+w,y),(x,y-h),
+                             (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+        
+        return vertices
+
+        
+
+       
     def _render_tex_to_fbo(self, tex: moderngl.Texture, fbo: moderngl.Framebuffer, dest: pygame.Rect, source: pygame.Rect,flip:bool = False):
         # Mesh for destination rect on screen
         width, height = fbo.size
@@ -1228,7 +1215,9 @@ class RenderEngine:
         # Render foreground onto screen
         self._render_foreground()
 
-        #self.render_text()
+
+        # render text if any 
+        self._render_text(scale = 2.4)
 
         
    
