@@ -746,7 +746,7 @@ class RenderEngine:
         glViewport(0, 0, self._screen_res[0], self._screen_res[1])
 
         # Generate the text surface
-        font = pygame.font.Font(None, 100)  # Adjust font size as needed
+        font = pygame.font.Font(None, 1000)  # Adjust font size as needed
         text_surface = font.render("Hello, World!", True, (255, 255, 255, 255))
         text_data = pygame.image.tostring(text_surface, "RGBA", True)
 
@@ -1228,7 +1228,7 @@ class RenderEngine:
         # Render foreground onto screen
         self._render_foreground()
 
-        self.render_text()
+        #self.render_text()
 
         
    
