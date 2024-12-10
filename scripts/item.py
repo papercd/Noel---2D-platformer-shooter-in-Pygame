@@ -66,6 +66,7 @@ class Weapon(Item):
         self._rapid_fire_toggled = False 
         self._knockback = [0,0]
 
+        self.cursor_pos = None
         self._holder = None
         self.magazine = 0 
 
@@ -80,6 +81,10 @@ class Weapon(Item):
 
     def equip(self,holder_entity):
         self._holder = holder_entity
+
+    def update(self,cursor_pos):
+        self.cursor_pos = cursor_pos
+        
 
     def shoot(self):
         pass 

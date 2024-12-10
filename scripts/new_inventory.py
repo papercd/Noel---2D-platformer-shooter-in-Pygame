@@ -351,7 +351,7 @@ class WeaponInventory(Inventory):
         self._offset = self._cell_dim[1] * (self._done_open/5)
         
         self._weapons_list.update(self._stack_limit,cursor,self._cur_opacity,player)
-        
+        player.curr_weapon_node = self._weapons_list.curr_node
         return interacting
 
 

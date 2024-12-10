@@ -254,9 +254,10 @@ class RenderEngine:
             flip =self._player.flip
         
         )
-        if self._player._cur_weapon_node:
+        if self._player.curr_weapon_node and self._player.curr_weapon_node._item:
             # TODO: render the player's weapon here 
             pass 
+ 
 
     def _render_hud(self,fbo:moderngl.Framebuffer) -> None: 
         ui_items_atlas = self._hud._ui_items_atlas
@@ -1217,7 +1218,7 @@ class RenderEngine:
 
 
         # render text if any 
-        self._render_text(scale = 2.4)
+        self._render_text(scale = 2.8)
 
         
    

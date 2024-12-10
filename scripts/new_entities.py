@@ -20,7 +20,7 @@ class PhysicsEntity:
         self.set_state('idle')
         self.cut_movement_input = False
         self.on_ramp = False 
-        self.frame_data = 0
+        self.frame_data = 1
 
 
     def set_state(self,state):
@@ -190,10 +190,25 @@ class Player(PhysicsEntity):
         self.y_inertia = 0
         self.hard_land_recovery_time = 0
 
-        self.d_cursor_pos = [0,0]
+        self.cursor_pos = [0,0]
+        self.curr_weapon_node = None
+
+        self.left_and_right_anchors = {  True: {"idle": {"left": (2,6), "right": (13,6)}, "walk": {"left": (2,6), "right": (13,6)},'run' :{"left": (1,6), "right": (8,5)} 
+                                           ,'jump_up' :{"left": (0,4), "right": (9,4)},'jump_down' :{"left": (3,5), "right": (10,4)}
+                                           ,'slide' :{ "left" : (11,9) ,"right": (11,9)} , 'wall_slide' : {"left": (4,5), "right": (8,5)},'land' :{ "left" : (2,6) ,"right": (8,5)} , 
+                                           'crouch' :{ "left" : (2,8) ,"right": (13,8)}
+                                           },
+                                    False: {"idle": {"left": (2,6), "right": (13,6)},"walk": {"left": (2,6), "right": (13,6)}, 'run' :{"left": (7,5), "right": (14,6)} 
+                                           ,'jump_up' :{"left": (6,4), "right": (15,5)},'jump_down' :{"left": (2,4), "right": (7,5)}
+                                           ,'slide' :{ "left": (4,9), "right": (4,9) }, 'wall_slide': {'left' : (7,5), 'right' : (11,5)},'land' :{ "left" : (6,5) ,"right": (13,6)} ,
+                                           'crouch' :{ "left" : (2,8) ,"right": (14,8)} 
+                                           },
+        }
+        self.left_anchor = None 
+        self.right_anchor = None
+        
 
 
-        self._cur_weapon_node = None 
 
     def set_default_speed(self,speed):
         self._default_speed = speed
@@ -285,7 +300,7 @@ class Player(PhysicsEntity):
         self._accelerate(player_movement_input)
         self._cur_animation.update()
         self.time = frame_count
-        self.d_cursor_pos = cursor_pos
+        self.cursor_pos = cursor_pos
         new_movement = [self.cur_vel,0]
 
         if self.fatigued: 
@@ -315,6 +330,11 @@ class Player(PhysicsEntity):
             self.hard_land_recovery_time -= 1
             
         super().update(tilemap, new_movement,anim_offset= (3,1))
+
+        self.left_anchor = self.left_and_right_anchors[self.flip][self.state]["left"]
+        self.right_anchor = self.left_and_right_anchors[self.flip][self.state]["right"]
+
+
         """
         r = max(self.size) * 2
 
@@ -323,7 +343,8 @@ class Player(PhysicsEntity):
         self.nearest_collectable_item = quadtree.queryRange(rangeRect,"item")
         """
         #every frame, the stamina is increased by 0.7
-       
+
+
         self.stamina = min(100, self.stamina + self.recov_rate)
         self.air_time +=1
         
@@ -456,9 +477,10 @@ class Player(PhysicsEntity):
                     else: 
                         self.set_state('idle')
                 
-        
-        if self._cur_weapon_node: 
-            self._cur_weapon_node.update(self.d_cursor_pos)
+        # update the weapon
+
+        if self.curr_weapon_node and self.curr_weapon_node._item: 
+            self.curr_weapon_node._item.update(self.cursor_pos)
         #testing weapon rendering  
         """
         if self.cur_weapon_node:
