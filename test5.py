@@ -1,5 +1,9 @@
-x = 5
-y =6 
-test_ = [x,y]
-test_[0] -= 1
-print(x)
+print(ord("0"))
+
+print(ord("A"))
+
+print(ord("a"))
+
+print(ord("_"))
+
+print(ord("9"))

@@ -8,9 +8,9 @@ from scripts.background import Background
 
 BASE_PATH = 'data/images/'
 class GameAssets:
-    def __init__(self):
+    def __init__(self,context):
         
-        self.ctx = moderngl.create_context()
+        self.ctx =context 
 
         self.general_sprites = {}
         self.enemies = {}
@@ -208,8 +208,8 @@ class GameAssets:
     
     def load_background_objects(self):
         backgrounds = {
-            'test_background': Background(self._load_textures('backgrounds/building'),infinite=False),
-            'new_building' : Background(self._load_textures('backgrounds/new_building'),infinite= True)
+            'test_background': Background(self._load_textures('backgrounds/building')),
+            'new_building' : Background(self._load_textures('backgrounds/new_building'))
 
         }
         return backgrounds
