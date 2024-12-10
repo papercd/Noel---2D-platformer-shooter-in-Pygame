@@ -331,8 +331,8 @@ class Player(PhysicsEntity):
             
         super().update(tilemap, new_movement,anim_offset= (3,1))
 
-        self.left_anchor = self.left_and_right_anchors[self.flip][self.state]["left"]
-        self.right_anchor = self.left_and_right_anchors[self.flip][self.state]["right"]
+        #self.left_anchor = self.left_and_right_anchors[self.flip][self.state]["left"]
+        #self.right_anchor = self.left_and_right_anchors[self.flip][self.state]["right"]
 
 
         """
