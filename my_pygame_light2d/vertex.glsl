@@ -5,6 +5,9 @@ layout(location = 1) in vec2 vertexTexCoord; // Texture coordinate
 
 uniform vec2 pivotTexCoord;  // Pivot point in texture coordinates
 uniform float rotation;      // Rotation angle in radians
+uniform vec2 pivotPosition;  // Pivot point in world coordinates
+uniform vec2 scale;          // Scaling factor (optional)
+
 uniform bool flip_horizontal; // Horizontal flip flag
 uniform bool flip_vertical;   // Vertical flip flag
 
@@ -33,6 +36,14 @@ void main() {
 
     fragmentTexCoord = rotatedTexCoord + pivotTexCoord;
 
-    // Pass through the vertex position for rendering
-    gl_Position = vec4(vertexPos, 1.0);
+    // Rotate the vertex position around the pivot
+    vec2 relativePos = vertexPos.xy - pivotPosition;
+
+    vec2 rotatedPos = vec2(
+        relativePos.x * cos_angle - relativePos.y * sin_angle,
+        relativePos.x * sin_angle + relativePos.y * cos_angle
+    );
+
+    // Apply scale (optional) and output the transformed position
+    gl_Position = vec4(rotatedPos + pivotPosition, vertexPos.z, 1.0);
 }

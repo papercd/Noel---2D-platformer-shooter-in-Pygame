@@ -8,14 +8,16 @@ from moderngl import Texture
 from pygame import Rect
 from my_pygame_light2d.light import PointLight
 from scripts.utils import load_texture
+from scripts.resourceManager import ResourceManager
 import numpy as np 
+
 
 TEXTURE_BASE_PATH = 'data/images/'
 
 
 
 class Tilemap:
-    def __init__(self,texture_atlas:Texture,json_data = None):
+    def __init__(self):
         """ 
         Initialize the Tilemap object. 
 
@@ -24,14 +26,11 @@ class Tilemap:
             for empty Tilemap object. 
         
         """
-    
-        self._texture_atlas = texture_atlas
        
-        if json_data:
-            self.load_map(json_data)
 
-
-    def load_map(self,json_data):
+    def load_map(self,name:str):
+        resource_manager = ResourceManager.get_instance()
+        json_data = resource_manager.get_tilemap_json(name)
         
         self._regular_tile_size = json_data['tile_size']
         self._hull_grid = SpatialGrid(cell_size= self._regular_tile_size)
@@ -153,9 +152,6 @@ class Tilemap:
         self._precompute_tile_colors()
 
 
-    @property
-    def texture_atlas(self):
-        return self._texture_atlas
 
     @property
     def physical_tiles(self):
@@ -171,8 +167,11 @@ class Tilemap:
 
 
     def _precompute_tile_colors(self):
-        raw_data = self._texture_atlas.read(alignment=4)
-        width,height = self._texture_atlas.size
+        rm = ResourceManager.get_instance()
+        tile_texture_atlas = rm.tile_atlas 
+
+        raw_data = tile_texture_atlas.read(alignment=4)
+        width,height = tile_texture_atlas.size
         image_data = np.frombuffer(raw_data,dtype= np.uint8).reshape((height,width,4))
  
         self._tile_colors = {}
@@ -218,6 +217,9 @@ class Tilemap:
 
     
     def _precompute_texture_coordinates(self):
+        rm = ResourceManager.get_instance()
+        tile_texture_atlas = rm.tile_atlas
+
         self._texcoord_dict = {}
         for key in self.physical_tiles:
             tile_info_list = self.physical_tiles[key]
@@ -228,27 +230,27 @@ class Tilemap:
                     door_data = tile_info_list[1]
                 elif tile_info.type == 'building_door':
                     door_data = tile_info_list[1]
-                texture_coords = self._get_texture_coords_for_tile(tile_info,door_data)
+                texture_coords = self._get_texture_coords_for_tile(tile_texture_atlas,tile_info,door_data)
                 self._texcoord_dict[(tile_info.type,tile_info.variant)] = texture_coords
 
         for i,dict in enumerate(self.non_physical_tiles):
             for key in dict:
                 tile_info = dict[key]
                 if (tile_info.type,tile_info.variant) not in self._texcoord_dict:
-                    texture_coords = self._get_texture_coords_for_tile(tile_info)
+                    texture_coords = self._get_texture_coords_for_tile(tile_texture_atlas,tile_info)
                     self._texcoord_dict[(tile_info.type,tile_info.variant)] = texture_coords
  
-    def _get_texture_coords_for_tile(self,tile_info:TileInfo,door_data:DoorAnimation|bool= None):
+    def _get_texture_coords_for_tile(self,texture_atlas,tile_info:TileInfo,door_data:DoorAnimation|bool= None):
         # Fetch the texture from the atlas based on tile type and variant
         if not door_data:
             rel_pos,variant = map(int,tile_info.variant.split(';'))
             tile_type = tile_info.type
 
-            x = (TILE_ATLAS_POSITIONS[tile_type][0] + variant * tile_info.tile_size[0]) / self._texture_atlas.size[0] 
-            y = (TILE_ATLAS_POSITIONS[tile_type][1] + rel_pos * tile_info.tile_size[1]) / self._texture_atlas.size[1] 
+            x = (TILE_ATLAS_POSITIONS[tile_type][0] + variant * tile_info.tile_size[0]) / texture_atlas.width
+            y = (TILE_ATLAS_POSITIONS[tile_type][1] + rel_pos * tile_info.tile_size[1]) / texture_atlas.height
 
-            w = tile_info.tile_size[0] /self._texture_atlas.size[0]
-            h = tile_info.tile_size[1] / self._texture_atlas.size[1]
+            w = tile_info.tile_size[0] /texture_atlas.width
+            h = tile_info.tile_size[1] / texture_atlas.height
             
             p1 = (x, y + h) 
             p2 = (x + w, y + h) 

@@ -31,11 +31,11 @@ UI_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
     'flamethrower' : ((415,92),(32,11))
 }
 
-ITEM_ATLAS_POSITIONS ={
-    "amethyst_arrow": (381,0),
-    "amethyst_clump" : (397,0),
-    "arrow": (413,0),
-    "string": (429,0)
+ITEM_ATLAS_POSITIONS_AND_SIZES={
+    "amethyst_arrow": ((381,0),(16,16)),
+    "amethyst_clump" : ((397,0),(16,16)),
+    "arrow": ((413,0),(16,16)),
+    "string":((429,0),(16,16))
 
 }
 
