@@ -7,18 +7,19 @@ from math import cos,sin,radians,sqrt,degrees,atan2
 from scripts.custom_data_types import CollideParticleData,FireParticleData,AnimationParticleData,Animation
 from scripts.animationData import PARTICLE_ANIMATION_DATA
 from scripts.atlass_positions import PARTICLE_ATLAS_POSITIONS_AND_SIZES
+from scripts.resourceManager import ResourceManager
 from moderngl import Texture
 import numpy as np 
 class ParticleSystem:
     _instance = None 
     
     @staticmethod
-    def get_instance(particle_atlas:Texture = None):
+    def get_instance():
         if ParticleSystem._instance is None: 
-            ParticleSystem._instance = ParticleSystem(particle_atlas)
+            ParticleSystem._instance = ParticleSystem()
         return ParticleSystem._instance
 
-    def __init__(self,animation_texture_atl: Texture) -> None:
+    def __init__(self) -> None:
         if not hasattr(self,"initialized"):
             self.initialized = True 
 
@@ -42,7 +43,8 @@ class ParticleSystem:
             self._active_animation_particles = set( )
 
             # precompute texture coordinates for animation particles' textures
-            self._texture_atl =animation_texture_atl 
+            resource_manager = ResourceManager.get_instance()
+            self._texture_atl = resource_manager.get_atlas_of_name('particles')
 
             # create particle pools
             self._initialize_particle_containers()

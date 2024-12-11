@@ -8,14 +8,16 @@ from moderngl import Texture
 from pygame import Rect
 from my_pygame_light2d.light import PointLight
 from scripts.utils import load_texture
+from scripts.resourceManager import ResourceManager
 import numpy as np 
+
 
 TEXTURE_BASE_PATH = 'data/images/'
 
 
 
 class Tilemap:
-    def __init__(self,texture_atlas:Texture,json_data = None):
+    def __init__(self):
         """ 
         Initialize the Tilemap object. 
 
@@ -24,14 +26,13 @@ class Tilemap:
             for empty Tilemap object. 
         
         """
-    
-        self._texture_atlas = texture_atlas
+        resource_manager = ResourceManager.get_instance()
+        self._texture_atlas = resource_manager.get_atlas_of_name('tiles') 
        
-        if json_data:
-            self.load_map(json_data)
 
-
-    def load_map(self,json_data):
+    def load_map(self,name:str):
+        resource_manager = ResourceManager.get_instance()
+        json_data = resource_manager.get_tilemap_json(name)
         
         self._regular_tile_size = json_data['tile_size']
         self._hull_grid = SpatialGrid(cell_size= self._regular_tile_size)
