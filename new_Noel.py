@@ -9,14 +9,16 @@ from enum import Enum
 from moderngl import create_context,Texture
 from screeninfo import get_monitors
 
+from scripts.resourceManager import ResourceManager
 # testing 
-from scripts.atlass_positions import ITEM_ATLAS_POSITIONS
+
+from scripts.atlass_positions import ITEM_ATLAS_POSITIONS_AND_SIZES
 import random
 
 import scripts 
 import my_pygame_light2d.engine
 
-from scripts.item import Item,Weapon
+from scripts.item import Item,Weapon,AK47
 from scripts.lists import interpolatedLightNode
 
 from scripts.new_HUD import HUD
@@ -40,6 +42,20 @@ class GameState(Enum):
 
 TEXTURE_BASE_PATH = 'data/images/'
 
+
+RESOURCE_NAME_TO_PATH = {
+    'tiles' : TEXTURE_BASE_PATH + "tiles/tile_atlas.png",
+    'entities' : TEXTURE_BASE_PATH + 'entities/entities_atlas.png',
+    'cursor' : TEXTURE_BASE_PATH +'cursor/cursor_atlas.png',
+    'particles' : TEXTURE_BASE_PATH + 'particles/animation_atlas.png',
+    'UI_and_items' : TEXTURE_BASE_PATH + 'ui/ui_atlas.png',
+    'items' : TEXTURE_BASE_PATH +'items/item_atlas.png',
+    'weapons' : TEXTURE_BASE_PATH + 'weapons/weapon_atlas.png',
+    'backgrounds' : TEXTURE_BASE_PATH + 'backgrounds',
+    'tilemap_jsons' : 'map_jsons'
+}
+
+
 class Noel():
     def __init__(self):
         pygame.init()
@@ -54,37 +70,32 @@ class Noel():
         self.scroll = [0,0]
         self._player_movement_input = [0,0]
 
-        self._backgrounds:dict[str,list[Texture]] = self._load_backgrounds(TEXTURE_BASE_PATH+'backgrounds')
-        self._tilemap_jsons = self._load_tilemap_jsons('map_jsons')
-        self._atlas_dict = self._create_texture_atlasses()
-
         self._initialize_game_objects()
         self._bind_objects_to_render_engine()
 
 
     def _initialize_game_objects(self):
-        self._tilemap = Tilemap(self._atlas_dict['tiles'])
-        self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
+        self.resource_manager = ResourceManager.get_instance(self._ctx,RESOURCE_NAME_TO_PATH)
+        self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
-        
+        self._tilemap = Tilemap()
+        self._tilemap.load_map('test1.json')  
 
-        self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
+        self.particle_system = ParticleSystem.get_instance() 
         self.player = Player([900,11],(14,16)) 
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
 
-    
         self._grass_manager = GrassManager()
-        self._hud = HUD(self._atlas_dict['UI_and_items'],self.player,self._true_res)
+        self._hud = HUD(self.player,self._true_res)
 
     def _bind_objects_to_render_engine(self):
         self.render_engine.bind_tilemap(self._tilemap)
-        self.render_engine.bind_entities_atlas(self._atlas_dict['entities'])
-        self.render_engine.bind_background(self._backgrounds['start'])
+        self.render_engine.bind_background('start')
         self.render_engine.bind_hud(self._hud)
         self.render_engine.lights = self._tilemap.lights
     
-
+    """
     def _hot_reload(self):
         # import changed modules
         importlib.reload(scripts.new_HUD)
@@ -133,7 +144,7 @@ class Noel():
 
         # rebind objects to render engine
         self._bind_objects_to_render_engine()
-
+    """
 
     def _initalize_game_settings(self):
         self._system_display_info = self._get_system_display_info()
@@ -142,11 +153,6 @@ class Noel():
 
        # create moderngl context
         self._ctx = create_context()
-       
-
-       # setup render engine and background buffer surface 
-        self._background_buffer_srf = pygame.Surface(self._true_res)
-        self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
 
     def _get_system_display_info(self):
@@ -180,7 +186,7 @@ class Noel():
     def _set_initial_display_settings(self):
         environ['SDL_VIDEO_CENTERED'] = '1'
         self._screen_res =self._system_display_info['resolution']
-        #self._screen_res = (1440,950)
+        # self._screen_res = (1440,950)
         
         self._default_true_to_screen_res_ratio = 3.5 
 
@@ -210,64 +216,6 @@ class Noel():
         # Configure pygame display
         self._pygame_display = pygame.display.set_mode(
             self._screen_res, pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF)
-
-
-    def _load_backgrounds(self,path:str) -> dict[str,list[Texture]]:
-        """
-        load background textures and create a dictionary with (path,Bacgkround) key-value pair 
-
-        Args: 
-            path (str) : the path to your directory containing folders with the background textures. 
-        
-        Returns: 
-            A dictionary with (path, textures) key-value pair 
-        """
-        
-        backgrounds_dict = {}
-        
-        for folder in listdir(path = path):
-            textures = []
-            for tex_path in listdir(path= path+'/'+folder):
-                tex = load_texture(path+ '/' +folder + '/' + tex_path,self._ctx)
-                textures.append(tex)
-
-            backgrounds_dict[folder] = textures
-        
-        return backgrounds_dict
-
-
-    def _load_tilemap_jsons(self,tilemaps_path:str):
-        """
-        load tilemap json files to create list of tilemap data
-
-        Args: 
-            tilemaps_path (str) : the path to your directory containing json files for different maps 
-
-        Returns: 
-            A dictionary with (filename, tilemap data) key-value pair 
-        """
-        tilemap_data_dict = {}
-
-        for file_name in listdir(path = tilemaps_path):
-            f = open(tilemaps_path+'/'+file_name,'r')
-            tilemap_data = jsLoad(f)
-            tilemap_data_dict[file_name] = tilemap_data
-
-        return tilemap_data_dict
-
-    def _create_texture_atlasses(self) -> dict[str,Texture]:
-        
-        dict = {}
-
-        dict['tiles'] = load_texture(TEXTURE_BASE_PATH+ 'tiles/tile_atlas.png',self._ctx)
-        dict['entities'] = load_texture(TEXTURE_BASE_PATH + 'entities/entities_atlas.png',self._ctx)
-        dict['cursor'] = load_texture(TEXTURE_BASE_PATH +'cursor/cursor_atlas.png',self._ctx)
-        dict['particles'] = load_texture(TEXTURE_BASE_PATH + 'particles/animation_atlas.png',self._ctx)
-        dict['UI_and_items'] = load_texture(TEXTURE_BASE_PATH + 'ui/ui_atlas.png',self._ctx)
-        dict['items'] = load_texture(TEXTURE_BASE_PATH +'items/item_atlas.png',self._ctx)
-        dict['weapons'] = load_texture(TEXTURE_BASE_PATH + 'weapons/weapon_atlas.png',self._ctx)
-
-        return dict
 
     
     def _handle_common_events(self,event):
@@ -305,8 +253,10 @@ class Noel():
                 if event.type == pygame.MOUSEWHEEL:
                     self._hud.change_weapon(event.y)
                 if event.type ==pygame.KEYDOWN:
+                    """
                     if event.key == pygame.K_F5:
                         self._hot_reload()
+                    """
                     if event.key == pygame.K_e:
                         self._hud.set_inven_open_state(not self._hud.inven_open_state)
                     if event.key == pygame.K_a:
@@ -317,10 +267,13 @@ class Noel():
                                 if cell._item: 
                                     print(cell._item.count)
                     if event.key == pygame.K_f: 
-                        self._hud.add_item(Weapon('ak47',5,10))
+                        # change these later to be instantiated with their own class names 
+                        self._hud.add_item(AK47())
+                    if event.key == pygame.K_v: 
+                        self._hud.add_item()
                     if event.key == pygame.K_c:
                         # testing adding items to item inventory 
-                        self._hud.add_item(Item(random.choice(list(ITEM_ATLAS_POSITIONS.keys()))))
+                        self._hud.add_item(Item(random.choice(list(ITEM_ATLAS_POSITIONS_AND_SIZES.keys()))))
                         pass 
                     if event.key == pygame.K_w: 
                         self.player.jump()
@@ -356,6 +309,7 @@ class Noel():
 
         if self._curr_gameState == GameState.GameLoop:  
             
+            self._ctx.screen.clear(0, 0, 0, 1)
             self.scroll[0] += (self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self.scroll[0])/20
             self.scroll[1] += (self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self.scroll[1])/20
 
@@ -366,11 +320,12 @@ class Noel():
 
 
             self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
-            self.player.update(self._tilemap,self._hud.cursor.topleft,self._player_movement_input,self._frame_count)
+            self.player.update(self._tilemap,self._hud.cursor.topleft,self._player_movement_input,self._frame_count,camera_scroll)
             self.render_engine.bind_player(self.player)
             self._hud.update()
             self.render_engine.bind_hud(self._hud)
             self._tilemap.update_ambient_node_ptr(self.player.pos)
+
             self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
             self.render_engine.render_foreground_scene_to_fbo()
             

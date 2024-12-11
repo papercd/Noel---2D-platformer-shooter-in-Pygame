@@ -7,18 +7,19 @@ from math import cos,sin,radians,sqrt,degrees,atan2
 from scripts.custom_data_types import CollideParticleData,FireParticleData,AnimationParticleData,Animation
 from scripts.animationData import PARTICLE_ANIMATION_DATA
 from scripts.atlass_positions import PARTICLE_ATLAS_POSITIONS_AND_SIZES
+from scripts.resourceManager import ResourceManager
 from moderngl import Texture
 import numpy as np 
 class ParticleSystem:
     _instance = None 
     
     @staticmethod
-    def get_instance(particle_atlas:Texture = None):
+    def get_instance():
         if ParticleSystem._instance is None: 
-            ParticleSystem._instance = ParticleSystem(particle_atlas)
+            ParticleSystem._instance = ParticleSystem()
         return ParticleSystem._instance
 
-    def __init__(self,animation_texture_atl: Texture) -> None:
+    def __init__(self) -> None:
         if not hasattr(self,"initialized"):
             self.initialized = True 
 
@@ -41,28 +42,28 @@ class ParticleSystem:
             self._active_collide_particles = set( )
             self._active_animation_particles = set( )
 
-            # precompute texture coordinates for animation particles' textures
-            self._texture_atl =animation_texture_atl 
 
             # create particle pools
             self._initialize_particle_containers()
             self._precompute_particle_animation_texture_coords()
 
     def _precompute_particle_animation_texture_coords(self):
+        rm = ResourceManager.get_instance()
+        particle_texture_atl = rm.particles_atlas
         self._tex_dict = {}
         for key in PARTICLE_ATLAS_POSITIONS_AND_SIZES:
             atl_pos,tex_size = PARTICLE_ATLAS_POSITIONS_AND_SIZES[key]
             animationData = PARTICLE_ANIMATION_DATA[key]
             for frame in range(animationData.n_textures):
-                self._tex_dict[(key,frame)] = self._get_texture_coords_for_animation_frame(atl_pos,tex_size,frame)
+                self._tex_dict[(key,frame)] = self._get_texture_coords_for_animation_frame(particle_texture_atl,atl_pos,tex_size,frame)
 
      
-    def _get_texture_coords_for_animation_frame(self,atl_pos :tuple[int,int],tex_size:tuple[int,int],frame: int ) -> np.array:
-        x = (atl_pos[0] + tex_size[0] * frame) / self._texture_atl.width
-        y = (atl_pos[1] ) / self._texture_atl.height
+    def _get_texture_coords_for_animation_frame(self,texture_atl,atl_pos :tuple[int,int],tex_size:tuple[int,int],frame: int ) -> np.array:
+        x = (atl_pos[0] + tex_size[0] * frame) / texture_atl.width
+        y = (atl_pos[1] ) / texture_atl.height
 
-        w = tex_size[0] / self._texture_atl.width
-        h = tex_size[1] / self._texture_atl.height
+        w = tex_size[0] / texture_atl.width
+        h = tex_size[1] / texture_atl.height
         
         p1 = (x,y+h) 
         p2 = (x+w,y+h)

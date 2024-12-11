@@ -21,16 +21,21 @@ TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES = {
     "NUMBERS" : ((0,172),(32,32),(32,32))
 }
 
-WEAPON_ATLAS_POSITIONS_AND_SIZES = {
-    'ak47' : ((384,92),(31,12))
 
+IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
+    'ak47': {"normal": ((0,0),(31,12)),"holding":((56,0),(18,9))}
 }
 
-ITEM_ATLAS_POSITIONS ={
-    "amethyst_arrow": (381,0),
-    "amethyst_clump" : (397,0),
-    "arrow": (413,0),
-    "string": (429,0)
+UI_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
+    'ak47' : ((384,92),(31,12)),
+    'flamethrower' : ((415,92),(32,11))
+}
+
+ITEM_ATLAS_POSITIONS_AND_SIZES={
+    "amethyst_arrow": ((381,0),(16,16)),
+    "amethyst_clump" : ((397,0),(16,16)),
+    "arrow": ((413,0),(16,16)),
+    "string":((429,0),(16,16))
 
 }
 
@@ -77,7 +82,15 @@ ENTITIES_ATLAS_POSITIONS ={
 
                 },
                 True: {
-
+                "idle": (96,0),
+                "crouch" : (96,16),
+                "jump_up": (96,32),
+                "jump_down": (96,48),
+                "land": (96,80),
+                "run": (96,96),
+                "slide": (96,112),
+                "wall_slide": (96,128),
+                "sprint": (96,144)
                 }                        
                 } 
 

@@ -1,9 +1,13 @@
+from scripts.new_entities import Player
+from math import atan2,degrees
+
 ITEM_DESCRIPTIONS = {
     "amethyst_arrow" : "Arrow made with dirty amethyst.",
     "amethyst_clump" : "",
     "arrow": "",
     "string": "",
-    "ak47": "A powerful weapon that shoots bullets."
+    "ak47": "A powerful weapon that shoots bullets.",
+    "flamethrower": "Does more damage to soft enemies."
 
 }
 
@@ -53,6 +57,8 @@ class Item:
         return self._name
 
 
+
+
 class Weapon(Item): 
     def __init__(self, name , fire_rate:int, damage:int):
         super().__init__(name, 1, stackable = False) 
@@ -65,6 +71,8 @@ class Weapon(Item):
         self._can_RF = self._name in WPNS_WITH_RF
         self._rapid_fire_toggled = False 
         self._knockback = [0,0]
+        
+        self._pivot,self._pivot_to_opening_offset = WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET[self._name]
 
         self.cursor_pos = None
         self._holder = None
@@ -79,11 +87,17 @@ class Weapon(Item):
         if self._can_RF:
             self._rapid_fire_toggled = not self._rapid_fire_toggled
 
-    def equip(self,holder_entity):
-        self._holder = holder_entity
-
-    def update(self,cursor_pos):
+    def update(self,cursor_pos,holder_entity,camera_scroll):
         self.cursor_pos = cursor_pos
+        dx,dy = (self.cursor_pos[0]+camera_scroll[0] - (holder_entity.pos[0]+self._pivot[0] + self._pivot_to_opening_offset[0]),\
+                 self.cursor_pos[1] +camera_scroll[1]- (holder_entity.pos[1]+self._pivot[1] + self._pivot_to_opening_offset[1]))
+        self._angle_opening = atan2(-dy,dx)
+
+        if 90 < self._angle_opening <= 180   or -180 <= self._angle_opening  <-90 : 
+            self._flipped = True
+        else: 
+            self._flipped = False
+
         
 
     def shoot(self):
@@ -93,7 +107,8 @@ class Weapon(Item):
 
 class AK47(Weapon):
     def __init__(self):
-        super().__init__()
+        super().__init__('ak47',5,15)
+        self._size = (18,9)
 
 class Flamethrower(Weapon):
     def __init__(self):
