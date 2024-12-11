@@ -316,7 +316,6 @@ class Inventory:
 class WeaponInventory(Inventory):
     def __init__(self, rows, columns, topleft, cell_dim, space_between_cells, stack_limit, expandable=False):
         super().__init__('weapon', rows, columns, topleft, cell_dim, space_between_cells, stack_limit, expandable)
-
     
     def set_ind(self,ind:int):
         self._ind = ind 

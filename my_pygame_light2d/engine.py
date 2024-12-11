@@ -44,7 +44,7 @@ class RenderEngine:
         """
 
 
-        # Initialize private members
+        # Initialize  members
         self._true_to_native_ratio = true_to_screen_res_ratio 
         self._screen_res = screen_res
         self._true_res = true_res 
@@ -262,7 +262,6 @@ class RenderEngine:
             vbo = self.ctx.buffer(buffer_data)
             vao = self.ctx.vertex_array(self._prog_draw,[(vbo,'2f 2f','vetexPos', 'vertexTexCoord')])
             """
-            
             # TODO: render the player's weapon here 
             pass 
  

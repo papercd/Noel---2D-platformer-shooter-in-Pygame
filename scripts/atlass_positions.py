@@ -21,9 +21,14 @@ TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES = {
     "NUMBERS" : ((0,172),(32,32),(32,32))
 }
 
-WEAPON_ATLAS_POSITIONS_AND_SIZES = {
-    'ak47' : ((384,92),(31,12))
 
+IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
+    'ak47': {"normal": ((0,0),(31,12)),"holding":((56,0),(18,9))}
+}
+
+UI_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
+    'ak47' : ((384,92),(31,12)),
+    'flamethrower' : ((415,92),(32,11))
 }
 
 ITEM_ATLAS_POSITIONS ={

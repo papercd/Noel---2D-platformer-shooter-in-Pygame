@@ -179,8 +179,8 @@ class Noel():
 
     def _set_initial_display_settings(self):
         environ['SDL_VIDEO_CENTERED'] = '1'
-        self._screen_res =self._system_display_info['resolution']
-        #self._screen_res = (1440,950)
+        #self._screen_res =self._system_display_info['resolution']
+        self._screen_res = (1440,950)
         
         self._default_true_to_screen_res_ratio = 3.5 
 
@@ -317,7 +317,10 @@ class Noel():
                                 if cell._item: 
                                     print(cell._item.count)
                     if event.key == pygame.K_f: 
+                        # change these later to be instantiated with their own class names 
                         self._hud.add_item(Weapon('ak47',5,10))
+                    if event.key == pygame.K_v: 
+                        self._hud.add_item(Weapon('flamethrower',6,20))
                     if event.key == pygame.K_c:
                         # testing adding items to item inventory 
                         self._hud.add_item(Item(random.choice(list(ITEM_ATLAS_POSITIONS.keys()))))
@@ -366,7 +369,7 @@ class Noel():
 
 
             self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
-            self.player.update(self._tilemap,self._hud.cursor.topleft,self._player_movement_input,self._frame_count)
+            self.player.update(self._tilemap,self._hud.cursor.topleft,self._player_movement_input,self._frame_count,camera_scroll)
             self.render_engine.bind_player(self.player)
             self._hud.update()
             self.render_engine.bind_hud(self._hud)

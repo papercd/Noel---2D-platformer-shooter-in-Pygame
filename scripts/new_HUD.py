@@ -1,7 +1,7 @@
 from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player
 from scripts.new_inventory import Inventory_Engine,Inventory,WeaponInventory    
-from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS,TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,WEAPON_ATLAS_POSITIONS_AND_SIZES
+from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS,TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES
 from scripts.new_ui import HealthBar,StaminaBar
 from scripts.item import Item
 import numpy as np
@@ -52,8 +52,8 @@ class HUD:
             pos= ITEM_ATLAS_POSITIONS[key]
             self._item_tex_dict[key] = self._get_texture_coords_for_item(pos)
 
-        for key in WEAPON_ATLAS_POSITIONS_AND_SIZES:
-            pos,size = WEAPON_ATLAS_POSITIONS_AND_SIZES[key]
+        for key in UI_WEAPON_ATLAS_POSITIONS_AND_SIZES:
+            pos,size = UI_WEAPON_ATLAS_POSITIONS_AND_SIZES[key]
             self._item_tex_dict[key] = self._get_texture_coords_for_weapon(pos,size)
 
         for key in TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES:
@@ -387,7 +387,7 @@ class HUD:
 
 
     def change_weapon(self,scroll):
-        self._inven_list[2]._weapons_list.change_weapon(scroll)
+        self._inven_list[2].change_weapon(scroll)
 
     def update(self):
         self._health_bar.update(self._player.health)

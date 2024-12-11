@@ -296,7 +296,7 @@ class Player(PhysicsEntity):
     
     # TODO: add weapon rendering later. 
 
-    def update(self,tilemap:Tilemap,cursor_pos,player_movement_input,frame_count):
+    def update(self,tilemap:Tilemap,cursor_pos,player_movement_input,frame_count,camera_scroll):
         self._accelerate(player_movement_input)
         self._cur_animation.update()
         self.time = frame_count
@@ -480,10 +480,12 @@ class Player(PhysicsEntity):
         # update the weapon
 
         if self.curr_weapon_node and self.curr_weapon_node._item: 
+
             self.holding_gun = True
-            self.curr_weapon_node._item.update(self.cursor_pos)
+            self.curr_weapon_node._item.update(self.cursor_pos,self,camera_scroll)
         else: 
             self.holding_gun = False 
+        
         #testing weapon rendering  
         """
         if self.cur_weapon_node:
