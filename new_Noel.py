@@ -9,7 +9,9 @@ from enum import Enum
 from moderngl import create_context,Texture
 from screeninfo import get_monitors
 
+from scripts.resourceManager import ResourceManager
 # testing 
+
 from scripts.atlass_positions import ITEM_ATLAS_POSITIONS
 import random
 
@@ -63,11 +65,12 @@ class Noel():
 
 
     def _initialize_game_objects(self):
+        self.resource_manager = ResourceManager.get_instance(self._ctx)
+
         self._tilemap = Tilemap(self._atlas_dict['tiles'])
         self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
 
         
-
         self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
         self.player = Player([900,11],(14,16)) 
         self.player.set_accel_rate(0.7)
