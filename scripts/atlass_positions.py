@@ -77,7 +77,15 @@ ENTITIES_ATLAS_POSITIONS ={
 
                 },
                 True: {
-
+                "idle": (96,0),
+                "crouch" : (96,16),
+                "jump_up": (96,32),
+                "jump_down": (96,48),
+                "land": (96,80),
+                "run": (96,96),
+                "slide": (96,112),
+                "wall_slide": (96,128),
+                "sprint": (96,144)
                 }                        
                 } 
 

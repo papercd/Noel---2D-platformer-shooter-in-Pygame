@@ -255,6 +255,14 @@ class RenderEngine:
         
         )
         if self._player.curr_weapon_node and self._player.curr_weapon_node._item:
+            """
+            texture_coords = None
+            vertices = None 
+            buffer_data = np.hstack([vertices,texture_coords])
+            vbo = self.ctx.buffer(buffer_data)
+            vao = self.ctx.vertex_array(self._prog_draw,[(vbo,'2f 2f','vetexPos', 'vertexTexCoord')])
+            """
+            
             # TODO: render the player's weapon here 
             pass 
  

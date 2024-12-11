@@ -196,12 +196,12 @@ class Player(PhysicsEntity):
         self.left_and_right_anchors = {  True: {"idle": {"left": (2,6), "right": (13,6)}, "walk": {"left": (2,6), "right": (13,6)},'run' :{"left": (1,6), "right": (8,5)} 
                                            ,'jump_up' :{"left": (0,4), "right": (9,4)},'jump_down' :{"left": (3,5), "right": (10,4)}
                                            ,'slide' :{ "left" : (11,9) ,"right": (11,9)} , 'wall_slide' : {"left": (4,5), "right": (8,5)},'land' :{ "left" : (2,6) ,"right": (8,5)} , 
-                                           'crouch' :{ "left" : (2,8) ,"right": (13,8)}
+                                           'crouch' :{ "left" : (2,8) ,"right": (13,8)},'sprint' : {'left': (7,5),'right':(14,6)}
                                            },
                                     False: {"idle": {"left": (2,6), "right": (13,6)},"walk": {"left": (2,6), "right": (13,6)}, 'run' :{"left": (7,5), "right": (14,6)} 
                                            ,'jump_up' :{"left": (6,4), "right": (15,5)},'jump_down' :{"left": (2,4), "right": (7,5)}
                                            ,'slide' :{ "left": (4,9), "right": (4,9) }, 'wall_slide': {'left' : (7,5), 'right' : (11,5)},'land' :{ "left" : (6,5) ,"right": (13,6)} ,
-                                           'crouch' :{ "left" : (2,8) ,"right": (14,8)} 
+                                           'crouch' :{ "left" : (2,8) ,"right": (14,8)},'sprint': {'left': (7,5),'right':(14,6)} 
                                            },
         }
         self.left_anchor = None 
@@ -480,7 +480,10 @@ class Player(PhysicsEntity):
         # update the weapon
 
         if self.curr_weapon_node and self.curr_weapon_node._item: 
+            self.holding_gun = True
             self.curr_weapon_node._item.update(self.cursor_pos)
+        else: 
+            self.holding_gun = False 
         #testing weapon rendering  
         """
         if self.cur_weapon_node:
