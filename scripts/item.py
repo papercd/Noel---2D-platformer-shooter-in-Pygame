@@ -92,7 +92,6 @@ class Weapon(Item):
         dx,dy = (self.cursor_pos[0]+camera_scroll[0] - (holder_entity.pos[0]+self._pivot[0] + self._pivot_to_opening_offset[0]),\
                  self.cursor_pos[1] +camera_scroll[1]- (holder_entity.pos[1]+self._pivot[1] + self._pivot_to_opening_offset[1]))
         self._angle_opening = atan2(-dy,dx)
-        print(degrees(self._angle_opening))
 
         if 90 < self._angle_opening <= 180   or -180 <= self._angle_opening  <-90 : 
             self._flipped = True
@@ -108,7 +107,8 @@ class Weapon(Item):
 
 class AK47(Weapon):
     def __init__(self):
-        super().__init__()
+        super().__init__('ak47',5,15)
+        self._size = (18,9)
 
 class Flamethrower(Weapon):
     def __init__(self):

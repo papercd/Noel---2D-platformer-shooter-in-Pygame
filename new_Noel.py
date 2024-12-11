@@ -12,13 +12,13 @@ from screeninfo import get_monitors
 from scripts.resourceManager import ResourceManager
 # testing 
 
-from scripts.atlass_positions import ITEM_ATLAS_POSITIONS
+from scripts.atlass_positions import ITEM_ATLAS_POSITIONS_AND_SIZES
 import random
 
 import scripts 
 import my_pygame_light2d.engine
 
-from scripts.item import Item,Weapon
+from scripts.item import Item,Weapon,AK47
 from scripts.lists import interpolatedLightNode
 
 from scripts.new_HUD import HUD
@@ -76,28 +76,26 @@ class Noel():
 
     def _initialize_game_objects(self):
         self.resource_manager = ResourceManager.get_instance(self._ctx,RESOURCE_NAME_TO_PATH)
+        self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
         self._tilemap = Tilemap()
         self._tilemap.load_map('test1.json')  
 
-        
         self.particle_system = ParticleSystem.get_instance() 
         self.player = Player([900,11],(14,16)) 
         self.player.set_accel_rate(0.7)
         self.player.set_default_speed(2.2)
 
-    
         self._grass_manager = GrassManager()
-        self._hud = HUD(self.resource_manager.get_atlas_of_name('UI_and_items'),self.player,self._true_res)
+        self._hud = HUD(self.player,self._true_res)
 
     def _bind_objects_to_render_engine(self):
         self.render_engine.bind_tilemap(self._tilemap)
-        self.render_engine.bind_entities_atlas(self.resource_manager.get_atlas_of_name('entities'))
-        self.render_engine.bind_background(self.resource_manager.get_background_of_name('start'))
+        self.render_engine.bind_background('start')
         self.render_engine.bind_hud(self._hud)
         self.render_engine.lights = self._tilemap.lights
     
-
+    """
     def _hot_reload(self):
         # import changed modules
         importlib.reload(scripts.new_HUD)
@@ -146,7 +144,7 @@ class Noel():
 
         # rebind objects to render engine
         self._bind_objects_to_render_engine()
-
+    """
 
     def _initalize_game_settings(self):
         self._system_display_info = self._get_system_display_info()
@@ -155,9 +153,6 @@ class Noel():
 
        # create moderngl context
         self._ctx = create_context()
-
-       # setup render engine and background buffer surface 
-        self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
 
     def _get_system_display_info(self):
@@ -190,8 +185,8 @@ class Noel():
 
     def _set_initial_display_settings(self):
         environ['SDL_VIDEO_CENTERED'] = '1'
-        #self._screen_res =self._system_display_info['resolution']
-        self._screen_res = (1440,950)
+        self._screen_res =self._system_display_info['resolution']
+        # self._screen_res = (1440,950)
         
         self._default_true_to_screen_res_ratio = 3.5 
 
@@ -258,8 +253,10 @@ class Noel():
                 if event.type == pygame.MOUSEWHEEL:
                     self._hud.change_weapon(event.y)
                 if event.type ==pygame.KEYDOWN:
+                    """
                     if event.key == pygame.K_F5:
                         self._hot_reload()
+                    """
                     if event.key == pygame.K_e:
                         self._hud.set_inven_open_state(not self._hud.inven_open_state)
                     if event.key == pygame.K_a:
@@ -271,12 +268,12 @@ class Noel():
                                     print(cell._item.count)
                     if event.key == pygame.K_f: 
                         # change these later to be instantiated with their own class names 
-                        self._hud.add_item(Weapon('ak47',5,10))
+                        self._hud.add_item(AK47())
                     if event.key == pygame.K_v: 
-                        self._hud.add_item(Weapon('flamethrower',6,20))
+                        self._hud.add_item()
                     if event.key == pygame.K_c:
                         # testing adding items to item inventory 
-                        self._hud.add_item(Item(random.choice(list(ITEM_ATLAS_POSITIONS.keys()))))
+                        self._hud.add_item(Item(random.choice(list(ITEM_ATLAS_POSITIONS_AND_SIZES.keys()))))
                         pass 
                     if event.key == pygame.K_w: 
                         self.player.jump()
@@ -312,6 +309,7 @@ class Noel():
 
         if self._curr_gameState == GameState.GameLoop:  
             
+            self._ctx.screen.clear(0, 0, 0, 1)
             self.scroll[0] += (self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self.scroll[0])/20
             self.scroll[1] += (self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self.scroll[1])/20
 
@@ -327,6 +325,7 @@ class Noel():
             self._hud.update()
             self.render_engine.bind_hud(self._hud)
             self._tilemap.update_ambient_node_ptr(self.player.pos)
+
             self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
             self.render_engine.render_foreground_scene_to_fbo()
             
