@@ -199,7 +199,7 @@ class Player(PhysicsEntity):
                                            'crouch' :{ "left" : (2,8) ,"right": (13,8)},'sprint' : {'left': (7,5),'right':(14,6)}
                                            },
                                     False: {"idle": {"left": (2,6), "right": (13,6)},"walk": {"left": (2,6), "right": (13,6)}, 'run' :{"left": (7,5), "right": (14,6)} 
-                                           ,'jump_up' :{"left": (6,4), "right": (15,5)},'jump_down' :{"left": (2,4), "right": (7,5)}
+                                           ,'jump_up' :{"left": (6,4), "right": (15,5)},'jump_down' :{"left": (5,4), "right": (12,5)}
                                            ,'slide' :{ "left": (4,9), "right": (4,9) }, 'wall_slide': {'left' : (7,5), 'right' : (11,5)},'land' :{ "left" : (6,5) ,"right": (13,6)} ,
                                            'crouch' :{ "left" : (2,8) ,"right": (14,8)},'sprint': {'left': (7,5),'right':(14,6)} 
                                            },
@@ -331,8 +331,8 @@ class Player(PhysicsEntity):
             
         super().update(tilemap, new_movement,anim_offset= (3,1))
 
-        #self.left_anchor = self.left_and_right_anchors[self.flip][self.state]["left"]
-        #self.right_anchor = self.left_and_right_anchors[self.flip][self.state]["right"]
+        self.left_anchor = self.left_and_right_anchors[self.flip][self.state]["left"]
+        self.right_anchor = self.left_and_right_anchors[self.flip][self.state]["right"]
 
 
         """

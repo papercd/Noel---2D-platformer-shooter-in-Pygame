@@ -1,83 +1,62 @@
-import pygame
+import moderngl
+from scripts.utils import load_texture
 import numpy as np
-import random
-from noise import snoise2  # You may need to install noise via pip
 
-# Constants
-WIDTH, HEIGHT = 800, 600
-GRID_SIZE = 100  # Size of the grid for smoke simulation
-SMOKE_PARTICLE_COUNT = 500  # Number of smoke particles
-NOISE_SCALE = 0.1  # Scale of the noise function
+def build_model_matrix(pivot, position, rotation_angle):
+    pivot_translate = np.eye(3)
+    pivot_translate[:2, 2] = -np.array(pivot)
 
-# Smoke Class
-class Smoke:
-    def __init__(self):
-        self.particles = []
-        self.density_grid = np.zeros((GRID_SIZE, GRID_SIZE))
+    rotation = np.eye(3)
+    cos_a, sin_a = np.cos(rotation_angle), np.sin(rotation_angle)
+    rotation[:2, :2] = [[cos_a, -sin_a], [sin_a, cos_a]]
 
-    def emit(self, pos):
-        for _ in range(SMOKE_PARTICLE_COUNT):
-            # Create particles with a position near the emit position
-            x_offset = random.uniform(-5, 5)
-            y_offset = random.uniform(-5, -1)  # Emit particles upwards
-            self.particles.append(pygame.Vector2(pos[0] + x_offset, pos[1] + y_offset))
+    reverse_pivot = np.eye(3)
+    reverse_pivot[:2, 2] = np.array(pivot)
 
-    def update(self):
-        self.density_grid.fill(0)  # Reset the density grid
+    final_translate = np.eye(3)
+    final_translate[:2, 2] = np.array(position)
 
-        for particle in self.particles[:]:
-            # Calculate grid position
-            grid_x = int(particle.x / (WIDTH / GRID_SIZE))
-            grid_y = int(particle.y / (HEIGHT / GRID_SIZE))
+    return final_translate @ reverse_pivot @ rotation @ pivot_translate
 
-            # Update the density at the grid position
-            if 0 <= grid_x < GRID_SIZE and 0 <= grid_y < GRID_SIZE:
-                self.density_grid[grid_x, grid_y] += 1  # Increase density
+# Context setup
+ctx = moderngl.create_context()
 
-            # Move particles upwards and add random movement
-            particle.y -= random.uniform(0.5, 1.0)  # Move upwards
-            particle.x += random.uniform(-0.5, 0.5)  # Drift
+# Define vertices for a quad (positions and texcoords)
+vertices = np.array([
+# x, y, u, v
+-0.5, -0.5, 0.0, 0.0,  # Bottom-left
+    0.5, -0.5, 1.0, 0.0,  # Bottom-right
+-0.5,  0.5, 0.0, 1.0,  # Top-left
+    0.5,  0.5, 1.0, 1.0,  # Top-right
+], dtype='f4')
 
-            # Remove particles that go off screen
-            if particle.y < 0:
-                self.particles.remove(particle)
+# Create VBO and VAO
+vbo = ctx.buffer(vertices.tobytes())
+vao = ctx.simple_vertex_array(
+ctx.program(
+    vertex_shader=open('vertex_shader.glsl').read(),
+    fragment_shader=open('fragment_shader.glsl').read(),
+),
+vbo,
+'in_pos', 'in_texcoord'
+)
 
-        # Apply noise to the density grid
-        for i in range(GRID_SIZE):
-            for j in range(GRID_SIZE):
-                noise_value = snoise2(i * NOISE_SCALE, j * NOISE_SCALE, octaves=1)
-                self.density_grid[i, j] += noise_value * 5  # Adjust strength
+# Load texture
+texture = load_texture('data/images/entities/player.png',ctx)
+texture.use()
 
-    def draw(self, surface):
-        for i in range(GRID_SIZE):
-            for j in range(GRID_SIZE):
-                alpha = min(int(self.density_grid[i, j]), 255)
-                if alpha > 0:
-                    color = (200, 200, 200, alpha)
-                    pygame.draw.circle(surface, color, (int(i * (WIDTH / GRID_SIZE)), int(j * (HEIGHT / GRID_SIZE))), 3)
+# Create transformation matrix
+pivot = (16, 16)   # Pivot point in texture space
+position = (100, 100)  # Final position
+rotation_angle = np.radians(45)
 
-# Pygame setup
-pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-clock = pygame.time.Clock()
-smoke_system = Smoke()
+model_matrix = build_model_matrix(pivot, position, rotation_angle)  # Function from earlier
 
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-    
-    screen.fill((0, 0, 0))  # Clear screen
+# Render loop
+while True:
+    ctx.clear(0.0, 0.0, 0.0)  # Clear screen
+    vao.program['model'].write(model_matrix.astype('f4').tobytes())  # Pass model matrix
+    vao.render(moderngl.TRIANGLE_STRIP)  # Draw quad
 
-    # Emit smoke at a random position
-    if random.random() < 0.05:  # Control emission rate
-        smoke_system.emit((random.randint(200, 600), 550))
 
-    smoke_system.update()
-    smoke_system.draw(screen)
 
-    pygame.display.flip()
-    clock.tick(60)  # Limit to 60 FPS
-
-pygame.quit()

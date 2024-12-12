@@ -204,6 +204,13 @@ class WeaponNode:
                             cursor.item = self._item 
                             self._item = temp 
                             cursor.set_cooldown()
+                elif cursor.item is not None and self._hovered and cursor.cooldown == 0:
+                    if cursor.pressed[0] :
+                        temp = cursor.item.copy()
+                        cursor.item = self._item
+                        self._item = temp
+                        cursor.set_cooldown()
+
             elif cursor.item is not None and self._hovered and cursor.cooldown == 0:
                 if cursor.item.type != self._list._type:
                     return

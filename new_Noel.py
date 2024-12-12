@@ -18,7 +18,7 @@ import random
 import scripts 
 import my_pygame_light2d.engine
 
-from scripts.item import Item,Weapon,AK47
+from scripts.item import Item,Weapon,AK47,Flamethrower
 from scripts.lists import interpolatedLightNode
 
 from scripts.new_HUD import HUD
@@ -50,9 +50,10 @@ RESOURCE_NAME_TO_PATH = {
     'particles' : TEXTURE_BASE_PATH + 'particles/animation_atlas.png',
     'UI_and_items' : TEXTURE_BASE_PATH + 'ui/ui_atlas.png',
     'items' : TEXTURE_BASE_PATH +'items/item_atlas.png',
-    'weapons' : TEXTURE_BASE_PATH + 'weapons/weapon_atlas.png',
     'backgrounds' : TEXTURE_BASE_PATH + 'backgrounds',
-    'tilemap_jsons' : 'map_jsons'
+    'tilemap_jsons' : 'map_jsons',
+    'holding_weapons' : TEXTURE_BASE_PATH + 'weapons/holding',
+    'weapons' : TEXTURE_BASE_PATH+'weapons/weapon_atlas.png'
 }
 
 
@@ -191,7 +192,7 @@ class Noel():
         self._default_true_to_screen_res_ratio = 3.5 
 
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
-        self._true_to_screen_res_ratio = 4 
+        self._true_to_screen_res_ratio = 4.5
         self._true_res = (int(self._screen_res[0]/self._true_to_screen_res_ratio),int(self._screen_res[1]/self._true_to_screen_res_ratio))
     
     def _configure_pygame(self):
@@ -270,7 +271,7 @@ class Noel():
                         # change these later to be instantiated with their own class names 
                         self._hud.add_item(AK47())
                     if event.key == pygame.K_v: 
-                        self._hud.add_item()
+                        self._hud.add_item(Flamethrower())
                     if event.key == pygame.K_c:
                         # testing adding items to item inventory 
                         self._hud.add_item(Item(random.choice(list(ITEM_ATLAS_POSITIONS_AND_SIZES.keys()))))
