@@ -24,6 +24,8 @@ class ResourceManager:
                 self._load_backgrounds(path)
             elif resource_name == 'tilemap_jsons':
                 self._load_tilemap_jsons(path)
+            elif resource_name == 'holding_weapons':
+                self._load_held_wpn_textures(path)
             else: 
                 self._texture_atlasses[resource_name] = load_texture(path,self.ctx)
 
@@ -44,10 +46,14 @@ class ResourceManager:
     @property
     def particles_atlas(self) ->Texture: 
         return self._texture_atlasses['particles']
-
-    @property 
-    def weapons_atlas(self) -> Texture: 
+    
+    @property
+    def held_wpn_atlas(self) -> Texture: 
         return self._texture_atlasses['weapons']
+
+    @property
+    def held_wpn_textures(self) ->dict[str,Texture]:
+        return self._held_wpn_textures
 
     def _load_backgrounds(self,path:str):
         self._backgrounds= {}
@@ -60,6 +66,12 @@ class ResourceManager:
 
             self._backgrounds[folder] = textures
         
+    def _load_held_wpn_textures(self,path:str):
+        self._held_wpn_textures = {}
+        for texture_name in listdir(path = path):
+            texture_name = texture_name.split('.')[0]
+            self._held_wpn_textures[texture_name] = load_texture(f"{path}/{texture_name}.png",self.ctx)
+
 
     def _load_tilemap_jsons(self,path:str):
         self._tilemap_data = {}
@@ -116,12 +128,14 @@ class ResourceManager:
             for i in range(count):
                 bottomleft = (pos[0] + space[0] *i,pos[1])
                 self._text_texcoords[key].append(self._create_texture_coords(bottomleft,size,self.ui_item_atlas))
+
+        for key in IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES:
+            weapon = IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES[key]
+            self._in_world_item_texcoords[key] = {}
+            for state in weapon: 
+                pos,size = weapon[state] 
+                self._in_world_item_texcoords[key][state] = self._create_texture_coords(pos,size,self.held_wpn_atlas)
  
-        for weapon_name in IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES: 
-            self._in_world_item_texcoords[weapon_name] = {}
-            for state in IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES[weapon_name]:
-                pos,size = IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES[weapon_name][state]
-                self._in_world_item_texcoords[weapon_name][state] = self._create_texture_coords(pos,size,self.weapons_atlas)
     
 
     def _create_texture_coords(self,bottomleft:tuple[int,int],size:tuple[int,int],atlas :Texture):

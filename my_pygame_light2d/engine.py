@@ -7,6 +7,8 @@ import numbers
 from OpenGL.GL import glBlitNamedFramebuffer,glViewport, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 import math
 import time
+
+from pygame.math import Vector2 as vec2 
 from scripts.new_HUD import HUD
 from scripts.new_particles import ParticleSystem
 from scripts.lists import TileCategories,interpolatedLightNode
@@ -46,7 +48,7 @@ class RenderEngine:
             true_res:  (tuple[int, int]): true (native) resolution of the game (width, height) -pixel resolution.
         """
 
-
+        # singleton references 
         self._rm = ResourceManager.get_instance()
         self._ps = ParticleSystem.get_instance()
 
@@ -62,7 +64,6 @@ class RenderEngine:
         # Objects that need to be bound to engine before rendering : 
         self._tilemap:Tilemap = None
         self._player:Player = None
-        self._entities_atl: moderngl.Texture= None 
         self._background: list[moderngl.Texture]= None
 
         # Initialize public members
@@ -70,7 +71,7 @@ class RenderEngine:
         self.hulls: list[Hull] = []
         self.shadow_blur_radius: int =5
 
-        # Create an OpenGL context
+        # Retrieve context 
         self.ctx = context
 
         # Load shaders
@@ -269,71 +270,114 @@ class RenderEngine:
         
         )
         if self._player.curr_weapon_node and self._player.curr_weapon_node._item:
-            vertices = self._create_vertices_for_weapon(self._player.pos,self._player.curr_weapon_node._item._size,self._player.curr_weapon_node._item._pivot,\
-                                                        self._player.curr_weapon_node._item._angle_opening, self._player.curr_weapon_node._item._flipped,False)
-            vbo = self.ctx.buffer(vertices)
-            vao = self.ctx.vertex_array(self._prog_draw, [(vbo, '2f 2f', 'vertexPos', 'vertexTexCoord')])
+            weapon = self._player.curr_weapon_node._item
+            size = weapon._size
+            anchor_offset = (self._player.right_anchor[0]-1,self._player.right_anchor[1]  ) if weapon._flipped else self._player.left_anchor
+            pos = (self._player.pos[0]+anchor_offset[0] - offset[0], self._player.pos[1]+ anchor_offset[1] -offset[1])
 
-            self._rm.weapons_atlas.use()
+            texture_coords = self._rm._in_world_item_texcoords[weapon.name]['holding'] 
+            vertices = self._create_vertices_for_weapon(size,pos,-weapon._angle_opening,weapon._pivot,weapon._flipped)
+
+            buffer_data =  np.column_stack([vertices,texture_coords]).astype(np.float32)
+
+            vbo = self.ctx.buffer(buffer_data)
+            vao = self.ctx.vertex_array(self._prog_draw, [(vbo,'2f 2f','vertexPos', 'vertexTexCoord')])
+
+
+            self._rm.held_wpn_atlas.use()
             fbo.use()
             vao.render()
+            
 
-            vbo.release()
+
             vao.release()
+            vbo.release()
+
+
+    
+
+    def _create_vertices_for_weapon(self, size, pos,rotation_angle,pivot,flipped):
+        # step 1: create vertices around the origin. 
+        p0 = vec2(-size[0]//2, size[1]//2) # topleft 
+        p1 = vec2(size[0]//2 , size[1]//2) # topright 
+        p2 = vec2(-size[0]//2 , -size[1]//2) # bottomleft 
+        p3 = vec2(size[0]//2 , -size[1]//2) # bottomright  
+
+        
+        # step 2: move the vertices by the offset. 
+        
+        
+        if flipped:
+            flipped_pivot = (size[0]-1-pivot[0],pivot[1])
+
+            offset = (flipped_pivot[0]-size[0]//2,flipped_pivot[1]-size[1]//2)
+        else:
+            offset = (pivot[0]-size[0]//2, pivot[1]-size[1]//2)
+      
+        p0[0] -= offset[0] 
+        p0[1] -= offset[1] 
+        p1[0] -= offset[0]
+        p1[1] -= offset[1] 
+        p2[0] -= offset[0] 
+        p2[1] -= offset[1] 
+        p3[0] -= offset[0] 
+        p3[1] -= offset[1]
+        
+
+
+        # step 3: do the rotation.
+        sign = 1 if rotation_angle> 0 else -1 
+        if flipped:
+            angle =  (180 - abs(rotation_angle)) * (-1) * sign
+        else: 
+            angle = rotation_angle
+            
+        p0 = p0.rotate(angle)
+        p1 = p1.rotate(angle)
+        p2 =p2.rotate(angle)
+        p3 =p3.rotate(angle)
+
+        # step 4: translate the points to the world coordinates 
 
 
 
-    def _create_vertices_for_weapon(self, topleft: tuple[int, int], size: tuple[int, int], pivot: tuple[float, float], rotation: float, flip_horizontal: bool, flip_vertical: bool):
-        # Step 1: Create the basic vertices for the weapon (before any transformations)
-        x = 2. * (topleft[0]) / self._true_res[0] - 1.
-        y = 1. - 2. * (topleft[1]) / self._true_res[1]
-        w = 2. * size[0] / self._true_res[0]
-        h = 2. * size[1] / self._true_res[1]
 
-        # Basic vertices (in original, untransformed coordinates)
-        vertices = np.array([  # Clockwise order of corners
-            [x, y],           # Bottom-left
-            [x + w, y],       # Bottom-right
-            [x, y - h],       # Top-left
-            [x + w, y - h]    # Top-right
-        ], dtype=np.float32)
+        p0[0] += pos[0] 
+        p0[1] += pos[1] 
+        p1[0] += pos[0]
+        p1[1] += pos[1] 
+        p2[0] += pos[0] 
+        p2[1] += pos[1] 
+        p3[0] += pos[0] 
+        p3[1] += pos[1]
 
-        # Step 2: Create the transformation matrix
-
-        # Create translation matrix to move pivot point to origin
-        translate_to_origin = np.array([[1, 0, -pivot[0]], [0, 1, -pivot[1]], [0, 0, 1]])
-
-        # Create rotation matrix for the rotation angle
-        cos_angle = np.cos(rotation)
-        sin_angle = np.sin(rotation)
-        rotation_matrix = np.array([[cos_angle, -sin_angle, 0], [sin_angle, cos_angle, 0], [0, 0, 1]])
-
-        # Create translation matrix to move pivot point back to its original position
-        translate_back = np.array([[1, 0, pivot[0]], [0, 1, pivot[1]], [0, 0, 1]])
-
-        # Combine all transformations: First translate to origin, then rotate, then translate back
-        transformation_matrix = translate_back @ rotation_matrix @ translate_to_origin
-
-        # Step 3: Apply the matrix transformation to all vertices
-        # Add a column of ones to vertices for homogeneous coordinates
-        homogeneous_vertices = np.hstack([vertices, np.ones((vertices.shape[0], 1), dtype=np.float32)])
-
-        # Apply the transformation matrix
-        transformed_vertices = homogeneous_vertices @ transformation_matrix.T  # Apply transformation
-
-        # Step 4: Apply flipping
-        if flip_horizontal:
-            transformed_vertices[:, 0] = -transformed_vertices[:, 0]
-
-        if flip_vertical:
-            transformed_vertices[:, 1] = -transformed_vertices[:, 1]
-
-        # Step 5: Return transformed vertices
-        return transformed_vertices[:, :2]  # Return only the x and y (not homogeneous coordinates)
+        
+        # step 5: map the vertices to screen coords 
+        self._map_to_screen_coords(p0)        
+        self._map_to_screen_coords(p1)        
+        self._map_to_screen_coords(p2)        
+        self._map_to_screen_coords(p3)        
 
 
+        # step 6: create the vertices array 
+        if flipped: 
+            tl = p1 
+            tr = p0
+            bl = p3
+            br = p2 
+        else: 
+            tl = p0 
+            tr = p1
+            bl = p2
+            br = p3
+        return np.array([bl,br,tl,
+                         tl,br,tr])
 
- 
+    def _map_to_screen_coords(self,vertex:vec2):
+        vertex[0] = 2. * vertex[0] / self._true_res[0] -1.
+        vertex[1] = 1. -2 * vertex[1] / self._true_res[1] 
+           
+
 
     def _render_hud(self,fbo:moderngl.Framebuffer) -> None: 
         ui_items_atlas = self._rm.ui_item_atlas
@@ -1021,16 +1065,6 @@ class RenderEngine:
         self._vao_draw.render()
 
 
-    def set_offset_value_draw_shader(self,offset : tuple[float,float]) -> None:
-        """
-        set the offset value for the draw shader. 
-
-
-        """
-        pass 
-
-
-
     def set_alpha_value_draw_shader(self,alpha_value : float) -> None:
         """
         set the alpha value uniform for the draw shader.        
@@ -1059,8 +1093,6 @@ class RenderEngine:
 
         self._ssbo_v.release()
         self._ssbo_ind.release()
-
-    
 
 
 

@@ -23,7 +23,8 @@ WPNS_WITH_RF = {
 }
 
 WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET ={
-    "ak47" : ((2,2),(0,0))
+    "ak47" : ((2,2),(0,0)),
+    'flamethrower' : ((2,2),(0,0))
 }
 
 class Item:
@@ -91,7 +92,7 @@ class Weapon(Item):
         self.cursor_pos = cursor_pos
         dx,dy = (self.cursor_pos[0]+camera_scroll[0] - (holder_entity.pos[0]+self._pivot[0] + self._pivot_to_opening_offset[0]),\
                  self.cursor_pos[1] +camera_scroll[1]- (holder_entity.pos[1]+self._pivot[1] + self._pivot_to_opening_offset[1]))
-        self._angle_opening = atan2(-dy,dx)
+        self._angle_opening = degrees(atan2(-dy,dx))
 
         if 90 < self._angle_opening <= 180   or -180 <= self._angle_opening  <-90 : 
             self._flipped = True
@@ -112,7 +113,8 @@ class AK47(Weapon):
 
 class Flamethrower(Weapon):
     def __init__(self):
-        super().__init__()
+        super().__init__('flamethrower',5,30)
+        self._size = (24,8)
 
 
 class Shotgun(Weapon):
