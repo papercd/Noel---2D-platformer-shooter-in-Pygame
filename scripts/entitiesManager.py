@@ -1,6 +1,8 @@
-from scripts.new_tilemap import Tilemap
-from scripts.new_entities import Bullet
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from scripts.new_tilemap import Tilemap
+    from scripts.new_entities import Bullet
 class EntitiesManager:
     _instance = None
 
@@ -11,11 +13,11 @@ class EntitiesManager:
         return EntitiesManager._instance
 
     def __init__(self) -> None:
-        self._bullet_count = 0
-        self._bullets = []
+        self._bullet_count:int= 0
+        self._bullets:list["Bullet"]= []
 
 
-    def update(self,tilemap:Tilemap) ->None:
+    def update(self,tilemap:"Tilemap") ->None:
         count = self._bullet_count
         for i in range(count-1,-1,-1):
             bullet = self._bullets[i]
@@ -25,7 +27,7 @@ class EntitiesManager:
                 del self._bullets[i]
                 continue 
     
-    def add_bullet(self,bullet:Bullet) -> None: 
+    def add_bullet(self,bullet:"Bullet") -> None: 
         self._bullet_count +=1 
         self._bullets.append(bullet)
 

@@ -14,6 +14,9 @@ TILE_ATLAS_POSITIONS ={
     'lights':(128,0)
 }
 
+BULLET_ATLAS_POSITIONS_AND_SIZES = {
+    'ak47' : ((0,0),(16,5)),
+}
 
 TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES = {
     "CAPITAL" : ((0,140),(32,32),(32,32)),

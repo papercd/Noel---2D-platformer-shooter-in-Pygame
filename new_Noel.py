@@ -3,11 +3,10 @@ import platform
 import importlib
 from os import environ,listdir
 from json import load  as jsLoad
-import scripts.resourceManager
 from scripts.utils import load_texture 
 from time import time
 from enum import Enum
-from moderngl import create_context,Texture
+from moderngl import create_context
 from screeninfo import get_monitors
 
 from scripts.entitiesManager import EntitiesManager 
@@ -20,13 +19,10 @@ import random
 import scripts 
 import my_pygame_light2d.engine
 
-from scripts.item import Item,Weapon,AK47,Flamethrower
-from scripts.lists import interpolatedLightNode
-
+from scripts.item import Item,AK47,Flamethrower
 from scripts.new_HUD import HUD
 from scripts.new_grass import GrassManager
 from scripts.new_particles import ParticleSystem
-from scripts.new_cursor import Cursor 
 from scripts.new_entities import Player
 from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.engine import RenderEngine
@@ -42,22 +38,6 @@ class GameState(Enum):
     PauseMenuSettings =5
 
 
-TEXTURE_BASE_PATH = 'data/images/'
-
-
-RESOURCE_NAME_TO_PATH = {
-    'tiles' : TEXTURE_BASE_PATH + "tiles/tile_atlas.png",
-    'entities' : TEXTURE_BASE_PATH + 'entities/entities_atlas.png',
-    'cursor' : TEXTURE_BASE_PATH +'cursor/cursor_atlas.png',
-    'particles' : TEXTURE_BASE_PATH + 'particles/animation_atlas.png',
-    'UI_and_items' : TEXTURE_BASE_PATH + 'ui/ui_atlas.png',
-    'items' : TEXTURE_BASE_PATH +'items/item_atlas.png',
-    'backgrounds' : TEXTURE_BASE_PATH + 'backgrounds',
-    'tilemap_jsons' : 'map_jsons',
-    'holding_weapons' : TEXTURE_BASE_PATH + 'weapons/holding',
-    'weapons' : TEXTURE_BASE_PATH+'weapons/weapon_atlas.png'
-}
-
 
 class Noel():
     def __init__(self):
@@ -70,8 +50,8 @@ class Noel():
         self._frame_count = 0
         self._dt = 0
         self._prev_frame_time = 0
-        self.scroll = [0,0]
-        self.rapid_fire_reset =False 
+        self._scroll = [0,0]
+        self._rapid_fire_reset =False 
         self._player_movement_input = [0,0]
 
         self._initialize_game_objects()
@@ -80,11 +60,12 @@ class Noel():
 
     def _initialize_game_objects(self):
         self.entities_manager = EntitiesManager.get_instance()
-        self.resource_manager = ResourceManager.get_instance(self._ctx,RESOURCE_NAME_TO_PATH)
+        self.resource_manager = ResourceManager.get_instance(self._ctx)
         self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
         self._tilemap = Tilemap()
         self._tilemap.load_map('test1.json')  
+
         self.particle_system = ParticleSystem.get_instance() 
         self.player = Player([900,11],(14,16)) 
         self.player.set_accel_rate(0.7)
@@ -123,7 +104,7 @@ class Noel():
 
         # reinitialize render engine 
         self.entities_manager = EntitiesManager.get_instance()
-        self.resource_manager = ResourceManager.get_instance(self._ctx,RESOURCE_NAME_TO_PATH)
+        self.resource_manager = ResourceManager.get_instance(self._ctx)
         self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
         # explicitly reinitialize objects       
@@ -137,8 +118,8 @@ class Noel():
         
         cursor_topleft = pygame.mouse.get_pos()
         cursor_topleft =  (
-            cursor_topleft[0] / self._true_to_screen_res_ratio + self.scroll[0],
-            cursor_topleft[1] / self._true_to_screen_res_ratio + self.scroll[1],
+            cursor_topleft[0] / self._true_to_screen_res_ratio + self._scroll[0],
+            cursor_topleft[1] / self._true_to_screen_res_ratio + self._scroll[1],
         )
 
         # Reinitialize Player with updated cursor position
@@ -260,13 +241,13 @@ class Noel():
                     weapon = self.player.curr_weapon_node._item 
                     if weapon._rapid_fire_toggled: 
                         if self._frame_count % weapon._fire_rate == 0:
-                            weapon.shoot(self.render_engine)
+                            weapon.shoot(self.render_engine.lights)
                     else: 
-                        if self.rapid_fire_reset:
-                            weapon.shoot(self.render_engine)
-                            self.rapid_fire_reset = False
+                        if self._rapid_fire_reset:
+                            weapon.shoot(self.render_engine.lights)
+                            self._rapid_fire_reset = False
             else: 
-                self.rapid_fire_reset = True
+                self._rapid_fire_reset = True
 
 
 
@@ -332,10 +313,10 @@ class Noel():
         if self._curr_gameState == GameState.GameLoop:  
             
             self._ctx.screen.clear(0, 0, 0, 1)
-            self.scroll[0] += (self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self.scroll[0])/20
-            self.scroll[1] += (self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self.scroll[1])/20
+            self._scroll[0] += (self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self._scroll[0])/20
+            self._scroll[1] += (self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self._scroll[1])/20
 
-            camera_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+            camera_scroll = (int(self._scroll[0]), int(self._scroll[1]))
            
             self.render_engine.hulls = self._tilemap._hull_grid.query(camera_scroll[0]-self._tilemap.tile_size * 10 ,camera_scroll[1]- self._tilemap.tile_size * 10,camera_scroll[0] \
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)

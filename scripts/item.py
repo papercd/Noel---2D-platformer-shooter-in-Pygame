@@ -140,41 +140,24 @@ class AK47(Weapon):
         new_weapon.magazine = self.magazine
         return new_weapon
     
+    def _create_light(self,pos,power,radius,color,life,cast_shadows = False,illuminator = None)->PointLight: 
+        light = PointLight(pos, power=power, radius=radius, life=life, illuminator=illuminator)
+        light.set_color(*color)
+        light.cast_shadows = cast_shadows
+        return light
 
-    def shoot(self,render_engine):
+    def shoot(self,engine_lights:list[PointLight])-> None:
         # create a new bullet, make a system of some kind handle bullet update. 
         em = EntitiesManager.get_instance()
         vel = (cos(radians(-self._angle_opening))*self._knockback_power,sin(radians(-self._angle_opening))*self._knockback_power)
         bullet  = AKBullet(self._opening_pos.copy(),self._damage,-self._angle_opening,vel)
-        bullet.pos[0] -= bullet.size[0] //2 
-        bullet.pos[1] -= bullet.size[1] //2 
-
-        bullet._center[0] -= bullet.size[0] //2
-        bullet._center[1] -= bullet.size[1] //2 
+        bullet.adjust_pos((bullet.size[0]//2,bullet.size[1]//2))
+        bullet.adjust_flip(vel[0]<=0)
         
-        light =  PointLight(self._opening_pos,power = 1.0,radius = 8,life = 2)
-        light.set_color(253,108,50)
-        light.cast_shadows = False
-        render_engine.lights.append(light)
-        
-        light = PointLight(self._opening_pos,power = 0.7 ,radius = 24,life = 2)
-        light.set_color(248,129,153)
-        light.cast_shadows = False
-        render_engine.lights.append(light)
-
-        light = PointLight(self._opening_pos,power = 0.6,radius = 40,life = 2)
-        light.set_color(248,129,153)
-        light.cast_shadows = False
-        render_engine.lights.append(light)
-
-        light = PointLight(self._opening_pos,power = 1.0,radius = 20, illuminator= bullet, life = bullet._frames_flown)
-        light.cast_shadows = False
-        render_engine.lights.append(light)
-        
-
-
-
-
+        engine_lights.append(self._create_light(self._opening_pos, 1.0, 8, (253, 108, 50), 2))
+        engine_lights.append(self._create_light(self._opening_pos, 0.7, 24, (248, 129, 153), 2))
+        engine_lights.append(self._create_light(self._opening_pos, 0.6, 40, (248, 129, 153), 2))
+        engine_lights.append(self._create_light(self._opening_pos, 1.0, 20, (255, 255, 255), bullet._frames_flown, illuminator=bullet))
 
         em.add_bullet(bullet)
         self._knockback = [-vel[0]/2,-vel[1]/2]

@@ -1,9 +1,13 @@
-from scripts.new_cursor import Cursor
-#from scripts.atlass_positions import TEXT_DIMENSIONS 
 from pygame import Rect
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from scripts.item import Weapon
+    from scripts.new_cursor import Cursor
+    from scripts.new_entities import Player
+    from scripts.new_tilemap import Tilemap
 class Node:
-    def __init__(self, cell_ind, data):
+    def __init__(self, cell_ind:int, data)->None:
         self.cell_ind = cell_ind
         self.data = data 
         self.next = None
@@ -21,7 +25,7 @@ class DoublyLinkedList:
             for i,obj in enumerate(objs):
                 self.add_node(i,obj)
 
-    def add_node(self, cell_ind, data):
+    def add_node(self, cell_ind:int, data)->None:
         new_node = Node(cell_ind, data)
         
         # If the list is empty, make the new node the head and the tail
@@ -48,14 +52,14 @@ class DoublyLinkedList:
                     return
             current = current.next
 
-    def _insert_before(self, node, new_node):
+    def _insert_before(self, node:Node, new_node:Node)->None:
         new_node.prev = node.prev
         new_node.next = node
         if node.prev:
             node.prev.next = new_node
         node.prev = new_node
 
-    def _insert_after(self, node, new_node):
+    def _insert_after(self, node:Node, new_node:Node)->None:
         new_node.next = node.next
         new_node.prev = node
         if node.next:
@@ -64,7 +68,7 @@ class DoublyLinkedList:
             self.tail = new_node
         node.next = new_node
 
-    def delete_node(self, node):
+    def delete_node(self, node:Node)->None:
         if node is None:
             return
         if node == self.curr_node: 
@@ -88,12 +92,12 @@ class DoublyLinkedList:
             pass 
         node.next = node.prev = None
 
-    def change_head(self, cell_ind):
+    def change_head(self, cell_ind:int)->None:
         new_head = self.find_node(cell_ind)
         if new_head:
             self.head = new_head
 
-    def find_node(self, cell_ind):
+    def find_node(self, cell_ind:int)->Node:
         current = self.head
         while current:
             if current.cell_ind == cell_ind:
@@ -102,8 +106,76 @@ class DoublyLinkedList:
         return None
 
 
+class WeaponInvenList(DoublyLinkedList):
+    def __init__(self, objs = None)->None:
+        super().__init__(objs)
+        self._type = 'weapon'
+
+    
+    def add_weapon(self,weapon:"Weapon")->None:
+        current = self.head 
+        while current:
+           if current._item is None:
+               current._item =weapon 
+               self.curr_node = current
+               return 
+           current = current.next 
+        
+
+        
+    def add_node(self,cell_ind:int,data)->None:
+        new_node = WeaponNode(self,cell_ind,*data)
+
+        if self.head is None:
+            self.head = self.tail = new_node
+            self.curr_node = new_node
+            return 
+        
+        current = self.head
+        while current:
+            if new_node._cell_ind < current._cell_ind:
+                self._insert_before(current,new_node)
+                if current == self.head:
+                    self.head = new_node
+                self.curr_node = new_node
+                return 
+            elif new_node._cell_ind > current._cell_ind:
+                if current.next is None:
+                    self._insert_after(current,new_node)
+                    self.curr_node = new_node
+                    return 
+            current = current.next
+
+    def change_weapon(self,scroll:int)-> None:
+        current = self.curr_node
+        if scroll == 1:
+            while current: 
+                if current.next: 
+                    if current.next._item: 
+                        self.curr_node = current.next
+                        break
+                    current = current.next 
+                else: 
+                    break 
+        else: 
+            while current: 
+                if current.prev: 
+                    if current.prev._item: 
+                        self.curr_node = current.prev
+                        break
+                    current = current.prev
+                else: 
+                    break 
+
+
+    def update(self,stack_limit:int,cursor:"Cursor",opacity:int,player:"Player")->None:
+        current = self.head
+        while current:
+            current.update(stack_limit,cursor,opacity,player)
+            current = current.next
+
 class WeaponNode:
-    def __init__(self,list,cell_ind,pos,size):
+    def __init__(self,list:WeaponInvenList,cell_ind:int,pos:tuple[int,int],size:tuple[int,int])->None:
         self._list = list 
         self._cell_ind = cell_ind 
         self._pos = pos 
@@ -116,7 +188,7 @@ class WeaponNode:
         self.next = None 
         self.prev = None 
 
-    def check_nearest_node_with_item(self):
+    def check_nearest_node_with_item(self)->None:
         right_current = self 
         left_current = self 
         right_node = None 
@@ -142,7 +214,7 @@ class WeaponNode:
         return (left_node,right_node)
     
 
-    def update(self,stack_limit,cursor,opacity,player):
+    def update(self,stack_limit:int,cursor:"Cursor",opacity:int,player:"Player")->None:
         if cursor.box.colliderect(self._rect):
             self._offset = (-1,-1)
             self._hovered = True 
@@ -231,84 +303,15 @@ class WeaponNode:
                     cursor.set_cooldown()
 
 
-
-class WeaponInvenList(DoublyLinkedList):
-    def __init__(self, objs = None):
-        super().__init__(objs)
-        self._type = 'weapon'
-
-    
-    def add_item(self,item):
-        current = self.head 
-        while current:
-           if current._item is None:
-               current._item = item 
-               self.curr_node = current
-               return 
-           current = current.next 
-        
-
-        
-    def add_node(self,cell_ind,data):
-        new_node = WeaponNode(self,cell_ind,*data)
-
-        if self.head is None:
-            self.head = self.tail = new_node
-            self.curr_node = new_node
-            return 
-        
-        current = self.head
-        while current:
-            if new_node._cell_ind < current._cell_ind:
-                self._insert_before(current,new_node)
-                if current == self.head:
-                    self.head = new_node
-                self.curr_node = new_node
-                return 
-            elif new_node._cell_ind > current._cell_ind:
-                if current.next is None:
-                    self._insert_after(current,new_node)
-                    self.curr_node = new_node
-                    return 
-            current = current.next
-
-    def change_weapon(self,scroll):
-        current = self.curr_node
-        if scroll == 1:
-            while current: 
-                if current.next: 
-                    if current.next._item: 
-                        self.curr_node = current.next
-                        break
-                    current = current.next 
-                else: 
-                    break 
-        else: 
-            while current: 
-                if current.prev: 
-                    if current.prev._item: 
-                        self.curr_node = current.prev
-                        break
-                    current = current.prev
-                else: 
-                    break 
-
-
-    def update(self,stack_limit,cursor,opacity,player):
-        current = self.head
-        while current:
-            current.update(stack_limit,cursor,opacity,player)
-            current = current.next
-
 class Category(Node):
-    def __init__(self, cell_ind, category:str):
+    def __init__(self, cell_ind:int, category:str)->None:
         self._selected = False 
         self._hovered = False 
         self._characters = len(category)
         self._calculate_length_height(category)
         super().__init__(cell_ind, category)
     
-    def _calculate_length_height(self,category:str):
+    def _calculate_length_height(self,category:str)->None:
         self._length = 0 
         max_height = 0 
         for char in category: 
@@ -346,7 +349,7 @@ class Category(Node):
     def length(self):
         return self._length
 class TileCategories(DoublyLinkedList):
-    def __init__(self,topleft:tuple[int,int],size:tuple[int,int],objs:list[str]= None):
+    def __init__(self,topleft:tuple[int,int],size:tuple[int,int],objs:list[str]= None)->None:
         self._topleft = topleft
         self._size = size 
         super().__init__(objs)
@@ -361,7 +364,7 @@ class TileCategories(DoublyLinkedList):
         return self._topleft
 
     
-    def add_node(self, cell_ind, category):
+    def add_node(self, cell_ind:int, category:str)->None:
         new_node = Category(cell_ind, category)
         
         # If the list is empty, make the new node the head and the tail
@@ -388,7 +391,7 @@ class TileCategories(DoublyLinkedList):
                     return
             current = current.next
     
-    def check_hover(self,cursor:Cursor,category_panel_scroll:int = 0,tile_panel_scroll:int = 0):
+    def check_hover(self,cursor:"Cursor",category_panel_scroll:int = 0,tile_panel_scroll:int = 0)->None:
         curr:Category = self.head
         category_stack_offset = 0 
         while curr: 
@@ -402,7 +405,7 @@ class TileCategories(DoublyLinkedList):
             category_stack_offset += curr.height +1 
             curr = curr.next
     
-    def check_click(self,cursor:Cursor,category_panel_scroll:int = 0,tile_panel_scroll:int = 0):
+    def check_click(self,cursor:"Cursor",category_panel_scroll:int = 0,tile_panel_scroll:int = 0)->None:
         curr: Category = self.head 
         category_stack_offset = 0
         while curr: 
@@ -418,7 +421,8 @@ class TileCategories(DoublyLinkedList):
 
 class ambientNode:
 
-    def __init__(self,light_range,colorValue = (255,255,255,255) , default = True):
+    def __init__(self,light_range,colorValue :tuple[int,int,int,int]= (255,255,255,255) , \
+                 default:bool = True):
         self.range = list(light_range)
         self.colorValue = colorValue
         self.prev = None
@@ -433,7 +437,8 @@ class ambientNode:
 
 
 class interpolatedLightNode:
-    def __init__(self,light_range, left_bound_colorValue = (255,255,255,255), right_bound_colorValue = (255,255,255,255)):
+    def __init__(self,light_range, left_bound_colorValue:tuple[int,int,int,int]= (255,255,255,255)\
+                 , right_bound_colorValue:tuple[int,int,int,int] = (255,255,255,255)):
         self.range = list(light_range)
         self.leftBoundColor = left_bound_colorValue
         self.rightBoundColor = right_bound_colorValue
@@ -443,7 +448,7 @@ class interpolatedLightNode:
         self.hull_y_range = (0,0)
         self.hulls = []
 
-    def get_interpolated_RGBA(self, pos):
+    def get_interpolated_RGBA(self, pos:tuple[int,int])->tuple[int,int,int,int]:
         # Ensure position is within the range
         if not (self.range[0] <= pos <= self.range[1]):
             raise ValueError("Position out of bounds.")
@@ -463,12 +468,12 @@ class interpolatedLightNode:
         return (self.range,self.leftBoundColor,self.rightBoundColor,self.default)
 
 class ambientNodeList:
-    def __init__(self,default_color = (255,255,255,255)):
+    def __init__(self,default_color:tuple[int,int,int,int] = (255,255,255,255))->None:
         # Initialize with a single default node covering the specified range
         self.default_color = default_color
         self.head =ambientNode((float('-inf'), float('inf')), colorValue=self.default_color, default=True)
     
-    def find_overlapping_node(self, new_range):
+    def find_overlapping_node(self, new_range)->ambientNode:
         current = self.head
         
         # Traverse to the leftmost node
@@ -484,7 +489,7 @@ class ambientNodeList:
         return None
     
     
-    def create_hull_lists(self,tilemap):
+    def create_hull_lists(self,tilemap:"Tilemap"):
         # Iterate over the nodes, and create the hull lists. 
         current = self.head 
 
@@ -508,7 +513,7 @@ class ambientNodeList:
 
 
 
-    def set_ptr(self,pos_x): 
+    def set_ptr(self,pos_x:int)->ambientNode: 
         temp = self.head
         while pos_x < temp.range[0] or pos_x > temp.range[1]:
             if pos_x <temp.range[0] :
@@ -535,7 +540,7 @@ class ambientNodeList:
         return data 
     
 
-    def find_node(self,x):
+    def find_node(self,x:int)->ambientNode:
         current = self.head
         
         while current.prev:
@@ -552,7 +557,6 @@ class ambientNodeList:
 
 
     def change_node_color(self,x):
-        
         pass 
 
 
@@ -684,7 +688,6 @@ class ambientNodeList:
 
         
 
-         
 
     
     def insert_ambient_node(self, new_range, hull_range, colorValue):
