@@ -495,4 +495,24 @@ class Player(PhysicsEntity):
         if self.cur_weapon_node:
             self.cur_weapon_node.weapon.update(self.d_cursor_pos)
         """
-        
+
+
+class Bullet(PhysicsEntity):
+    def __init__(self,pos: list[float], size: tuple[int, int]):
+        super().__init__('Bullet', pos, size)
+
+    
+    def update(self,tilemap,offset = (0,0)):
+        pass
+
+
+
+class AKBullet(Bullet):
+    def __init__(self, pos: list[float],damage,angle,velocity):
+        super().__init__(pos, (1,1))
+        self._damage = damage
+        self._angle = angle
+        self._velocity = velocity
+
+    def update(self):
+        pass

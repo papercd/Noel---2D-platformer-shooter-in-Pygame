@@ -1,5 +1,6 @@
-from scripts.new_entities import Player
-from math import atan2,degrees
+from scripts.new_entities import Player,AKBullet
+from math import atan2,degrees,cos,sin,radians
+from scripts.entitiesManager import EntitiesManager
 
 ITEM_DESCRIPTIONS = {
     "amethyst_arrow" : "Arrow made with dirty amethyst.",
@@ -61,18 +62,21 @@ class Item:
 
 
 class Weapon(Item): 
-    def __init__(self, name , fire_rate:int, damage:int):
+    def __init__(self, name , fire_rate:int, damage:int , size: tuple[int,int]):
         super().__init__(name, 1, stackable = False) 
         self._type = "weapon"
         self._fire_rate = fire_rate
         self._damage = damage 
+
+        self._size = size
 
         self._angle_opening = 0
         self._flipped = False
         self._can_RF = self._name in WPNS_WITH_RF
         self._rapid_fire_toggled = False 
         self._knockback = [0,0]
-        
+
+        self._opening_pos = [0,0]
         self._pivot,self._pivot_to_opening_offset = WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET[self._name]
 
         self.target_pos= None
@@ -89,6 +93,16 @@ class Weapon(Item):
             self._rapid_fire_toggled = not self._rapid_fire_toggled
 
     def update(self,target_pos,holder_entity,camera_scroll):
+        if self._knockback[0] < 0: 
+            self._knockback[0] = min(self._knockback[0] + 1.45, 0)
+        if self._knockback[0] > 0 :
+            self._knockback[0] = max(self._knockback[0] -1.45, 0)
+
+        if self._knockback[1] < 0: 
+            self._knockback[1] = min(self._knockback[1] + 1.45, 0)
+        if self._knockback[1] > 0 :
+            self._knockback[1] = max(self._knockback[1] -1.45, 0)
+
         self.target_pos=target_pos 
         # first decide on which side the cursor is on 
         if self.target_pos[0] < holder_entity.pos[0]+ holder_entity._sprite_size[0]//2 - camera_scroll[0]:
@@ -103,28 +117,38 @@ class Weapon(Item):
         
         self._angle_opening = degrees(atan2(-dy,dx))
 
+        self._opening_pos[0] = pivot[0] + self._pivot_to_opening_offset[0] + camera_scroll[0]+ cos(radians(-self._angle_opening)) * self._size[0] 
+        self._opening_pos[1] = pivot[1] + self._pivot_to_opening_offset[1] + camera_scroll[1]+ sin(radians(-self._angle_opening)) * self._size[1] 
+
         if isinstance(holder_entity,Player):
             if holder_entity.state == 'slide' or holder_entity.state == 'wall_slide':
                 self._flipped = holder_entity.flip 
 
     def shoot(self):
-        pass 
-
+        pass
     
 
 class AK47(Weapon):
     def __init__(self):
-        super().__init__('ak47',5,15)
-        self._size = (18,9)
-
+        super().__init__('ak47',5,15,(18,9))
+        self._rapid_fire_toggled = True 
+        
     def copy(self):
         new_weapon = AK47()
         new_weapon.magazine = self.magazine
         return new_weapon
+    
+
+    def shoot(self):
+        # create a new bullet, make a system of some kind handle bullet update. 
+        em = EntitiesManager.get_instance()
+        vel = (cos(radians(-self._angle_opening))*10,sin(radians(-self._angle_opening))*10)
+        em.add_bullet(AKBullet(self._opening_pos.copy(),self._damage,self._angle_opening,vel))
+        self._knockback = [-vel[0]/2,-vel[1]/2]
+
 class Flamethrower(Weapon):
     def __init__(self):
-        super().__init__('flamethrower',5,30)
-        self._size = (24,8)
+        super().__init__('flamethrower',5,30,(24,8))
 
     def copy(self):
         new_weapon = Flamethrower()
