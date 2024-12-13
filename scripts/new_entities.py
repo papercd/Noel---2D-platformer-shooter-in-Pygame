@@ -3,6 +3,7 @@ from scripts.new_tilemap import Tilemap
 from scripts.new_particles import ParticleSystem
 from scripts.custom_data_types import AnimationParticleData,Animation,CollideParticleData
 from scripts.animationData import PlayerAnimationDataCollection
+from scripts.utils import get_rotated_vertices, SAT
 from random import choice as random_choice,random,randint
 
 
@@ -498,21 +499,53 @@ class Player(PhysicsEntity):
 
 
 class Bullet(PhysicsEntity):
-    def __init__(self,pos: list[float], size: tuple[int, int]):
+    def __init__(self,life:int,pos: list[float], size: tuple[int, int],angle:int):
         super().__init__('Bullet', pos, size)
+        self._angle = angle
+        self._frames_flown = life
+        self._dead = False
+        self._center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[0]//2]
 
-    
-    def update(self,tilemap,offset = (0,0)):
-        pass
+    def update(self,tilemap:Tilemap,offset = (0,0)):
+        self._frames_flown -= 1 
+        if self._frames_flown == 0:
+            self._dead = True
+            return True
+        
+        steps = 2
+        if steps == 0: 
+            return False 
+
+        for step in range(steps):
+        
+            self.pos[0] += self.velocity[0]/steps 
+            # need a different way to find the center 
+            self._center[0] += self.velocity[0] /steps 
+
+            rotated_bullet_rect = get_rotated_vertices(self._center,*self.size,self._angle) 
+
+            for rect_tile in tilemap.phy_rects_around(self.pos, self.size):
+                if SAT(rect_tile,rotated_bullet_rect):
+                #if entity_rect.colliderect(rect_tile[0]):
+                    #self.handle_tile_collision(tilemap,rect_tile)
+                    return True 
+            
+            self.pos[1] += self.velocity[1]/steps
+            self._center[1] += self.velocity[1]/steps
+            
+            rotated_bullet_rect = get_rotated_vertices(self._center,*self.size,self._angle)
+            
+            for rect_tile in tilemap.phy_rects_around(self.pos, self.size):
+                if SAT(rect_tile,rotated_bullet_rect):
+                #if entity_rect.colliderect(rect_tile[0]):
+                    #self.handle_tile_collision(tilemap,rect_tile)
+                    return True 
+        return False
 
 
 
 class AKBullet(Bullet):
     def __init__(self, pos: list[float],damage,angle,velocity):
-        super().__init__(pos, (1,1))
+        super().__init__(60,pos, (16,5),angle)
         self._damage = damage
-        self._angle = angle
         self._velocity = velocity
-
-    def update(self):
-        pass

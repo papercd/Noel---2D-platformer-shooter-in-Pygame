@@ -1,4 +1,5 @@
 from scripts.new_entities import Player,AKBullet
+from my_pygame_light2d.light import PointLight
 from math import atan2,degrees,cos,sin,radians
 from scripts.entitiesManager import EntitiesManager
 
@@ -62,11 +63,12 @@ class Item:
 
 
 class Weapon(Item): 
-    def __init__(self, name , fire_rate:int, damage:int , size: tuple[int,int]):
+    def __init__(self, name , fire_rate:int, damage:int ,knock_back:int, size: tuple[int,int]):
         super().__init__(name, 1, stackable = False) 
         self._type = "weapon"
         self._fire_rate = fire_rate
         self._damage = damage 
+        self._knockback_power =knock_back 
 
         self._size = size
 
@@ -117,8 +119,8 @@ class Weapon(Item):
         
         self._angle_opening = degrees(atan2(-dy,dx))
 
-        self._opening_pos[0] = pivot[0] + self._pivot_to_opening_offset[0] + camera_scroll[0]+ cos(radians(-self._angle_opening)) * self._size[0] 
-        self._opening_pos[1] = pivot[1] + self._pivot_to_opening_offset[1] + camera_scroll[1]+ sin(radians(-self._angle_opening)) * self._size[1] 
+        self._opening_pos[0] = holder_entity.pos[0]+pivot[0] + self._pivot_to_opening_offset[0] + cos(radians(-self._angle_opening)) * self._size[0] 
+        self._opening_pos[1] = holder_entity.pos[1]+ pivot[1] + self._pivot_to_opening_offset[1] + sin(radians(-self._angle_opening)) * self._size[1] 
 
         if isinstance(holder_entity,Player):
             if holder_entity.state == 'slide' or holder_entity.state == 'wall_slide':
@@ -130,7 +132,7 @@ class Weapon(Item):
 
 class AK47(Weapon):
     def __init__(self):
-        super().__init__('ak47',5,15,(18,9))
+        super().__init__('ak47',5,15,12,(18,9))
         self._rapid_fire_toggled = True 
         
     def copy(self):
@@ -139,16 +141,42 @@ class AK47(Weapon):
         return new_weapon
     
 
-    def shoot(self):
+    def shoot(self,render_engine):
         # create a new bullet, make a system of some kind handle bullet update. 
         em = EntitiesManager.get_instance()
-        vel = (cos(radians(-self._angle_opening))*10,sin(radians(-self._angle_opening))*10)
-        em.add_bullet(AKBullet(self._opening_pos.copy(),self._damage,self._angle_opening,vel))
+        vel = (cos(radians(-self._angle_opening))*self._knockback_power,sin(radians(-self._angle_opening))*self._knockback_power)
+        bullet  = AKBullet(self._opening_pos.copy(),self._damage,-self._angle_opening,vel)
+        bullet.pos[0] -= bullet.size[0] //2 
+        bullet.pos[1] -= bullet.size[1] //2 
+
+        bullet._center[0] -= bullet.size[0] //2
+        bullet._center[1] -= bullet.size[1] //2 
+        
+        light =  PointLight(self._opening_pos,power = 1.0,radius = 8,life = 2)
+        light.set_color(253,108,50)
+        light.cast_shadows = False
+        render_engine.lights.append(light)
+        
+        light = PointLight(self._opening_pos,power = 0.7 ,radius = 24,life = 2)
+        light.set_color(248,129,153)
+        light.cast_shadows = False
+        render_engine.lights.append(light)
+
+        light = PointLight(self._opening_pos,power = 0.6,radius = 40,life = 2)
+        light.set_color(248,129,153)
+        light.cast_shadows = False
+        render_engine.lights.append(light)
+
+
+
+
+
+        em.add_bullet(bullet)
         self._knockback = [-vel[0]/2,-vel[1]/2]
 
 class Flamethrower(Weapon):
     def __init__(self):
-        super().__init__('flamethrower',5,30,(24,8))
+        super().__init__('flamethrower',5,30,4,(24,8))
 
     def copy(self):
         new_weapon = Flamethrower()

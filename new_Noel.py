@@ -85,7 +85,6 @@ class Noel():
 
         self._tilemap = Tilemap()
         self._tilemap.load_map('test1.json')  
-
         self.particle_system = ParticleSystem.get_instance() 
         self.player = Player([900,11],(14,16)) 
         self.player.set_accel_rate(0.7)
@@ -123,6 +122,7 @@ class Noel():
         from scripts.resourceManager import ResourceManager
 
         # reinitialize render engine 
+        self.entities_manager = EntitiesManager.get_instance()
         self.resource_manager = ResourceManager.get_instance(self._ctx,RESOURCE_NAME_TO_PATH)
         self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
@@ -165,7 +165,7 @@ class Noel():
     def _get_system_display_info(self):
         system_info = {}
         # primary monitor set to second monitor for hot reloading
-        primary_monitor = get_monitors()[0]
+        primary_monitor = get_monitors()[1]
         system_info["resolution"] = (primary_monitor.width, primary_monitor.height)
 
         if platform.system() == "Windows":
@@ -260,10 +260,10 @@ class Noel():
                     weapon = self.player.curr_weapon_node._item 
                     if weapon._rapid_fire_toggled: 
                         if self._frame_count % weapon._fire_rate == 0:
-                            weapon.shoot()
+                            weapon.shoot(self.render_engine)
                     else: 
                         if self.rapid_fire_reset:
-                            weapon.shoot()
+                            weapon.shoot(self.render_engine)
                             self.rapid_fire_reset = False
             else: 
                 self.rapid_fire_reset = True
@@ -336,14 +336,14 @@ class Noel():
             self.scroll[1] += (self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self.scroll[1])/20
 
             camera_scroll = (int(self.scroll[0]), int(self.scroll[1]))
-            
+           
             self.render_engine.hulls = self._tilemap._hull_grid.query(camera_scroll[0]-self._tilemap.tile_size * 10 ,camera_scroll[1]- self._tilemap.tile_size * 10,camera_scroll[0] \
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
 
 
             print(len(self.entities_manager._bullets))
 
-
+            self.entities_manager.update(self._tilemap)
             self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
             self.player.update(self._tilemap,self._hud.cursor.topleft,self._player_movement_input,self._frame_count,camera_scroll)
             self.render_engine.bind_player(self.player)
