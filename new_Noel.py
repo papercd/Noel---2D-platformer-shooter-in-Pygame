@@ -10,6 +10,7 @@ from enum import Enum
 from moderngl import create_context,Texture
 from screeninfo import get_monitors
 
+from scripts.entitiesManager import EntitiesManager 
 from scripts.resourceManager import ResourceManager
 # testing 
 
@@ -70,6 +71,7 @@ class Noel():
         self._dt = 0
         self._prev_frame_time = 0
         self.scroll = [0,0]
+        self.rapid_fire_reset =False 
         self._player_movement_input = [0,0]
 
         self._initialize_game_objects()
@@ -77,6 +79,7 @@ class Noel():
 
 
     def _initialize_game_objects(self):
+        self.entities_manager = EntitiesManager.get_instance()
         self.resource_manager = ResourceManager.get_instance(self._ctx,RESOURCE_NAME_TO_PATH)
         self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
@@ -252,6 +255,21 @@ class Noel():
 
     def _handle_events(self):
         if self._curr_gameState == GameState.GameLoop:
+            if self._hud.cursor.pressed[0]:
+                if self.player.curr_weapon_node and self.player.curr_weapon_node._item: 
+                    weapon = self.player.curr_weapon_node._item 
+                    if weapon._rapid_fire_toggled: 
+                        if self._frame_count % weapon._fire_rate == 0:
+                            weapon.shoot()
+                    else: 
+                        if self.rapid_fire_reset:
+                            weapon.shoot()
+                            self.rapid_fire_reset = False
+            else: 
+                self.rapid_fire_reset = True
+
+
+
             for event in pygame.event.get():
                 self._handle_common_events(event)
                 if event.type == pygame.MOUSEWHEEL:
@@ -321,6 +339,9 @@ class Noel():
             
             self.render_engine.hulls = self._tilemap._hull_grid.query(camera_scroll[0]-self._tilemap.tile_size * 10 ,camera_scroll[1]- self._tilemap.tile_size * 10,camera_scroll[0] \
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
+
+
+            print(len(self.entities_manager._bullets))
 
 
             self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
