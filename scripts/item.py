@@ -75,7 +75,7 @@ class Weapon(Item):
         
         self._pivot,self._pivot_to_opening_offset = WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET[self._name]
 
-        self.cursor_pos = None
+        self.target_pos= None
         self._holder = None
         self.magazine = 0 
 
@@ -88,18 +88,24 @@ class Weapon(Item):
         if self._can_RF:
             self._rapid_fire_toggled = not self._rapid_fire_toggled
 
-    def update(self,cursor_pos,holder_entity,camera_scroll):
-        self.cursor_pos = cursor_pos
-        dx,dy = (self.cursor_pos[0]+camera_scroll[0] - (holder_entity.pos[0]+self._pivot[0] + self._pivot_to_opening_offset[0]),\
-                 self.cursor_pos[1] +camera_scroll[1]- (holder_entity.pos[1]+self._pivot[1] + self._pivot_to_opening_offset[1]))
-        self._angle_opening = degrees(atan2(-dy,dx))
-
-        if 90 < self._angle_opening <= 180   or -180 <= self._angle_opening  <-90 : 
+    def update(self,target_pos,holder_entity,camera_scroll):
+        self.target_pos=target_pos 
+        # first decide on which side the cursor is on 
+        if self.target_pos[0] < holder_entity.pos[0]+ holder_entity._sprite_size[0]//2 - camera_scroll[0]:
             self._flipped = True
+            pivot = (holder_entity.right_anchor[0] -1, holder_entity.right_anchor[1])
         else: 
             self._flipped = False
-
+            pivot = holder_entity.left_anchor
         
+        dx,dy = (self.target_pos[0] +camera_scroll[0] - (holder_entity.pos[0]+pivot[0] + self._pivot_to_opening_offset[0]),\
+                 self.target_pos[1] +camera_scroll[1]-  (holder_entity.pos[1]+pivot[1] + self._pivot_to_opening_offset[1]))
+        
+        self._angle_opening = degrees(atan2(-dy,dx))
+
+        if isinstance(holder_entity,Player):
+            if holder_entity.state == 'slide' or holder_entity.state == 'wall_slide':
+                self._flipped = holder_entity.flip 
 
     def shoot(self):
         pass 
@@ -111,11 +117,19 @@ class AK47(Weapon):
         super().__init__('ak47',5,15)
         self._size = (18,9)
 
+    def copy(self):
+        new_weapon = AK47()
+        new_weapon.magazine = self.magazine
+        return new_weapon
 class Flamethrower(Weapon):
     def __init__(self):
         super().__init__('flamethrower',5,30)
         self._size = (24,8)
 
+    def copy(self):
+        new_weapon = Flamethrower()
+        new_weapon.magazine = self.magazine
+        return new_weapon
 
 class Shotgun(Weapon):
     def __init__(self):

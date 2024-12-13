@@ -3,6 +3,7 @@ import platform
 import importlib
 from os import environ,listdir
 from json import load  as jsLoad
+import scripts.resourceManager
 from scripts.utils import load_texture 
 from time import time
 from enum import Enum
@@ -96,7 +97,7 @@ class Noel():
         self.render_engine.bind_hud(self._hud)
         self.render_engine.lights = self._tilemap.lights
     
-    """
+   
     def _hot_reload(self):
         # import changed modules
         importlib.reload(scripts.new_HUD)
@@ -107,7 +108,7 @@ class Noel():
         importlib.reload(scripts.new_tilemap)
         importlib.reload(scripts.new_inventory)
         importlib.reload(my_pygame_light2d.engine)
-        
+        importlib.reload(scripts.resourceManager)
 
         # import changed classes
         from my_pygame_light2d.engine import RenderEngine
@@ -116,15 +117,17 @@ class Noel():
         from scripts.new_particles import ParticleSystem
         from scripts.new_entities import Player
         from scripts.new_tilemap import Tilemap
+        from scripts.resourceManager import ResourceManager
 
         # reinitialize render engine 
+        self.resource_manager = ResourceManager.get_instance(self._ctx,RESOURCE_NAME_TO_PATH)
         self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
 
         # explicitly reinitialize objects       
-        self._tilemap = Tilemap(self._atlas_dict['tiles'])
-        self._tilemap.load_map(self._tilemap_jsons['test1.json'])  
+        self._tilemap = Tilemap()
+        self._tilemap.load_map('test1.json')  
 
-        self.particle_system = ParticleSystem.get_instance(self._atlas_dict['particles']) 
+        self.particle_system = ParticleSystem.get_instance() 
         self._grass_manager = GrassManager()
         
         # Update cursor's position
@@ -141,11 +144,11 @@ class Noel():
         self.player.set_default_speed(2.2)
 
         # reinitialize hud
-        self._hud = HUD(self._atlas_dict['UI_and_items'],self.player,self._true_res)
+        self._hud = HUD(self.player,self._true_res)
 
         # rebind objects to render engine
         self._bind_objects_to_render_engine()
-    """
+    
 
     def _initalize_game_settings(self):
         self._system_display_info = self._get_system_display_info()
@@ -254,10 +257,10 @@ class Noel():
                 if event.type == pygame.MOUSEWHEEL:
                     self._hud.change_weapon(event.y)
                 if event.type ==pygame.KEYDOWN:
-                    """
+                    
                     if event.key == pygame.K_F5:
                         self._hot_reload()
-                    """
+                    
                     if event.key == pygame.K_e:
                         self._hud.set_inven_open_state(not self._hud.inven_open_state)
                     if event.key == pygame.K_a:

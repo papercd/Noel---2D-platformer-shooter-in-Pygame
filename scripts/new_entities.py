@@ -166,7 +166,7 @@ class Player(PhysicsEntity):
         self._animation_data_collection = PlayerAnimationDataCollection
         self._cur_animation = self._animation_data_collection.get_animation_data('idle')
         super().__init__('player', pos, size)
-        
+        self._sprite_size = (16,16)
         self._accel_rate = 0
         self._default_speed = 0
 

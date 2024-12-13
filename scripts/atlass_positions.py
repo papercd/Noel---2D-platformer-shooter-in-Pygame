@@ -23,7 +23,8 @@ TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES = {
 
 
 IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
-    'ak47': {"normal": ((0,0),(31,12)),"holding":((56,0),(18,9))}
+    'ak47': {"normal": ((0,0),(31,12)),"holding":((56,0),(18,9))},
+    'flamethrower': {"normal": ((0,12),(32,9)),"holding":((57,12),(24,8))}
 }
 
 UI_WEAPON_ATLAS_POSITIONS_AND_SIZES = {

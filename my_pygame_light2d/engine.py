@@ -272,7 +272,7 @@ class RenderEngine:
         if self._player.curr_weapon_node and self._player.curr_weapon_node._item:
             weapon = self._player.curr_weapon_node._item
             size = weapon._size
-            anchor_offset = (self._player.right_anchor[0]-1,self._player.right_anchor[1]  ) if weapon._flipped else self._player.left_anchor
+            anchor_offset = (self._player.right_anchor[0] -1,self._player.right_anchor[1]) if weapon._flipped else self._player.left_anchor
             pos = (self._player.pos[0]+anchor_offset[0] - offset[0], self._player.pos[1]+ anchor_offset[1] -offset[1])
 
             texture_coords = self._rm._in_world_item_texcoords[weapon.name]['holding'] 
@@ -287,9 +287,6 @@ class RenderEngine:
             self._rm.held_wpn_atlas.use()
             fbo.use()
             vao.render()
-            
-
-
             vao.release()
             vbo.release()
 
@@ -313,18 +310,12 @@ class RenderEngine:
             offset = (flipped_pivot[0]-size[0]//2,flipped_pivot[1]-size[1]//2)
         else:
             offset = (pivot[0]-size[0]//2, pivot[1]-size[1]//2)
-      
-        p0[0] -= offset[0] 
-        p0[1] -= offset[1] 
-        p1[0] -= offset[0]
-        p1[1] -= offset[1] 
-        p2[0] -= offset[0] 
-        p2[1] -= offset[1] 
-        p3[0] -= offset[0] 
-        p3[1] -= offset[1]
+
+        p0 -= offset
+        p1 -= offset
+        p2 -= offset
+        p3 -= offset
         
-
-
         # step 3: do the rotation.
         sign = 1 if rotation_angle> 0 else -1 
         if flipped:
@@ -332,32 +323,23 @@ class RenderEngine:
         else: 
             angle = rotation_angle
             
-        p0 = p0.rotate(angle)
-        p1 = p1.rotate(angle)
-        p2 =p2.rotate(angle)
-        p3 =p3.rotate(angle)
+        p0.rotate_ip(angle)
+        p1.rotate_ip(angle)
+        p2.rotate_ip(angle)
+        p3.rotate_ip(angle)
 
         # step 4: translate the points to the world coordinates 
 
-
-
-
-        p0[0] += pos[0] 
-        p0[1] += pos[1] 
-        p1[0] += pos[0]
-        p1[1] += pos[1] 
-        p2[0] += pos[0] 
-        p2[1] += pos[1] 
-        p3[0] += pos[0] 
-        p3[1] += pos[1]
-
-        
+        p0 += pos
+        p1 += pos
+        p2 += pos
+        p3 += pos
         # step 5: map the vertices to screen coords 
+
         self._map_to_screen_coords(p0)        
         self._map_to_screen_coords(p1)        
         self._map_to_screen_coords(p2)        
         self._map_to_screen_coords(p3)        
-
 
         # step 6: create the vertices array 
         if flipped: 
@@ -372,6 +354,8 @@ class RenderEngine:
             br = p3
         return np.array([bl,br,tl,
                          tl,br,tr])
+
+
 
     def _map_to_screen_coords(self,vertex:vec2):
         vertex[0] = 2. * vertex[0] / self._true_res[0] -1.
