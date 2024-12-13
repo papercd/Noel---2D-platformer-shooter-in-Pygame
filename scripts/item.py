@@ -120,7 +120,7 @@ class Weapon(Item):
         self._angle_opening = degrees(atan2(-dy,dx))
 
         self._opening_pos[0] = holder_entity.pos[0]+pivot[0] + self._pivot_to_opening_offset[0] + cos(radians(-self._angle_opening)) * self._size[0] 
-        self._opening_pos[1] = holder_entity.pos[1]+ pivot[1] + self._pivot_to_opening_offset[1] + sin(radians(-self._angle_opening)) * self._size[1] 
+        self._opening_pos[1] = holder_entity.pos[1]+ pivot[1] + self._pivot_to_opening_offset[1] + sin(radians(-self._angle_opening)) * self._size[0] 
 
         if isinstance(holder_entity,Player):
             if holder_entity.state == 'slide' or holder_entity.state == 'wall_slide':
@@ -166,6 +166,11 @@ class AK47(Weapon):
         light.set_color(248,129,153)
         light.cast_shadows = False
         render_engine.lights.append(light)
+
+        light = PointLight(self._opening_pos,power = 1.0,radius = 20, illuminator= bullet, life = bullet._frames_flown)
+        light.cast_shadows = False
+        render_engine.lights.append(light)
+        
 
 
 

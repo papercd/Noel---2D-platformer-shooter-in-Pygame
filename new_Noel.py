@@ -165,7 +165,7 @@ class Noel():
     def _get_system_display_info(self):
         system_info = {}
         # primary monitor set to second monitor for hot reloading
-        primary_monitor = get_monitors()[1]
+        primary_monitor = get_monitors()[0]
         system_info["resolution"] = (primary_monitor.width, primary_monitor.height)
 
         if platform.system() == "Windows":
@@ -341,7 +341,6 @@ class Noel():
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
 
 
-            print(len(self.entities_manager._bullets))
 
             self.entities_manager.update(self._tilemap)
             self.particle_system.update(self._dt,self._tilemap,self._grass_manager)

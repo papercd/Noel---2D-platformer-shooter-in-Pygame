@@ -1578,7 +1578,8 @@ class RenderEngine:
         vertices_list= [] 
         texture_coords_list = []
         for bullet in self._em._bullets:
-            print("checking")
+            pass
+            
    
 
     def render_background_scene_to_fbo(self,offset = (0,0),infinite:bool = False)-> None :

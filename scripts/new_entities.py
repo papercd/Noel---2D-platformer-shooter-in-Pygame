@@ -515,7 +515,7 @@ class Bullet(PhysicsEntity):
         steps = 2
         if steps == 0: 
             return False 
-
+        print(self.pos,self.velocity)
         for step in range(steps):
         
             self.pos[0] += self.velocity[0]/steps 
@@ -528,6 +528,7 @@ class Bullet(PhysicsEntity):
                 if SAT(rect_tile,rotated_bullet_rect):
                 #if entity_rect.colliderect(rect_tile[0]):
                     #self.handle_tile_collision(tilemap,rect_tile)
+                    self._dead = True
                     return True 
             
             self.pos[1] += self.velocity[1]/steps
@@ -539,6 +540,7 @@ class Bullet(PhysicsEntity):
                 if SAT(rect_tile,rotated_bullet_rect):
                 #if entity_rect.colliderect(rect_tile[0]):
                     #self.handle_tile_collision(tilemap,rect_tile)
+                    self._dead = True
                     return True 
         return False
 
@@ -548,4 +550,4 @@ class AKBullet(Bullet):
     def __init__(self, pos: list[float],damage,angle,velocity):
         super().__init__(60,pos, (16,5),angle)
         self._damage = damage
-        self._velocity = velocity
+        self.velocity = velocity
