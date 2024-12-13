@@ -2,6 +2,7 @@ import os
 import pygame 
 import math
 import numpy as np
+from scripts.custom_data_types import TileInfo
 from moderngl import Context,Texture,NEAREST
 #from PIL import Image, ImageFilter
 
@@ -72,7 +73,7 @@ def smoothclamp_decreasing(x, mi, mx):
     smooth_t = np.where(t < 0, 1, np.where(t <= 1, 1 - (3 * t**2 - 2 * t**3), 0))
     return mi + (mx - mi) * smooth_t
 
-def rect_corners(rect, angle):
+def rect_corners(rect, angle) -> list[pygame.math.Vector2]:
     """Returns the four corners of a rotated rectangle."""
     cx, cy = rect.center
     w, h = rect.size
@@ -132,7 +133,38 @@ def obb_collision(rect1_corners, rect2):
 
 
 
+def get_rotated_vertices(center:tuple[int,int], width:int,height:int, angle:int) -> list[pygame.math.Vector2]:
+    bullet_rect = pygame.Rect(center[0] - width // 2,
+                              center[1] - height// 2,
+                              width,
+                              height)
+    return rect_corners(bullet_rect,angle)
 
+
+
+def SAT(rect_tile:tuple[pygame.Rect,TileInfo],rotated_bullet_vertices:list[pygame.math.Vector2]) ->bool:
+    if rect_tile[1].type =='lights':
+        return obb_collision(rotated_bullet_vertices,rect_tile[0])
+    
+    if rect_tile[1].type.split('_')[1] =='stairs' :
+        rel_pos_variant = rect_tile[1].variant.split(';')
+        if rel_pos_variant[0] in ('0','1'):
+            rect= pygame.Rect(rect_tile[0].left + 14,rect_tile[0].top + 14,2,2) if rel_pos_variant[0] == '2' \
+            else pygame.Rect(rect_tile[0].left,rect_tile[0].top +14,2,2) 
+            
+            return obb_collision(rotated_bullet_vertices,rect)
+        else:
+            if rel_pos_variant[1] == '1':
+                return obb_collision(rotated_bullet_vertices,pygame.Rect(rect_tile[0].left,rect_tile[0].top+ 6,16,10))
+            else: 
+                rect = pygame.Rect(rect_tile[0].left+4,rect_tile[0].top+4,12,12) if rel_pos_variant[0] =='2' \
+                else   pygame.Rect(rect_tile[0].left,rect_tile[0].top+4,12,12)
+                return obb_collision(rotated_bullet_vertices,rect)
+            
+    elif rect_tile[1].type.split('_')[1] == 'door' and rect_tile[1].open:
+        pass 
+    else: 
+        return obb_collision(rotated_bullet_vertices, rect_tile[0])
 
 
 

@@ -20,6 +20,7 @@ from scripts.layer import Layer_
 from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES, TILE_ATLAS_POSITIONS,\
                                     ENTITIES_ATLAS_POSITIONS,PARTICLE_ATLAS_POSITIONS_AND_SIZES
 
+from scripts.entitiesManager import EntitiesManager
 from scripts.resourceManager import ResourceManager
 from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.shader import Shader 
@@ -50,6 +51,7 @@ class RenderEngine:
 
         # singleton references 
         self._rm = ResourceManager.get_instance()
+        self._em = EntitiesManager.get_instance()
         self._ps = ParticleSystem.get_instance()
 
         # Initialize  members
@@ -261,19 +263,23 @@ class RenderEngine:
             
     
     def _render_player(self,fbo:moderngl.Framebuffer,offset):
+        weapon = None 
+        if self._player.curr_weapon_node and self._player.curr_weapon_node._item: 
+            weapon = self._player.curr_weapon_node._item 
+        knockback = [0,0] if not weapon else weapon._knockback
+
         texture_atl_pos = ENTITIES_ATLAS_POSITIONS[self._player.type][self._player.holding_gun][self._player.state]
         self._render_tex_to_fbo(
             self._rm.entities_atlas,fbo,
-            dest=pygame.Rect(self._player.pos[0] - offset[0] ,self._player.pos[1] - offset[1],16,16),
+            dest=pygame.Rect(self._player.pos[0]+knockback[0]/5 - offset[0] ,self._player.pos[1] + knockback[1]/9 - offset[1],16,16),
             source = pygame.Rect(texture_atl_pos[0]+16 * self._player._cur_animation.curr_frame(),texture_atl_pos[1],16,16),
             flip =self._player.flip
         
         )
-        if self._player.curr_weapon_node and self._player.curr_weapon_node._item:
-            weapon = self._player.curr_weapon_node._item
+        if weapon: 
             size = weapon._size
             anchor_offset = (self._player.right_anchor[0] -1,self._player.right_anchor[1]) if weapon._flipped else self._player.left_anchor
-            pos = (self._player.pos[0]+weapon._knockback[0]+anchor_offset[0] - offset[0], self._player.pos[1] +weapon._knockback[1] + anchor_offset[1] -offset[1])
+            pos = (self._player.pos[0]+knockback[0]+anchor_offset[0] - offset[0], self._player.pos[1] +knockback[1] + anchor_offset[1] -offset[1])
 
             texture_coords = self._rm._in_world_item_texcoords[weapon.name]['holding'] 
             vertices = self._create_vertices_for_weapon(size,pos,-weapon._angle_opening,weapon._pivot,weapon._flipped)
@@ -954,7 +960,7 @@ class RenderEngine:
             if light.popped:
                 self.lights.remove(light)
                 continue
-            if light.illuminator and light.illuminator.dead:
+            if light.illuminator and light.illuminator._dead:
                 self.lights.remove(light)
                 continue 
             if math.dist(light.position,offset) > light.radius + self._diagonal:
@@ -986,7 +992,7 @@ class RenderEngine:
             if light.illuminator: 
                 
                 light.cur_power = max(0,light.power * (light.life/light.maxlife))
-                light.position = (int(light.illuminator.center[0]) , int(light.illuminator.center[1]))    
+                light.position = (int(light.illuminator._center[0]) , int(light.illuminator._center[1]))    
                 
             elif light.life > 0: 
                 if light.maxlife-1 == light.life: 
@@ -1567,7 +1573,14 @@ class RenderEngine:
         vao.render()
         vbo.release()
         vao.release()
-    
+
+    def _render_bullets(self,fbo:moderngl.Framebuffer,camera_scroll):
+        vertices_list= [] 
+        texture_coords_list = []
+        for bullet in self._em._bullets:
+            pass
+            
+   
 
     def render_background_scene_to_fbo(self,offset = (0,0),infinite:bool = False)-> None :
         """
@@ -1586,6 +1599,7 @@ class RenderEngine:
         self._render_tilemap(fbo,offset)
         self._render_player(fbo,offset)
         self._render_particles(fbo,offset)
+        self._render_bullets(fbo,offset)
 
     def render_foreground_scene_to_fbo(self):
         """
