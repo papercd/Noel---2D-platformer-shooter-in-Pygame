@@ -83,7 +83,7 @@ class ParticleSystem:
 
         for i in range(self._max_animation_particle_count):
             animation = Animation(0,0,False,False)
-            particle_data = AnimationParticleData("None",[0,0],[0,0],None)
+            particle_data = AnimationParticleData("None",[0,0],[0,0],0,False,None)
             self._animation_particles.append(AnimatedParticle(particle_data,animation))
 
 
@@ -103,6 +103,7 @@ class ParticleSystem:
             particle =self._animation_particles[self._animation_particle_pool_index]
             particle._active = True 
             particle.set_new_data(particle_data)
+
             self._active_animation_particles.add(particle)
             self._animation_particle_pool_index = (self._animation_particle_pool_index -1) % self._max_animation_particle_count 
 
@@ -508,9 +509,13 @@ class AnimatedParticle:
         self.type= particle_data.type 
         self.pos = particle_data.pos 
         self.velocity = particle_data.velocity
+        self.rotation_angle = particle_data.angle
+        self.flipped = particle_data.flipped
         self.source = particle_data.source
         self.animation = animation 
         self._active = False 
+
+
 
         # TODO: ACCOUNT FOR ROTATION HERE 
 
@@ -518,8 +523,9 @@ class AnimatedParticle:
         self.type= particle_data.type 
         self.pos = particle_data.pos 
         self.velocity = particle_data.velocity
+        self.rotation_angle = particle_data.angle
+        self.flipped = particle_data.flipped
         self.source = particle_data.source
-        
         self.animation.set_new_data(PARTICLE_ANIMATION_DATA[self.type])
 
     def update(self):
@@ -531,5 +537,6 @@ class AnimatedParticle:
 
         self.animation.update()
         return kill 
+
 
 

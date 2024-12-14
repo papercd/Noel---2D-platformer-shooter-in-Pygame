@@ -68,7 +68,8 @@ UI_ATLAS_POSITIONS_AND_SIZES = {
 PARTICLE_ATLAS_POSITIONS_AND_SIZES ={
     "jump" : ((0,0),(30,15)),
     "land" : ((0,15),(48,11)),
-    "big_land" :((0,26),(60,20))
+    "big_land" :((0,26),(60,20)),
+    'ak47_smoke':((0,46),(16,9))
 }
 
 

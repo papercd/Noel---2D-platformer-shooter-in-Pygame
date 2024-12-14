@@ -10,6 +10,7 @@ import time
 
 from pygame.math import Vector2 as vec2 
 from scripts.layer import Layer_
+from scripts.animationData import PARTICLE_ANIMATION_PIVOTS
 from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES, TILE_ATLAS_POSITIONS,\
                                     ENTITIES_ATLAS_POSITIONS,PARTICLE_ATLAS_POSITIONS_AND_SIZES
 from scripts.lists import interpolatedLightNode
@@ -270,7 +271,7 @@ class RenderEngine:
             pos = (self._player.pos[0]+knockback[0]+anchor_offset[0] - offset[0], self._player.pos[1] +knockback[1] + anchor_offset[1] -offset[1])
 
             texture_coords = self._rm._in_world_item_texcoords[weapon.name]['holding'] 
-            vertices = self._create_vertices_for_weapon(size,pos,-weapon.angle_opening,weapon.pivot,weapon.flipped)
+            vertices = self._create_rotated_vertices(size,pos,-weapon.angle_opening,weapon.pivot,weapon.flipped)
 
             buffer_data =  np.column_stack([vertices,texture_coords]).astype(np.float32)
 
@@ -285,7 +286,7 @@ class RenderEngine:
 
     # TODO: define the types for pos and rotation angle after cleaning up code and figuring out their types
     
-    def _create_vertices_for_weapon(self, size:tuple[int,int], pos,rotation_angle,pivot:tuple[int,int],flipped:bool)->np.array:
+    def _create_rotated_vertices(self, size:tuple[int,int], pos,rotation_angle,pivot:tuple[int,int],flipped:bool)->np.array:
         # step 1: create vertices around the origin. 
         p0 = vec2(-size[0]//2, size[1]//2) # topleft 
         p1 = vec2(size[0]//2 , size[1]//2) # topright 
@@ -1503,10 +1504,14 @@ class RenderEngine:
         for particle in list(particle_system._active_animation_particles):
             cur_frame = particle.animation.curr_frame()
             animationData = PARTICLE_ATLAS_POSITIONS_AND_SIZES[particle.type]
-
-            vertices = self._create_animation_particle_vertices(particle.pos,animationData[1],camera_scroll,fbo.width,fbo.height)
+            if particle.rotation_angle != 0:
+                pivot = PARTICLE_ANIMATION_PIVOTS[particle.type]
+                vertices = self._create_rotated_vertices(animationData[1],(particle.pos[0]-camera_scroll[0],particle.pos[1]-camera_scroll[1]),\
+                                                        particle.rotation_angle,pivot,particle.flipped)
+            else: 
+                vertices = self._create_animation_particle_vertices(particle.pos,animationData[1],camera_scroll,fbo.width,fbo.height)
+            
             texture_coords = particle_system._tex_dict[(particle.type,cur_frame)]
-
             vertices_list.append(vertices)
             texture_coords_list.append(texture_coords)
 
@@ -1540,6 +1545,11 @@ class RenderEngine:
         
     
     def _create_animation_particle_vertices(self,pos:tuple[int,int],size: tuple[int,int],camera_scroll : tuple[int,int],fbo_w,fbo_h):
+        
+
+
+
+
         x = 2. * (pos[0]  - size[0]//2 -camera_scroll[0]) / fbo_w -1.
         y = 1. - 2. * (pos[1] - size[1]//2 -camera_scroll[1]) /fbo_h 
         w = 2. * size[0] /fbo_w
