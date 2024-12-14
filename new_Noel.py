@@ -51,7 +51,6 @@ class Noel():
         self._dt = 0
         self._prev_frame_time = 0
         self._scroll = [0,0]
-        self._rapid_fire_reset =False 
         self._player_movement_input = [0,0]
 
         self._initialize_game_objects()
@@ -237,20 +236,10 @@ class Noel():
     def _handle_events(self):
         if self._curr_gameState == GameState.GameLoop:
             if self._hud.cursor.pressed[0]:
-                if self.player.curr_weapon_node and self.player.curr_weapon_node._item: 
-                    weapon = self.player.curr_weapon_node._item 
-                    if weapon._rapid_fire_toggled: 
-                        if self._frame_count % weapon._fire_rate == 0:
-                            weapon.shoot(self.render_engine.lights)
-                    else: 
-                        if self._rapid_fire_reset:
-                            weapon.shoot(self.render_engine.lights)
-                            self._rapid_fire_reset = False
+                self.player.shoot_weapon(self.render_engine.lights,self.entities_manager,self._frame_count)
             else: 
-                self._rapid_fire_reset = True
-
-
-
+                self.player.prompt_weapon_reset()
+          
             for event in pygame.event.get():
                 self._handle_common_events(event)
                 if event.type == pygame.MOUSEWHEEL:
@@ -264,13 +253,16 @@ class Noel():
                         self._hud.set_inven_open_state(not self._hud.inven_open_state)
                     if event.key == pygame.K_a:
                         self._player_movement_input[0] = True 
+                    if event.key == pygame.K_g: 
+                        self.player.toggle_rapid_fire()
+
                     if event.key == pygame.K_x: 
                         for row in self._hud._inven_list[0]._cells: 
                             for cell in row:
                                 if cell._item: 
                                     print(cell._item.count)
                     if event.key == pygame.K_f: 
-                        # change these later to be instantiated with their own class names 
+                        # change these later to be instantiated with their own sdclass names 
                         self._hud.add_item(AK47())
                     if event.key == pygame.K_v: 
                         self._hud.add_item(Flamethrower())
@@ -279,7 +271,7 @@ class Noel():
                         self._hud.add_item(Item(random.choice(list(ITEM_ATLAS_POSITIONS_AND_SIZES.keys()))))
                         pass 
                     if event.key == pygame.K_w: 
-                        self.player.jump()
+                        self.player.jump(self.particle_system)
                     if event.key == pygame.K_s:
                         self.player.crouch = True
                     if event.key == pygame.K_d:
@@ -322,10 +314,14 @@ class Noel():
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
 
 
+            print(len(self.entities_manager._bullets))
 
             self.entities_manager.update(self._tilemap)
             self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
-            self.player.update(self._tilemap,self._hud.cursor.topleft,self._player_movement_input,self._frame_count,camera_scroll)
+
+
+            self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
+                               self._player_movement_input,camera_scroll)
             self.render_engine.bind_player(self.player)
             self._hud.update()
             self.render_engine.bind_hud(self._hud)

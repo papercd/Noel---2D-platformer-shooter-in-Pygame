@@ -252,25 +252,25 @@ class RenderEngine:
     
     def _render_player(self,fbo:moderngl.Framebuffer,offset = (0,0))-> None:
         weapon = None 
-        if self._player.curr_weapon_node and self._player.curr_weapon_node._item: 
-            weapon = self._player.curr_weapon_node._item 
-        knockback = [0,0] if not weapon else weapon._knockback
+        if self._player.curr_weapon_node and self._player.curr_weapon_node.weapon: 
+            weapon = self._player.curr_weapon_node.weapon
+        knockback = [0,0] if not weapon else weapon.knockback
 
         texture_atl_pos = ENTITIES_ATLAS_POSITIONS[self._player.type][self._player.holding_gun][self._player.state]
         self._render_tex_to_fbo(
             self._rm.entities_atlas,fbo,
-            dest=pygame.Rect(self._player.pos[0]+knockback[0]/5 - offset[0] ,self._player.pos[1] + knockback[1]/9 - offset[1],16,16),
-            source = pygame.Rect(texture_atl_pos[0]+16 * self._player._cur_animation.curr_frame(),texture_atl_pos[1],16,16),
+            dest=pygame.Rect(self._player.pos[0]+knockback[0]/self._player.knockback_reduction_factor[0] - offset[0] ,\
+                             self._player.pos[1] + knockback[1]/self._player.knockback_reduction_factor[1] - offset[1],self._player.sprite_size[0],self._player.sprite_size[1]),
+            source = pygame.Rect(texture_atl_pos[0]+self._player.sprite_size[0]* self._player.cur_animation.curr_frame(),texture_atl_pos[1],self._player.sprite_size[0],self._player.sprite_size[1]),
             flip =self._player.flip
-        
         )
         if weapon: 
-            size = weapon._size
-            anchor_offset = (self._player.right_anchor[0] -1,self._player.right_anchor[1]) if weapon._flipped else self._player.left_anchor
+            size = weapon.size
+            anchor_offset = (self._player.right_anchor[0] -1,self._player.right_anchor[1]) if weapon.flipped else self._player.left_anchor
             pos = (self._player.pos[0]+knockback[0]+anchor_offset[0] - offset[0], self._player.pos[1] +knockback[1] + anchor_offset[1] -offset[1])
 
             texture_coords = self._rm._in_world_item_texcoords[weapon.name]['holding'] 
-            vertices = self._create_vertices_for_weapon(size,pos,-weapon._angle_opening,weapon._pivot,weapon._flipped)
+            vertices = self._create_vertices_for_weapon(size,pos,-weapon.angle_opening,weapon.pivot,weapon.flipped)
 
             buffer_data =  np.column_stack([vertices,texture_coords]).astype(np.float32)
 
@@ -379,8 +379,8 @@ class RenderEngine:
         opacity =255 
 
         for inventory in self._hud._inven_list:
-            if inventory._name.endswith('item'):
-                if inventory._expandable:
+            if inventory.name.endswith('item'):
+                if inventory.expandable:
                     if inventory.cur_opacity > 0 :
                         opacity = inventory.cur_opacity
                         background_texture_coords = self._rm._ui_texcoords["background"]
@@ -390,15 +390,15 @@ class RenderEngine:
 
                         for i in range(inventory._rows):
                             for j in range(inventory._columns):
-                                cell = inventory._cells[i][j]
-                                texture_coords = self._rm._ui_texcoords[f"{inventory._name}_slot"][cell._hovered]
-                                vertices = self._hud._vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
+                                cell = inventory.cells[i][j]
+                                texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][cell.hovered]
+                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory.ind}"][i*inventory.columns + j][cell.hovered]
                                 opaque_vertices_list.append(vertices)
                                 opaque_texture_coords_list.append(texture_coords)
                                 
                                 if cell._item: 
-                                    texture_coords = self._rm._item_texcoords[cell._item.name]
-                                    vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
+                                    texture_coords = self._rm._item_texcoords[cell.item.name]
+                                    vertices = self._hud._item_vertices_dict[f"{inventory.name}_{inventory.ind}"][i*inventory.columns + j][cell.hovered]
                                     opaque_vertices_list.append(vertices)
                                     opaque_texture_coords_list.append(texture_coords)
                                     
@@ -408,16 +408,16 @@ class RenderEngine:
 
                 else: 
                     # if the inventory is not expandable, then it is always open, 
-                    for i in range(inventory._rows):
-                        for j in range(inventory._columns):
-                                cell = inventory._cells[i][j]
-                                texture_coords = self._rm._ui_texcoords[f"{inventory._name}_slot"][cell._hovered]
-                                vertices = self._hud._vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
+                    for i in range(inventory.rows):
+                        for j in range(inventory.columns):
+                                cell = inventory.cells[i][j]
+                                texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][cell.hovered]
+                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory.ind}"][i*inventory.columns + j][cell.hovered]
                                 vertices_list.append(vertices)
                                 texture_coords_list.append(texture_coords)
                                 if cell._item: 
-                                    texture_coords = self._rm._item_texcoords[cell._item.name]
-                                    vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
+                                    texture_coords = self._rm._item_texcoords[cell.item.name]
+                                    vertices = self._hud._item_vertices_dict[f"{inventory.name}_{inventory.ind}"][i*inventory.columns + j][cell.hovered]
 
                                     # testing the rare effect 
                                     #rare_items_vertices_list.append(vertices)
@@ -425,48 +425,48 @@ class RenderEngine:
                                     vertices_list.append(vertices)
                                     texture_coords_list.append(texture_coords)
                                     
-                                    number = cell._item.count
+                                    number = cell.item.count
                                     self._create_vertex_texture_coords_for_num(inventory,i,j,number,vertices_list,texture_coords_list)
                                     
             else:
                 if inventory.cur_opacity > 0 :
-                    current = inventory._weapons_list.head 
+                    current = inventory.weapons_list.head 
                     while current: 
-                        if current._cell_ind == inventory._weapons_list.curr_node._cell_ind:
+                        if current.cell_ind == inventory.weapons_list.curr_node.cell_ind:
                             # the weapon panel item rendering is done here
                             
 
-                            item = current._item 
+                            item = current.weapon
                             if item is not None: 
                                 
                                 
                                 texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][1]
-                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][1]
+                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory.ind}"][current.cell_ind][1]
                                 opaque_texture_coords_list.append(texture_coords)
                                 opaque_vertices_list.append(vertices)
                             else: 
-                                texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][current._hovered]
-                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
+                                texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][current.hovered]
+                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory.ind}"][current.cell_ind][current.hovered]
                                 opaque_texture_coords_list.append(texture_coords)
                                 opaque_vertices_list.append(vertices)
 
 
                         else:
-                            texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][current._hovered]
-                            vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
+                            texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][current.hovered]
+                            vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory.ind}"][current.cell_ind][current.hovered]
                             opaque_texture_coords_list.append(texture_coords)
                             opaque_vertices_list.append(vertices)
                             
-                        if current._item:
-                            weapon_texture_coords = self._rm._item_texcoords[current._item.name]
-                            weapon_vertices = self._hud._item_vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
+                        if current.weapon:
+                            weapon_texture_coords = self._rm._item_texcoords[current.weapon.name]
+                            weapon_vertices = self._hud._item_vertices_dict[f"{inventory.name}_{inventory.ind}"][current.cell_ind][current.hovered]
                             opaque_vertices_list.append(weapon_vertices)
                             opaque_texture_coords_list.append(weapon_texture_coords)
                         current = current.next 
 
-                if inventory._weapons_list.curr_node._item: 
-                    left_node,right_node = inventory._weapons_list.curr_node.check_nearest_node_with_item()
-                    current_weapon_tex_coords = self._rm._item_texcoords[inventory._weapons_list.curr_node._item.name]
+                if inventory.weapons_list.curr_node.weapon: 
+                    left_node,right_node = inventory.weapons_list.curr_node.check_nearest_node_with_item()
+                    current_weapon_tex_coords = self._rm._item_texcoords[inventory.weapons_list.curr_node.weapon.name]
                     current_weapon_vertices = self._hud._item_vertices_dict["current_weapon"]
 
                     vertices_list.append(current_weapon_vertices)

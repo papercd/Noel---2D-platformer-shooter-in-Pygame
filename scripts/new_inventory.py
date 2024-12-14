@@ -38,6 +38,14 @@ class Inventory:
     @property
     def cells(self):
         return self._cells
+    
+    @property 
+    def rows(self):
+        return self._rows
+    
+    @property
+    def columns(self):
+        return self._columns
 
     @property
     def done_open(self)->int:
@@ -153,6 +161,10 @@ class WeaponInventory(Inventory):
                 self._weapons_list.add_node(i * self._columns + j, (topleft,self._cell_dim))
 
 
+    @property 
+    def weapons_list(self) -> "WeaponInvenList":
+        return self._weapons_list
+
     def change_weapon(self,scroll:int)->None:
         self._weapons_list.change_weapon(scroll)
 
@@ -219,6 +231,10 @@ class Cell:
     @property
     def item(self)->"Item": 
         return self._item
+    
+    @property 
+    def hovered(self)->bool: 
+        return self._hovered
 
     def update(self,stack_limit:int,inventory_list:list[Inventory],cursor:"Cursor",opacity:int)->None:
         if cursor.box.colliderect(self._rect):

@@ -1,10 +1,17 @@
 from pygame import Rect
-from scripts.new_tilemap import Tilemap
-from scripts.new_particles import ParticleSystem
-from scripts.custom_data_types import AnimationParticleData,Animation,CollideParticleData
+from scripts.custom_data_types import AnimationParticleData,CollideParticleData
 from scripts.animationData import PlayerAnimationDataCollection
 from scripts.utils import get_rotated_vertices, SAT
 from random import choice as random_choice,random,randint
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scripts.custom_data_types import Animation
+    from my_pygame_light2d.light import PointLight 
+    from scripts.new_tilemap import Tilemap
+    from scripts.new_particles import ParticleSystem
+    from scripts.entitiesManager import EntitiesManager
 
 class PhysicsEntity: 
     def __init__(self,type:str,pos:list[float,float],size:tuple[int,int]):
@@ -48,7 +55,7 @@ class PhysicsEntity:
         return self._collision_rect().colliderect(other._collision_rect())
     
 
-    def update(self,tilemap:Tilemap,movement = (0,0),anim_offset = (0,0))->None:
+    def update(self,tilemap:"Tilemap",movement = (0,0),anim_offset = (0,0))->None:
         self.frame_data += 1 
         self._collisions = {'up': False, 'down': False, 'left': False, 'right': False}
         
@@ -181,6 +188,7 @@ class Player(PhysicsEntity):
         self._sprite_size = (16,16)
         self._accel_rate = 0
         self._default_speed = 0
+        self._knockback_reduction_factor = (5,9)
 
         self.cur_vel = 0 
         self.recov_rate = 0.6
@@ -208,7 +216,7 @@ class Player(PhysicsEntity):
         self.left_and_right_anchors = {  True: {"idle": {"left": (2,6), "right": (13,6)}, "walk": {"left": (2,6), "right": (13,6)},'run' :{"left": (1,6), "right": (8,5)} 
                                            ,'jump_up' :{"left": (0,4), "right": (9,4)},'jump_down' :{"left": (3,5), "right": (10,4)}
                                            ,'slide' :{ "left" : (11,9) ,"right": (11,9)} , 'wall_slide' : {"left": (4,5), "right": (8,5)},'land' :{ "left" : (2,6) ,"right": (8,5)} , 
-                                           'crouch' :{ "left" : (2,8) ,"right": (13,8)},'sprint' : {'left': (7,5),'right':(14,6)}
+                                           'crouch' :{ "left" : (2,8) ,"right": (13,8)},'sprint' : {'left': (1,6),'right':(8,5)}
                                            },
                                     False: {"idle": {"left": (2,6), "right": (13,6)},"walk": {"left": (2,6), "right": (13,6)}, 'run' :{"left": (7,5), "right": (14,6)} 
                                            ,'jump_up' :{"left": (6,4), "right": (15,5)},'jump_down' :{"left": (5,4), "right": (12,5)}
@@ -220,11 +228,22 @@ class Player(PhysicsEntity):
         self.right_anchor = None
         
 
+    @property
+    def knockback_reduction_factor(self)->tuple[int,int]:
+        return self._knockback_reduction_factor
 
+    @property
+    def sprite_size(self)->tuple[int,int]:
+        return self._sprite_size
 
     @property 
     def flip(self)->bool: 
         return self._flip
+    
+    @property 
+    def cur_animation(self)->"Animation": 
+        return self._cur_animation
+
 
     def set_default_speed(self,speed):
         self._default_speed = speed
@@ -270,8 +289,7 @@ class Player(PhysicsEntity):
 
 
 
-    def jump(self):
-        particle_system = ParticleSystem.get_instance()
+    def jump(self,particle_system: "ParticleSystem"):
         WALL_JUMP_SPEED = 4.2
         JUMP_SPEED =4.4
 
@@ -309,13 +327,24 @@ class Player(PhysicsEntity):
             particle_data = AnimationParticleData('jump',[self.pos[0] + self.size[0]//2 ,self.pos[1]+self.size[1]],[0,0.1],'player')
             particle_system.add_particle(particle_data)
 
-    
-    # TODO: add weapon rendering later. 
 
-    def update(self,tilemap:Tilemap,cursor_pos,player_movement_input,frame_count,camera_scroll):
+    def toggle_rapid_fire(self)->None: 
+        if self.curr_weapon_node and self.curr_weapon_node.weapon: 
+            self.curr_weapon_node.weapon.toggle_rapid_fire()
+
+    def prompt_weapon_reset(self)->None: 
+        if self.curr_weapon_node and self.curr_weapon_node.weapon: 
+            self.curr_weapon_node.weapon.reset_shot()
+
+    def shoot_weapon(self,engine_lights:list["PointLight"],entities_manager:"EntitiesManager",frame_count:int)->None: 
+        if self.curr_weapon_node and self.curr_weapon_node.weapon: 
+            weapon = self.curr_weapon_node.weapon
+            weapon.shoot(engine_lights,entities_manager,frame_count)
+
+
+    def update(self,tilemap:"Tilemap",particle_system:"ParticleSystem",cursor_pos,player_movement_input,camera_scroll):
         self._accelerate(player_movement_input)
         self._cur_animation.update()
-        self.time = frame_count
         self.cursor_pos = cursor_pos
         new_movement = [self.cur_vel,0]
 
@@ -380,7 +409,6 @@ class Player(PhysicsEntity):
 
 
         if self._collisions['down']:
-            particle_system = ParticleSystem.get_instance()
             if self.y_inertia > 6:
                 self.set_state('land')
 
@@ -495,10 +523,10 @@ class Player(PhysicsEntity):
                 
         # update the weapon
 
-        if self.curr_weapon_node and self.curr_weapon_node._item: 
+        if self.curr_weapon_node and self.curr_weapon_node.weapon: 
 
             self.holding_gun = True
-            self.curr_weapon_node._item.update(self.cursor_pos,self,camera_scroll)
+            self.curr_weapon_node.weapon.update(self.cursor_pos,self,camera_scroll)
         else: 
             self.holding_gun = False 
         
@@ -542,7 +570,7 @@ class Bullet(PhysicsEntity):
     def adjust_flip(self,adjustment:bool) ->None: 
         self._flip = adjustment
 
-    def update(self,tilemap:Tilemap,offset = (0,0)):
+    def update(self,tilemap:"Tilemap",offset = (0,0)):
         self._frames_flown -= 1 
         if self._frames_flown == 0:
             self._dead = True

@@ -1,7 +1,11 @@
 from scripts.new_entities import Player,AKBullet
 from my_pygame_light2d.light import PointLight
 from math import atan2,degrees,cos,sin,radians
-from scripts.entitiesManager import EntitiesManager
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scripts.entitiesManager import EntitiesManager
 
 ITEM_DESCRIPTIONS = {
     "amethyst_arrow" : "Arrow made with dirty amethyst.",
@@ -75,15 +79,40 @@ class Weapon(Item):
         self._angle_opening = 0
         self._flipped = False
         self._can_RF = self._name in WPNS_WITH_RF
-        self._rapid_fire_toggled = False 
         self._knockback = [0,0]
 
         self._opening_pos = [0,0]
         self._pivot,self._pivot_to_opening_offset = WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET[self._name]
 
-        self.target_pos= None
         self._holder = None
         self.magazine = 0 
+        self.target_pos= None
+        self.rapid_fire_toggled = False 
+        self.shot = False
+
+    @property 
+    def angle_opening(self):
+        return self._angle_opening
+
+    @property
+    def size(self)->tuple[int,int]:
+        return self._size
+
+    @property
+    def opening_pos(self):
+        return self._opening_pos
+
+    @property 
+    def knockback(self):
+        return self._knockback
+    
+    @property
+    def pivot(self):
+        return self._pivot
+    
+    @property
+    def flipped(self)-> bool: 
+        return self._flipped
 
     def copy(self):
         new_weapon = Weapon(self._name,self._fire_rate,self._damage)
@@ -146,12 +175,26 @@ class AK47(Weapon):
         light.cast_shadows = cast_shadows
         return light
 
-    def shoot(self,engine_lights:list[PointLight])-> None:
-        # create a new bullet, make a system of some kind handle bullet update. 
-        em = EntitiesManager.get_instance()
-        vel = (cos(radians(-self._angle_opening))*self._knockback_power,sin(radians(-self._angle_opening))*self._knockback_power)
+    def reset_shot(self)->None: 
+        self.shot = False 
+
+    def shoot(self,engine_lights:list["PointLight"],em:"EntitiesManager",frame_count:int)-> None:
+
+        #TODO: change the frame count system to a dt-based system later, when integrating dt. 
+        
+        if self._rapid_fire_toggled: 
+            if frame_count % self._fire_rate == 0: 
+                self._emit_bullet(engine_lights,em)
+        else: 
+            if not self.shot: 
+                self._emit_bullet(engine_lights,em)
+                self.shot = True 
+
+
+    def _emit_bullet(self,engine_lights:list["PointLight"],em:"EntitiesManager")->None: 
+        vel = (cos(radians(-self._angle_opening))*self._knockback_power*1.5,sin(radians(-self._angle_opening))*self._knockback_power*1.5)
         bullet  = AKBullet(self._opening_pos.copy(),self._damage,-self._angle_opening,vel)
-        bullet.adjust_pos((bullet.size[0]//2,bullet.size[1]//2))
+        bullet.adjust_pos((vel[0]/2+bullet.size[0]//2,vel[1]/2+bullet.size[1]//2))
         bullet.adjust_flip(vel[0]<=0)
         
         engine_lights.append(self._create_light(self._opening_pos, 1.0, 8, (253, 108, 50), 2))
