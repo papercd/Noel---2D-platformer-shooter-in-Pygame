@@ -577,14 +577,13 @@ class Bullet(PhysicsEntity):
             self._dead = True
             return True
         
-        steps = 2
-        if steps == 0: 
-            return False 
+        steps =4 
+
         for step in range(steps):
         
-            self.pos[0] += self.velocity[0]/steps 
+            self.pos[0] += self.velocity[0]/steps
             # need a different way to find the center 
-            self._center[0] += self.velocity[0] /steps 
+            self._center[0] += self.velocity[0] /steps
 
             rotated_bullet_rect = get_rotated_vertices(self._center,*self.size,self._angle) 
 
@@ -592,6 +591,10 @@ class Bullet(PhysicsEntity):
                 if SAT(rect_tile,rotated_bullet_rect):
                 #if entity_rect.colliderect(rect_tile[0]):
                     #self.handle_tile_collision(tilemap,rect_tile)
+                    if step != 0:
+                        self.pos[1] += self.velocity[1]/steps
+                        self._center[1] += self.velocity[1]/steps
+                        return False
                     self._dead = True
                     return True 
             
@@ -604,6 +607,8 @@ class Bullet(PhysicsEntity):
                 if SAT(rect_tile,rotated_bullet_rect):
                 #if entity_rect.colliderect(rect_tile[0]):
                     #self.handle_tile_collision(tilemap,rect_tile)
+                    if step != 0: 
+                        return False
                     self._dead = True
                     return True 
         return False
