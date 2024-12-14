@@ -17,8 +17,15 @@ PARTICLE_ANIMATION_DATA = {
     'jump': AnimationData('jump',9,2,True,False),
     'land': AnimationData('land',4,2,True,False),
     'big_land': AnimationData('big_land',11,2,True,False),
+    'ak47_smoke':AnimationData('ak47_smoke',3,3,False,False)
 }
 
+PARTICLE_ANIMATION_PIVOTS = {
+    'jump':(0,0),
+    'land':(0,0),
+    'big_land': (0,0),
+    'ak47_smoke': (2,4)
+}
 
 PlayerAnimationDataCollection = AnimationDataCollection(PLAYER_ANIMATION_DATA)  
 

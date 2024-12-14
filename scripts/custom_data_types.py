@@ -7,7 +7,7 @@ DoorInfo = namedtuple('DoorInfo', ['type','variant','tile_pos','tile_size','rect
 
 CollideParticleData = namedtuple('CollideParticleData',['size','pos','angle','speed','color','life','gravity_factor'])
 FireParticleData = namedtuple('FireParticleData',['x','y','size','density','rise','rise_angle','spread','wind','damage'])
-AnimationParticleData = namedtuple('AnimationParticleData',['type','pos','velocity','source'])
+AnimationParticleData = namedtuple('AnimationParticleData',['type','pos','velocity','angle','flipped','source'])
 
 class Animation: 
     """ Animation class to handle entities' animations update """

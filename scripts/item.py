@@ -1,8 +1,9 @@
 from scripts.new_entities import Player,AKBullet
 from my_pygame_light2d.light import PointLight
 from math import atan2,degrees,cos,sin,radians
-from scripts.custom_data_types import AnimationParticleData
+from scripts.custom_data_types import AnimationParticleData,CollideParticleData
 from typing import TYPE_CHECKING
+from random import randint,random,choice
 
 if TYPE_CHECKING:
     from scripts.new_particles import ParticleSystem
@@ -32,6 +33,10 @@ WPNS_WITH_RF = {
 WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET ={
     "ak47" : ((2,2),(0,0)),
     'flamethrower' : ((2,2),(0,0))
+}
+
+MUZZLE_PARTICLE_COLORS = {
+    'ak47' : ((238,208,88),(117,116,115),(30,30,30))
 }
 
 class Item:
@@ -83,6 +88,7 @@ class Weapon(Item):
         self._knockback = [0,0]
 
         self._opening_pos = [0,0]
+        self._smoke_pos = [0,0]
         self._pivot,self._pivot_to_opening_offset = WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET[self._name]
 
         self._holder = None
@@ -149,8 +155,13 @@ class Weapon(Item):
         
         self._angle_opening = degrees(atan2(-dy,dx))
 
-        self._opening_pos[0] = holder_entity.pos[0]+pivot[0] + self._pivot_to_opening_offset[0] + cos(radians(-self._angle_opening)) * self._size[0] 
-        self._opening_pos[1] = holder_entity.pos[1]+ pivot[1] + self._pivot_to_opening_offset[1] + sin(radians(-self._angle_opening)) * self._size[0] 
+        rotation_offset = (cos(radians(-self._angle_opening)) * self._size[0],sin(radians(-self._angle_opening)) * self._size[0])
+
+        self._opening_pos[0] = holder_entity.pos[0]+pivot[0] + self._pivot_to_opening_offset[0] + rotation_offset[0]
+        self._opening_pos[1] = holder_entity.pos[1]+ pivot[1] + self._pivot_to_opening_offset[1] + rotation_offset[1]
+        self._smoke_pos[0] = self._opening_pos[0] - rotation_offset[0] //4
+        self._smoke_pos[1] = self._opening_pos[1] - rotation_offset[1] //4
+
 
         if isinstance(holder_entity,Player):
             if holder_entity.state == 'slide' or holder_entity.state == 'wall_slide':
@@ -196,17 +207,28 @@ class AK47(Weapon):
         vel = (cos(radians(-self._angle_opening))*self._knockback_power*1.5,sin(radians(-self._angle_opening))*self._knockback_power*1.5)
         bullet  = AKBullet(self._opening_pos.copy(),self._damage,-self._angle_opening,vel)
         bullet.adjust_pos((vel[0]/2+bullet.size[0]//2,vel[1]/2+bullet.size[1]//2))
-        bullet.adjust_flip(vel[0]<=0)
+        flip = vel[0] <=0
+        bullet.adjust_flip(flip)
         
         engine_lights.append(self._create_light(self._opening_pos, 1.0, 8, (253, 108, 50), 2))
         engine_lights.append(self._create_light(self._opening_pos, 0.7, 24, (248, 129, 153), 2))
         engine_lights.append(self._create_light(self._opening_pos, 0.6, 40, (248, 129, 153), 2))
         engine_lights.append(self._create_light(self._opening_pos, 1.0, 20, (255, 255, 255), bullet._frames_flown, illuminator=bullet))
 
-        """
-        particle_data = AnimationParticleData('ak47_smoke',[],[],'weapon')
+
+        particle_data = AnimationParticleData('ak47_smoke',self._smoke_pos,[0,0],-self._angle_opening,flip,'weapon')
         ps.add_particle(particle_data)
-        """
+        for _ in range(randint(6,13)):
+            speed_factor = random()
+            randomize_angle = randint(-30,30)
+            color = choice(MUZZLE_PARTICLE_COLORS['ak47'])
+            life = randint(1,12)
+
+
+            particle_data = CollideParticleData((1,1),self._smoke_pos.copy(),-(self._angle_opening + randomize_angle),\
+                                                4*speed_factor,color,life,1) 
+            ps.add_particle(particle_data)
+
         em.add_bullet(bullet)
         self._knockback = [-vel[0]/2,-vel[1]/2]
 
