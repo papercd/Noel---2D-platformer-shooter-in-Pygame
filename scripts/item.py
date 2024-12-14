@@ -1,10 +1,11 @@
 from scripts.new_entities import Player,AKBullet
 from my_pygame_light2d.light import PointLight
 from math import atan2,degrees,cos,sin,radians
-
+from scripts.custom_data_types import AnimationParticleData
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from scripts.new_particles import ParticleSystem
     from scripts.entitiesManager import EntitiesManager
 
 ITEM_DESCRIPTIONS = {
@@ -178,20 +179,20 @@ class AK47(Weapon):
     def reset_shot(self)->None: 
         self.shot = False 
 
-    def shoot(self,engine_lights:list["PointLight"],em:"EntitiesManager",frame_count:int)-> None:
+    def shoot(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem",frame_count:int)-> None:
 
         #TODO: change the frame count system to a dt-based system later, when integrating dt. 
         
         if self._rapid_fire_toggled: 
             if frame_count % self._fire_rate == 0: 
-                self._emit_bullet(engine_lights,em)
+                self._emit_bullet(engine_lights,em,ps)
         else: 
             if not self.shot: 
-                self._emit_bullet(engine_lights,em)
+                self._emit_bullet(engine_lights,em,ps)
                 self.shot = True 
 
 
-    def _emit_bullet(self,engine_lights:list["PointLight"],em:"EntitiesManager")->None: 
+    def _emit_bullet(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem")->None: 
         vel = (cos(radians(-self._angle_opening))*self._knockback_power*1.5,sin(radians(-self._angle_opening))*self._knockback_power*1.5)
         bullet  = AKBullet(self._opening_pos.copy(),self._damage,-self._angle_opening,vel)
         bullet.adjust_pos((vel[0]/2+bullet.size[0]//2,vel[1]/2+bullet.size[1]//2))
@@ -202,6 +203,10 @@ class AK47(Weapon):
         engine_lights.append(self._create_light(self._opening_pos, 0.6, 40, (248, 129, 153), 2))
         engine_lights.append(self._create_light(self._opening_pos, 1.0, 20, (255, 255, 255), bullet._frames_flown, illuminator=bullet))
 
+        """
+        particle_data = AnimationParticleData('ak47_smoke',[],[],'weapon')
+        ps.add_particle(particle_data)
+        """
         em.add_bullet(bullet)
         self._knockback = [-vel[0]/2,-vel[1]/2]
 

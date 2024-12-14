@@ -336,10 +336,11 @@ class Player(PhysicsEntity):
         if self.curr_weapon_node and self.curr_weapon_node.weapon: 
             self.curr_weapon_node.weapon.reset_shot()
 
-    def shoot_weapon(self,engine_lights:list["PointLight"],entities_manager:"EntitiesManager",frame_count:int)->None: 
+    def shoot_weapon(self,engine_lights:list["PointLight"],entities_manager:"EntitiesManager",\
+                     particle_system:"ParticleSystem",frame_count:int)->None: 
         if self.curr_weapon_node and self.curr_weapon_node.weapon: 
             weapon = self.curr_weapon_node.weapon
-            weapon.shoot(engine_lights,entities_manager,frame_count)
+            weapon.shoot(engine_lights,entities_manager,particle_system,frame_count)
 
 
     def update(self,tilemap:"Tilemap",particle_system:"ParticleSystem",cursor_pos,player_movement_input,camera_scroll):

@@ -1,9 +1,7 @@
 import pygame 
 import platform
 import importlib
-from os import environ,listdir
-from json import load  as jsLoad
-from scripts.utils import load_texture 
+from os import environ
 from time import time
 from enum import Enum
 from moderngl import create_context
@@ -11,7 +9,7 @@ from screeninfo import get_monitors
 
 from scripts.entitiesManager import EntitiesManager 
 from scripts.resourceManager import ResourceManager
-# testing 
+from scripts.new_particles import ParticleSystem
 
 from scripts.atlass_positions import ITEM_ATLAS_POSITIONS_AND_SIZES
 import random
@@ -22,7 +20,6 @@ import my_pygame_light2d.engine
 from scripts.item import Item,AK47,Flamethrower
 from scripts.new_HUD import HUD
 from scripts.new_grass import GrassManager
-from scripts.new_particles import ParticleSystem
 from scripts.new_entities import Player
 from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.engine import RenderEngine
@@ -75,7 +72,7 @@ class Noel():
 
     def _bind_objects_to_render_engine(self):
         self.render_engine.bind_tilemap(self._tilemap)
-        self.render_engine.bind_background('start')
+        self.render_engine.bind_background('building')
         self.render_engine.bind_hud(self._hud)
         self.render_engine.lights = self._tilemap.lights
     
@@ -236,9 +233,11 @@ class Noel():
     def _handle_events(self):
         if self._curr_gameState == GameState.GameLoop:
             if self._hud.cursor.pressed[0]:
-                self.player.shoot_weapon(self.render_engine.lights,self.entities_manager,self._frame_count)
+                if not self._hud.cursor.interacting:
+                    self.player.shoot_weapon(self.render_engine.lights,self.entities_manager,self.particle_system,self._frame_count)
             else: 
-                self.player.prompt_weapon_reset()
+                if not self._hud.cursor.interacting: 
+                    self.player.prompt_weapon_reset()
           
             for event in pygame.event.get():
                 self._handle_common_events(event)
@@ -314,7 +313,6 @@ class Noel():
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
 
 
-            print(len(self.entities_manager._bullets))
 
             self.entities_manager.update(self._tilemap)
             self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
