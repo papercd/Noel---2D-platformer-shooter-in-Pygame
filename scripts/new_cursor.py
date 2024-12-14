@@ -1,16 +1,12 @@
-from pygame import Rect,mouse
-from moderngl import Texture
+from pygame import Rect
 
 class Cursor: 
-    def __init__(self,in_editor :bool = False):
+    def __init__(self,in_editor :bool = False)-> None:
 
         self.in_editor = in_editor 
         self.topleft = [0,0] 
-
         self.text = None 
-
         self.size = (9,10)
-
         self.interacting = False 
         self.item = None
         self.state = "default"
@@ -26,7 +22,7 @@ class Cursor:
     def set_cooldown(self) -> None:
         self.cooldown = 10
 
-    def update(self):
+    def update(self)-> None:
         if not self.in_editor:
             if self.cooldown >0 :
                 self.cooldown -=1 

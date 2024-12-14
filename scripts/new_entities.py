@@ -1,50 +1,68 @@
 from pygame import Rect
-from scripts.new_tilemap import Tilemap
-from scripts.new_particles import ParticleSystem
-from scripts.custom_data_types import AnimationParticleData,Animation,CollideParticleData
+from scripts.custom_data_types import AnimationParticleData,CollideParticleData
 from scripts.animationData import PlayerAnimationDataCollection
 from scripts.utils import get_rotated_vertices, SAT
 from random import choice as random_choice,random,randint
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scripts.custom_data_types import Animation
+    from my_pygame_light2d.light import PointLight 
+    from scripts.new_tilemap import Tilemap
+    from scripts.new_particles import ParticleSystem
+    from scripts.entitiesManager import EntitiesManager
 
 class PhysicsEntity: 
     def __init__(self,type:str,pos:list[float,float],size:tuple[int,int]):
-        
-        self.collisions = {'up': False, 'down': False, 'left': False, 'right': False}
-        self.type = type 
-        self.pos = pos
-        self.size = size
+
+        self._type = type 
+        self._size = size       
+        self._on_ramp = False        
+        self._collisions = {'up': False, 'down': False, 'left': False, 'right': False}
+        self._state = ''
+        self._flip = False
+
         self.velocity = [0, 0]
-        self.state = ''
         self.anim_offset = (0, 0)
-        self.flip = False
         self.set_state('idle')
         self.cut_movement_input = False
-        self.on_ramp = False 
         self.frame_data = 1
+        self.pos = pos
 
+    @property
+    def state(self)->str: 
+        return self._state
 
-    def set_state(self,state):
-        if state != self.state: 
+    @property
+    def size(self)->tuple[int,int]:
+        return self._size
+
+    @property 
+    def type(self)->str: 
+        return self._type
+
+    def set_state(self,state:str)->None:
+        if state != self._state: 
             self.frame_data = 0
-            self.state= state 
+            self._state= state 
 
     def _collision_rect(self) -> Rect:
         return Rect(*self.pos,*self.size)
 
 
-    def collide(self,other):
+    def collide(self,other:"PhysicsEntity"):
         return self._collision_rect().colliderect(other._collision_rect())
     
 
-    def update(self,tilemap:Tilemap,movement = (0,0),anim_offset = (0,0)):
+    def update(self,tilemap:"Tilemap",movement = (0,0),anim_offset = (0,0))->None:
         self.frame_data += 1 
-        self.collisions = {'up': False, 'down': False, 'left': False, 'right': False}
+        self._collisions = {'up': False, 'down': False, 'left': False, 'right': False}
         
         if movement[0] > 0:
-            self.flip = False
+            self._flip = False
         if movement[0] < 0 :
-            self.flip = True 
+            self._flip = True 
 
 
         # gravity 
@@ -73,41 +91,41 @@ class PhysicsEntity:
                             continue 
                         else: 
                             if frame_movement[0] > 0 :
-                                self.collisions['right'] = True
+                                self._collisions['right'] = True
                                 
                                 self_rect.right = rect_tile[0].left
                             elif frame_movement[0] < 0:
-                                self.collisions['left'] = True
+                                self._collisions['left'] = True
                                 
                                 self_rect.left = rect_tile[0].right
                             else: 
                                 if self_rect.centerx -rect_tile[0].centerx <0:
-                                    self.collisions['right'] = True
+                                    self._collisions['right'] = True
                                     self_rect.right = rect_tile[0].left
                                     
                                 else:
-                                    self.collisions['left'] = True 
+                                    self._collisions['left'] = True 
                                     self_rect.left = rect_tile[0].right 
                                 
                             self.pos[0] =self_rect.x - anim_offset[0]
                             
                 else:
                     if frame_movement[0] > 0:
-                        self.collisions['right'] = True
+                        self._collisions['right'] = True
                         
                         self_rect.right = rect_tile[0].left
                     elif frame_movement[0] < 0:
-                        self.collisions['left'] = True
+                        self._collisions['left'] = True
                         
                         self_rect.left = rect_tile[0].right
                         
                     else: 
                         if self_rect.centerx -rect_tile[0].centerx <0:
-                            self.collisions['right'] = True
+                            self._collisions['right'] = True
                             self_rect.right = rect_tile[0].left
                             
                         else:
-                            self.collisions['left'] = True 
+                            self._collisions['left'] = True 
                             self_rect.left = rect_tile[0].right 
                         
                     self.pos[0] =self_rect.x - anim_offset[0]
@@ -126,12 +144,12 @@ class PhysicsEntity:
                     
 
                     if frame_movement[1] > 0:
-                        self.collisions['down'] = True
-                        self.on_ramp = 0
+                        self._collisions['down'] = True
+                        self._on_ramp = 0
                         self_rect.bottom = rect_tile[0].top
                         
                     elif frame_movement[1] < 0:
-                        self.collisions['up'] = True
+                        self._collisions['up'] = True
                         self_rect.top = rect_tile[0].bottom
                     self.velocity[1] = 0
                     self.pos[1] = self_rect.y - anim_offset[1]
@@ -155,21 +173,22 @@ class PhysicsEntity:
 
                     target_y = rect_tile[0].y +tilemap.tile_size- pos_height
                     if self_rect.bottom > target_y:
-                        self.on_ramp = 1 if variant == '0' else -1
+                        self._on_ramp = 1 if variant == '0' else -1
                         self_rect.bottom = target_y
                         self.pos[1] = self_rect.y -anim_offset[1]
-                        self.collisions['down'] = True
+                        self._collisions['down'] = True
  
 
 
 class Player(PhysicsEntity):
-    def __init__(self, pos: list[float], size: tuple[int, int]):
+    def __init__(self, pos: list[float], size: tuple[int, int])->None:
         self._animation_data_collection = PlayerAnimationDataCollection
         self._cur_animation = self._animation_data_collection.get_animation_data('idle')
         super().__init__('player', pos, size)
         self._sprite_size = (16,16)
         self._accel_rate = 0
         self._default_speed = 0
+        self._knockback_reduction_factor = (5,9)
 
         self.cur_vel = 0 
         self.recov_rate = 0.6
@@ -180,7 +199,7 @@ class Player(PhysicsEntity):
         self.jump_count = 2
         self.wall_slide = False
         self.crouch = False 
-        self.on_wall = self.collisions['left'] or self.collisions['right']
+        self.on_wall = self._collisions['left'] or self._collisions['right']
         self.air_time = 0
         self.on_ladder = False
 
@@ -197,7 +216,7 @@ class Player(PhysicsEntity):
         self.left_and_right_anchors = {  True: {"idle": {"left": (2,6), "right": (13,6)}, "walk": {"left": (2,6), "right": (13,6)},'run' :{"left": (1,6), "right": (8,5)} 
                                            ,'jump_up' :{"left": (0,4), "right": (9,4)},'jump_down' :{"left": (3,5), "right": (10,4)}
                                            ,'slide' :{ "left" : (11,9) ,"right": (11,9)} , 'wall_slide' : {"left": (4,5), "right": (8,5)},'land' :{ "left" : (2,6) ,"right": (8,5)} , 
-                                           'crouch' :{ "left" : (2,8) ,"right": (13,8)},'sprint' : {'left': (7,5),'right':(14,6)}
+                                           'crouch' :{ "left" : (2,8) ,"right": (13,8)},'sprint' : {'left': (1,6),'right':(8,5)}
                                            },
                                     False: {"idle": {"left": (2,6), "right": (13,6)},"walk": {"left": (2,6), "right": (13,6)}, 'run' :{"left": (7,5), "right": (14,6)} 
                                            ,'jump_up' :{"left": (6,4), "right": (15,5)},'jump_down' :{"left": (5,4), "right": (12,5)}
@@ -209,6 +228,21 @@ class Player(PhysicsEntity):
         self.right_anchor = None
         
 
+    @property
+    def knockback_reduction_factor(self)->tuple[int,int]:
+        return self._knockback_reduction_factor
+
+    @property
+    def sprite_size(self)->tuple[int,int]:
+        return self._sprite_size
+
+    @property 
+    def flip(self)->bool: 
+        return self._flip
+    
+    @property 
+    def cur_animation(self)->"Animation": 
+        return self._cur_animation
 
 
     def set_default_speed(self,speed):
@@ -238,8 +272,8 @@ class Player(PhysicsEntity):
                 self.cur_vel = min(0,self.cur_vel + self._accel_rate)
     
     def set_state(self,state):
-        if state != self.state: 
-            self.state = state
+        if state != self._state: 
+            self._state = state
             self._cur_animation.reset()
             self._cur_animation = self._animation_data_collection.get_animation_data(state)
      
@@ -255,18 +289,17 @@ class Player(PhysicsEntity):
 
 
 
-    def jump(self):
-        particle_system = ParticleSystem.get_instance()
+    def jump(self,particle_system: "ParticleSystem"):
         WALL_JUMP_SPEED = 4.2
         JUMP_SPEED =4.4
 
         if self.wall_slide: 
                 self.jump_count = 1
                 
-                if self.collisions['left']:
+                if self._collisions['left']:
                     
                     self.velocity[0] =  WALL_JUMP_SPEED
-                if self.collisions['right']:
+                if self._collisions['right']:
                     
                     self.velocity[0] = -WALL_JUMP_SPEED
                 
@@ -275,7 +308,7 @@ class Player(PhysicsEntity):
                 particle_system.add_particle(particle_data)
 
         if self.jump_count == 2:
-            if self.state == 'jump_down':
+            if self._state == 'jump_down':
                 self.jump_count -=2
 
                 self.velocity[1] = -JUMP_SPEED
@@ -294,13 +327,25 @@ class Player(PhysicsEntity):
             particle_data = AnimationParticleData('jump',[self.pos[0] + self.size[0]//2 ,self.pos[1]+self.size[1]],[0,0.1],'player')
             particle_system.add_particle(particle_data)
 
-    
-    # TODO: add weapon rendering later. 
 
-    def update(self,tilemap:Tilemap,cursor_pos,player_movement_input,frame_count,camera_scroll):
+    def toggle_rapid_fire(self)->None: 
+        if self.curr_weapon_node and self.curr_weapon_node.weapon: 
+            self.curr_weapon_node.weapon.toggle_rapid_fire()
+
+    def prompt_weapon_reset(self)->None: 
+        if self.curr_weapon_node and self.curr_weapon_node.weapon: 
+            self.curr_weapon_node.weapon.reset_shot()
+
+    def shoot_weapon(self,engine_lights:list["PointLight"],entities_manager:"EntitiesManager",\
+                     particle_system:"ParticleSystem",frame_count:int)->None: 
+        if self.curr_weapon_node and self.curr_weapon_node.weapon: 
+            weapon = self.curr_weapon_node.weapon
+            weapon.shoot(engine_lights,entities_manager,particle_system,frame_count)
+
+
+    def update(self,tilemap:"Tilemap",particle_system:"ParticleSystem",cursor_pos,player_movement_input,camera_scroll):
         self._accelerate(player_movement_input)
         self._cur_animation.update()
-        self.time = frame_count
         self.cursor_pos = cursor_pos
         new_movement = [self.cur_vel,0]
 
@@ -332,8 +377,8 @@ class Player(PhysicsEntity):
             
         super().update(tilemap, new_movement,anim_offset= (3,1))
 
-        self.left_anchor = self.left_and_right_anchors[self.flip][self.state]["left"]
-        self.right_anchor = self.left_and_right_anchors[self.flip][self.state]["right"]
+        self.left_anchor = self.left_and_right_anchors[self._flip][self._state]["left"]
+        self.right_anchor = self.left_and_right_anchors[self._flip][self._state]["right"]
 
 
         """
@@ -364,8 +409,7 @@ class Player(PhysicsEntity):
 
 
 
-        if self.collisions['down']:
-            particle_system = ParticleSystem.get_instance()
+        if self._collisions['down']:
             if self.y_inertia > 6:
                 self.set_state('land')
 
@@ -404,16 +448,16 @@ class Player(PhysicsEntity):
             
             
         self.wall_slide = False
-        self.on_wall = self.collisions['left'] or self.collisions['right']
+        self.on_wall = self._collisions['left'] or self._collisions['right']
 
 
         if self.on_wall and self.air_time > 4:
             self.wall_slide = True 
             self.velocity[1] = min(self.velocity[1],0.5)
-            if self.collisions['right']:
-                self.flip = False
+            if self._collisions['right']:
+                self._flip = False
             else:
-                self.flip = True 
+                self._flip = True 
             
             self.set_state('wall_slide')
             self.y_inertia = 0
@@ -428,7 +472,7 @@ class Player(PhysicsEntity):
                     self.set_state('jump_down')
                
             elif self.cur_vel != 0:
-                if self.state == 'land':
+                if self._state == 'land':
                     if self._cur_animation.done == True: 
                         if self.fatigued: 
                             self.set_state('walk')
@@ -444,14 +488,14 @@ class Player(PhysicsEntity):
                     else: 
                         if self.running: 
                             cur_frame = None
-                            if self.state == 'run':
+                            if self._state == 'run':
                                 cur_frame = self._cur_animation.frame 
                             self.set_state('sprint')
                             if cur_frame:
                                 self._cur_animation.frame = (cur_frame -1) % self._cur_animation._count
                         else:    
                             cur_frame = None 
-                            if self.state == 'sprint':
+                            if self._state == 'sprint':
                                 cur_frame = self._cur_animation.frame
                             self.set_state('run')
                             if cur_frame:
@@ -468,7 +512,7 @@ class Player(PhysicsEntity):
                     
             else: 
                 self.y_inertia = 0
-                if self.state == 'land':
+                if self._state == 'land':
                     if self._cur_animation.done == True: 
                         self.set_state('idle') 
                 else: 
@@ -480,10 +524,10 @@ class Player(PhysicsEntity):
                 
         # update the weapon
 
-        if self.curr_weapon_node and self.curr_weapon_node._item: 
+        if self.curr_weapon_node and self.curr_weapon_node.weapon: 
 
             self.holding_gun = True
-            self.curr_weapon_node._item.update(self.cursor_pos,self,camera_scroll)
+            self.curr_weapon_node.weapon.update(self.cursor_pos,self,camera_scroll)
         else: 
             self.holding_gun = False 
         
@@ -504,9 +548,30 @@ class Bullet(PhysicsEntity):
         self._angle = angle
         self._frames_flown = life
         self._dead = False
-        self._center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[0]//2]
+        self._center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[1]//2]
 
-    def update(self,tilemap:Tilemap,offset = (0,0)):
+    @property
+    def center(self)->list[int,int]:
+        return self._center
+    
+    @property
+    def angle(self): 
+        return self._angle
+    
+    @property
+    def flip(self)->bool:
+        return self._flip
+
+    def adjust_pos(self,adjustment)->None: 
+        self.pos[0] -= adjustment[0] 
+        self.pos[1] -= adjustment[1]
+        self._center[0] -= adjustment[0] 
+        self._center[1] -= adjustment[1]
+
+    def adjust_flip(self,adjustment:bool) ->None: 
+        self._flip = adjustment
+
+    def update(self,tilemap:"Tilemap",offset = (0,0)):
         self._frames_flown -= 1 
         if self._frames_flown == 0:
             self._dead = True
@@ -515,7 +580,6 @@ class Bullet(PhysicsEntity):
         steps = 2
         if steps == 0: 
             return False 
-        print(self.pos,self.velocity)
         for step in range(steps):
         
             self.pos[0] += self.velocity[0]/steps 
@@ -550,4 +614,5 @@ class AKBullet(Bullet):
     def __init__(self, pos: list[float],damage,angle,velocity):
         super().__init__(60,pos, (16,5),angle)
         self._damage = damage
+        self._type = 'ak47'
         self.velocity = velocity

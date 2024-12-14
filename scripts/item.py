@@ -1,7 +1,12 @@
 from scripts.new_entities import Player,AKBullet
 from my_pygame_light2d.light import PointLight
 from math import atan2,degrees,cos,sin,radians
-from scripts.entitiesManager import EntitiesManager
+from scripts.custom_data_types import AnimationParticleData
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scripts.new_particles import ParticleSystem
+    from scripts.entitiesManager import EntitiesManager
 
 ITEM_DESCRIPTIONS = {
     "amethyst_arrow" : "Arrow made with dirty amethyst.",
@@ -75,15 +80,40 @@ class Weapon(Item):
         self._angle_opening = 0
         self._flipped = False
         self._can_RF = self._name in WPNS_WITH_RF
-        self._rapid_fire_toggled = False 
         self._knockback = [0,0]
 
         self._opening_pos = [0,0]
         self._pivot,self._pivot_to_opening_offset = WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET[self._name]
 
-        self.target_pos= None
         self._holder = None
         self.magazine = 0 
+        self.target_pos= None
+        self.rapid_fire_toggled = False 
+        self.shot = False
+
+    @property 
+    def angle_opening(self):
+        return self._angle_opening
+
+    @property
+    def size(self)->tuple[int,int]:
+        return self._size
+
+    @property
+    def opening_pos(self):
+        return self._opening_pos
+
+    @property 
+    def knockback(self):
+        return self._knockback
+    
+    @property
+    def pivot(self):
+        return self._pivot
+    
+    @property
+    def flipped(self)-> bool: 
+        return self._flipped
 
     def copy(self):
         new_weapon = Weapon(self._name,self._fire_rate,self._damage)
@@ -140,42 +170,43 @@ class AK47(Weapon):
         new_weapon.magazine = self.magazine
         return new_weapon
     
+    def _create_light(self,pos,power,radius,color,life,cast_shadows = False,illuminator = None)->PointLight: 
+        light = PointLight(pos, power=power, radius=radius, life=life, illuminator=illuminator)
+        light.set_color(*color)
+        light.cast_shadows = cast_shadows
+        return light
 
-    def shoot(self,render_engine):
-        # create a new bullet, make a system of some kind handle bullet update. 
-        em = EntitiesManager.get_instance()
-        vel = (cos(radians(-self._angle_opening))*self._knockback_power,sin(radians(-self._angle_opening))*self._knockback_power)
+    def reset_shot(self)->None: 
+        self.shot = False 
+
+    def shoot(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem",frame_count:int)-> None:
+
+        #TODO: change the frame count system to a dt-based system later, when integrating dt. 
+        
+        if self._rapid_fire_toggled: 
+            if frame_count % self._fire_rate == 0: 
+                self._emit_bullet(engine_lights,em,ps)
+        else: 
+            if not self.shot: 
+                self._emit_bullet(engine_lights,em,ps)
+                self.shot = True 
+
+
+    def _emit_bullet(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem")->None: 
+        vel = (cos(radians(-self._angle_opening))*self._knockback_power*1.5,sin(radians(-self._angle_opening))*self._knockback_power*1.5)
         bullet  = AKBullet(self._opening_pos.copy(),self._damage,-self._angle_opening,vel)
-        bullet.pos[0] -= bullet.size[0] //2 
-        bullet.pos[1] -= bullet.size[1] //2 
-
-        bullet._center[0] -= bullet.size[0] //2
-        bullet._center[1] -= bullet.size[1] //2 
+        bullet.adjust_pos((vel[0]/2+bullet.size[0]//2,vel[1]/2+bullet.size[1]//2))
+        bullet.adjust_flip(vel[0]<=0)
         
-        light =  PointLight(self._opening_pos,power = 1.0,radius = 8,life = 2)
-        light.set_color(253,108,50)
-        light.cast_shadows = False
-        render_engine.lights.append(light)
-        
-        light = PointLight(self._opening_pos,power = 0.7 ,radius = 24,life = 2)
-        light.set_color(248,129,153)
-        light.cast_shadows = False
-        render_engine.lights.append(light)
+        engine_lights.append(self._create_light(self._opening_pos, 1.0, 8, (253, 108, 50), 2))
+        engine_lights.append(self._create_light(self._opening_pos, 0.7, 24, (248, 129, 153), 2))
+        engine_lights.append(self._create_light(self._opening_pos, 0.6, 40, (248, 129, 153), 2))
+        engine_lights.append(self._create_light(self._opening_pos, 1.0, 20, (255, 255, 255), bullet._frames_flown, illuminator=bullet))
 
-        light = PointLight(self._opening_pos,power = 0.6,radius = 40,life = 2)
-        light.set_color(248,129,153)
-        light.cast_shadows = False
-        render_engine.lights.append(light)
-
-        light = PointLight(self._opening_pos,power = 1.0,radius = 20, illuminator= bullet, life = bullet._frames_flown)
-        light.cast_shadows = False
-        render_engine.lights.append(light)
-        
-
-
-
-
-
+        """
+        particle_data = AnimationParticleData('ak47_smoke',[],[],'weapon')
+        ps.add_particle(particle_data)
+        """
         em.add_bullet(bullet)
         self._knockback = [-vel[0]/2,-vel[1]/2]
 

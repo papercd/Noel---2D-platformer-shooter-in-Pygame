@@ -1,9 +1,13 @@
-from scripts.new_cursor import Cursor
-#from scripts.atlass_positions import TEXT_DIMENSIONS 
 from pygame import Rect
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from scripts.item import Weapon
+    from scripts.new_cursor import Cursor
+    from scripts.new_entities import Player
+    from scripts.new_tilemap import Tilemap
 class Node:
-    def __init__(self, cell_ind, data):
+    def __init__(self, cell_ind:int, data)->None:
         self.cell_ind = cell_ind
         self.data = data 
         self.next = None
@@ -20,8 +24,9 @@ class DoublyLinkedList:
         if objs: 
             for i,obj in enumerate(objs):
                 self.add_node(i,obj)
+    
 
-    def add_node(self, cell_ind, data):
+    def add_node(self, cell_ind:int, data)->None:
         new_node = Node(cell_ind, data)
         
         # If the list is empty, make the new node the head and the tail
@@ -48,14 +53,14 @@ class DoublyLinkedList:
                     return
             current = current.next
 
-    def _insert_before(self, node, new_node):
+    def _insert_before(self, node:Node, new_node:Node)->None:
         new_node.prev = node.prev
         new_node.next = node
         if node.prev:
             node.prev.next = new_node
         node.prev = new_node
 
-    def _insert_after(self, node, new_node):
+    def _insert_after(self, node:Node, new_node:Node)->None:
         new_node.next = node.next
         new_node.prev = node
         if node.next:
@@ -64,7 +69,7 @@ class DoublyLinkedList:
             self.tail = new_node
         node.next = new_node
 
-    def delete_node(self, node):
+    def delete_node(self, node:Node)->None:
         if node is None:
             return
         if node == self.curr_node: 
@@ -88,12 +93,12 @@ class DoublyLinkedList:
             pass 
         node.next = node.prev = None
 
-    def change_head(self, cell_ind):
+    def change_head(self, cell_ind:int)->None:
         new_head = self.find_node(cell_ind)
         if new_head:
             self.head = new_head
 
-    def find_node(self, cell_ind):
+    def find_node(self, cell_ind:int)->Node:
         current = self.head
         while current:
             if current.cell_ind == cell_ind:
@@ -102,154 +107,24 @@ class DoublyLinkedList:
         return None
 
 
-class WeaponNode:
-    def __init__(self,list,cell_ind,pos,size):
-        self._list = list 
-        self._cell_ind = cell_ind 
-        self._pos = pos 
-        self._hovered = False 
-        self._offset = (0,0)
-        self._size = size 
-        self._item = None
-        self._rect = Rect(*self._pos, *self._size)
-
-        self.next = None 
-        self.prev = None 
-
-    def check_nearest_node_with_item(self):
-        right_current = self 
-        left_current = self 
-        right_node = None 
-        left_node = None 
-        while right_current:
-            if right_current.next: 
-                if right_current.next._item: 
-                    right_node = right_current.next
-                    break
-                right_current = right_current.next 
-            else: 
-                break
-
-        while left_current.prev: 
-            if left_current.prev: 
-                if left_current.prev._item: 
-                    left_node = left_current.prev 
-                    break 
-                left_current = left_current.prev 
-            else: 
-                break
-
-        return (left_node,right_node)
-    
-
-    def update(self,stack_limit,cursor,opacity,player):
-        if cursor.box.colliderect(self._rect):
-            self._offset = (-1,-1)
-            self._hovered = True 
-        else: 
-            self._offset = (0,0)
-            self._hovered = False
-
-        if opacity == 255:
-            if self._item is not None:
-                if not self._hovered:
-                    return 
-                if cursor.cooldown != 0:
-                    return
-                if cursor.magnet and cursor.item.name == self._item.name and self._item.stackable:
-                    if not (cursor.item.type == self._type):
-                        return
-                    amount = stack_limit - cursor.item.count
-                    if self._item.count + cursor.item.count <= stack_limit:
-                        cursor.item.count = cursor.item.count + self._item.count
-                        self._item = None 
-                    else: 
-                        cursor.item.count = cursor.item.count + amount 
-                        self._item.count = self._item.count - amount
-                    cursor.set_cooldown()
-                if cursor.item is None:
-                    if self._hovered:
-                        cursor.text = (self._item.name,self._item.description)
-                    if cursor.pressed[0] and cursor.move:
-                        temp = self._item 
-                        self._item = None 
-
-                        self._list.add_item(temp)
-                        cursor.set_cooldown()
-
-                    elif cursor.pressed[0]:
-                        cursor.item = self._item 
-                        self._item = None 
-                        cursor.set_cooldown()
-                    elif cursor.pressed[1] and self._item.count > 1:
-                        half = self._item.count // 2
-                        cursor.item = self._item.copy()
-                        cursor.item.count = half 
-                        self._item.count = self._item.count - half 
-                        cursor.set_cooldown()
-                    else: 
-                        if cursor.cooldown != 0:
-                            return 
-                        if cursor.pressed[0] and cursor.item.name == self._item.name and self._item.count + cursor.item.count <= stack_limit and self._item.stackable:
-                            self._item.count = self._item.count + cursor.item.count
-                            cursor.item = None 
-                            cursor.set_cooldown()
-                        elif cursor.pressed[0] and cursor.item.name == self._item.name and self._item.stackable :
-                            amount = stack_limit - self._item.count
-                            self._item.count = self._item.count + amount 
-                            cursor.item.count = cursor.item.count - amount 
-                            cursor.set_cooldown()
-                        elif cursor.pressed[0]:
-                            temp = cursor.item.copy()
-                            cursor.item = self._item 
-                            self._item = temp 
-                            cursor.set_cooldown()
-                elif cursor.item is not None and self._hovered and cursor.cooldown == 0:
-                    if cursor.pressed[0] :
-                        temp = cursor.item.copy()
-                        cursor.item = self._item
-                        self._item = temp
-                        cursor.set_cooldown()
-
-            elif cursor.item is not None and self._hovered and cursor.cooldown == 0:
-                if cursor.item.type != self._list._type:
-                    return
-                if cursor.pressed[0]:
-                    self._item = cursor.item 
-                    cursor.item = None 
-                    self._list.curr_node = self
-                    cursor.set_cooldown()
-                elif cursor.pressed[1] and cursor.item.stackable:
-                    if cursor.item.count >1:
-                        half = cursor.item.count // 2
-                        self._item = cursor.item.copy()
-                        self._item.count = half 
-                        cursor.item.count = cursor.item.count - half 
-                    else: 
-                        self._item = cursor.item 
-                        cursor.item = None 
-                    cursor.set_cooldown()
-
-
-
 class WeaponInvenList(DoublyLinkedList):
-    def __init__(self, objs = None):
+    def __init__(self, objs = None)->None:
         super().__init__(objs)
         self._type = 'weapon'
 
     
-    def add_item(self,item):
+    def add_weapon(self,weapon:"Weapon")->None:
         current = self.head 
         while current:
-           if current._item is None:
-               current._item = item 
+           if current.weapon is None:
+               current.weapon =weapon 
                self.curr_node = current
                return 
            current = current.next 
         
 
         
-    def add_node(self,cell_ind,data):
+    def add_node(self,cell_ind:int,data)->None:
         new_node = WeaponNode(self,cell_ind,*data)
 
         if self.head is None:
@@ -272,12 +147,12 @@ class WeaponInvenList(DoublyLinkedList):
                     return 
             current = current.next
 
-    def change_weapon(self,scroll):
+    def change_weapon(self,scroll:int)-> None:
         current = self.curr_node
         if scroll == 1:
             while current: 
                 if current.next: 
-                    if current.next._item: 
+                    if current.next.weapon: 
                         self.curr_node = current.next
                         break
                     current = current.next 
@@ -286,7 +161,7 @@ class WeaponInvenList(DoublyLinkedList):
         else: 
             while current: 
                 if current.prev: 
-                    if current.prev._item: 
+                    if current.prev.weapon: 
                         self.curr_node = current.prev
                         break
                     current = current.prev
@@ -294,21 +169,158 @@ class WeaponInvenList(DoublyLinkedList):
                     break 
 
 
-    def update(self,stack_limit,cursor,opacity,player):
+    def update(self,stack_limit:int,cursor:"Cursor",opacity:int,player:"Player")->None:
         current = self.head
         while current:
             current.update(stack_limit,cursor,opacity,player)
             current = current.next
 
+class WeaponNode:
+    def __init__(self,list:WeaponInvenList,cell_ind:int,pos:tuple[int,int],size:tuple[int,int])->None:
+        self._list = list 
+        self._cell_ind = cell_ind 
+        self._pos = pos 
+        self._hovered = False 
+        self._offset = (0,0)
+        self._size = size 
+        self._rect = Rect(*self._pos, *self._size)
+
+        self.next = None 
+        self.prev = None 
+        self.weapon= None
+    @property 
+    def cell_ind(self)->int: 
+        return self._cell_ind
+    
+    @property 
+    def hovered(self) ->bool: 
+        return self._hovered
+
+
+    def check_nearest_node_with_item(self)->None:
+        right_current = self 
+        left_current = self 
+        right_node = None 
+        left_node = None 
+        while right_current:
+            if right_current.next: 
+                if right_current.next.weapon: 
+                    right_node = right_current.next
+                    break
+                right_current = right_current.next 
+            else: 
+                break
+
+        while left_current.prev: 
+            if left_current.prev: 
+                if left_current.prev.weapon: 
+                    left_node = left_current.prev 
+                    break 
+                left_current = left_current.prev 
+            else: 
+                break
+
+        return (left_node,right_node)
+    
+
+    def update(self,stack_limit:int,cursor:"Cursor",opacity:int,player:"Player")->None:
+            if cursor.box.colliderect(self._rect):
+                self._offset = (-1,-1)
+                self._hovered = True 
+            else: 
+                self._offset = (0,0)
+                self._hovered = False
+
+            if opacity == 255:
+                if self.weapon is not None:
+                    if not self._hovered:
+                        return 
+                    if cursor.cooldown != 0:
+                        return
+                    if cursor.magnet and cursor.item.name == self.weapon.name and self.weapon.stackable:
+                        if not (cursor.item.type == self._type):
+                            return
+                        amount = stack_limit - cursor.item.count
+                        if self.weapon.count + cursor.item.count <= stack_limit:
+                            cursor.item.count = cursor.item.count + self.weapon.count
+                            self.weapon= None 
+                        else: 
+                            cursor.item.count = cursor.item.count + amount 
+                            self.weapon.count = self.weapon.count - amount
+                        cursor.set_cooldown()
+                    if cursor.item is None:
+                        if self._hovered:
+                            cursor.text = (self.weapon.name,self.weapon.description)
+                        if cursor.pressed[0] and cursor.move:
+                            temp = self.weapon 
+                            self.weapon = None 
+
+                            self._list.add_weapon(temp)
+                            cursor.set_cooldown()
+
+                        elif cursor.pressed[0]:
+                            cursor.item = self.weapon 
+                            self.weapon = None 
+                            cursor.set_cooldown()
+                        elif cursor.pressed[1] and self.weapon.count > 1:
+                            half = self.weapon.count // 2
+                            cursor.item = self.weapon.copy()
+                            cursor.item.count = half 
+                            self.weapon.count = self.weapon.count - half 
+                            cursor.set_cooldown()
+                        else: 
+                            if cursor.cooldown != 0:
+                                return 
+                            if cursor.pressed[0] and cursor.item.name == self.weapon.name and self.weapon.count + cursor.item.count <= stack_limit and self.weapon.stackable:
+                                self.weapon.count = self.weapon.count + cursor.item.count
+                                cursor.item = None 
+                                cursor.set_cooldown()
+                            elif cursor.pressed[0] and cursor.item.name == self.weapon.name and self.weapon.stackable :
+                                amount = stack_limit - self.weapon.count
+                                self.weapon.count = self.weapon.count + amount 
+                                cursor.item.count = cursor.item.count - amount 
+                                cursor.set_cooldown()
+                            elif cursor.pressed[0]:
+                                temp = cursor.item.copy()
+                                cursor.item = self.weapon 
+                                self.weapon = temp 
+                                cursor.set_cooldown()
+                    elif cursor.item is not None and self._hovered and cursor.cooldown == 0:
+                        if cursor.pressed[0] :
+                            temp = cursor.item.copy()
+                            cursor.item = self.weapon
+                            self.weapon = temp
+                            cursor.set_cooldown()
+
+                elif cursor.item is not None and self._hovered and cursor.cooldown == 0:
+                    if cursor.item.type != self._list._type:
+                        return
+                    if cursor.pressed[0]:
+                        self.weapon = cursor.item 
+                        cursor.item = None 
+                        self._list.curr_node = self
+                        cursor.set_cooldown()
+                    elif cursor.pressed[1] and cursor.item.stackable:
+                        if cursor.item.count >1:
+                            half = cursor.item.count // 2
+                            self.weapon = cursor.item.copy()
+                            self.weapon.count = half 
+                            cursor.item.count = cursor.item.count - half 
+                        else: 
+                            self.weapon = cursor.item 
+                            cursor.item = None 
+                        cursor.set_cooldown()
+
+
 class Category(Node):
-    def __init__(self, cell_ind, category:str):
+    def __init__(self, cell_ind:int, category:str)->None:
         self._selected = False 
         self._hovered = False 
         self._characters = len(category)
         self._calculate_length_height(category)
         super().__init__(cell_ind, category)
     
-    def _calculate_length_height(self,category:str):
+    def _calculate_length_height(self,category:str)->None:
         self._length = 0 
         max_height = 0 
         for char in category: 
@@ -346,7 +358,7 @@ class Category(Node):
     def length(self):
         return self._length
 class TileCategories(DoublyLinkedList):
-    def __init__(self,topleft:tuple[int,int],size:tuple[int,int],objs:list[str]= None):
+    def __init__(self,topleft:tuple[int,int],size:tuple[int,int],objs:list[str]= None)->None:
         self._topleft = topleft
         self._size = size 
         super().__init__(objs)
@@ -361,7 +373,7 @@ class TileCategories(DoublyLinkedList):
         return self._topleft
 
     
-    def add_node(self, cell_ind, category):
+    def add_node(self, cell_ind:int, category:str)->None:
         new_node = Category(cell_ind, category)
         
         # If the list is empty, make the new node the head and the tail
@@ -388,7 +400,7 @@ class TileCategories(DoublyLinkedList):
                     return
             current = current.next
     
-    def check_hover(self,cursor:Cursor,category_panel_scroll:int = 0,tile_panel_scroll:int = 0):
+    def check_hover(self,cursor:"Cursor",category_panel_scroll:int = 0,tile_panel_scroll:int = 0)->None:
         curr:Category = self.head
         category_stack_offset = 0 
         while curr: 
@@ -402,7 +414,7 @@ class TileCategories(DoublyLinkedList):
             category_stack_offset += curr.height +1 
             curr = curr.next
     
-    def check_click(self,cursor:Cursor,category_panel_scroll:int = 0,tile_panel_scroll:int = 0):
+    def check_click(self,cursor:"Cursor",category_panel_scroll:int = 0,tile_panel_scroll:int = 0)->None:
         curr: Category = self.head 
         category_stack_offset = 0
         while curr: 
@@ -418,7 +430,8 @@ class TileCategories(DoublyLinkedList):
 
 class ambientNode:
 
-    def __init__(self,light_range,colorValue = (255,255,255,255) , default = True):
+    def __init__(self,light_range,colorValue :tuple[int,int,int,int]= (255,255,255,255) , \
+                 default:bool = True):
         self.range = list(light_range)
         self.colorValue = colorValue
         self.prev = None
@@ -433,7 +446,8 @@ class ambientNode:
 
 
 class interpolatedLightNode:
-    def __init__(self,light_range, left_bound_colorValue = (255,255,255,255), right_bound_colorValue = (255,255,255,255)):
+    def __init__(self,light_range, left_bound_colorValue:tuple[int,int,int,int]= (255,255,255,255)\
+                 , right_bound_colorValue:tuple[int,int,int,int] = (255,255,255,255)):
         self.range = list(light_range)
         self.leftBoundColor = left_bound_colorValue
         self.rightBoundColor = right_bound_colorValue
@@ -443,7 +457,7 @@ class interpolatedLightNode:
         self.hull_y_range = (0,0)
         self.hulls = []
 
-    def get_interpolated_RGBA(self, pos):
+    def get_interpolated_RGBA(self, pos:tuple[int,int])->tuple[int,int,int,int]:
         # Ensure position is within the range
         if not (self.range[0] <= pos <= self.range[1]):
             raise ValueError("Position out of bounds.")
@@ -463,12 +477,12 @@ class interpolatedLightNode:
         return (self.range,self.leftBoundColor,self.rightBoundColor,self.default)
 
 class ambientNodeList:
-    def __init__(self,default_color = (255,255,255,255)):
+    def __init__(self,default_color:tuple[int,int,int,int] = (255,255,255,255))->None:
         # Initialize with a single default node covering the specified range
         self.default_color = default_color
         self.head =ambientNode((float('-inf'), float('inf')), colorValue=self.default_color, default=True)
     
-    def find_overlapping_node(self, new_range):
+    def find_overlapping_node(self, new_range)->ambientNode:
         current = self.head
         
         # Traverse to the leftmost node
@@ -484,7 +498,7 @@ class ambientNodeList:
         return None
     
     
-    def create_hull_lists(self,tilemap):
+    def create_hull_lists(self,tilemap:"Tilemap"):
         # Iterate over the nodes, and create the hull lists. 
         current = self.head 
 
@@ -508,7 +522,7 @@ class ambientNodeList:
 
 
 
-    def set_ptr(self,pos_x): 
+    def set_ptr(self,pos_x:int)->ambientNode: 
         temp = self.head
         while pos_x < temp.range[0] or pos_x > temp.range[1]:
             if pos_x <temp.range[0] :
@@ -535,7 +549,7 @@ class ambientNodeList:
         return data 
     
 
-    def find_node(self,x):
+    def find_node(self,x:int)->ambientNode:
         current = self.head
         
         while current.prev:
@@ -552,7 +566,6 @@ class ambientNodeList:
 
 
     def change_node_color(self,x):
-        
         pass 
 
 
@@ -684,7 +697,6 @@ class ambientNodeList:
 
         
 
-         
 
     
     def insert_ambient_node(self, new_range, hull_range, colorValue):

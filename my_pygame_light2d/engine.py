@@ -9,31 +9,33 @@ import math
 import time
 
 from pygame.math import Vector2 as vec2 
-from scripts.new_HUD import HUD
-from scripts.new_particles import ParticleSystem
-from scripts.lists import TileCategories,interpolatedLightNode
-from scripts.new_panel import TilePanel
-from scripts.new_entities import Player
-from scripts.new_cursor import Cursor
-from scripts.custom_data_types import TileInfo
 from scripts.layer import Layer_
 from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES, TILE_ATLAS_POSITIONS,\
                                     ENTITIES_ATLAS_POSITIONS,PARTICLE_ATLAS_POSITIONS_AND_SIZES
-
+from scripts.lists import interpolatedLightNode
+from scripts.new_particles import ParticleSystem
 from scripts.entitiesManager import EntitiesManager
 from scripts.resourceManager import ResourceManager
-from scripts.new_tilemap import Tilemap
+
 from my_pygame_light2d.shader import Shader 
-from my_pygame_light2d.light import PointLight
-from my_pygame_light2d.hull import Hull
 from my_pygame_light2d.color import normalize_color_arguments, denormalize_color
 from my_pygame_light2d.double_buff import DoubleBuff
 from my_pygame_light2d.util import create_rotated_rect,to_dest_coords
-from scripts.resourceManager import ResourceManager
-from scripts.new_particles import ParticleSystem
 
 BASE_PATH = 'data/images/'
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: 
+    from scripts.new_panel import TilePanel
+    from my_pygame_light2d.light import PointLight
+    from my_pygame_light2d.hull import Hull
+    from scripts.new_entities import Player
+    from scripts.new_cursor import Cursor
+    from scripts.new_HUD import HUD
+    from scripts.new_tilemap import Tilemap
+    from scripts.custom_data_types import TileInfo
+    from scripts.lists import TileCategories
 
 class RenderEngine:
     """A class for managing rendering for my game within a Pygame environment."""
@@ -64,13 +66,13 @@ class RenderEngine:
         self._ambient = (.25, .25, .25, .25)
 
         # Objects that need to be bound to engine before rendering : 
-        self._tilemap:Tilemap = None
-        self._player:Player = None
+        self._tilemap:"Tilemap" = None
+        self._player:"Player"= None
         self._background: list[moderngl.Texture]= None
 
         # Initialize public members
-        self.lights: list[PointLight] = []
-        self.hulls: list[Hull] = []
+        self.lights: list["PointLight"] = []
+        self.hulls: list["Hull"] = []
         self.shadow_blur_radius: int =5
 
         # Retrieve context 
@@ -89,7 +91,7 @@ class RenderEngine:
         self._create_ssbos()
 
 
-    def _load_shaders(self):
+    def _load_shaders(self)-> None:
         with open('my_pygame_light2d/weapon_draw_vertex.glsl',encoding='utf-8') as file: 
             weapon_draw_vertex_src = file.read()
 
@@ -140,12 +142,9 @@ class RenderEngine:
         self._prog_text= self.ctx.program(vertex_shader=text_vertex_src,
                                               fragment_shader=fragment_src_text)
         
-        self._prog_weapon_draw = self.ctx.program(vertex_shader=weapon_draw_vertex_src,
-                                                  fragment_shader= weapon_draw_fragment_src)
 
 
-
-    def _create_screen_vertex_buffers(self):
+    def _create_screen_vertex_buffers(self)-> None:
         # Screen mesh
         screen_vertices = np.array([(-1.0, 1.0), (1.0, 1.0), (-1.0, -1.0),
                                     (-1.0, -1.0), (1.0, 1.0), (1.0, -1.0)], dtype=np.float32)
@@ -168,7 +167,7 @@ class RenderEngine:
             (screen_vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
         ])
 
-    def _create_frame_buffers(self):
+    def _create_frame_buffers(self)->None:
         # Frame buffers
         self._tex_bg = self.ctx.texture(self._true_res, components=4)
         self._tex_bg.filter = (moderngl.NEAREST, moderngl.NEAREST)
@@ -201,7 +200,7 @@ class RenderEngine:
         self._tex_fg.repeat_y = False 
 
     
-    def _create_ssbos(self):
+    def _create_ssbos(self)-> None:
         # Set block indices for the SSBOS in the shader program
         prog_glo = self._prog_light.glo
 
@@ -218,18 +217,7 @@ class RenderEngine:
         self._ssbo_ind.bind_to_uniform_block(2)
 
 
-
-    def _get_unbound_objects(self) -> str:
-        string = "" 
-        if not self._player: string += 'player; '
-        if not self._tilemap : string += 'tilemap; '
-        if not self._background : string += 'background; '
-        if not self._entities_atl : string += 'entities atlas;'
-
-        return string
-        
-    
-    def _render_background_textures_to_fbo(self,fbo:moderngl.Framebuffer,infinite:bool = False,offset = (0,0)):
+    def _render_background_textures_to_fbo(self,fbo:moderngl.Framebuffer,infinite:bool = False,offset = (0,0))-> None:
 
         """
         Render the background (list of textures) to the Background layer.
@@ -262,33 +250,32 @@ class RenderEngine:
                 speed += 1 
             
     
-    def _render_player(self,fbo:moderngl.Framebuffer,offset):
+    def _render_player(self,fbo:moderngl.Framebuffer,offset = (0,0))-> None:
         weapon = None 
-        if self._player.curr_weapon_node and self._player.curr_weapon_node._item: 
-            weapon = self._player.curr_weapon_node._item 
-        knockback = [0,0] if not weapon else weapon._knockback
+        if self._player.curr_weapon_node and self._player.curr_weapon_node.weapon: 
+            weapon = self._player.curr_weapon_node.weapon
+        knockback = [0,0] if not weapon else weapon.knockback
 
         texture_atl_pos = ENTITIES_ATLAS_POSITIONS[self._player.type][self._player.holding_gun][self._player.state]
         self._render_tex_to_fbo(
             self._rm.entities_atlas,fbo,
-            dest=pygame.Rect(self._player.pos[0]+knockback[0]/5 - offset[0] ,self._player.pos[1] + knockback[1]/9 - offset[1],16,16),
-            source = pygame.Rect(texture_atl_pos[0]+16 * self._player._cur_animation.curr_frame(),texture_atl_pos[1],16,16),
+            dest=pygame.Rect(self._player.pos[0]+knockback[0]/self._player.knockback_reduction_factor[0] - offset[0] ,\
+                             self._player.pos[1] + knockback[1]/self._player.knockback_reduction_factor[1] - offset[1],self._player.sprite_size[0],self._player.sprite_size[1]),
+            source = pygame.Rect(texture_atl_pos[0]+self._player.sprite_size[0]* self._player.cur_animation.curr_frame(),texture_atl_pos[1],self._player.sprite_size[0],self._player.sprite_size[1]),
             flip =self._player.flip
-        
         )
         if weapon: 
-            size = weapon._size
-            anchor_offset = (self._player.right_anchor[0] -1,self._player.right_anchor[1]) if weapon._flipped else self._player.left_anchor
+            size = weapon.size
+            anchor_offset = (self._player.right_anchor[0] -1,self._player.right_anchor[1]) if weapon.flipped else self._player.left_anchor
             pos = (self._player.pos[0]+knockback[0]+anchor_offset[0] - offset[0], self._player.pos[1] +knockback[1] + anchor_offset[1] -offset[1])
 
             texture_coords = self._rm._in_world_item_texcoords[weapon.name]['holding'] 
-            vertices = self._create_vertices_for_weapon(size,pos,-weapon._angle_opening,weapon._pivot,weapon._flipped)
+            vertices = self._create_vertices_for_weapon(size,pos,-weapon.angle_opening,weapon.pivot,weapon.flipped)
 
             buffer_data =  np.column_stack([vertices,texture_coords]).astype(np.float32)
 
             vbo = self.ctx.buffer(buffer_data)
             vao = self.ctx.vertex_array(self._prog_draw, [(vbo,'2f 2f','vertexPos', 'vertexTexCoord')])
-
 
             self._rm.held_wpn_atlas.use()
             fbo.use()
@@ -296,10 +283,9 @@ class RenderEngine:
             vao.release()
             vbo.release()
 
-
+    # TODO: define the types for pos and rotation angle after cleaning up code and figuring out their types
     
-
-    def _create_vertices_for_weapon(self, size, pos,rotation_angle,pivot,flipped):
+    def _create_vertices_for_weapon(self, size:tuple[int,int], pos,rotation_angle,pivot:tuple[int,int],flipped:bool)->np.array:
         # step 1: create vertices around the origin. 
         p0 = vec2(-size[0]//2, size[1]//2) # topleft 
         p1 = vec2(size[0]//2 , size[1]//2) # topright 
@@ -308,8 +294,6 @@ class RenderEngine:
 
         
         # step 2: move the vertices by the offset. 
-        
-        
         if flipped:
             flipped_pivot = (size[0]-1-pivot[0],pivot[1])
 
@@ -342,10 +326,10 @@ class RenderEngine:
         p3 += pos
         # step 5: map the vertices to screen coords 
 
-        self._map_to_screen_coords(p0)        
-        self._map_to_screen_coords(p1)        
-        self._map_to_screen_coords(p2)        
-        self._map_to_screen_coords(p3)        
+        self._map_world_coords_to_screen_coords(p0)        
+        self._map_world_coords_to_screen_coords(p1)        
+        self._map_world_coords_to_screen_coords(p2)        
+        self._map_world_coords_to_screen_coords(p3)        
 
         # step 6: create the vertices array 
         if flipped: 
@@ -363,7 +347,7 @@ class RenderEngine:
 
 
 
-    def _map_to_screen_coords(self,vertex:vec2):
+    def _map_world_coords_to_screen_coords(self,vertex:vec2)->None:
         vertex[0] = 2. * vertex[0] / self._true_res[0] -1.
         vertex[1] = 1. -2 * vertex[1] / self._true_res[1] 
            
@@ -371,6 +355,7 @@ class RenderEngine:
 
     def _render_hud(self,fbo:moderngl.Framebuffer) -> None: 
         ui_items_atlas = self._rm.ui_item_atlas
+
         # TODO: the vertex buffer for the stamina bar and the health bar is fixed to two slots of info. 
         # create the vertex buffer before hand for further optimization. 
 
@@ -394,8 +379,8 @@ class RenderEngine:
         opacity =255 
 
         for inventory in self._hud._inven_list:
-            if inventory._name.endswith('item'):
-                if inventory._expandable:
+            if inventory.name.endswith('item'):
+                if inventory.expandable:
                     if inventory.cur_opacity > 0 :
                         opacity = inventory.cur_opacity
                         background_texture_coords = self._rm._ui_texcoords["background"]
@@ -405,15 +390,15 @@ class RenderEngine:
 
                         for i in range(inventory._rows):
                             for j in range(inventory._columns):
-                                cell = inventory._cells[i][j]
-                                texture_coords = self._rm._ui_texcoords[f"{inventory._name}_slot"][cell._hovered]
-                                vertices = self._hud._vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
+                                cell = inventory.cells[i][j]
+                                texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][cell.hovered]
+                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory.ind}"][i*inventory.columns + j][cell.hovered]
                                 opaque_vertices_list.append(vertices)
                                 opaque_texture_coords_list.append(texture_coords)
                                 
                                 if cell._item: 
-                                    texture_coords = self._rm._item_texcoords[cell._item.name]
-                                    vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
+                                    texture_coords = self._rm._item_texcoords[cell.item.name]
+                                    vertices = self._hud._item_vertices_dict[f"{inventory.name}_{inventory.ind}"][i*inventory.columns + j][cell.hovered]
                                     opaque_vertices_list.append(vertices)
                                     opaque_texture_coords_list.append(texture_coords)
                                     
@@ -423,16 +408,16 @@ class RenderEngine:
 
                 else: 
                     # if the inventory is not expandable, then it is always open, 
-                    for i in range(inventory._rows):
-                        for j in range(inventory._columns):
-                                cell = inventory._cells[i][j]
-                                texture_coords = self._rm._ui_texcoords[f"{inventory._name}_slot"][cell._hovered]
-                                vertices = self._hud._vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
+                    for i in range(inventory.rows):
+                        for j in range(inventory.columns):
+                                cell = inventory.cells[i][j]
+                                texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][cell.hovered]
+                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory.ind}"][i*inventory.columns + j][cell.hovered]
                                 vertices_list.append(vertices)
                                 texture_coords_list.append(texture_coords)
                                 if cell._item: 
-                                    texture_coords = self._rm._item_texcoords[cell._item.name]
-                                    vertices = self._hud._item_vertices_dict[f"{inventory._name}_{inventory._ind}"][i*inventory._columns + j][cell._hovered]
+                                    texture_coords = self._rm._item_texcoords[cell.item.name]
+                                    vertices = self._hud._item_vertices_dict[f"{inventory.name}_{inventory.ind}"][i*inventory.columns + j][cell.hovered]
 
                                     # testing the rare effect 
                                     #rare_items_vertices_list.append(vertices)
@@ -440,48 +425,48 @@ class RenderEngine:
                                     vertices_list.append(vertices)
                                     texture_coords_list.append(texture_coords)
                                     
-                                    number = cell._item.count
+                                    number = cell.item.count
                                     self._create_vertex_texture_coords_for_num(inventory,i,j,number,vertices_list,texture_coords_list)
                                     
             else:
                 if inventory.cur_opacity > 0 :
-                    current = inventory._weapons_list.head 
+                    current = inventory.weapons_list.head 
                     while current: 
-                        if current._cell_ind == inventory._weapons_list.curr_node._cell_ind:
+                        if current.cell_ind == inventory.weapons_list.curr_node.cell_ind:
                             # the weapon panel item rendering is done here
                             
 
-                            item = current._item 
+                            item = current.weapon
                             if item is not None: 
                                 
                                 
                                 texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][1]
-                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][1]
+                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory.ind}"][current.cell_ind][1]
                                 opaque_texture_coords_list.append(texture_coords)
                                 opaque_vertices_list.append(vertices)
                             else: 
-                                texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][current._hovered]
-                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
+                                texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][current.hovered]
+                                vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory.ind}"][current.cell_ind][current.hovered]
                                 opaque_texture_coords_list.append(texture_coords)
                                 opaque_vertices_list.append(vertices)
 
 
                         else:
-                            texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][current._hovered]
-                            vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
+                            texture_coords = self._rm._ui_texcoords[f"{inventory.name}_slot"][current.hovered]
+                            vertices = self._hud._vertices_dict[f"{inventory.name}_{inventory.ind}"][current.cell_ind][current.hovered]
                             opaque_texture_coords_list.append(texture_coords)
                             opaque_vertices_list.append(vertices)
                             
-                        if current._item:
-                            weapon_texture_coords = self._rm._item_texcoords[current._item.name]
-                            weapon_vertices = self._hud._item_vertices_dict[f"{inventory.name}_{inventory._ind}"][current._cell_ind][current._hovered]
+                        if current.weapon:
+                            weapon_texture_coords = self._rm._item_texcoords[current.weapon.name]
+                            weapon_vertices = self._hud._item_vertices_dict[f"{inventory.name}_{inventory.ind}"][current.cell_ind][current.hovered]
                             opaque_vertices_list.append(weapon_vertices)
                             opaque_texture_coords_list.append(weapon_texture_coords)
                         current = current.next 
 
-                if inventory._weapons_list.curr_node._item: 
-                    left_node,right_node = inventory._weapons_list.curr_node.check_nearest_node_with_item()
-                    current_weapon_tex_coords = self._rm._item_texcoords[inventory._weapons_list.curr_node._item.name]
+                if inventory.weapons_list.curr_node.weapon: 
+                    left_node,right_node = inventory.weapons_list.curr_node.check_nearest_node_with_item()
+                    current_weapon_tex_coords = self._rm._item_texcoords[inventory.weapons_list.curr_node.weapon.name]
                     current_weapon_vertices = self._hud._item_vertices_dict["current_weapon"]
 
                     vertices_list.append(current_weapon_vertices)
@@ -736,7 +721,7 @@ class RenderEngine:
 
 
    
-    def _create_tile_vertices(self, tile_info:TileInfo ,offset, fbo_w,fbo_h):
+    def _create_tile_vertices(self, tile_info:"TileInfo",offset, fbo_w,fbo_h):
         # Calculate screen-space position and texture coordinates for a tile
         tile_pos = tile_info.tile_pos
 
@@ -1247,14 +1232,14 @@ class RenderEngine:
         self._fbo_bg.clear(R, G, B, A)
         self._fbo_fg.clear(0, 0, 0, 0)
 
-    def bind_hud(self,hud:HUD) -> None: 
+    def bind_hud(self,hud:"HUD") -> None: 
         self._hud = hud 
 
-    def bind_player(self,player:Player) -> None: 
+    def bind_player(self,player:"Player") -> None: 
         self._player = player 
 
 
-    def bind_tilemap(self,tilemap:Tilemap) -> None:
+    def bind_tilemap(self,tilemap:"Tilemap") -> None:
         self._tilemap = tilemap
 
     
@@ -1359,7 +1344,7 @@ class RenderEngine:
         self._render_background_textures_to_fbo(fbo,background,infinite= infinite,offset=offset)
 
 
-    def render_tile_panel(self,text_atl: moderngl.Texture,tile_panel:TilePanel):
+    def render_tile_panel(self,text_atl: moderngl.Texture,tile_panel:"TilePanel"):
         """
         Render the tile panel onto the foreground buffer.
 
@@ -1367,7 +1352,7 @@ class RenderEngine:
         
         """
         fbo = self._get_fbo(Layer_.FOREGROUND)
-        categories_panel:TileCategories = tile_panel.categories
+        categories_panel:"TileCategories" = tile_panel.categories
         categories_panel_scroll = tile_panel.category_panel_scroll
         topleft = categories_panel.topleft
 
@@ -1578,9 +1563,71 @@ class RenderEngine:
         vertices_list= [] 
         texture_coords_list = []
         for bullet in self._em._bullets:
-            pass
+            texture_coords = self._rm._bullet_texcoords[bullet.type]
+            vertices = self._create_vertices_for_bullet(bullet.size,(bullet.center[0]-camera_scroll[0],bullet.center[1] - camera_scroll[1]),bullet.angle,bullet.flip)
             
-   
+            vertices_list.append(vertices)
+            texture_coords_list.append(texture_coords)
+
+        if vertices_list:
+            vertices_array = np.concatenate(vertices_list,axis=0)
+            texture_coords_array =np.concatenate(texture_coords_list,axis=0) 
+
+            buffer_data =np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
+            vbo = self.ctx.buffer(buffer_data)
+            vao = self.ctx.vertex_array(self._prog_draw,[(vbo,'2f 2f','vertexPos','vertexTexCoord')])
+
+            fbo.use()
+            self._rm.bullet_atlas.use()
+            vao.render()
+            vao.release()
+            vbo.release()
+
+            
+    
+    def _create_vertices_for_bullet(self,size,center,rotation_angle,flipped)->np.array:
+        p0 = vec2(-size[0]//2, size[1]//2) # topleft 
+        p1 = vec2(size[0]//2 , size[1]//2) # topright 
+        p2 = vec2(-size[0]//2 , -size[1]//2) # bottomleft 
+        p3 = vec2(size[0]//2 , -size[1]//2) # bottomright  
+
+        # step 3: do the rotation.
+        sign = 1 if rotation_angle> 0 else -1 
+        if flipped:
+            angle =  (180 - abs(rotation_angle)) * (-1) * sign
+        else: 
+            angle = rotation_angle
+            
+        p0.rotate_ip(angle)
+        p1.rotate_ip(angle)
+        p2.rotate_ip(angle)
+        p3.rotate_ip(angle)
+
+        p0 += center 
+        p1 += center 
+        p2 += center
+        p3 += center
+        # step 5: map the vertices to screen coords 
+
+        self._map_world_coords_to_screen_coords(p0)        
+        self._map_world_coords_to_screen_coords(p1)        
+        self._map_world_coords_to_screen_coords(p2)        
+        self._map_world_coords_to_screen_coords(p3)        
+
+        # step 6: create the vertices array 
+        if flipped: 
+            tl = p1 
+            tr = p0
+            bl = p3
+            br = p2 
+        else: 
+            tl = p0 
+            tr = p1
+            bl = p2
+            br = p3
+        return np.array([bl,br,tl,
+                         tl,br,tr])
+
 
     def render_background_scene_to_fbo(self,offset = (0,0),infinite:bool = False)-> None :
         """

@@ -1,25 +1,44 @@
 from scripts.utils import load_texture
-from moderngl import Context,Texture
+from typing import TYPE_CHECKING
 from os import listdir
 from json import load as jsLoad
 import numpy as np 
 from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,\
-                                    TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES
+                                    TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,BULLET_ATLAS_POSITIONS_AND_SIZES
+
+if TYPE_CHECKING: 
+    from moderngl import Context,Texture
+
+
+TEXTURE_BASE_PATH = 'data/images/'
+RESOURCE_NAME_TO_PATH = {
+    'tiles' : TEXTURE_BASE_PATH + "tiles/tile_atlas.png",
+    'entities' : TEXTURE_BASE_PATH + 'entities/entities_atlas.png',
+    'cursor' : TEXTURE_BASE_PATH +'cursor/cursor_atlas.png',
+    'particles' : TEXTURE_BASE_PATH + 'particles/animation_atlas.png',
+    'UI_and_items' : TEXTURE_BASE_PATH + 'ui/ui_atlas.png',
+    'items' : TEXTURE_BASE_PATH +'items/item_atlas.png',
+    'backgrounds' : TEXTURE_BASE_PATH + 'backgrounds',
+    'tilemap_jsons' : 'map_jsons',
+    'holding_weapons' : TEXTURE_BASE_PATH + 'weapons/holding',
+    'weapons' : TEXTURE_BASE_PATH+'weapons/weapon_atlas.png',
+    'bullets' : TEXTURE_BASE_PATH+'bullets/bullet_atlas.png'
+}
 
 
 class ResourceManager: 
     _instance = None 
 
     @staticmethod
-    def get_instance(ctx:Context = None,resource_name_to_path: dict[str,str] = None):
+    def get_instance(ctx:"Context" = None):
         if ResourceManager._instance is None: 
-            ResourceManager._instance = ResourceManager(ctx,resource_name_to_path)
+            ResourceManager._instance = ResourceManager(ctx)
         return ResourceManager._instance
 
-    def __init__(self,ctx,resource_name_to_path):
+    def __init__(self,ctx:"Context"):
         self.ctx = ctx 
-        self._texture_atlasses = {}
-        for resource_name,path in resource_name_to_path.items():
+        self._texture_atlasses:dict[str,"Texture"]= {}
+        for resource_name,path in RESOURCE_NAME_TO_PATH.items():
             if resource_name == 'backgrounds':
                 self._load_backgrounds(path)
             elif resource_name == 'tilemap_jsons':
@@ -31,31 +50,35 @@ class ResourceManager:
 
         self._compute_texture_coords()
 
+    @property 
+    def bullet_atlas(self) -> "Texture":
+        return self._texture_atlasses["bullets"]
+
     @property
-    def ui_item_atlas(self) -> Texture:
+    def ui_item_atlas(self) -> "Texture":
         return self._texture_atlasses["UI_and_items"]
     
     @property 
-    def tile_atlas(self) -> Texture: 
+    def tile_atlas(self) -> "Texture": 
         return self._texture_atlasses['tiles']
 
     @property
-    def entities_atlas(self) -> Texture: 
+    def entities_atlas(self) -> "Texture": 
         return self._texture_atlasses['entities']
     
     @property
-    def particles_atlas(self) ->Texture: 
+    def particles_atlas(self) ->"Texture": 
         return self._texture_atlasses['particles']
     
     @property
-    def held_wpn_atlas(self) -> Texture: 
+    def held_wpn_atlas(self) -> "Texture": 
         return self._texture_atlasses['weapons']
 
     @property
-    def held_wpn_textures(self) ->dict[str,Texture]:
+    def held_wpn_textures(self) ->dict[str,"Texture"]:
         return self._held_wpn_textures
 
-    def _load_backgrounds(self,path:str):
+    def _load_backgrounds(self,path:str)->None:
         self._backgrounds= {}
         
         for folder in listdir(path = path):
@@ -66,14 +89,14 @@ class ResourceManager:
 
             self._backgrounds[folder] = textures
         
-    def _load_held_wpn_textures(self,path:str):
+    def _load_held_wpn_textures(self,path:str)-> None:
         self._held_wpn_textures = {}
         for texture_name in listdir(path = path):
             texture_name = texture_name.split('.')[0]
             self._held_wpn_textures[texture_name] = load_texture(f"{path}/{texture_name}.png",self.ctx)
 
 
-    def _load_tilemap_jsons(self,path:str):
+    def _load_tilemap_jsons(self,path:str) -> None:
         self._tilemap_data = {}
 
         for file_name in listdir(path = path):
@@ -88,10 +111,11 @@ class ResourceManager:
         return self._backgrounds[name]
     
 
-    def _compute_texture_coords(self):
+    def _compute_texture_coords(self)-> None:
         self._ui_texcoords = {}
         self._item_texcoords = {}
         self._text_texcoords = {}
+        self._bullet_texcoords = {}
         self._in_world_item_texcoords = {}
 
         for key in UI_ATLAS_POSITIONS_AND_SIZES:
@@ -135,10 +159,14 @@ class ResourceManager:
             for state in weapon: 
                 pos,size = weapon[state] 
                 self._in_world_item_texcoords[key][state] = self._create_texture_coords(pos,size,self.held_wpn_atlas)
+
+        for key in BULLET_ATLAS_POSITIONS_AND_SIZES: 
+            pos,size = BULLET_ATLAS_POSITIONS_AND_SIZES[key]
+            self._bullet_texcoords[key] = self._create_texture_coords(pos,size,self.bullet_atlas)
  
     
 
-    def _create_texture_coords(self,bottomleft:tuple[int,int],size:tuple[int,int],atlas :Texture):
+    def _create_texture_coords(self,bottomleft:tuple[int,int],size:tuple[int,int],atlas :"Texture")->np.array:
         x = (bottomleft[0] ) / atlas.width
         y = (bottomleft[1] ) / atlas.height
 

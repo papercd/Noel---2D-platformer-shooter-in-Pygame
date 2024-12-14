@@ -8,7 +8,6 @@ from scripts.custom_data_types import CollideParticleData,FireParticleData,Anima
 from scripts.animationData import PARTICLE_ANIMATION_DATA
 from scripts.atlass_positions import PARTICLE_ATLAS_POSITIONS_AND_SIZES
 from scripts.resourceManager import ResourceManager
-from moderngl import Texture
 import numpy as np 
 class ParticleSystem:
     _instance = None 
@@ -512,6 +511,8 @@ class AnimatedParticle:
         self.source = particle_data.source
         self.animation = animation 
         self._active = False 
+
+        # TODO: ACCOUNT FOR ROTATION HERE 
 
     def set_new_data(self,particle_data:AnimationParticleData):
         self.type= particle_data.type 
