@@ -519,7 +519,7 @@ class Bullet(PhysicsEntity):
         self._angle = angle
         self._frames_flown = life
         self._dead = False
-        self._center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[0]//2]
+        self._center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[1]//2]
 
     @property
     def center(self)->list[int,int]:
