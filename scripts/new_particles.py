@@ -255,7 +255,7 @@ class Spark:
 
     def _calculate_movement(self,dt:float)->list[float,float]:
         return [cos(radians(self.angle))*self.speed*self.speed_factor*dt,
-                sin(radians(self.angle))*self.speed*self.speed_factor*dt]
+                -sin(radians(self.angle))*self.speed*self.speed_factor*dt]
 
     
     def _calculate_bounce_angle(self,axis:str): 
@@ -322,10 +322,10 @@ class Spark:
                 self.speed *= 0.8
 
 
-        self._point_towards(90, 0.02)
-        self._velocity_adjust(0.975,0.05,8,dt)
+        #self._point_towards(90, 0.02)
+        #self._velocity_adjust(0.975,0.05,8,dt)
 
-        angle_jitter = uniform(-5,5)
+        angle_jitter = uniform(-3,3)
         self.angle += angle_jitter
 
         self.speed -= 0.1*self.decay_factor

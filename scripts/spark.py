@@ -169,3 +169,17 @@ class Spark():
                 [self.loc[0] -offset[0]+ math.cos(self.angle - math.pi / 2) * self.speed * self.scale * 0.3, self.loc[1]-offset[1] - math.sin(self.angle + math.pi / 2) * self.speed * self.scale * 0.3],
                 ]
             pygame.draw.polygon(surf, self.color, points)
+
+
+
+
+"""
+ [
+                [math.cos(radians(self.angle)) * self.speed * self.scale,  math.sin(radians(self.angle)) * self.speed * self.scale],
+                [math.cos(radians(self.angle) + math.pi / 2) * self.speed * self.scale * 0.3,  math.sin(radians(self.angle) + math.pi / 2) * self.speed * self.scale * 0.3],
+                [-math.cos(radians(self.angle)) * self.speed * self.scale * 3.5,- math.sin(radians(self.angle)) * self.speed * self.scale * 3.5],
+                [math.cos(radians(self.angle) - math.pi / 2) * self.speed * self.scale * 0.3, - math.sin(radians(self.angle) + math.pi / 2) * self.speed * self.scale * 0.3],
+]
+
+
+"""

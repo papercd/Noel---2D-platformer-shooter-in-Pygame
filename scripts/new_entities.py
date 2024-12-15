@@ -572,7 +572,7 @@ class Bullet(PhysicsEntity):
                 angle = int(self.angle)
                 angle =  randint(180-angle -30,180-angle +30)
                 color = choice(SPARK_COLORS)         
-                spark_data = SparkData(self._center.copy(),1,angle,speed,0.4,color,8)
+                spark_data = SparkData(self._center.copy(),1,angle,speed,1.2,color,8)
                 """
                 light = PointLight()
                 light.cast_shadows = False 

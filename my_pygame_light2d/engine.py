@@ -5,8 +5,9 @@ import moderngl
 import pygame
 import numbers
 from OpenGL.GL import glBlitNamedFramebuffer,glViewport, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
-import math
+from math import ceil,dist,sqrt,cos,sin,radians,pi
 import time
+from earcut import earcut
 
 from pygame.math import Vector2 as vec2 
 from scripts.layer import Layer_
@@ -28,6 +29,7 @@ BASE_PATH = 'data/images/'
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: 
+    from scripts.new_particles import Spark
     from scripts.new_panel import TilePanel
     from my_pygame_light2d.light import PointLight
     from my_pygame_light2d.hull import Hull
@@ -62,7 +64,7 @@ class RenderEngine:
         self._screen_res = screen_res
         self._true_res = true_res 
 
-        self._diagonal = math.sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
+        self._diagonal = sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
         self._lightmap_res = true_res 
         self._ambient = (.25, .25, .25, .25)
 
@@ -93,16 +95,15 @@ class RenderEngine:
 
 
     def _load_shaders(self)-> None:
-        with open('my_pygame_light2d/weapon_draw_vertex.glsl',encoding='utf-8') as file: 
-            weapon_draw_vertex_src = file.read()
 
-        with open('my_pygame_light2d/weapon_draw_fragment.glsl',encoding ='utf-8') as file: 
-            weapon_draw_fragment_src = file.read()
 
-        with open('my_pygame_light2d/vertex_text.glsl',encoding='utf-8') as file: 
-            text_vertex_src = file.read()
 
         # Read source files
+        with open('my_pygame_light2d/polygon_vertex.glsl',encoding='utf-8') as file:
+            polygon_vertex_src= file.read()
+        with open('my_pygame_light2d/fragment_polygon.glsl',encoding='utf-8') as file:
+            polygon_fragment_src = file.read()
+
         with open('my_pygame_light2d/vertex.glsl',encoding='utf-8') as file:
             vertex_src = file.read()
         with open('my_pygame_light2d/shimmer_vertex.glsl',encoding='utf-8') as file:
@@ -123,8 +124,6 @@ class RenderEngine:
         with open('my_pygame_light2d/fragment_shimmer.glsl', encoding='utf-8') as file:
             fragment_src_shimmer = file.read()
 
-        with open('my_pygame_light2d/fragment_text.glsl', encoding='utf-8') as file:
-            fragment_src_text= file.read()
             
         # Create shader programs
         self._prog_mask = self.ctx.program(vertex_shader=vertex_src,
@@ -140,8 +139,9 @@ class RenderEngine:
         
         self._prog_shimmer = self.ctx.program(vertex_shader=vertex_src_shimmer,
                                               fragment_shader=fragment_src_shimmer)
-        self._prog_text= self.ctx.program(vertex_shader=text_vertex_src,
-                                              fragment_shader=fragment_src_text)
+
+        self._prog_polygon_draw = self.ctx.program(vertex_shader=polygon_vertex_src,
+                                                   fragment_shader= polygon_fragment_src)
         
 
 
@@ -769,7 +769,7 @@ class RenderEngine:
 
         if self._hud.cursor.text: 
             text_len = (len(self._hud.cursor.text[0]),len(self._hud.cursor.text[1])) 
-            rows = 1 + math.ceil(text_len[1] * self._hud._text_dim[0] / self._hud._cursor_text_box_max_width)
+            rows = 1 + ceil(text_len[1] * self._hud._text_dim[0] / self._hud._cursor_text_box_max_width)
             text_box_width = text_len[0] * 5 * scale
 
             x_pos_offset  = 0
@@ -949,7 +949,7 @@ class RenderEngine:
             if light.illuminator and light.illuminator._dead:
                 self.lights.remove(light)
                 continue 
-            if math.dist(light.position,offset) > light.radius + self._diagonal:
+            if dist(light.position,offset) > light.radius + self._diagonal:
                 continue
             
             if not light.illuminator and (light.position[0] < range[0] or light.position[0] > range[1]):
@@ -1501,6 +1501,9 @@ class RenderEngine:
         vertices_list = []
         texture_coords_list = []
 
+        polygon_vertices = []
+        polygon_indices = []
+
         for particle in list(particle_system._active_animation_particles):
             cur_frame = particle.animation.curr_frame()
             animationData = PARTICLE_ATLAS_POSITIONS_AND_SIZES[particle.type]
@@ -1542,7 +1545,52 @@ class RenderEngine:
                 source = pygame.Rect(0,0,tex.width,tex.height)
             )
             tex.release()
-        
+
+        base_index = 0
+        for spark in list(particle_system._active_sparks):
+            vertices,indices = self._create_spark_vertices(spark,camera_scroll,base_index)
+            polygon_vertices.extend(vertices)
+            polygon_indices.extend(indices)
+            base_index +=4
+
+        if polygon_vertices:
+            vertex_data = np.array(polygon_vertices,dtype=np.float32)
+            index_data = np.array(polygon_indices,dtype = 'i4')
+            vbo = self.ctx.buffer(vertex_data.tobytes())
+            ibo = self.ctx.buffer(index_data.tobytes())
+
+            self._prog_polygon_draw['color'].value = (1.0,0.0,0.0,1.0)
+            vao = self.ctx.vertex_array(self._prog_polygon_draw,[(vbo, '2f', 'in_position')],ibo)
+
+            vao.render(mode= moderngl.TRIANGLES)
+            vao.release()
+            vbo.release()
+            ibo.release()
+    
+    def _create_spark_vertices(self,spark:"Spark",camera_scroll,base_index):
+        vertices= [
+                spark.pos[0] -camera_scroll[0]+ cos(radians(spark.angle)) * spark.speed * spark.scale, spark.pos[1]-camera_scroll[1] - sin(radians(spark.angle)) * spark.speed * spark.scale,
+                spark.pos[0] -camera_scroll[0]+ cos(radians(spark.angle) + pi / 2) *spark.speed * spark.scale * 0.3, spark.pos[1]-camera_scroll[1] - sin(radians(spark.angle) + pi / 2) * spark.speed * spark.scale * 0.3,
+                spark.pos[0] -camera_scroll[0]- cos(radians(spark.angle)) * spark.speed * spark.scale * 3.5, spark.pos[1] -camera_scroll[1]+ sin(radians(spark.angle)) * spark.speed * spark.scale * 3.5,
+                spark.pos[0] -camera_scroll[0]+ cos(radians(spark.angle) - pi / 2) * spark.speed * spark.scale * 0.3, spark.pos[1]-camera_scroll[1] + sin(radians(spark.angle) + pi / 2) * spark.speed * spark.scale * 0.3,
+        ]
+
+        self._map_spark_pos_to_screen_pos(vertices)
+        indices = [
+            base_index,base_index +1, base_index +2,
+            base_index+2,base_index+3,base_index 
+        ]
+        return vertices,indices
+
+
+
+    def _map_spark_pos_to_screen_pos(self,coors):
+        for i, coor in enumerate(coors):
+            if i % 2 ==0:
+                coors[i] = 2. * (coors[i]) / self._true_res[0] -1.
+            else: 
+                coors[i] =  1. - 2. *(coors[i]) /self._true_res[1] 
+
     
     def _create_animation_particle_vertices(self,pos:tuple[int,int],size: tuple[int,int],camera_scroll : tuple[int,int],fbo_w,fbo_h):
         

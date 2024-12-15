@@ -318,7 +318,7 @@ class Noel():
 
 
             self.entities_manager.update(self._tilemap,self.particle_system,self.render_engine.lights)
-            self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
+            self.particle_system.update(self._dt*30,self._tilemap,self._grass_manager)
 
 
             self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
@@ -336,7 +336,6 @@ class Noel():
             
             pygame.display.flip()
             fps = self._clock.get_fps()
-
             pygame.display.set_caption(f"Noel - FPS: {fps: .2f}")
             self._clock.tick(60)
             
