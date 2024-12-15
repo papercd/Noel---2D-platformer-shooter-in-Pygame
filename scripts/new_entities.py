@@ -1,13 +1,13 @@
 from pygame import Rect
-from scripts.custom_data_types import AnimationParticleData,CollideParticleData
+from scripts.custom_data_types import AnimationParticleData,CollideParticleData,SPARK_COLORS,SparkData  
 from scripts.animationData import PlayerAnimationDataCollection
 from scripts.utils import get_rotated_vertices, SAT
-from random import choice as random_choice,random,randint
+from random import choice as random_choice,random,randint,choice
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from scripts.custom_data_types import Animation
+    from scripts.custom_data_types import Animation,TileInfo
     from my_pygame_light2d.light import PointLight 
     from scripts.new_tilemap import Tilemap
     from scripts.new_particles import ParticleSystem
@@ -562,6 +562,26 @@ class Bullet(PhysicsEntity):
     def flip(self)->bool:
         return self._flip
 
+    def _create_collision_effects(self,tilemap:"Tilemap",rect_tile:tuple[Rect,"TileInfo"],ps:"ParticleSystem",engine_lights:list["PointLight"]): 
+        if rect_tile[1].type == "lights":
+            print("add light collision later")
+        else: 
+            num_sparks = randint(2,5)
+            for i in range(num_sparks):
+                speed = randint(1,3)
+                angle = int(self.angle)
+                angle =  randint(180-angle -30,180-angle +30)
+                color = choice(SPARK_COLORS)         
+                spark_data = SparkData(self._center.copy(),1,angle,speed,0.4,color,8)
+                """
+                light = PointLight()
+                light.cast_shadows = False 
+                engine_lights.append(light)
+                """
+                ps.add_particle(spark_data)
+
+
+
     def adjust_pos(self,adjustment)->None: 
         self.pos[0] -= adjustment[0] 
         self.pos[1] -= adjustment[1]
@@ -571,13 +591,16 @@ class Bullet(PhysicsEntity):
     def adjust_flip(self,adjustment:bool) ->None: 
         self._flip = adjustment
 
-    def update(self,tilemap:"Tilemap",offset = (0,0)):
+    def update(self,tilemap:"Tilemap",ps: "ParticleSystem",engine_lights:list["PointLight"])->None:
         self._frames_flown -= 1 
         if self._frames_flown == 0:
             self._dead = True
             return True
         
         steps =4 
+
+        # devide one movement into steps, and if bullet collides in
+        # one sub step move the bullet up to that step 
 
         for step in range(steps):
         
@@ -595,6 +618,7 @@ class Bullet(PhysicsEntity):
                         self.pos[1] += self.velocity[1]/steps
                         self._center[1] += self.velocity[1]/steps
                         return False
+                    self._create_collision_effects(tilemap,rect_tile,ps,engine_lights)
                     self._dead = True
                     return True 
             
@@ -609,6 +633,7 @@ class Bullet(PhysicsEntity):
                     #self.handle_tile_collision(tilemap,rect_tile)
                     if step != 0: 
                         return False
+                    self._create_collision_effects(tilemap,rect_tile,ps,engine_lights)
                     self._dead = True
                     return True 
         return False

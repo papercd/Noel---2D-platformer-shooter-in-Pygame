@@ -170,12 +170,15 @@ class Noel():
     def _set_initial_display_settings(self):
         environ['SDL_VIDEO_CENTERED'] = '1'
         self._screen_res =self._system_display_info['resolution']
-        # self._screen_res = (1440,950)
+        # self._screen_res = (1024,576)
         
-        self._default_true_to_screen_res_ratio = 3.5 
+        self._default_true_to_screen_res_ratio = 4.0 
 
+        #self._true_res = (1024,576)
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
-        self._true_to_screen_res_ratio = 4.5
+        self._true_to_screen_res_ratio = 4.0 
+
+
         self._true_res = (int(self._screen_res[0]/self._true_to_screen_res_ratio),int(self._screen_res[1]/self._true_to_screen_res_ratio))
     
     def _configure_pygame(self):
@@ -314,7 +317,7 @@ class Noel():
 
 
 
-            self.entities_manager.update(self._tilemap)
+            self.entities_manager.update(self._tilemap,self.particle_system,self.render_engine.lights)
             self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
 
 
