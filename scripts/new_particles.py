@@ -125,7 +125,7 @@ class ParticleSystem:
 
     def update(self,dt,tilemap:Tilemap,grass_manager):
         for particle in list(self._active_collide_particles):
-            kill =particle.update(tilemap)
+            kill =particle.update(tilemap,dt)
             if kill: 
                 particle._active = False 
                 self._active_collide_particles.remove(particle)
@@ -178,13 +178,13 @@ class PhysicalParticle:
         self._buffer_surf.fill(self._color)
         self._rect = Rect(self._pos[0],self._pos[1],self._size[0],self._size[1])
 
-    def update(self,tilemap:Tilemap):
+    def update(self,tilemap:Tilemap,dt):
         # testing 
         self._life -=1
         if self._life <= 0:
             return True
         
-        self._velocity[1] = min(6,self._velocity[1] +0.20 * self._gravity_factor)
+        self._velocity[1] = min(6,self._velocity[1] +0.20 * self._gravity_factor )
 
         for rect_tile in tilemap.phy_rects_around(self._pos,self._size):
             if self._rect.colliderect(rect_tile[0]):
@@ -208,9 +208,9 @@ class PhysicalParticle:
                                 return True 
                 else: 
                     return True 
-        self._pos[0] += cos(radians(self._angle)) * self._speed
-        self._pos[1] += sin(radians(self._angle)) * self._speed
-        self._pos[1] += self._velocity[1]
+        self._pos[0] += cos(radians(self._angle)) * self._speed * dt
+        self._pos[1] += sin(radians(self._angle)) * self._speed * dt
+        self._pos[1] += self._velocity[1] * dt
         self._rect.topleft = self._pos
 
         self._speed = max(0,self._speed -0.1)

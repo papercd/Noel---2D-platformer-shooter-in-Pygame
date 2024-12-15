@@ -1566,7 +1566,8 @@ class RenderEngine:
             vao.release()
             vbo.release()
             ibo.release()
-    
+
+
     def _create_spark_vertices(self,spark:"Spark",camera_scroll,base_index):
         vertices= [
                 spark.pos[0] -camera_scroll[0]+ cos(radians(spark.angle)) * spark.speed * spark.scale, spark.pos[1]-camera_scroll[1] - sin(radians(spark.angle)) * spark.speed * spark.scale,

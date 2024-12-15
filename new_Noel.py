@@ -305,7 +305,7 @@ class Noel():
         self.render_engine.clear(0,0,0,255)
 
         if self._curr_gameState == GameState.GameLoop:  
-            
+            print(self._dt)
             self._ctx.screen.clear(0, 0, 0, 1)
             self._scroll[0] += (self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self._scroll[0])/20
             self._scroll[1] += (self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self._scroll[1])/20
@@ -317,12 +317,12 @@ class Noel():
 
 
 
-            self.entities_manager.update(self._tilemap,self.particle_system,self.render_engine.lights)
-            self.particle_system.update(self._dt*30,self._tilemap,self._grass_manager)
+            self.entities_manager.update(self._dt*40,self._tilemap,self.particle_system,self.render_engine.lights)
+            self.particle_system.update(self._dt*40,self._tilemap,self._grass_manager)
 
 
             self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
-                               self._player_movement_input,camera_scroll)
+                               self._player_movement_input,camera_scroll,self._dt)
             self.render_engine.bind_player(self.player)
             self._hud.update()
             self.render_engine.bind_hud(self._hud)
@@ -348,6 +348,9 @@ class Noel():
 
 
     def start(self):
+        self._dt = time() - self._prev_frame_time
+        self._prev_frame_time = time()
+
         while(True):
             self._handle_events()
             self._update_render() 

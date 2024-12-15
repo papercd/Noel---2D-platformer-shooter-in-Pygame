@@ -55,15 +55,14 @@ class PhysicsEntity:
         return self._collision_rect().colliderect(other._collision_rect())
     
 
-    def update(self,tilemap:"Tilemap",movement = (0,0),anim_offset = (0,0))->None:
+    def update(self,tilemap:"Tilemap",dt,movement = (0,0),anim_offset = (0,0))->None:
         self.frame_data += 1 
         self._collisions = {'up': False, 'down': False, 'left': False, 'right': False}
-        
+        _dt = dt * 70
         if movement[0] > 0:
             self._flip = False
         if movement[0] < 0 :
             self._flip = True 
-
 
         # gravity 
         self.velocity[1] = min(5, self.velocity[1] + 0.26)
@@ -75,8 +74,8 @@ class PhysicsEntity:
             self.velocity[0] = max(self.velocity[0] - 0.21, 0)
 
         frame_movement = (movement[0] + self.velocity[0], movement[1] + self.velocity[1]) if not self.cut_movement_input else self.velocity
-        
-        self.pos[0] += frame_movement[0]
+
+        self.pos[0] += frame_movement[0] * _dt
         self_rect = self._collision_rect()
         for rect_tile in tilemap.phy_rects_around((self.pos[0] + anim_offset[0], self.pos[1] + anim_offset[1]),self.size):
             tile_type = rect_tile[1].type
@@ -130,7 +129,7 @@ class PhysicsEntity:
                         
                     self.pos[0] =self_rect.x - anim_offset[0]
         
-        self.pos[1] +=frame_movement[1]
+        self.pos[1] +=frame_movement[1] *_dt
         self_rect = self._collision_rect()
 
         for rect_tile in tilemap.phy_rects_around((self.pos[0] +anim_offset[0] ,self.pos[1] +anim_offset[1]), self.size):
@@ -343,7 +342,7 @@ class Player(PhysicsEntity):
             weapon.shoot(engine_lights,entities_manager,particle_system,frame_count)
 
 
-    def update(self,tilemap:"Tilemap",particle_system:"ParticleSystem",cursor_pos,player_movement_input,camera_scroll):
+    def update(self,tilemap:"Tilemap",particle_system:"ParticleSystem",cursor_pos,player_movement_input,camera_scroll,dt):
         self._accelerate(player_movement_input)
         self._cur_animation.update()
         self.cursor_pos = cursor_pos
@@ -375,7 +374,7 @@ class Player(PhysicsEntity):
             new_movement[1] *= (20 - self.hard_land_recovery_time)/20 
             self.hard_land_recovery_time -= 1
             
-        super().update(tilemap, new_movement,anim_offset= (3,1))
+        super().update(tilemap,dt, new_movement,anim_offset= (3,1))
 
         self.left_anchor = self.left_and_right_anchors[self._flip][self._state]["left"]
         self.right_anchor = self.left_and_right_anchors[self._flip][self._state]["right"]
@@ -591,7 +590,7 @@ class Bullet(PhysicsEntity):
     def adjust_flip(self,adjustment:bool) ->None: 
         self._flip = adjustment
 
-    def update(self,tilemap:"Tilemap",ps: "ParticleSystem",engine_lights:list["PointLight"])->None:
+    def update(self,dt,tilemap:"Tilemap",ps: "ParticleSystem",engine_lights:list["PointLight"])->None:
         self._frames_flown -= 1 
         if self._frames_flown == 0:
             self._dead = True
@@ -601,12 +600,13 @@ class Bullet(PhysicsEntity):
 
         # devide one movement into steps, and if bullet collides in
         # one sub step move the bullet up to that step 
+        _dt = dt *1.5
 
         for step in range(steps):
         
-            self.pos[0] += self.velocity[0]/steps
+            self.pos[0] += _dt*self.velocity[0]/steps
             # need a different way to find the center 
-            self._center[0] += self.velocity[0] /steps
+            self._center[0] += _dt*self.velocity[0] /steps
 
             rotated_bullet_rect = get_rotated_vertices(self._center,*self.size,self._angle) 
 
@@ -615,15 +615,15 @@ class Bullet(PhysicsEntity):
                 #if entity_rect.colliderect(rect_tile[0]):
                     #self.handle_tile_collision(tilemap,rect_tile)
                     if step != 0:
-                        self.pos[1] += self.velocity[1]/steps
-                        self._center[1] += self.velocity[1]/steps
+                        self.pos[1] += _dt*self.velocity[1]/steps
+                        self._center[1] += _dt*self.velocity[1]/steps
                         return False
                     self._create_collision_effects(tilemap,rect_tile,ps,engine_lights)
                     self._dead = True
                     return True 
             
-            self.pos[1] += self.velocity[1]/steps
-            self._center[1] += self.velocity[1]/steps
+            self.pos[1] += _dt* self.velocity[1]/steps
+            self._center[1] += _dt * self.velocity[1]/steps
             
             rotated_bullet_rect = get_rotated_vertices(self._center,*self.size,self._angle)
             

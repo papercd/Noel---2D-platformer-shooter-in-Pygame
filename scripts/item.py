@@ -222,11 +222,11 @@ class AK47(Weapon):
             speed_factor = random()
             randomize_angle = randint(-30,30)
             color = choice(MUZZLE_PARTICLE_COLORS['ak47'])
-            life = randint(1,12)
+            life = randint(1,15)
 
 
             particle_data = CollideParticleData((1,1),self._smoke_pos.copy(),-(self._angle_opening + randomize_angle),\
-                                                4*speed_factor,color,life,1) 
+                                                6*speed_factor,color,life,1) 
             ps.add_particle(particle_data)
 
         em.add_bullet(bullet)
