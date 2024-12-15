@@ -123,7 +123,7 @@ class ParticleSystem:
             self._animation_particle_pool_index = (self._animation_particle_pool_index -1) % self._max_animation_particle_count 
 
 
-    def update(self,dt,tilemap:Tilemap,grass_manager):
+    def update(self,dt,fps,tilemap:Tilemap,grass_manager):
         for particle in list(self._active_collide_particles):
             kill =particle.update(tilemap,dt)
             if kill: 
@@ -138,7 +138,7 @@ class ParticleSystem:
                 particle._active = False 
         
         for particle in list(self._active_animation_particles):
-            kill = particle.update()
+            kill = particle.update(dt)
             if kill: 
                 particle._active = False 
                 self._active_animation_particles.remove(particle)
@@ -180,11 +180,11 @@ class PhysicalParticle:
 
     def update(self,tilemap:Tilemap,dt):
         # testing 
-        self._life -=1
+        self._life -=1 * dt * 60
         if self._life <= 0:
             return True
         
-        self._velocity[1] = min(6,self._velocity[1] +0.20 * self._gravity_factor )
+        self._velocity[1] = min(6,self._velocity[1] +0.20 * self._gravity_factor)
 
         for rect_tile in tilemap.phy_rects_around(self._pos,self._size):
             if self._rect.colliderect(rect_tile[0]):
@@ -208,12 +208,12 @@ class PhysicalParticle:
                                 return True 
                 else: 
                     return True 
-        self._pos[0] += cos(radians(self._angle)) * self._speed * dt
-        self._pos[1] += sin(radians(self._angle)) * self._speed * dt
-        self._pos[1] += self._velocity[1] * dt
+        self._pos[0] += cos(radians(self._angle)) * self._speed * dt * 60  
+        self._pos[1] += sin(radians(self._angle)) * self._speed * dt * 60
+        self._pos[1] += self._velocity[1] * dt * 60 
         self._rect.topleft = self._pos
 
-        self._speed = max(0,self._speed -0.1)
+        self._speed = max(0,self._speed -0.1 * dt * 60)
 
         return False 
     
@@ -249,13 +249,13 @@ class Spark:
         force += uniform(-0.05,0.05)
 
         movement = self._calculate_movement(dt)
-        movement[1] = min(terminal_velocity,movement[1] + force * dt )
-        movement[0] *= friction 
-        self.angle = atan2(movement[1],movement[0])
+        movement[1] = min(terminal_velocity,movement[1] + force )
+        movement[0] *= friction   
+        self.angle = degrees(atan2(-movement[1],movement[0]))
 
     def _calculate_movement(self,dt:float)->list[float,float]:
-        return [cos(radians(self.angle))*self.speed*self.speed_factor*dt,
-                -sin(radians(self.angle))*self.speed*self.speed_factor*dt]
+        return [cos(radians(self.angle))*self.speed*self.speed_factor*dt* 60,
+                -sin(radians(self.angle))*self.speed*self.speed_factor*dt * 60]
 
     
     def _calculate_bounce_angle(self,axis:str): 
@@ -283,52 +283,48 @@ class Spark:
             return True 
         self.movement = self._calculate_movement(dt)
 
-        self.pos[0] += self.movement[0] 
-
-        tile_loc = (int(self.pos[0])//tilemap.tile_size,int(self.pos[1])//tilemap.tile_size)
-        key = f"{tile_loc[0]};{tile_loc[1]}"
+        self.pos[0] += self.movement[0]
+        key= (int(self.pos[0])//tilemap.tile_size,int(self.pos[1])//tilemap.tile_size)
 
         if key in tilemap.physical_tiles:
-            tile = tilemap.physical_tiles[key]
+            tile = tilemap.physical_tiles[key][0]
             if tile.type == 'lights':
                 pass 
             elif tile.type.endswith('stairs') and tile.variant.split(';')[0] in ('0','1'):
                 pass 
             else: 
                 if self.movement[0] < 0 :
-                    self.pos[0] = tile_loc[0] * tilemap.tile_size + tilemap.tile
+                    self.pos[0] = (key[0]+1) * tilemap.tile_size  
                 else:
-                    self.pos[0] = tile_loc[0] * tilemap.tile_size - 1
+                    self.pos[0] = key[0] * tilemap.tile_size - 1
                 self.angle = self._calculate_bounce_angle('x')
                 self.speed *= 0.8
 
         self.pos[1] += self.movement[1] 
 
-        tile_loc = (int(self.pos[0])//tilemap.tile_size,int(self.pos[1])//tilemap.tile_size)
-        key = f"{tile_loc[0]};{tile_loc[1]}"
-
+        key= (int(self.pos[0])//tilemap.tile_size,int(self.pos[1])//tilemap.tile_size)
         if key in tilemap.physical_tiles:
-            tile = tilemap.physical_tiles[key]
+            tile = tilemap.physical_tiles[key][0]
             if tile.type == 'lights':
                 pass 
             elif tile.type.endswith('stairs') and tile.variant.split(';')[0] in ('0','1'):
                 pass 
             else: 
                 if self.movement[1] < 0 :
-                    self.pos[1] = tile_loc[1] * tilemap.tile_size + tilemap.tile
+                    self.pos[1] = (key[1]+1) * tilemap.tile_size 
                 else:
-                    self.pos[1] = tile_loc[1] * tilemap.tile_size - 1
+                    self.pos[1] = key[1] * tilemap.tile_size - 1
                 self.angle = self._calculate_bounce_angle('y')
                 self.speed *= 0.8
 
 
-        #self._point_towards(90, 0.02)
-        #self._velocity_adjust(0.975,0.05,8,dt)
+        self._point_towards(90, 0.02)
+        self._velocity_adjust(0.975,0.05,8,dt)
 
         angle_jitter = uniform(-3,3)
         self.angle += angle_jitter
 
-        self.speed -= 0.1*self.decay_factor
+        self.speed -= 0.1*self.decay_factor*dt*110
 
         return False 
     
@@ -665,14 +661,14 @@ class AnimatedParticle:
         self.source = particle_data.source
         self.animation.set_new_data(PARTICLE_ANIMATION_DATA[self.type])
 
-    def update(self):
+    def update(self,dt):
         kill = False 
         if self.animation.done: 
             kill = True 
-        self.pos[0] += self.velocity[0] 
-        self.pos[1] += self.velocity[1] 
+        self.pos[0] += self.velocity[0] * dt
+        self.pos[1] += self.velocity[1] * dt
 
-        self.animation.update()
+        self.animation.update(dt)
         return kill 
 
 

@@ -12,7 +12,7 @@ AnimationParticleData = namedtuple('AnimationParticleData',['type','pos','veloci
 
 SPARK_COLORS = ((253,128,70),(244,160,86) ,(189,84,55))
 
-
+TIME_FOR_ONE_LOGICAL_FRAME = 0.015969276428222656
 class Animation: 
     """ Animation class to handle entities' animations update """
     def __init__(self,n_textures:int,img_dur:int=5,halt:bool = False,loop :bool =True):
@@ -21,6 +21,7 @@ class Animation:
         self._halt = halt
         self._img_dur = img_dur
         self.done = False 
+        self.accum_time = 0
         self.frame = 0
 
     def set_new_data(self,animation_data:AnimationData):
@@ -38,18 +39,22 @@ class Animation:
     def copy(self):
         return Animation(self._count,self._img_dur,self._halt,self._loop)
     
-    def update(self):
-        if self._halt: 
-             self.frame = min(self.frame+1,self._img_dur * self._count -1)
-             if self.frame == self._img_dur * self._count -1 : self.done = True 
-        else: 
-            if self._loop:
-                self.frame = (self.frame+1) % (self._img_dur * self._count)
-            else: 
-                self.frame = min(self.frame+1,self._img_dur *self._count -1)
-                if self.frame >= self._img_dur *self._count -1:
-                    self.done = True 
+    def update(self,dt):
+        dt = min(dt, 2 * TIME_FOR_ONE_LOGICAL_FRAME)
 
+        self.accum_time += dt 
+        if self.accum_time >= TIME_FOR_ONE_LOGICAL_FRAME: 
+            if self._halt: 
+                self.frame = min(self.frame+1,self._img_dur * self._count -1)
+                if self.frame == self._img_dur * self._count -1 : self.done = True 
+            else: 
+                if self._loop:
+                    self.frame = (self.frame+1) % (self._img_dur * self._count)
+                else: 
+                    self.frame = min(self.frame+1,self._img_dur *self._count -1)
+                    if self.frame >= self._img_dur *self._count -1:
+                        self.done = True 
+            self.accum_time -= TIME_FOR_ONE_LOGICAL_FRAME 
 
     def curr_frame(self) -> int:
         """

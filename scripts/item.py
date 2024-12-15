@@ -5,6 +5,9 @@ from scripts.custom_data_types import AnimationParticleData,CollideParticleData
 from typing import TYPE_CHECKING
 from random import randint,random,choice
 
+TIME_FOR_LOGICAL_FRAME = 0.015969276428222656
+
+
 if TYPE_CHECKING:
     from scripts.new_particles import ParticleSystem
     from scripts.entitiesManager import EntitiesManager
@@ -96,7 +99,7 @@ class Weapon(Item):
         self.target_pos= None
         self.rapid_fire_toggled = False 
         self.shot = False
-
+        self.accum_time = 0
     @property 
     def angle_opening(self):
         return self._angle_opening
@@ -129,8 +132,12 @@ class Weapon(Item):
     def toggle_rapid_fire(self):
         if self._can_RF:
             self._rapid_fire_toggled = not self._rapid_fire_toggled
+            self.accum_time = 0
 
-    def update(self,target_pos,holder_entity,camera_scroll):
+    def update(self,target_pos,holder_entity,camera_scroll,dt):
+        self.accum_time += min(dt, 2 * TIME_FOR_LOGICAL_FRAME)
+        self.accum_time = min(self.accum_time, (self._fire_rate+1) * TIME_FOR_LOGICAL_FRAME)
+
         if self._knockback[0] < 0: 
             self._knockback[0] = min(self._knockback[0] + 1.45, 0)
         if self._knockback[0] > 0 :
@@ -190,17 +197,18 @@ class AK47(Weapon):
     def reset_shot(self)->None: 
         self.shot = False 
 
-    def shoot(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem",frame_count:int)-> None:
-
+    def shoot(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem")-> None:
         #TODO: change the frame count system to a dt-based system later, when integrating dt. 
         
         if self._rapid_fire_toggled: 
-            if frame_count % self._fire_rate == 0: 
+            if self.accum_time >= TIME_FOR_LOGICAL_FRAME * self._fire_rate: 
                 self._emit_bullet(engine_lights,em,ps)
+                self.accum_time -= TIME_FOR_LOGICAL_FRAME * self._fire_rate
         else: 
-            if not self.shot: 
+            if not self.shot :
                 self._emit_bullet(engine_lights,em,ps)
                 self.shot = True 
+        
 
 
     def _emit_bullet(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem")->None: 
@@ -213,7 +221,7 @@ class AK47(Weapon):
         engine_lights.append(self._create_light(self._opening_pos, 1.0, 8, (253, 108, 50), 2))
         engine_lights.append(self._create_light(self._opening_pos, 0.7, 24, (248, 129, 153), 2))
         engine_lights.append(self._create_light(self._opening_pos, 0.6, 40, (248, 129, 153), 2))
-        engine_lights.append(self._create_light(self._opening_pos, 1.0, 20, (255, 255, 255), bullet._frames_flown, illuminator=bullet))
+        engine_lights.append(self._create_light(self._opening_pos, 1.0, 20, (255, 255, 255), bullet._time_flown, illuminator=bullet))
 
 
         particle_data = AnimationParticleData('ak47_smoke',self._smoke_pos,[0,0],-self._angle_opening,flip,'weapon')
@@ -222,11 +230,11 @@ class AK47(Weapon):
             speed_factor = random()
             randomize_angle = randint(-30,30)
             color = choice(MUZZLE_PARTICLE_COLORS['ak47'])
-            life = randint(1,15)
+            life = randint(1,8)
 
 
             particle_data = CollideParticleData((1,1),self._smoke_pos.copy(),-(self._angle_opening + randomize_angle),\
-                                                6*speed_factor,color,life,1) 
+                                                5*speed_factor,color,life,1) 
             ps.add_particle(particle_data)
 
         em.add_bullet(bullet)
