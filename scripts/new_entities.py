@@ -1,14 +1,15 @@
 from pygame import Rect
-from scripts.custom_data_types import AnimationParticleData,CollideParticleData
+from scripts.custom_data_types import AnimationParticleData,CollideParticleData,SPARK_COLORS,SparkData  
 from scripts.animationData import PlayerAnimationDataCollection
 from scripts.utils import get_rotated_vertices, SAT
-from random import choice as random_choice,random,randint
+from random import choice as random_choice,random,randint,choice
 
 from typing import TYPE_CHECKING
+from my_pygame_light2d.light import PointLight 
+TIME_FOR_ONE_LOGICAL_FRAME = 0.015969276428222656
 
 if TYPE_CHECKING:
-    from scripts.custom_data_types import Animation
-    from my_pygame_light2d.light import PointLight 
+    from scripts.custom_data_types import Animation,TileInfo
     from scripts.new_tilemap import Tilemap
     from scripts.new_particles import ParticleSystem
     from scripts.entitiesManager import EntitiesManager
@@ -55,28 +56,30 @@ class PhysicsEntity:
         return self._collision_rect().colliderect(other._collision_rect())
     
 
-    def update(self,tilemap:"Tilemap",movement = (0,0),anim_offset = (0,0))->None:
+    def update(self,tilemap:"Tilemap",dt,movement = (0,0),anim_offset = (0,0))->None:
         self.frame_data += 1 
         self._collisions = {'up': False, 'down': False, 'left': False, 'right': False}
-        
+
+
         if movement[0] > 0:
             self._flip = False
         if movement[0] < 0 :
             self._flip = True 
 
-
         # gravity 
-        self.velocity[1] = min(5, self.velocity[1] + 0.26)
+        gravity = 0.26 * dt * 68 
+        self.velocity[1] = min(6, self.velocity[1] + gravity)
 
         # air resistance 
+        air_resistance = 0.21 * dt * 60  
         if self.velocity[0] < 0:
-            self.velocity[0] = min(self.velocity[0] + 0.21, 0)
+            self.velocity[0] = min(self.velocity[0] + air_resistance, 0)
         elif self.velocity[0] > 0:
-            self.velocity[0] = max(self.velocity[0] - 0.21, 0)
+            self.velocity[0] = max(self.velocity[0] - air_resistance, 0)
 
         frame_movement = (movement[0] + self.velocity[0], movement[1] + self.velocity[1]) if not self.cut_movement_input else self.velocity
-        
-        self.pos[0] += frame_movement[0]
+
+        self.pos[0] += frame_movement[0] * dt*60 
         self_rect = self._collision_rect()
         for rect_tile in tilemap.phy_rects_around((self.pos[0] + anim_offset[0], self.pos[1] + anim_offset[1]),self.size):
             tile_type = rect_tile[1].type
@@ -130,9 +133,8 @@ class PhysicsEntity:
                         
                     self.pos[0] =self_rect.x - anim_offset[0]
         
-        self.pos[1] +=frame_movement[1]
+        self.pos[1] +=frame_movement[1] *dt*60
         self_rect = self._collision_rect()
-
         for rect_tile in tilemap.phy_rects_around((self.pos[0] +anim_offset[0] ,self.pos[1] +anim_offset[1]), self.size):
             tile_type = rect_tile[1].type
             if tile_type == 'lights':
@@ -178,7 +180,6 @@ class PhysicsEntity:
                         self.pos[1] = self_rect.y -anim_offset[1]
                         self._collisions['down'] = True
  
-
 
 class Player(PhysicsEntity):
     def __init__(self, pos: list[float], size: tuple[int, int])->None:
@@ -255,21 +256,21 @@ class Player(PhysicsEntity):
         return Rect(self.pos[0] +3, self.pos[1] + 1 ,10,15)
 
 
-    def _accelerate(self,movement_input):
+    def _accelerate(self,movement_input,dt):
         if(movement_input[1]-movement_input[0])  >0 :
             #means that the intent of the player movement is to the right.  
-            self.cur_vel = min( 1.3*self._default_speed,self._accel_rate + self.cur_vel)
+            self.cur_vel = min( 1.3*self._default_speed,self._accel_rate*dt*65+ self.cur_vel)
                 
         elif (movement_input[1]-movement_input[0]) <0 :
             #means that the intent of the player movement is to the left.  
-            self.cur_vel = max( -1.3*self._default_speed,self.cur_vel- self._accel_rate)
+            self.cur_vel = max( -1.3*self._default_speed,self.cur_vel- self._accel_rate*dt*65)
             
         else: 
             if self.cur_vel >= 0 :
-                self.cur_vel = max(0,self.cur_vel - self._accel_rate)
+                self.cur_vel = max(0,self.cur_vel - self._accel_rate * dt * 65)
                 
             else:
-                self.cur_vel = min(0,self.cur_vel + self._accel_rate)
+                self.cur_vel = min(0,self.cur_vel + self._accel_rate * dt * 65)
     
     def set_state(self,state):
         if state != self._state: 
@@ -282,9 +283,9 @@ class Player(PhysicsEntity):
         if not self.on_ladder: 
             if self.velocity[1] < 0: 
                 if self.velocity[1] > -4.2:
-                    if self.air_time >0 and self.air_time <= 8:
+                    if self.air_time >0 and self.air_time <= 8 * TIME_FOR_ONE_LOGICAL_FRAME:
                         self.velocity[1] = -1.2
-                    if self.air_time >8 and self.air_time <=11 :
+                    if self.air_time >8 * TIME_FOR_ONE_LOGICAL_FRAME and self.air_time <=11 * TIME_FOR_ONE_LOGICAL_FRAME:
                         self.velocity[1] = -2.2
 
 
@@ -337,15 +338,15 @@ class Player(PhysicsEntity):
             self.curr_weapon_node.weapon.reset_shot()
 
     def shoot_weapon(self,engine_lights:list["PointLight"],entities_manager:"EntitiesManager",\
-                     particle_system:"ParticleSystem",frame_count:int)->None: 
+                     particle_system:"ParticleSystem")->None: 
         if self.curr_weapon_node and self.curr_weapon_node.weapon: 
             weapon = self.curr_weapon_node.weapon
-            weapon.shoot(engine_lights,entities_manager,particle_system,frame_count)
+            weapon.shoot(engine_lights,entities_manager,particle_system)
 
 
-    def update(self,tilemap:"Tilemap",particle_system:"ParticleSystem",cursor_pos,player_movement_input,camera_scroll):
-        self._accelerate(player_movement_input)
-        self._cur_animation.update()
+    def update(self,tilemap:"Tilemap",particle_system:"ParticleSystem",cursor_pos,player_movement_input,camera_scroll,dt):
+        self._accelerate(player_movement_input,dt)
+        self._cur_animation.update(dt)
         self.cursor_pos = cursor_pos
         new_movement = [self.cur_vel,0]
 
@@ -360,7 +361,7 @@ class Player(PhysicsEntity):
                 if self.stamina >= 10:
                     #then you can run. 
                     if self.cur_vel != 0:
-                        self.stamina -= 1.2
+                        self.stamina -= 1.2 * dt
                         new_movement[0] *= 1.4
                 else: 
                     new_movement[0] *= 0.7
@@ -373,9 +374,9 @@ class Player(PhysicsEntity):
         if self.hard_land_recovery_time > 0 :
             new_movement[0] *= (20 - self.hard_land_recovery_time)/20 
             new_movement[1] *= (20 - self.hard_land_recovery_time)/20 
-            self.hard_land_recovery_time -= 1
+            self.hard_land_recovery_time -= dt
             
-        super().update(tilemap, new_movement,anim_offset= (3,1))
+        super().update(tilemap,dt*1.1, new_movement,anim_offset= (3,1))
 
         self.left_anchor = self.left_and_right_anchors[self._flip][self._state]["left"]
         self.right_anchor = self.left_and_right_anchors[self._flip][self._state]["right"]
@@ -391,18 +392,18 @@ class Player(PhysicsEntity):
         #every frame, the stamina is increased by 0.7
 
 
-        self.stamina = min(100, self.stamina + self.recov_rate)
-        self.air_time +=1
+        self.stamina = min(100, self.stamina + self.recov_rate * dt)
+        self.air_time +=dt 
         
-        
+        """
         self.changing_done = min(2,self.change_weapon_inc + self.changing_done)
         if self.changing_done == 2:
              
             self.change_weapon(self.change_scroll)
-                
+        """     
 
         if self.velocity[1] >=2:
-            self.y_inertia += 1 
+            self.y_inertia +=  dt
 
        
         self.cut_movement_input = False 
@@ -422,7 +423,7 @@ class Player(PhysicsEntity):
 
 
                 offsets = [(-2,0),(-1,0), (0,0), (1,0),(2,0)]                
-                for i in range(max(8,self.y_inertia//2)):
+                for i in range(max(8,int(self.y_inertia)//2)):
                     offset = random_choice(offsets)
                     random_factor = random()
                     particle_data = CollideParticleData((1,1), [entry_pos[0] - offset[0],entry_pos[1] - 2] ,\
@@ -434,14 +435,14 @@ class Player(PhysicsEntity):
             if self.y_inertia > 12 and self.y_inertia <35:
                 particle_data = AnimationParticleData('land',[self.pos[0] +8,self.pos[1]+14],velocity=[0,0],angle=0,flipped=False,source='player')
                 particle_system.add_particle(particle_data)
-                self.hard_land_recovery_time = 7
+                self.hard_land_recovery_time = 7 * TIME_FOR_ONE_LOGICAL_FRAME
                 #self.set_state('land')
                 
                 
             elif self.y_inertia >= 35:
                 particle_data = AnimationParticleData('big_land',[self.pos[0] +7,self.pos[1]+7],velocity=[0,0],angle=0,flipped=False,source='player')
                 particle_system.add_particle(particle_data)
-                self.hard_land_recovery_time = 20
+                self.hard_land_recovery_time = 20 * TIME_FOR_ONE_LOGICAL_FRAME
                 self.y_inertia = 0
             self.jump_count =2 
             self.air_time = 0
@@ -450,8 +451,7 @@ class Player(PhysicsEntity):
         self.wall_slide = False
         self.on_wall = self._collisions['left'] or self._collisions['right']
 
-
-        if self.on_wall and self.air_time > 4:
+        if self.on_wall and self.air_time > 4 * TIME_FOR_ONE_LOGICAL_FRAME:
             self.wall_slide = True 
             self.velocity[1] = min(self.velocity[1],0.5)
             if self._collisions['right']:
@@ -463,7 +463,7 @@ class Player(PhysicsEntity):
             self.y_inertia = 0
        
         if not self.wall_slide: 
-            if self.air_time > 4:
+            if self.air_time > 4 * TIME_FOR_ONE_LOGICAL_FRAME:
                 self.boost_on_next_tap = False 
                 if self.velocity[1] < 0:
                     self.y_inertia = 0
@@ -521,13 +521,17 @@ class Player(PhysicsEntity):
                         pass 
                     else: 
                         self.set_state('idle')
-                
+        """
+        print(self.state)
+        print(self.air_time)
+        print(self._collisions['down'])
+        """
         # update the weapon
 
         if self.curr_weapon_node and self.curr_weapon_node.weapon: 
 
             self.holding_gun = True
-            self.curr_weapon_node.weapon.update(self.cursor_pos,self,camera_scroll)
+            self.curr_weapon_node.weapon.update(self.cursor_pos,self,camera_scroll,dt)
         else: 
             self.holding_gun = False 
         
@@ -546,13 +550,10 @@ class Bullet(PhysicsEntity):
     def __init__(self,life:int,pos: list[float], size: tuple[int, int],angle:int):
         super().__init__('Bullet', pos, size)
         self._angle = angle
-        self._frames_flown = life
-        self._dead = False
-        self._center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[1]//2]
+        self._time_flown= life
+        self.dead = False
+        self.center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[1]//2]
 
-    @property
-    def center(self)->list[int,int]:
-        return self._center
     
     @property
     def angle(self): 
@@ -562,46 +563,79 @@ class Bullet(PhysicsEntity):
     def flip(self)->bool:
         return self._flip
 
+    def _create_collision_effects(self,tilemap:"Tilemap",rect_tile:tuple[Rect,"TileInfo"],ps:"ParticleSystem",engine_lights:list["PointLight"]): 
+        if rect_tile[1].type == "lights":
+            print("add light collision later")
+        else: 
+            num_sparks = randint(2,5)
+            for i in range(num_sparks):
+                speed = randint(1,3)
+                angle = int(self.angle)
+                angle =  randint(180-angle -30,180-angle +30)
+                color = choice(SPARK_COLORS)         
+                spark_data = SparkData(self.center.copy(),1.2,angle,speed,1.5,color,9)
+                light = self._create_light()
+                """
+                light = PointLight()
+                light.cast_shadows = False 
+                engine_lights.append(light)
+                """
+                # pass light to particle system to bind spark object as illuminator for light 
+                ps.add_particle(spark_data,light)
+                engine_lights.append(light)
+
+    def _create_light(self):
+        light = PointLight(self.center.copy(),power = 1,radius = 5,life= 70)
+        light.set_color(255,255,255)
+        light.cast_shadows = False
+        return light
+
+
     def adjust_pos(self,adjustment)->None: 
         self.pos[0] -= adjustment[0] 
         self.pos[1] -= adjustment[1]
-        self._center[0] -= adjustment[0] 
-        self._center[1] -= adjustment[1]
+        self.center[0] -= adjustment[0] 
+        self.center[1] -= adjustment[1]
 
     def adjust_flip(self,adjustment:bool) ->None: 
         self._flip = adjustment
 
-    def update(self,tilemap:"Tilemap",offset = (0,0)):
-        self._frames_flown -= 1 
-        if self._frames_flown == 0:
-            self._dead = True
+    def update(self,dt,tilemap:"Tilemap",ps: "ParticleSystem",engine_lights:list["PointLight"])->None:
+        self._time_flown-= 1*dt
+        if self._time_flown == 0:
+            self.dead = True
             return True
         
         steps =4 
 
+        # devide one movement into steps, and if bullet collides in
+        # one sub step move the bullet up to that step 
+  
+
         for step in range(steps):
         
-            self.pos[0] += self.velocity[0]/steps
+            self.pos[0] += 60*dt*self.velocity[0]/steps
             # need a different way to find the center 
-            self._center[0] += self.velocity[0] /steps
+            self.center[0] += 60*dt*self.velocity[0] /steps
 
-            rotated_bullet_rect = get_rotated_vertices(self._center,*self.size,self._angle) 
+            rotated_bullet_rect = get_rotated_vertices(self.center,*self.size,self._angle) 
 
             for rect_tile in tilemap.phy_rects_around(self.pos, self.size):
                 if SAT(rect_tile,rotated_bullet_rect):
                 #if entity_rect.colliderect(rect_tile[0]):
                     #self.handle_tile_collision(tilemap,rect_tile)
                     if step != 0:
-                        self.pos[1] += self.velocity[1]/steps
-                        self._center[1] += self.velocity[1]/steps
+                        self.pos[1] += 60*dt*self.velocity[1]/steps
+                        self.center[1] +=60* dt*self.velocity[1]/steps
                         return False
-                    self._dead = True
+                    self._create_collision_effects(tilemap,rect_tile,ps,engine_lights)
+                    self.dead = True
                     return True 
             
-            self.pos[1] += self.velocity[1]/steps
-            self._center[1] += self.velocity[1]/steps
+            self.pos[1] +=60* dt* self.velocity[1]/steps
+            self.center[1] += 60*dt * self.velocity[1]/steps
             
-            rotated_bullet_rect = get_rotated_vertices(self._center,*self.size,self._angle)
+            rotated_bullet_rect = get_rotated_vertices(self.center,*self.size,self._angle)
             
             for rect_tile in tilemap.phy_rects_around(self.pos, self.size):
                 if SAT(rect_tile,rotated_bullet_rect):
@@ -609,7 +643,8 @@ class Bullet(PhysicsEntity):
                     #self.handle_tile_collision(tilemap,rect_tile)
                     if step != 0: 
                         return False
-                    self._dead = True
+                    self._create_collision_effects(tilemap,rect_tile,ps,engine_lights)
+                    self.dead = True
                     return True 
         return False
 

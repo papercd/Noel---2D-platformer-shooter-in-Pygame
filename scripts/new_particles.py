@@ -1,14 +1,19 @@
-from random import choice ,randint
+from random import choice ,randint,uniform
 from scripts.new_tilemap import Tilemap
 from pygame import Surface
 from pygame.math import Vector2 as vec2 
 from pygame import Rect
 from math import cos,sin,radians,sqrt,degrees,atan2
-from scripts.custom_data_types import CollideParticleData,FireParticleData,AnimationParticleData,Animation
+from scripts.custom_data_types import CollideParticleData,FireParticleData,AnimationParticleData,Animation,SparkData
 from scripts.animationData import PARTICLE_ANIMATION_DATA
 from scripts.atlass_positions import PARTICLE_ATLAS_POSITIONS_AND_SIZES
 from scripts.resourceManager import ResourceManager
 import numpy as np 
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: 
+    from my_pygame_light2d.light import PointLight
 class ParticleSystem:
     _instance = None 
     
@@ -27,9 +32,9 @@ class ParticleSystem:
             self._collide_particle_pool_index = 299
             self._collide_particles = [] 
 
-            # can have at most 700 fire particles 
-            self._max_fire_particle_count = 700
-            self._fire_particle_pool_index = 699
+            # can have at most 300 fire particles 
+            self._max_fire_particle_count = 300
+            self._fire_particle_pool_index = 299
             self._fire_particles = []
             
             # can have at most 300 animated particles (jump, dash, ...)
@@ -38,9 +43,14 @@ class ParticleSystem:
             self._animation_particles = []
 
 
+            # can have at most 300 sparks 
+            self._max_sparks_count = 300
+            self._sparks_pool_index = 299
+            self._sparks = []
+
             self._active_collide_particles = set( )
             self._active_animation_particles = set( )
-
+            self._active_sparks = set()
 
             # create particle pools
             self._initialize_particle_containers()
@@ -86,9 +96,13 @@ class ParticleSystem:
             particle_data = AnimationParticleData("None",[0,0],[0,0],0,False,None)
             self._animation_particles.append(AnimatedParticle(particle_data,animation))
 
+        for i in range(self._max_sparks_count):
+            spark_data = SparkData([float('-inf'),float('inf')],1,0,1,1,(255,255,255),1)
+            self._sparks.append(Spark(spark_data))
 
 
-    def add_particle(self,particle_data):
+
+    def add_particle(self,particle_data,light:"PointLight" =None):
         if isinstance(particle_data,CollideParticleData):
             particle =self._collide_particles[self._collide_particle_pool_index]
             particle._active = True 
@@ -99,6 +113,14 @@ class ParticleSystem:
             self._fire_particles[self._fire_particle_pool_index]._active = True 
             self._fire_particles[self._fire_particle_pool_index].set_new_data(particle_data)
             self._fire_particle_pool_index = (self._fire_particle_pool_index -1) % self._max_fire_particle_count 
+        elif isinstance(particle_data,SparkData):
+            particle = self._sparks[self._sparks_pool_index]
+            particle._active = True 
+            particle.set_new_data(particle_data)
+            if light: 
+                light.illuminator = particle
+            self._active_sparks.add(particle)
+            self._sparks_pool_index = (self._sparks_pool_index-1) % self._max_sparks_count
         elif isinstance(particle_data,AnimationParticleData):
             particle =self._animation_particles[self._animation_particle_pool_index]
             particle._active = True 
@@ -108,9 +130,10 @@ class ParticleSystem:
             self._animation_particle_pool_index = (self._animation_particle_pool_index -1) % self._max_animation_particle_count 
 
 
-    def update(self,dt,tilemap:Tilemap,grass_manager):
+
+    def update(self,dt,fps,tilemap:Tilemap,grass_manager):
         for particle in list(self._active_collide_particles):
-            kill =particle.update(tilemap)
+            kill =particle.update(tilemap,dt)
             if kill: 
                 particle._active = False 
                 self._active_collide_particles.remove(particle)
@@ -123,10 +146,16 @@ class ParticleSystem:
                 particle._active = False 
         
         for particle in list(self._active_animation_particles):
-            kill = particle.update()
+            kill = particle.update(dt)
             if kill: 
                 particle._active = False 
                 self._active_animation_particles.remove(particle)
+        
+        for spark in list(self._active_sparks):
+            kill = spark.update(tilemap,dt)
+            if kill: 
+                particle._active = False
+                self._active_sparks.remove(spark)
 
 
 
@@ -157,9 +186,9 @@ class PhysicalParticle:
         self._buffer_surf.fill(self._color)
         self._rect = Rect(self._pos[0],self._pos[1],self._size[0],self._size[1])
 
-    def update(self,tilemap:Tilemap):
+    def update(self,tilemap:Tilemap,dt):
         # testing 
-        self._life -=1
+        self._life -=1 * dt * 60
         if self._life <= 0:
             return True
         
@@ -187,15 +216,128 @@ class PhysicalParticle:
                                 return True 
                 else: 
                     return True 
-        self._pos[0] += cos(radians(self._angle)) * self._speed
-        self._pos[1] += sin(radians(self._angle)) * self._speed
-        self._pos[1] += self._velocity[1]
+        self._pos[0] += cos(radians(self._angle)) * self._speed * dt * 60  
+        self._pos[1] += sin(radians(self._angle)) * self._speed * dt * 60
+        self._pos[1] += self._velocity[1] * dt * 60 
         self._rect.topleft = self._pos
 
-        self._speed = max(0,self._speed -0.1)
+        self._speed = max(0,self._speed -0.1 * dt * 60)
 
         return False 
     
+
+class Spark: 
+    def __init__(self,particle_data:SparkData)->None:
+        self.pos = particle_data.pos
+        self.decay_factor = particle_data.decay_factor
+        self.center = self.pos
+        self.angle = particle_data.angle
+        self.scale = particle_data.scale
+        self.color = particle_data.color
+        self.speed = particle_data.speed
+        self.movement = [0,0]
+        self.dead = False 
+        self._active = False
+        self.speed_factor = particle_data.speed_factor
+
+
+    def _point_towards(self,angle,rate):
+        rotate_direction = ((angle-self.angle + 180 * 3)% (180*2)) - 180
+        try: 
+            rotate_sign = abs(rotate_direction) / rotate_direction
+        except ZeroDivisionError:
+            rotate_sign = 1
+        if abs(rotate_sign) < rate: 
+            self.angle = angle 
+        else: 
+            self.angle += rate*rotate_sign
+
+    def _velocity_adjust(self,friction,force,terminal_velocity,dt):
+        friction += uniform(-0.01,0.01)
+        force += uniform(-0.05,0.05)
+
+        movement = self._calculate_movement(dt)
+        movement[1] = min(terminal_velocity,movement[1] + force )
+        movement[0] *= friction   
+        self.angle = degrees(atan2(-movement[1],movement[0]))
+
+    def _calculate_movement(self,dt:float)->list[float,float]:
+        return [cos(radians(self.angle))*self.speed*self.speed_factor*dt* 60,
+                -sin(radians(self.angle))*self.speed*self.speed_factor*dt * 60]
+
+    
+    def _calculate_bounce_angle(self,axis:str): 
+        if axis == 'x':
+            reflected_angle = 180 - self.angle
+        else: 
+            reflected_angle = -self.angle
+        return reflected_angle
+    
+
+    def set_new_data(self,particle_data:SparkData)-> None: 
+        self.pos = particle_data.pos
+        self.decay_factor = particle_data.decay_factor
+        self.center = self.pos
+        self.angle = particle_data.angle
+        self.scale = particle_data.scale
+        self.color = particle_data.color 
+        self.speed = particle_data.speed
+        self.speed_factor = particle_data.speed_factor
+        self.dead = False
+    
+
+    def update(self,tilemap:"Tilemap",dt)->None: 
+        if self.speed < 0:
+            self.dead = True
+            return True 
+        self.movement = self._calculate_movement(dt)
+
+        self.pos[0] += self.movement[0]
+        key= (int(self.pos[0])//tilemap.tile_size,int(self.pos[1])//tilemap.tile_size)
+
+        if key in tilemap.physical_tiles:
+            tile = tilemap.physical_tiles[key][0]
+            if tile.type == 'lights':
+                pass 
+            elif tile.type.endswith('stairs') and tile.variant.split(';')[0] in ('0','1'):
+                pass 
+            else: 
+                if self.movement[0] < 0 :
+                    self.pos[0] = (key[0]+1) * tilemap.tile_size  
+                else:
+                    self.pos[0] = key[0] * tilemap.tile_size - 1
+                self.angle = self._calculate_bounce_angle('x')
+                self.speed *= 0.8
+
+        self.pos[1] += self.movement[1] 
+
+        key= (int(self.pos[0])//tilemap.tile_size,int(self.pos[1])//tilemap.tile_size)
+        if key in tilemap.physical_tiles:
+            tile = tilemap.physical_tiles[key][0]
+            if tile.type == 'lights':
+                pass 
+            elif tile.type.endswith('stairs') and tile.variant.split(';')[0] in ('0','1'):
+                pass 
+            else: 
+                if self.movement[1] < 0 :
+                    self.pos[1] = (key[1]+1) * tilemap.tile_size 
+                else:
+                    self.pos[1] = key[1] * tilemap.tile_size - 1
+                self.angle = self._calculate_bounce_angle('y')
+                self.speed *= 0.8
+
+
+        self._point_towards(90, 0.02)
+        self._velocity_adjust(0.975,0.05,8,dt)
+
+        angle_jitter = uniform(-3,3)
+        self.angle += angle_jitter
+
+        self.speed -= 0.1*self.decay_factor*dt*110
+
+        return False 
+    
+
 class FireParticle:
     def __init__(self,particle_data:FireParticleData):
        
@@ -528,14 +670,14 @@ class AnimatedParticle:
         self.source = particle_data.source
         self.animation.set_new_data(PARTICLE_ANIMATION_DATA[self.type])
 
-    def update(self):
+    def update(self,dt):
         kill = False 
         if self.animation.done: 
             kill = True 
-        self.pos[0] += self.velocity[0] 
-        self.pos[1] += self.velocity[1] 
+        self.pos[0] += self.velocity[0] * dt
+        self.pos[1] += self.velocity[1] * dt
 
-        self.animation.update()
+        self.animation.update(dt)
         return kill 
 
 
