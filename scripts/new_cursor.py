@@ -1,5 +1,7 @@
 from pygame import Rect
 
+TIME_FOR_ONE_LOGICAL_FRAME = 0.015969276428222656
+
 class Cursor: 
     def __init__(self,in_editor :bool = False)-> None:
 
@@ -20,12 +22,12 @@ class Cursor:
         self.pressed = [0,0]
 
     def set_cooldown(self) -> None:
-        self.cooldown = 10
+        self.cooldown = 10 * TIME_FOR_ONE_LOGICAL_FRAME
 
-    def update(self)-> None:
+    def update(self,dt)-> None:
         if not self.in_editor:
             if self.cooldown >0 :
-                self.cooldown -=1 
+                self.cooldown -= dt
             
             self.magnet = self.special_actions and self.item is not None 
             self.move = self.special_actions and not self.magnet 

@@ -249,7 +249,7 @@ class Cell:
             if self._item is not None: 
                 if not self._hovered: 
                     return 
-                if cursor.cooldown != 0:
+                if cursor.cooldown > 0:
                     return 
                 
                 if cursor.magnet and cursor.item.name == self._item.name and self._item.stackable: 
@@ -306,7 +306,7 @@ class Cell:
 
                         cursor.set_cooldown()
                     else: 
-                        if cursor.cooldown != 0:
+                        if cursor.cooldown > 0:
                             return 
                         if cursor.pressed[0] and cursor.item.name == self._item.name and \
                             self._item.count + cursor.item.count <= stack_limit and self._item.stackable: 
@@ -325,7 +325,7 @@ class Cell:
                             self._item = temp 
 
                             cursor.set_cooldown()
-                elif cursor.item is not None and self._hovered and cursor.cooldown == 0: 
+                elif cursor.item is not None and self._hovered and cursor.cooldown <= 0: 
                     if cursor.pressed[0] :
                         if cursor.item.name == self._item.name: 
                             if self._item.count + cursor.item.count <= stack_limit and self._item.stackable: 
@@ -341,7 +341,7 @@ class Cell:
                             self._item = temp
                         cursor.set_cooldown()
             
-            elif cursor.item is not None and self._hovered and cursor.cooldown ==0:
+            elif cursor.item is not None and self._hovered and cursor.cooldown <= 0:
                 if cursor.item.type != self._type:
                     return 
                 if cursor.pressed[0]:

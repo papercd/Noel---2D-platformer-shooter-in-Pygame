@@ -329,7 +329,7 @@ class Noel():
             self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
                                self._player_movement_input,camera_scroll,scaled_dt)
             self.render_engine.bind_player(self.player)
-            self._hud.update()
+            self._hud.update(scaled_dt)
             self.render_engine.bind_hud(self._hud)
             self._tilemap.update_ambient_node_ptr(self.player.pos)
 

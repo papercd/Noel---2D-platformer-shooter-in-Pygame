@@ -248,6 +248,12 @@ class Flamethrower(Weapon):
         new_weapon = Flamethrower()
         new_weapon.magazine = self.magazine
         return new_weapon
+    
+    def shoot(self,engine_lights,em,ps) ->None:
+        pass
+
+    def reset_shot(self)-> None: 
+        self.shot = False
 
 class Shotgun(Weapon):
     def __init__(self):

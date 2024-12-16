@@ -235,7 +235,7 @@ class WeaponNode:
                 if self.weapon is not None:
                     if not self._hovered:
                         return 
-                    if cursor.cooldown != 0:
+                    if cursor.cooldown > 0:
                         return
                     if cursor.magnet and cursor.item.name == self.weapon.name and self.weapon.stackable:
                         if not (cursor.item.type == self._type):
@@ -285,14 +285,14 @@ class WeaponNode:
                                 cursor.item = self.weapon 
                                 self.weapon = temp 
                                 cursor.set_cooldown()
-                    elif cursor.item is not None and self._hovered and cursor.cooldown == 0:
+                    elif cursor.item is not None and self._hovered and cursor.cooldown <= 0:
                         if cursor.pressed[0] :
                             temp = cursor.item.copy()
                             cursor.item = self.weapon
                             self.weapon = temp
                             cursor.set_cooldown()
 
-                elif cursor.item is not None and self._hovered and cursor.cooldown == 0:
+                elif cursor.item is not None and self._hovered and cursor.cooldown <= 0:
                     if cursor.item.type != self._list._type:
                         return
                     if cursor.pressed[0]:
