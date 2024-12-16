@@ -9,6 +9,11 @@ from scripts.animationData import PARTICLE_ANIMATION_DATA
 from scripts.atlass_positions import PARTICLE_ATLAS_POSITIONS_AND_SIZES
 from scripts.resourceManager import ResourceManager
 import numpy as np 
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: 
+    from my_pygame_light2d.light import PointLight
 class ParticleSystem:
     _instance = None 
     
@@ -97,7 +102,7 @@ class ParticleSystem:
 
 
 
-    def add_particle(self,particle_data):
+    def add_particle(self,particle_data,light:"PointLight" =None):
         if isinstance(particle_data,CollideParticleData):
             particle =self._collide_particles[self._collide_particle_pool_index]
             particle._active = True 
@@ -112,6 +117,8 @@ class ParticleSystem:
             particle = self._sparks[self._sparks_pool_index]
             particle._active = True 
             particle.set_new_data(particle_data)
+            if light: 
+                light.illuminator = particle
             self._active_sparks.add(particle)
             self._sparks_pool_index = (self._sparks_pool_index-1) % self._max_sparks_count
         elif isinstance(particle_data,AnimationParticleData):
@@ -121,6 +128,7 @@ class ParticleSystem:
 
             self._active_animation_particles.add(particle)
             self._animation_particle_pool_index = (self._animation_particle_pool_index -1) % self._max_animation_particle_count 
+
 
 
     def update(self,dt,fps,tilemap:Tilemap,grass_manager):
@@ -275,6 +283,7 @@ class Spark:
         self.color = particle_data.color 
         self.speed = particle_data.speed
         self.speed_factor = particle_data.speed_factor
+        self.dead = False
     
 
     def update(self,tilemap:"Tilemap",dt)->None: 

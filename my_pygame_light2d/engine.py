@@ -946,7 +946,7 @@ class RenderEngine:
             if light.popped:
                 self.lights.remove(light)
                 continue
-            if light.illuminator and light.illuminator._dead:
+            if light.illuminator and light.illuminator.dead:
                 self.lights.remove(light)
                 continue 
             if dist(light.position,offset) > light.radius + self._diagonal:
@@ -977,8 +977,8 @@ class RenderEngine:
 
             if light.illuminator: 
                 
-                light.cur_power = max(0,light.power * (light.life/light.maxlife))
-                light.position = (int(light.illuminator._center[0]) , int(light.illuminator._center[1]))    
+                #light.cur_power = max(0,light.power * (light.life/light.maxlife))
+                light.position = (int(light.illuminator.center[0]) , int(light.illuminator.center[1]))    
                 
             elif light.life > 0: 
                 if light.maxlife-1 == light.life: 
@@ -1582,7 +1582,7 @@ class RenderEngine:
                 spark.color[0],spark.color[1],spark.color[2],
         ]
 
-        self._map_spark_pos_to_screen_pos(vertices)
+        self._normalize_spark_vertex_data(vertices)
         indices = [
             base_index,base_index +1, base_index +2,
             base_index+2,base_index+3,base_index 
@@ -1591,13 +1591,15 @@ class RenderEngine:
 
 
 
-    def _map_spark_pos_to_screen_pos(self,coors):
+    def _normalize_spark_vertex_data(self,coors):
         for i, coor in enumerate(coors):
+            # normalize world coordinates to screen coors
             if i % 5 ==0:
                 coors[i] = 2. * (coors[i]) / self._true_res[0] -1.
             elif i % 5 ==1: 
                 coors[i] =  1. - 2. *(coors[i]) /self._true_res[1] 
             else: 
+                # normalize color value
                 coors[i] = coors[i] / 255
 
     

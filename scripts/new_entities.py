@@ -5,12 +5,11 @@ from scripts.utils import get_rotated_vertices, SAT
 from random import choice as random_choice,random,randint,choice
 
 from typing import TYPE_CHECKING
-
+from my_pygame_light2d.light import PointLight 
 TIME_FOR_ONE_LOGICAL_FRAME = 0.015969276428222656
 
 if TYPE_CHECKING:
     from scripts.custom_data_types import Animation,TileInfo
-    from my_pygame_light2d.light import PointLight 
     from scripts.new_tilemap import Tilemap
     from scripts.new_particles import ParticleSystem
     from scripts.entitiesManager import EntitiesManager
@@ -68,8 +67,8 @@ class PhysicsEntity:
             self._flip = True 
 
         # gravity 
-        gravity = 0.26 * dt * 67 
-        self.velocity[1] = min(5, self.velocity[1] + gravity)
+        gravity = 0.26 * dt * 68 
+        self.velocity[1] = min(6, self.velocity[1] + gravity)
 
         # air resistance 
         air_resistance = 0.21 * dt * 60  
@@ -552,12 +551,9 @@ class Bullet(PhysicsEntity):
         super().__init__('Bullet', pos, size)
         self._angle = angle
         self._time_flown= life
-        self._dead = False
-        self._center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[1]//2]
+        self.dead = False
+        self.center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[1]//2]
 
-    @property
-    def center(self)->list[int,int]:
-        return self._center
     
     @property
     def angle(self): 
@@ -577,21 +573,29 @@ class Bullet(PhysicsEntity):
                 angle = int(self.angle)
                 angle =  randint(180-angle -30,180-angle +30)
                 color = choice(SPARK_COLORS)         
-                spark_data = SparkData(self._center.copy(),1.2,angle,speed,1.5,color,9)
+                spark_data = SparkData(self.center.copy(),1.2,angle,speed,1.5,color,9)
+                light = self._create_light()
                 """
                 light = PointLight()
                 light.cast_shadows = False 
                 engine_lights.append(light)
                 """
-                ps.add_particle(spark_data)
+                # pass light to particle system to bind spark object as illuminator for light 
+                ps.add_particle(spark_data,light)
+                engine_lights.append(light)
 
+    def _create_light(self):
+        light = PointLight(self.center.copy(),power = 1,radius = 5,life= 70)
+        light.set_color(255,255,255)
+        light.cast_shadows = False
+        return light
 
 
     def adjust_pos(self,adjustment)->None: 
         self.pos[0] -= adjustment[0] 
         self.pos[1] -= adjustment[1]
-        self._center[0] -= adjustment[0] 
-        self._center[1] -= adjustment[1]
+        self.center[0] -= adjustment[0] 
+        self.center[1] -= adjustment[1]
 
     def adjust_flip(self,adjustment:bool) ->None: 
         self._flip = adjustment
@@ -599,7 +603,7 @@ class Bullet(PhysicsEntity):
     def update(self,dt,tilemap:"Tilemap",ps: "ParticleSystem",engine_lights:list["PointLight"])->None:
         self._time_flown-= 1*dt
         if self._time_flown == 0:
-            self._dead = True
+            self.dead = True
             return True
         
         steps =4 
@@ -612,9 +616,9 @@ class Bullet(PhysicsEntity):
         
             self.pos[0] += 60*dt*self.velocity[0]/steps
             # need a different way to find the center 
-            self._center[0] += 60*dt*self.velocity[0] /steps
+            self.center[0] += 60*dt*self.velocity[0] /steps
 
-            rotated_bullet_rect = get_rotated_vertices(self._center,*self.size,self._angle) 
+            rotated_bullet_rect = get_rotated_vertices(self.center,*self.size,self._angle) 
 
             for rect_tile in tilemap.phy_rects_around(self.pos, self.size):
                 if SAT(rect_tile,rotated_bullet_rect):
@@ -622,16 +626,16 @@ class Bullet(PhysicsEntity):
                     #self.handle_tile_collision(tilemap,rect_tile)
                     if step != 0:
                         self.pos[1] += 60*dt*self.velocity[1]/steps
-                        self._center[1] +=60* dt*self.velocity[1]/steps
+                        self.center[1] +=60* dt*self.velocity[1]/steps
                         return False
                     self._create_collision_effects(tilemap,rect_tile,ps,engine_lights)
-                    self._dead = True
+                    self.dead = True
                     return True 
             
             self.pos[1] +=60* dt* self.velocity[1]/steps
-            self._center[1] += 60*dt * self.velocity[1]/steps
+            self.center[1] += 60*dt * self.velocity[1]/steps
             
-            rotated_bullet_rect = get_rotated_vertices(self._center,*self.size,self._angle)
+            rotated_bullet_rect = get_rotated_vertices(self.center,*self.size,self._angle)
             
             for rect_tile in tilemap.phy_rects_around(self.pos, self.size):
                 if SAT(rect_tile,rotated_bullet_rect):
@@ -640,7 +644,7 @@ class Bullet(PhysicsEntity):
                     if step != 0: 
                         return False
                     self._create_collision_effects(tilemap,rect_tile,ps,engine_lights)
-                    self._dead = True
+                    self.dead = True
                     return True 
         return False
 
