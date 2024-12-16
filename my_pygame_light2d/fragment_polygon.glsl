@@ -1,9 +1,8 @@
 #version 330
 
-
-uniform vec4 color;
-out vec4 fragColor;
+in vec3 frag_color;
+out vec4 frag_output;
 
 void main() {
-    fragColor = color; // Use interpolated color with full opacity
+    frag_output= vec4(frag_color,1.0);  
 }

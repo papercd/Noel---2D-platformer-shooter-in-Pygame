@@ -1559,8 +1559,7 @@ class RenderEngine:
             vbo = self.ctx.buffer(vertex_data.tobytes())
             ibo = self.ctx.buffer(index_data.tobytes())
 
-            self._prog_polygon_draw['color'].value = (1.0,0.0,0.0,1.0)
-            vao = self.ctx.vertex_array(self._prog_polygon_draw,[(vbo, '2f', 'in_position')],ibo)
+            vao = self.ctx.vertex_array(self._prog_polygon_draw,[(vbo, '2f 3f', 'in_position','in_color')],ibo)
 
             vao.render(mode= moderngl.TRIANGLES)
             vao.release()
@@ -1571,9 +1570,16 @@ class RenderEngine:
     def _create_spark_vertices(self,spark:"Spark",camera_scroll,base_index):
         vertices= [
                 spark.pos[0] -camera_scroll[0]+ cos(radians(spark.angle)) * spark.speed * spark.scale, spark.pos[1]-camera_scroll[1] - sin(radians(spark.angle)) * spark.speed * spark.scale,
+                spark.color[0],spark.color[1],spark.color[2],
+
                 spark.pos[0] -camera_scroll[0]+ cos(radians(spark.angle) + pi / 2) *spark.speed * spark.scale * 0.3, spark.pos[1]-camera_scroll[1] - sin(radians(spark.angle) + pi / 2) * spark.speed * spark.scale * 0.3,
+                spark.color[0],spark.color[1],spark.color[2],
+
                 spark.pos[0] -camera_scroll[0]- cos(radians(spark.angle)) * spark.speed * spark.scale * 3.5, spark.pos[1] -camera_scroll[1]+ sin(radians(spark.angle)) * spark.speed * spark.scale * 3.5,
+                spark.color[0],spark.color[1],spark.color[2],
+
                 spark.pos[0] -camera_scroll[0]+ cos(radians(spark.angle) - pi / 2) * spark.speed * spark.scale * 0.3, spark.pos[1]-camera_scroll[1] + sin(radians(spark.angle) + pi / 2) * spark.speed * spark.scale * 0.3,
+                spark.color[0],spark.color[1],spark.color[2],
         ]
 
         self._map_spark_pos_to_screen_pos(vertices)
@@ -1587,10 +1593,12 @@ class RenderEngine:
 
     def _map_spark_pos_to_screen_pos(self,coors):
         for i, coor in enumerate(coors):
-            if i % 2 ==0:
+            if i % 5 ==0:
                 coors[i] = 2. * (coors[i]) / self._true_res[0] -1.
-            else: 
+            elif i % 5 ==1: 
                 coors[i] =  1. - 2. *(coors[i]) /self._true_res[1] 
+            else: 
+                coors[i] = coors[i] / 255
 
     
     def _create_animation_particle_vertices(self,pos:tuple[int,int],size: tuple[int,int],camera_scroll : tuple[int,int],fbo_w,fbo_h):
