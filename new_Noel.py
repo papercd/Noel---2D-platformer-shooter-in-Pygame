@@ -336,6 +336,7 @@ class Noel():
             self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
             self.render_engine.render_foreground_scene_to_fbo()
             
+            print(len(self.particle_system._active_fire_particles))
 
             self.render_engine.render_scene_with_lighting(camera_scroll,(0,0))
             pygame.display.flip()
