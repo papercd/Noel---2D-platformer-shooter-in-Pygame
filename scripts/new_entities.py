@@ -83,7 +83,6 @@ class PhysicsEntity:
         frame_movement = (movement[0] *scaled_dt + self.velocity[0] *scaled_dt , movement[1] *scaled_dt+ self.velocity[1] * scaled_dt) if not self.cut_movement_input else \
                             (self.velocity[0] *scaled_dt, self.velocity[1] *scaled_dt)
         self.pos[0] += frame_movement[0]  
-        print(frame_movement[0])
         self_rect = self._collision_rect()
         for rect_tile in tilemap.phy_rects_around((self.pos[0] + anim_offset[0], self.pos[1] + anim_offset[1]),self.size):
             tile_type = rect_tile[1].type
@@ -117,6 +116,7 @@ class PhysicsEntity:
                             self.pos[0] =self_rect.x - anim_offset[0]
                             
                 else:
+
                     if frame_movement[0] > 0:
                         self._collisions['right'] = True
                         
@@ -151,8 +151,7 @@ class PhysicsEntity:
 
                     if frame_movement[1] > 0:
                         self._collisions['down'] = True
-
-                        self.velocity[1] = gravity * scaled_dt* 30  
+                        self.velocity[1] = gravity * scaled_dt 
                         self._on_ramp = 0
                         self_rect.bottom = rect_tile[0].top
                         
@@ -186,7 +185,8 @@ class PhysicsEntity:
                         self.pos[1] = self_rect.y -anim_offset[1]
                         self._collisions['down'] = True
 
-        print(self._collisions)
+
+        #print(self.velocity[1] , gravity * scaled_dt* 30)
 
 class Player(PhysicsEntity):
     def __init__(self, pos: list[float], size: tuple[int, int])->None:
@@ -275,7 +275,6 @@ class Player(PhysicsEntity):
         else: 
             if self.cur_vel >= 0 :
                 self.cur_vel = max(0,self.cur_vel - self._accel_rate * dt * 65)
-                
             else:
                 self.cur_vel = min(0,self.cur_vel + self._accel_rate * dt * 65)
     
@@ -356,7 +355,6 @@ class Player(PhysicsEntity):
         self._cur_animation.update(dt)
         self.cursor_pos = cursor_pos
         new_movement = [self.cur_vel,0]
-
         if self.fatigued: 
             self.recov_rate = 0.3
             new_movement[0] *= 0.7
@@ -389,6 +387,7 @@ class Player(PhysicsEntity):
         self.right_anchor = self.left_and_right_anchors[self._flip][self._state]["right"]
 
 
+        print(self.velocity)
         """
         r = max(self.size) * 2
 
