@@ -48,7 +48,7 @@ class Noel():
         self._dt = 0
         self._prev_frame_time = 0
         self._scroll = [0,0]
-        self._player_movement_input = [0,0]
+        self.movement_input = [0,0]
 
         self._initialize_game_objects()
         self._bind_objects_to_render_engine()
@@ -254,7 +254,9 @@ class Noel():
                     if event.key == pygame.K_e:
                         self._hud.set_inven_open_state(not self._hud.inven_open_state)
                     if event.key == pygame.K_a:
-                        self._player_movement_input[0] = True 
+                        self.movement_input[0] = True
+                    if event.key == pygame.K_d:
+                        self.movement_input[1] = True 
                     if event.key == pygame.K_g: 
                         self.player.toggle_rapid_fire()
 
@@ -277,17 +279,17 @@ class Noel():
                     if event.key == pygame.K_s:
                         self.player.crouch = True
                     if event.key == pygame.K_d:
-                        self._player_movement_input[1] = True 
+                        self.player.accelerate(self._dt,1)
                     if event.key == pygame.K_LSHIFT:
                         self.player.running = True
                         self._hud.cursor.special_actions = True 
                 if event.type == pygame.KEYUP: 
+                    if event.key == pygame.K_a:
+                        self.movement_input[0] = False 
+                    if event.key == pygame.K_d: 
+                        self.movement_input[1] = False
                     if event.key == pygame.K_w:
                         self.player.jump_cut()
-                    if event.key == pygame.K_a: 
-                        self._player_movement_input[0] = False 
-                    if event.key == pygame.K_d: 
-                        self._player_movement_input[1] = False 
                     if event.key == pygame.K_s: 
                         self.player.crouch = False
                     if event.key == pygame.K_LSHIFT:
@@ -327,7 +329,7 @@ class Noel():
 
 
             self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
-                               self._player_movement_input,camera_scroll,scaled_dt)
+                               self.movement_input,camera_scroll,scaled_dt)
             self.render_engine.bind_player(self.player)
             self._hud.update(scaled_dt)
             self.render_engine.bind_hud(self._hud)
