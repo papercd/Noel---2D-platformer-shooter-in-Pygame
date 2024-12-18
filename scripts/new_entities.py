@@ -383,7 +383,6 @@ class Player(PhysicsEntity):
         self.left_anchor = self.left_and_right_anchors[self._flip][self._state]["left"]
         self.right_anchor = self.left_and_right_anchors[self._flip][self._state]["right"]
 
-        print(self.velocity)
         """
         r = max(self.size) * 2
 
