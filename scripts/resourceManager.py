@@ -49,6 +49,7 @@ class ResourceManager:
                 self._texture_atlasses[resource_name] = load_texture(path,self.ctx)
 
         self._compute_texture_coords()
+        self._compute_particle_resources()
 
     @property 
     def bullet_atlas(self) -> "Texture":
@@ -77,6 +78,10 @@ class ResourceManager:
     @property
     def held_wpn_textures(self) ->dict[str,"Texture"]:
         return self._held_wpn_textures
+    
+    @property 
+    def circle_template(self) -> tuple["Context.buffer","Context.buffer"]:
+        return (self._circle_vbo,self._circle_ibo)
 
     def _load_backgrounds(self,path:str)->None:
         self._backgrounds= {}
@@ -110,6 +115,32 @@ class ResourceManager:
     def get_background_of_name(self,name:str):
         return self._backgrounds[name]
     
+
+    def _compute_particle_resources(self) -> None: 
+        # circle template for the fire particles 
+        circle_vertices = self._generate_circle_vertices((0.0,0.0),1.0,segments = 100)
+        self._circle_vbo = self.ctx.buffer(np.array(circle_vertices,dtype=np.float32).tobytes())
+        
+        circle_indices = self._generate_circle_indices(segments =100)
+        self._circle_ibo = self.ctx.buffer(np.array(circle_indices,dtype ='i4').tobytes())
+ 
+
+    def _generate_circle_vertices(self,center,radius,segments)-> list: 
+        vertices = [center]
+        for i in range(segments + 1):
+            angle = 2 * np.pi * i / segments 
+            x =  center[0] + radius * np.cos(angle)
+            y = center[1] + radius * np.sin(angle)
+            vertices.append((x,y))
+        return vertices
+
+    def _generate_circle_indices(self,segments)-> list:
+        indices = []
+        for i in range(1,segments):
+            indices.extend([0,i,i+1])
+        indices.extend([0,segments,1])
+
+        return indices
 
     def _compute_texture_coords(self)-> None:
         self._ui_texcoords = {}

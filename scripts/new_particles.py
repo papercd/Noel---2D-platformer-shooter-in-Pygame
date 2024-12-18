@@ -56,6 +56,10 @@ class ParticleSystem:
             # create particle pools
             self._initialize_particle_containers()
             self._precompute_particle_animation_texture_coords()
+    
+
+    # refactor all resource creation and management 
+    # to be located within the resource manager. 
 
     def _precompute_particle_animation_texture_coords(self):
         rm = ResourceManager.get_instance()
@@ -66,6 +70,8 @@ class ParticleSystem:
             animationData = PARTICLE_ANIMATION_DATA[key]
             for frame in range(animationData.n_textures):
                 self._tex_dict[(key,frame)] = self._get_texture_coords_for_animation_frame(particle_texture_atl,atl_pos,tex_size,frame)
+
+
 
      
     def _get_texture_coords_for_animation_frame(self,texture_atl,atl_pos :tuple[int,int],tex_size:tuple[int,int],frame: int ) -> np.array:
@@ -136,7 +142,7 @@ class ParticleSystem:
 
 
 
-    def update(self,dt,fps,tilemap:Tilemap,grass_manager):
+    def update(self,dt,tilemap:Tilemap,grass_manager):
         for particle in list(self._active_collide_particles):
             kill =particle.update(tilemap,dt)
             if kill: 
@@ -508,6 +514,33 @@ class FireParticle:
             self.dead = True 
             return True 
         
+        self.i = int((self.life/self.maxlife)*6)
+
+        velocity= [
+                ((self.sin * sin(self.life/(self.sinr)))/2)*self.spread * self.rise_normal.x    + self.rise * cos(radians(self.rise_angle)),
+                (self.rise * sin(radians(self.rise_angle)) + self.rise_normal.y * self.spread * ((self.sin * sin(self.life/(self.sinr)))/2))
+        ]
+
+        self.x += velocity[0] 
+        self.y += velocity[1]
+
+        self.pos = [self.x,self.y]
+
+        if not randint(0,5):
+            self.r += 0.88 * dt * 60
+        
+        self.ren_x,self.ren_y = self.x,self.y
+        self.ren_x += self.ox*(5-self.i) * dt * 60
+        self.ren_y += self.oy*(5-self.i) * dt * 60
+
+        self.center[0] = self.ren_x + self.r
+        self.center[1] = self.ren_y + self.r
+        
+        if self.life < self.maxlife/4:
+            self.alpha = int((self.life/self.maxlife)*255)
+
+        return False 
+
 
     def update_pos(self,tilemap,j):
         self.damage = max(2,int(self.damage * (self.life/self.maxlife)))
@@ -523,7 +556,7 @@ class FireParticle:
        
         self.i = int((self.life/self.maxlife)*6)
        
-
+        
 
         frame_movement = [
                 ((self.sin * sin(j/(self.sinr)))/2)*self.spread * self.rise_normal.x    + self.rise * cos(radians(self.rise_angle)),
