@@ -45,9 +45,7 @@ class Noel():
 
         # TODO : think adding a game context to the main game structure would benefit 
         # the readability of the code. Refactor. 
-        self._game_context = {"screen_shake":0}
 
-        self._curr_gameState = GameState.GameLoop
         self._frame_count = 0
         self._dt = 0
         self._prev_frame_time = 0
@@ -135,6 +133,13 @@ class Noel():
     
 
     def _initalize_game_settings(self):
+        self._game_context = {
+            "screen_shake":0,
+            "gamestate" : GameState.GameLoop,
+            "true_res" : (0,0),
+            "screen_res": (0,0),
+        }
+
         self._system_display_info = self._get_system_display_info()
         self._set_initial_display_settings()
         self._configure_pygame()
@@ -173,6 +178,9 @@ class Noel():
 
     def _set_initial_display_settings(self):
         environ['SDL_VIDEO_CENTERED'] = '1'
+
+        self._target_min_fps = 60
+
         self._screen_res =self._system_display_info['resolution']
         # self._screen_res = (1024,576)
         
@@ -194,7 +202,6 @@ class Noel():
 
         # setup clock 
         self._clock = pygame.time.Clock()
-        self._fps = 60
         # change cursor to invisible 
         pygame.mouse.set_visible(False)
 
@@ -238,7 +245,7 @@ class Noel():
 
 
     def _handle_events(self):
-        if self._curr_gameState == GameState.GameLoop:
+        if self._game_context['gamestate']== GameState.GameLoop:
             if self._hud.cursor.pressed[0]:
                 if not self._hud.cursor.interacting:
                     self.player.shoot_weapon(self.render_engine.lights,self.entities_manager,self.particle_system)
@@ -300,28 +307,27 @@ class Noel():
                         self.player.running = False
                         self._hud.cursor.special_actions = False 
     
-
+    
 
 
     def _update_render(self):
         self._frame_count = (self._frame_count+1) %360
         self._current_time = time() 
         self._dt = self._current_time - self._prev_frame_time
+        self._dt = min(self._dt,1/self._target_min_fps)
         self._prev_frame_time = self._current_time
 
-        self._dt = min(self._dt, 1/self._fps)
-        scaled_dt = self._dt 
 
         self.render_engine.set_ambient(255,255,255, 25)
         self.render_engine.clear(0,0,0,255)
         
-        if self._curr_gameState == GameState.GameLoop:  
+        if self._game_context['gamestate']== GameState.GameLoop:  
             self._ctx.screen.clear(0, 0, 0, 1)
-            self._game_context['screen_shake'] = max(0,self._game_context['screen_shake'] -scaled_dt*60)
+            self._game_context['screen_shake'] = max(0,self._game_context['screen_shake'] -self._dt*60)
             screen_shake_buffer = self._game_context['screen_shake']
 
-            self._scroll[0] += scaled_dt*60*(self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self._scroll[0])/20
-            self._scroll[1] += scaled_dt*60*(self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self._scroll[1])/20
+            self._scroll[0] += self._dt*60*(self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self._scroll[0])/20
+            self._scroll[1] += self._dt*60*(self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self._scroll[1])/20
 
             camera_scroll = (int(self._scroll[0]), int(self._scroll[1]))
            
@@ -330,15 +336,15 @@ class Noel():
 
 
 
-            self.entities_manager.update(scaled_dt,self._tilemap,self.particle_system,self.render_engine.lights)
-            self.particle_system.update(scaled_dt,self._fps,self._tilemap,self._grass_manager)
+            self.entities_manager.update(self._dt,self._tilemap,self.particle_system,self.render_engine.lights)
+            self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
 
 
 
             self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
-                               self.movement_input,camera_scroll,self._game_context,scaled_dt)
+                               self.movement_input,camera_scroll,self._game_context,self._dt)
             self.render_engine.bind_player(self.player)
-            self._hud.update(scaled_dt)
+            self._hud.update(self._dt)
             self.render_engine.bind_hud(self._hud)
             self._tilemap.update_ambient_node_ptr(self.player.pos)
 
@@ -352,9 +358,6 @@ class Noel():
             self.render_engine.render_scene_with_lighting(camera_scroll, screenshake_offset)
             pygame.display.flip()
             self._clock.tick()
-            self.new_fps = self._clock.get_fps()
-            if self.new_fps != 0:
-                self._fps = self.new_fps
 
 
     def quit_game(self):

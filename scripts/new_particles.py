@@ -142,7 +142,7 @@ class ParticleSystem:
 
 
 
-    def update(self,dt,fps,tilemap:Tilemap,grass_manager):
+    def update(self,dt,tilemap:Tilemap,grass_manager):
         for particle in list(self._active_collide_particles):
             kill =particle.update(tilemap,dt)
             if kill: 
