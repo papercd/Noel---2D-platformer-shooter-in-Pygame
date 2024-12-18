@@ -99,6 +99,10 @@ class RenderEngine:
 
 
         # Read source files
+        with open('my_pygame_light2d/vertex_circle.glsl',encoding='utf-8') as file:
+            circle_vertex_src = file.read()
+        with open('my_pygame_light2d/fragment_circle.glsl',encoding='utf-8') as file:
+            circle_fragment_src = file.read()
         with open('my_pygame_light2d/polygon_vertex.glsl',encoding='utf-8') as file:
             polygon_vertex_src= file.read()
         with open('my_pygame_light2d/fragment_polygon.glsl',encoding='utf-8') as file:
@@ -142,7 +146,9 @@ class RenderEngine:
 
         self._prog_polygon_draw = self.ctx.program(vertex_shader=polygon_vertex_src,
                                                    fragment_shader= polygon_fragment_src)
-        
+
+        self._prog_circle_draw = self.ctx.program(vertex_shader=circle_vertex_src,
+                                                  fragment_shader=circle_fragment_src)
 
 
     def _create_screen_vertex_buffers(self)-> None:
@@ -1553,22 +1559,30 @@ class RenderEngine:
             )
             tex.release()   
 
-        base_index = 0 
-        segments = 100
+        # using instanced rendering for circles 
+        instance_data = []
+        instance_data = np.array([
+            (*self._map_circle_to_world(particle,camera_scroll),*particle.palette[particle.i],particle.alpha,0.01)
+            for particle in particle_system._active_fire_particles
+        ],dtype= np.float32)
 
-        for particle in list(particle_system._active_fire_particles):
-            vertices,indices = self._create_circle_vertices()
-            circle_vertices.extend(vertices)
-            circle_indices.extend(indices)
-            base += segments
+        if instance_data.any():
+            vbo,ibo = self._rm.circle_template # precomputed template circle vbo and ibo 
+            instances_vbo = self.ctx.buffer(instance_data.tobytes())
+            vao = self.ctx.vertex_array(self._prog_circle_draw,
+                                        [
+                                            (vbo,'2f','in_vert'),
+                                            (instances_vbo,'2f 4f 1f/i','offset','in_color','size')
+                                        ],
+                                        ibo)
+            vao.render(moderngl.TRIANGLES, instances=len(particle_system._active_fire_particles))
 
-        if circle_vertices:
-            vertex_data = np.array(circle_vertices,dtype=np.float32)
-            index_data = np.array(circle_indices,dtype='i4')
-            vbo = self.ctx.buffer(vertex_data.tobytes())
-            ibo = self.ctx.buffer(index_data.tobytes())
+            instances_vbo.release()
+            vao.release()
+
+            
+
         
-
         base_index = 0
         for spark in list(particle_system._active_sparks):
             vertices,indices = self._create_spark_vertices(spark,camera_scroll,base_index)
@@ -1588,6 +1602,12 @@ class RenderEngine:
             vao.release()
             vbo.release()
             ibo.release()
+        
+    def _map_circle_to_world(self,particle,camera_scroll):
+        x = 2. * (particle.x-camera_scroll[0]) / self._true_res[0] -1.
+        y = 1. -2 * (particle.y-camera_scroll[1]) / self._true_res[1]
+
+        return (x,y)
 
     """
     pygame.draw.circle(bsurf, self.palette[self.i] + (self.alpha,), (self.ren_x - offset[0], self.ren_y - offset[1]), self.r, 0)
@@ -1600,8 +1620,6 @@ class RenderEngine:
 
     """
 
-    def _create_circle_vertices(self):
-        pass 
 
     def _create_spark_vertices(self,spark:"Spark",camera_scroll,base_index):
         vertices= [

@@ -56,6 +56,10 @@ class ParticleSystem:
             # create particle pools
             self._initialize_particle_containers()
             self._precompute_particle_animation_texture_coords()
+    
+
+    # refactor all resource creation and management 
+    # to be located within the resource manager. 
 
     def _precompute_particle_animation_texture_coords(self):
         rm = ResourceManager.get_instance()
@@ -66,6 +70,8 @@ class ParticleSystem:
             animationData = PARTICLE_ANIMATION_DATA[key]
             for frame in range(animationData.n_textures):
                 self._tex_dict[(key,frame)] = self._get_texture_coords_for_animation_frame(particle_texture_atl,atl_pos,tex_size,frame)
+
+
 
      
     def _get_texture_coords_for_animation_frame(self,texture_atl,atl_pos :tuple[int,int],tex_size:tuple[int,int],frame: int ) -> np.array:
