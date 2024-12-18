@@ -42,6 +42,9 @@ MUZZLE_PARTICLE_COLORS = {
     'ak47' : ((238,208,88),(117,116,115),(30,30,30))
 }
 
+
+
+
 class Item:
     def __init__(self,name,count = 1,stackable = True):
         self._name = name 
@@ -250,7 +253,22 @@ class Flamethrower(Weapon):
         return new_weapon
     
     def shoot(self,engine_lights,em,ps) ->None:
-        pass
+        if self.accum_time >= TIME_FOR_LOGICAL_FRAME * self._fire_rate: 
+            size = 6
+            density = 4
+            rise = 3.1
+            spread = 1.8 
+            wind = 0
+
+            for _ in range(density):
+                particle_data = None
+                light = None 
+                light.set_color()
+                light.cast_shadows = False 
+                engine_lights.append(light)
+
+                ps.add_particle(particle_data)
+
 
     def reset_shot(self)-> None: 
         self.shot = False
