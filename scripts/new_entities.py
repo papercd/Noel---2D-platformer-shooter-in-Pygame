@@ -56,30 +56,29 @@ class PhysicsEntity:
         return self._collision_rect().colliderect(other._collision_rect())
     
 
-    def update(self,tilemap:"Tilemap",dt,movement = (0,0),anim_offset = (0,0))->None:
+    def accelerate(self,dir,dt):
+        pass
+    
+
+    def update(self,tilemap:"Tilemap",dt,anim_offset = (0,0))->None:
         self.frame_data += 1 
         self._collisions = {'up': False, 'down': False, 'left': False, 'right': False}
 
 
-        if movement[0] > 0:
+        if self.velocity[0] > 0:
             self._flip = False
-        if movement[0] < 0 :
+        if self.velocity[0] < 0 :
             self._flip = True 
 
+
+        scaled_dt = dt * 60 
         # gravity 
-        gravity = 0.26 * dt * 68 
-        self.velocity[1] = min(6, self.velocity[1] + gravity)
+        gravity = 0.3   
+        self.velocity[1] = min(6, self.velocity[1] + gravity * scaled_dt/2)
 
-        # air resistance 
-        air_resistance = 0.21 * dt * 60  
-        if self.velocity[0] < 0:
-            self.velocity[0] = min(self.velocity[0] + air_resistance, 0)
-        elif self.velocity[0] > 0:
-            self.velocity[0] = max(self.velocity[0] - air_resistance, 0)
-
-        frame_movement = (movement[0] + self.velocity[0], movement[1] + self.velocity[1]) if not self.cut_movement_input else self.velocity
-
-        self.pos[0] += frame_movement[0] * dt*60 
+        frame_movement = (self.velocity[0] *scaled_dt , scaled_dt+ self.velocity[1] * scaled_dt) if not self.cut_movement_input else \
+                            (self.velocity[0] *scaled_dt, self.velocity[1] *scaled_dt)
+        self.pos[0] += frame_movement[0]  
         self_rect = self._collision_rect()
         for rect_tile in tilemap.phy_rects_around((self.pos[0] + anim_offset[0], self.pos[1] + anim_offset[1]),self.size):
             tile_type = rect_tile[1].type
@@ -113,6 +112,7 @@ class PhysicsEntity:
                             self.pos[0] =self_rect.x - anim_offset[0]
                             
                 else:
+
                     if frame_movement[0] > 0:
                         self._collisions['right'] = True
                         
@@ -133,7 +133,7 @@ class PhysicsEntity:
                         
                     self.pos[0] =self_rect.x - anim_offset[0]
         
-        self.pos[1] +=frame_movement[1] *dt*60
+        self.pos[1] +=frame_movement[1] 
         self_rect = self._collision_rect()
         for rect_tile in tilemap.phy_rects_around((self.pos[0] +anim_offset[0] ,self.pos[1] +anim_offset[1]), self.size):
             tile_type = rect_tile[1].type
@@ -147,13 +147,14 @@ class PhysicsEntity:
 
                     if frame_movement[1] > 0:
                         self._collisions['down'] = True
+                        self.velocity[1] = gravity * scaled_dt 
                         self._on_ramp = 0
                         self_rect.bottom = rect_tile[0].top
                         
                     elif frame_movement[1] < 0:
                         self._collisions['up'] = True
+                        self.velocity[1] = 0
                         self_rect.top = rect_tile[0].bottom
-                    self.velocity[1] = 0
                     self.pos[1] = self_rect.y - anim_offset[1]
                 else:
                     variant = rect_tile[1].variant.split(';')[0]
@@ -179,7 +180,9 @@ class PhysicsEntity:
                         self_rect.bottom = target_y
                         self.pos[1] = self_rect.y -anim_offset[1]
                         self._collisions['down'] = True
- 
+
+
+        #print(self.velocity[1] , gravity * scaled_dt* 30)
 
 class Player(PhysicsEntity):
     def __init__(self, pos: list[float], size: tuple[int, int])->None:
@@ -191,7 +194,6 @@ class Player(PhysicsEntity):
         self._default_speed = 0
         self._knockback_reduction_factor = (5,9)
 
-        self.cur_vel = 0 
         self.recov_rate = 0.6
         self.stamina = 100
         self.health = 200
@@ -256,21 +258,20 @@ class Player(PhysicsEntity):
         return Rect(self.pos[0] +3, self.pos[1] + 1 ,10,15)
 
 
-    def _accelerate(self,movement_input,dt):
-        if(movement_input[1]-movement_input[0])  >0 :
+    def accelerate(self,dir,dt):
+        if dir  >0 :
             #means that the intent of the player movement is to the right.  
-            self.cur_vel = min( 1.3*self._default_speed,self._accel_rate*dt*65+ self.cur_vel)
+            self.velocity[0] = min( 1.3*self._default_speed,self._accel_rate*dt*60+ self.velocity[0])
                 
-        elif (movement_input[1]-movement_input[0]) <0 :
+        elif dir  <0 :
             #means that the intent of the player movement is to the left.  
-            self.cur_vel = max( -1.3*self._default_speed,self.cur_vel- self._accel_rate*dt*65)
+            self.velocity[0] = max( -1.3*self._default_speed,self.velocity[0]- self._accel_rate*dt*60)
             
         else: 
-            if self.cur_vel >= 0 :
-                self.cur_vel = max(0,self.cur_vel - self._accel_rate * dt * 65)
-                
+            if self.velocity[0]>= 0 :
+                self.velocity[0]= max(0,self.velocity[0]- self._accel_rate * dt *60)
             else:
-                self.cur_vel = min(0,self.cur_vel + self._accel_rate * dt * 65)
+                self.velocity[0]= min(0,self.velocity[0]+ self._accel_rate * dt *60)
     
     def set_state(self,state):
         if state != self._state: 
@@ -344,15 +345,15 @@ class Player(PhysicsEntity):
             weapon.shoot(engine_lights,entities_manager,particle_system)
 
 
-    def update(self,tilemap:"Tilemap",particle_system:"ParticleSystem",cursor_pos,player_movement_input,camera_scroll,dt):
-        self._accelerate(player_movement_input,dt)
+    def update(self,tilemap:"Tilemap",particle_system:"ParticleSystem",cursor_pos,movement_input,camera_scroll,dt):
+        self.accelerate(movement_input[1]- movement_input[0],dt)
         self._cur_animation.update(dt)
         self.cursor_pos = cursor_pos
-        new_movement = [self.cur_vel,0]
 
+        """
         if self.fatigued: 
             self.recov_rate = 0.3
-            new_movement[0] *= 0.7
+            self.velocity[0] *= 0.7
             if self.stamina >= 80:
                 self.fatigued = False 
         else: 
@@ -360,28 +361,29 @@ class Player(PhysicsEntity):
             if self.running: 
                 if self.stamina >= 10:
                     #then you can run. 
-                    if self.cur_vel != 0:
+                    if self.velocity[0]!= 0:
                         self.stamina -= 1.2 * dt
-                        new_movement[0] *= 1.4
+                        self.velocity[0] *= 1.4*dt*60
                 else: 
-                    new_movement[0] *= 0.7
+                    self.velocity[0] *= 0.7
                     self.fatigued = True 
             else: 
                 if self.stamina < 10: 
-                    new_movement[0] *= 0.7
+                    self.velocity[0] *= 0.7
                     self.fatigued = True 
-        
+        """
+
         if self.hard_land_recovery_time > 0 :
-            new_movement[0] *= (20 - self.hard_land_recovery_time)/20 
-            new_movement[1] *= (20 - self.hard_land_recovery_time)/20 
+            self.velocity[0] *= (20 - self.hard_land_recovery_time)/20 
+            self.velocity[1] *= (20 - self.hard_land_recovery_time)/20 
             self.hard_land_recovery_time -= dt
             
-        super().update(tilemap,dt*1.1, new_movement,anim_offset= (3,1))
+        super().update(tilemap,dt*1.1,anim_offset= (3,1))
 
         self.left_anchor = self.left_and_right_anchors[self._flip][self._state]["left"]
         self.right_anchor = self.left_and_right_anchors[self._flip][self._state]["right"]
 
-
+        print(self.velocity)
         """
         r = max(self.size) * 2
 
@@ -401,17 +403,18 @@ class Player(PhysicsEntity):
              
             self.change_weapon(self.change_scroll)
         """     
+        if self.velocity[1] >0 :
+            self.y_inertia +=  dt * 60
+        else:
+            self.y_inertia = 0
 
-        if self.velocity[1] >=2:
-            self.y_inertia +=  dt
-
-       
         self.cut_movement_input = False 
 
 
-
         if self._collisions['down']:
-            if self.y_inertia > 6:
+    
+            if self.y_inertia > 10:
+
                 self.set_state('land')
 
 
@@ -432,14 +435,14 @@ class Player(PhysicsEntity):
         
 
 
-            if self.y_inertia > 12 and self.y_inertia <35:
+            if self.y_inertia > 25 and self.y_inertia <50:
                 particle_data = AnimationParticleData('land',[self.pos[0] +8,self.pos[1]+14],velocity=[0,0],angle=0,flipped=False,source='player')
                 particle_system.add_particle(particle_data)
                 self.hard_land_recovery_time = 7 * TIME_FOR_ONE_LOGICAL_FRAME
                 #self.set_state('land')
                 
                 
-            elif self.y_inertia >= 35:
+            elif self.y_inertia >= 50:
                 particle_data = AnimationParticleData('big_land',[self.pos[0] +7,self.pos[1]+7],velocity=[0,0],angle=0,flipped=False,source='player')
                 particle_system.add_particle(particle_data)
                 self.hard_land_recovery_time = 20 * TIME_FOR_ONE_LOGICAL_FRAME
@@ -471,7 +474,7 @@ class Player(PhysicsEntity):
                 elif self.velocity[1] >0 :
                     self.set_state('jump_down')
                
-            elif self.cur_vel != 0:
+            elif self.velocity[0]!= 0:
                 if self._state == 'land':
                     if self._cur_animation.done == True: 
                         if self.fatigued: 
@@ -505,7 +508,7 @@ class Player(PhysicsEntity):
                     if anim_frame == 0 or anim_frame == 3:
                         self.game.player_sfx['run'][str(random.randint(0,7))].play()
                     """
-                if self.crouch and (player_movement_input[0] or player_movement_input[1]) :
+                if self.crouch and movement_input[1] - movement_input[0] != 0:
                     self.cut_movement_input = True
                     self.set_state('slide')
                 self.y_inertia = 0

@@ -50,6 +50,7 @@ class ParticleSystem:
 
             self._active_collide_particles = set( )
             self._active_animation_particles = set( )
+            self._active_fire_particles = set()
             self._active_sparks = set()
 
             # create particle pools
@@ -110,8 +111,12 @@ class ParticleSystem:
             self._active_collide_particles.add(particle)
             self._collide_particle_pool_index = (self._collide_particle_pool_index -1) % self._max_collide_particle_count 
         elif isinstance(particle_data,FireParticleData):
-            self._fire_particles[self._fire_particle_pool_index]._active = True 
-            self._fire_particles[self._fire_particle_pool_index].set_new_data(particle_data)
+            particle = self._fire_particles[self._fire_particle_pool_index]
+            particle._active = True 
+            particle.set_new_data(particle_data)
+            if light: 
+                light.illuminator = particle 
+            self._active_fire_particles.add(particle)
             self._fire_particle_pool_index = (self._fire_particle_pool_index -1) % self._max_fire_particle_count 
         elif isinstance(particle_data,SparkData):
             particle = self._sparks[self._sparks_pool_index]
@@ -138,12 +143,11 @@ class ParticleSystem:
                 particle._active = False 
                 self._active_collide_particles.remove(particle)
 
-        for particle in self._fire_particles:
-            if not particle._active:
-                continue 
-            kill = particle.update(tilemap,grass_manager)
-            if kill: 
+        for particle in list(self._active_fire_particles):
+            kill = particle.update(tilemap,grass_manager,dt)
+            if kill:
                 particle._active = False 
+                self._active_fire_particles.remove(particle)
         
         for particle in list(self._active_animation_particles):
             kill = particle.update(dt)
@@ -154,7 +158,7 @@ class ParticleSystem:
         for spark in list(self._active_sparks):
             kill = spark.update(tilemap,dt)
             if kill: 
-                particle._active = False
+                spark._active = False
                 self._active_sparks.remove(spark)
 
 
@@ -188,7 +192,7 @@ class PhysicalParticle:
 
     def update(self,tilemap:Tilemap,dt):
         # testing 
-        self._life -=1 * dt * 60
+        self._life -= dt * 60
         if self._life <= 0:
             return True
         
@@ -381,6 +385,7 @@ class FireParticle:
         self.alpha = 255
         self.i = 0
 
+        self.dead = False
         self._active = False 
 
     def set_new_data(self,particle_data:FireParticleData):
@@ -416,6 +421,8 @@ class FireParticle:
         self.oy = randint(-1, 1)
         self.alpha = 255
         self.i = 0
+
+        self.dead = False
 
 
     def rect(self):
@@ -492,10 +499,15 @@ class FireParticle:
         # If none of the above conditions are met, there's no collision
         return False
 
-    def update(self,tilemap:Tilemap,grass_manager):
-        # testing 
-        return False 
+    def update(self,tilemap:Tilemap,grass_manager,dt):
+        self.damage = max(2,int(self.damage * (self.life / self.maxlife)))
 
+        self.life -= dt * 60
+        
+        if self.life <= 0: 
+            self.dead = True 
+            return True 
+        
 
     def update_pos(self,tilemap,j):
         self.damage = max(2,int(self.damage * (self.life/self.maxlife)))
