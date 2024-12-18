@@ -12,7 +12,7 @@ from scripts.resourceManager import ResourceManager
 from scripts.new_particles import ParticleSystem
 
 from scripts.atlass_positions import ITEM_ATLAS_POSITIONS_AND_SIZES
-import random
+from random import choice, random
 
 import scripts 
 import my_pygame_light2d.engine
@@ -42,7 +42,11 @@ class Noel():
         self._initalize_game_settings() 
 
         
-        #TODO: HANDLE updates and rendering depending on gamestate 
+
+        # TODO : think adding a game context to the main game structure would benefit 
+        # the readability of the code. Refactor. 
+        self._game_context = {"screen_shake":0}
+
         self._curr_gameState = GameState.GameLoop
         self._frame_count = 0
         self._dt = 0
@@ -272,7 +276,7 @@ class Noel():
                         self._hud.add_item(Flamethrower())
                     if event.key == pygame.K_c:
                         # testing adding items to item inventory 
-                        self._hud.add_item(Item(random.choice(list(ITEM_ATLAS_POSITIONS_AND_SIZES.keys()))))
+                        self._hud.add_item(Item(choice(list(ITEM_ATLAS_POSITIONS_AND_SIZES.keys()))))
                         pass 
                     if event.key == pygame.K_w: 
                         self.player.jump(self.particle_system)
@@ -313,6 +317,8 @@ class Noel():
         
         if self._curr_gameState == GameState.GameLoop:  
             self._ctx.screen.clear(0, 0, 0, 1)
+            self._game_context['screen_shake'] = max(0,self._game_context['screen_shake'] -scaled_dt*60)
+            screen_shake_buffer = self._game_context['screen_shake']
 
             self._scroll[0] += scaled_dt*60*(self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self._scroll[0])/20
             self._scroll[1] += scaled_dt*60*(self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self._scroll[1])/20
@@ -328,8 +334,9 @@ class Noel():
             self.particle_system.update(scaled_dt,self._fps,self._tilemap,self._grass_manager)
 
 
+
             self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
-                               self.movement_input,camera_scroll,scaled_dt)
+                               self.movement_input,camera_scroll,self._game_context,scaled_dt)
             self.render_engine.bind_player(self.player)
             self._hud.update(scaled_dt)
             self.render_engine.bind_hud(self._hud)
@@ -338,9 +345,11 @@ class Noel():
             self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
             self.render_engine.render_foreground_scene_to_fbo()
             
-            #print(len(self.particle_system._active_fire_particles))
 
-            self.render_engine.render_scene_with_lighting(camera_scroll,(0,0))
+            screenshake_offset = (random() * screen_shake_buffer - screen_shake_buffer/2,
+                                  random() * screen_shake_buffer - screen_shake_buffer/2)
+
+            self.render_engine.render_scene_with_lighting(camera_scroll, screenshake_offset)
             pygame.display.flip()
             self._clock.tick()
             self.new_fps = self._clock.get_fps()

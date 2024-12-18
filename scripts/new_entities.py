@@ -345,7 +345,7 @@ class Player(PhysicsEntity):
             weapon.shoot(engine_lights,entities_manager,particle_system)
 
 
-    def update(self,tilemap:"Tilemap",particle_system:"ParticleSystem",cursor_pos,movement_input,camera_scroll,dt):
+    def update(self,tilemap:"Tilemap",particle_system:"ParticleSystem",cursor_pos,movement_input,camera_scroll,game_context,dt):
         self.accelerate(movement_input[1]- movement_input[0],dt)
         self._cur_animation.update(dt)
         self.cursor_pos = cursor_pos
@@ -438,6 +438,7 @@ class Player(PhysicsEntity):
                 particle_data = AnimationParticleData('land',[self.pos[0] +8,self.pos[1]+14],velocity=[0,0],angle=0,flipped=False,source='player')
                 particle_system.add_particle(particle_data)
                 self.hard_land_recovery_time = 7 * TIME_FOR_ONE_LOGICAL_FRAME
+                game_context['screen_shake'] = max(game_context['screen_shake'],7)
                 #self.set_state('land')
                 
                 
@@ -445,7 +446,7 @@ class Player(PhysicsEntity):
                 particle_data = AnimationParticleData('big_land',[self.pos[0] +7,self.pos[1]+7],velocity=[0,0],angle=0,flipped=False,source='player')
                 particle_system.add_particle(particle_data)
                 self.hard_land_recovery_time = 20 * TIME_FOR_ONE_LOGICAL_FRAME
-                self.y_inertia = 0
+                game_context['screen_shake'] = max(game_context['screen_shake'],16)
             self.jump_count =2 
             self.air_time = 0
             
