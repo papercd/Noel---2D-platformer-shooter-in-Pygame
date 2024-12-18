@@ -1504,6 +1504,9 @@ class RenderEngine:
         polygon_vertices = []
         polygon_indices = []
 
+        circle_vertices = []
+        circle_indices = []
+
         for particle in list(particle_system._active_animation_particles):
             cur_frame = particle.animation.curr_frame()
             animationData = PARTICLE_ATLAS_POSITIONS_AND_SIZES[particle.type]
@@ -1536,7 +1539,11 @@ class RenderEngine:
                 dest = pygame.Rect(particle.pos[0]-size[0]//2-camera_scroll[0],particle.pos[1]-size[1]//2-camera_scroll[1],size[0],size[1]),
                 source = pygame.Rect(atlas_pos[0]+size[0]*cur_frame,atlas_pos[1],size[0],size[1])
             )
+            
         """
+        #TODO: change the rendering logic so that it doesn't have to change the surface to a texture,
+        # should be quite simple. 
+
         for particle in list(particle_system._active_collide_particles):
             buffer_surf = particle._buffer_surf
             tex = self.surface_to_texture(buffer_surf)
@@ -1544,7 +1551,23 @@ class RenderEngine:
                 dest = pygame.Rect(particle._pos[0]-camera_scroll[0],particle._pos[1]-camera_scroll[1],tex.width,tex.height),
                 source = pygame.Rect(0,0,tex.width,tex.height)
             )
-            tex.release()
+            tex.release()   
+
+        base_index = 0 
+        segments = 100
+
+        for particle in list(particle_system._active_fire_particles):
+            vertices,indices = self._create_circle_vertices()
+            circle_vertices.extend(vertices)
+            circle_indices.extend(indices)
+            base += segments
+
+        if circle_vertices:
+            vertex_data = np.array(circle_vertices,dtype=np.float32)
+            index_data = np.array(circle_indices,dtype='i4')
+            vbo = self.ctx.buffer(vertex_data.tobytes())
+            ibo = self.ctx.buffer(index_data.tobytes())
+        
 
         base_index = 0
         for spark in list(particle_system._active_sparks):
@@ -1566,6 +1589,19 @@ class RenderEngine:
             vbo.release()
             ibo.release()
 
+    """
+    pygame.draw.circle(bsurf, self.palette[self.i] + (self.alpha,), (self.ren_x - offset[0], self.ren_y - offset[1]), self.r, 0)
+            
+        if self.i == 0:
+            life_ratio = (self.maxlife - self.life) / self.maxlife
+            pygame.draw.circle(bsurf, (0, 0, 0, 0), (self.ren_x + random.randint(-1, 1) - offset[0], self.ren_y - 4 - offset[1]), self.r * (life_ratio / 0.88), 0)
+        else:
+            pygame.draw.circle(bsurf, self.palette[self.i - 1] + (self.alpha,), (self.ren_x + random.randint(-1, 1) - offset[0], self.ren_y - 3 - offset[1]), self.r / 1.5, 0)
+
+    """
+
+    def _create_circle_vertices(self):
+        pass 
 
     def _create_spark_vertices(self,spark:"Spark",camera_scroll,base_index):
         vertices= [

@@ -508,6 +508,33 @@ class FireParticle:
             self.dead = True 
             return True 
         
+        self.i = int((self.life/self.maxlife)*6)
+
+        velocity= [
+                ((self.sin * sin(self.life/(self.sinr)))/2)*self.spread * self.rise_normal.x    + self.rise * cos(radians(self.rise_angle)),
+                (self.rise * sin(radians(self.rise_angle)) + self.rise_normal.y * self.spread * ((self.sin * sin(self.life/(self.sinr)))/2))
+        ]
+
+        self.x += velocity[0] 
+        self.y += velocity[1]
+
+        self.pos = [self.x,self.y]
+
+        if not randint(0,5):
+            self.r += 0.88 * dt * 60
+        
+        self.ren_x,self.ren_y = self.x,self.y
+        self.ren_x += self.ox*(5-self.i) * dt * 60
+        self.ren_y += self.oy*(5-self.i) * dt * 60
+
+        self.center[0] = self.ren_x + self.r
+        self.center[1] = self.ren_y + self.r
+        
+        if self.life < self.maxlife/4:
+            self.alpha = int((self.life/self.maxlife)*255)
+
+        return False 
+
 
     def update_pos(self,tilemap,j):
         self.damage = max(2,int(self.damage * (self.life/self.maxlife)))
@@ -523,7 +550,7 @@ class FireParticle:
        
         self.i = int((self.life/self.maxlife)*6)
        
-
+        
 
         frame_movement = [
                 ((self.sin * sin(j/(self.sinr)))/2)*self.spread * self.rise_normal.x    + self.rise * cos(radians(self.rise_angle)),

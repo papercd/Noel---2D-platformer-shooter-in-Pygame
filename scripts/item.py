@@ -267,7 +267,7 @@ class Flamethrower(Weapon):
                 light.set_color(255,35,19)
                 light.cast_shadows = False
                 ps.add_particle(particle_data,light)
-
+                engine_lights.append(light)
 
     def reset_shot(self)-> None: 
         self.shot = False
