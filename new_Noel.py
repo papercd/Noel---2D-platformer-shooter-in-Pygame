@@ -340,7 +340,7 @@ class Noel():
             self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
 
 
-
+            print(len(self.particle_system._active_fire_particles))
             self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
                                self.movement_input,camera_scroll,self._game_context,self._dt)
             self.render_engine.bind_player(self.player)
@@ -357,8 +357,8 @@ class Noel():
 
             self.render_engine.render_scene_with_lighting(camera_scroll, screenshake_offset)
             pygame.display.flip()
-            self._clock.tick()
-
+            self._clock.tick(60)
+            fps = self._clock.get_fps()
 
     def quit_game(self):
         pygame.quit()
