@@ -50,11 +50,16 @@ class ParticleSystem:
 
             self._active_collide_particles = set( )
             self._active_animation_particles = set( )
+            self._active_fire_particles = set()
             self._active_sparks = set()
 
             # create particle pools
             self._initialize_particle_containers()
             self._precompute_particle_animation_texture_coords()
+    
+
+    # refactor all resource creation and management 
+    # to be located within the resource manager. 
 
     def _precompute_particle_animation_texture_coords(self):
         rm = ResourceManager.get_instance()
@@ -65,6 +70,8 @@ class ParticleSystem:
             animationData = PARTICLE_ANIMATION_DATA[key]
             for frame in range(animationData.n_textures):
                 self._tex_dict[(key,frame)] = self._get_texture_coords_for_animation_frame(particle_texture_atl,atl_pos,tex_size,frame)
+
+
 
      
     def _get_texture_coords_for_animation_frame(self,texture_atl,atl_pos :tuple[int,int],tex_size:tuple[int,int],frame: int ) -> np.array:
@@ -110,8 +117,12 @@ class ParticleSystem:
             self._active_collide_particles.add(particle)
             self._collide_particle_pool_index = (self._collide_particle_pool_index -1) % self._max_collide_particle_count 
         elif isinstance(particle_data,FireParticleData):
-            self._fire_particles[self._fire_particle_pool_index]._active = True 
-            self._fire_particles[self._fire_particle_pool_index].set_new_data(particle_data)
+            particle = self._fire_particles[self._fire_particle_pool_index]
+            particle._active = True 
+            particle.set_new_data(particle_data)
+            if light: 
+                light.illuminator = particle 
+            self._active_fire_particles.add(particle)
             self._fire_particle_pool_index = (self._fire_particle_pool_index -1) % self._max_fire_particle_count 
         elif isinstance(particle_data,SparkData):
             particle = self._sparks[self._sparks_pool_index]
@@ -131,19 +142,18 @@ class ParticleSystem:
 
 
 
-    def update(self,dt,fps,tilemap:Tilemap,grass_manager):
+    def update(self,dt,tilemap:Tilemap,grass_manager):
         for particle in list(self._active_collide_particles):
             kill =particle.update(tilemap,dt)
             if kill: 
                 particle._active = False 
                 self._active_collide_particles.remove(particle)
 
-        for particle in self._fire_particles:
-            if not particle._active:
-                continue 
-            kill = particle.update(tilemap,grass_manager)
-            if kill: 
+        for particle in list(self._active_fire_particles):
+            kill = particle.update(tilemap,grass_manager,dt)
+            if kill:
                 particle._active = False 
+                self._active_fire_particles.remove(particle)
         
         for particle in list(self._active_animation_particles):
             kill = particle.update(dt)
@@ -154,7 +164,7 @@ class ParticleSystem:
         for spark in list(self._active_sparks):
             kill = spark.update(tilemap,dt)
             if kill: 
-                particle._active = False
+                spark._active = False
                 self._active_sparks.remove(spark)
 
 
@@ -188,7 +198,7 @@ class PhysicalParticle:
 
     def update(self,tilemap:Tilemap,dt):
         # testing 
-        self._life -=1 * dt * 60
+        self._life -= dt * 60
         if self._life <= 0:
             return True
         
@@ -258,7 +268,7 @@ class Spark:
 
         movement = self._calculate_movement(dt)
         movement[1] = min(terminal_velocity,movement[1] + force )
-        movement[0] *= friction   
+        movement[0] *= friction * dt
         self.angle = degrees(atan2(-movement[1],movement[0]))
 
     def _calculate_movement(self,dt:float)->list[float,float]:
@@ -328,10 +338,10 @@ class Spark:
 
 
         self._point_towards(90, 0.02)
-        self._velocity_adjust(0.975,0.05,8,dt)
+        #self._velocity_adjust(0.975,0.05,6,dt)
 
-        angle_jitter = uniform(-3,3)
-        self.angle += angle_jitter
+        angle_jitter = uniform(-4,4)
+        self.angle += angle_jitter * dt * 60
 
         self.speed -= 0.1*self.decay_factor*dt*110
 
@@ -381,6 +391,7 @@ class FireParticle:
         self.alpha = 255
         self.i = 0
 
+        self.dead = False
         self._active = False 
 
     def set_new_data(self,particle_data:FireParticleData):
@@ -416,6 +427,8 @@ class FireParticle:
         self.oy = randint(-1, 1)
         self.alpha = 255
         self.i = 0
+
+        self.dead = False
 
 
     def rect(self):
@@ -492,8 +505,40 @@ class FireParticle:
         # If none of the above conditions are met, there's no collision
         return False
 
-    def update(self,tilemap:Tilemap,grass_manager):
-        # testing 
+    def update(self,tilemap:Tilemap,grass_manager,dt):
+        self.damage = max(2,int(self.damage * (self.life / self.maxlife)))
+
+        self.life -= dt * 60
+        
+        if self.life <= 0: 
+            self.dead = True 
+            return True 
+        
+        self.i = int((self.life/self.maxlife)*6)
+
+        velocity= [
+                ((self.sin * sin(self.life/(self.sinr)))/2)*self.spread * self.rise_normal.x    + self.rise * cos(radians(self.rise_angle)),
+                (self.rise * sin(radians(self.rise_angle)) + self.rise_normal.y * self.spread * ((self.sin * sin(self.life/(self.sinr)))/2))
+        ]
+
+        self.x += velocity[0] 
+        self.y += velocity[1]
+
+        self.pos = [self.x,self.y]
+
+        if not randint(0,5):
+            self.r += 0.88 * dt * 60
+        
+        self.ren_x,self.ren_y = self.x,self.y
+        self.ren_x += self.ox*(5-self.i) * dt * 60
+        self.ren_y += self.oy*(5-self.i) * dt * 60
+
+        self.center[0] = self.ren_x + self.r
+        self.center[1] = self.ren_y + self.r
+        
+        if self.life < self.maxlife/4:
+            self.alpha = int((self.life/self.maxlife)*255)
+
         return False 
 
 
@@ -511,7 +556,7 @@ class FireParticle:
        
         self.i = int((self.life/self.maxlife)*6)
        
-
+        
 
         frame_movement = [
                 ((self.sin * sin(j/(self.sinr)))/2)*self.spread * self.rise_normal.x    + self.rise * cos(radians(self.rise_angle)),

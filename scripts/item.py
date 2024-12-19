@@ -1,7 +1,7 @@
 from scripts.new_entities import Player,AKBullet
 from my_pygame_light2d.light import PointLight
 from math import atan2,degrees,cos,sin,radians
-from scripts.custom_data_types import AnimationParticleData,CollideParticleData
+from scripts.custom_data_types import AnimationParticleData,CollideParticleData,FireParticleData
 from typing import TYPE_CHECKING
 from random import randint,random,choice
 
@@ -41,6 +41,9 @@ WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET ={
 MUZZLE_PARTICLE_COLORS = {
     'ak47' : ((238,208,88),(117,116,115),(30,30,30))
 }
+
+
+
 
 class Item:
     def __init__(self,name,count = 1,stackable = True):
@@ -249,8 +252,22 @@ class Flamethrower(Weapon):
         new_weapon.magazine = self.magazine
         return new_weapon
     
-    def shoot(self,engine_lights,em,ps) ->None:
-        pass
+    def shoot(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem") ->None:
+        if self.accum_time >= TIME_FOR_LOGICAL_FRAME * self._fire_rate:
+            self.accum_time -= TIME_FOR_LOGICAL_FRAME * self._fire_rate
+            size = 6
+            density = 4
+            rise = 3.1
+            spread = 1.8
+            wind = 0
+            for _ in range(density):
+                particle_data = FireParticleData(*self.opening_pos,size,density,rise,-self._angle_opening,spread,
+                                                wind,self._damage)
+                light = PointLight((self.opening_pos[0],self.opening_pos[1]),0.12,42,life= 70)
+                light.set_color(255,35,19)
+                light.cast_shadows = False
+                ps.add_particle(particle_data,light)
+                engine_lights.append(light)
 
     def reset_shot(self)-> None: 
         self.shot = False

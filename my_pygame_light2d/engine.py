@@ -99,6 +99,10 @@ class RenderEngine:
 
 
         # Read source files
+        with open('my_pygame_light2d/vertex_circle.glsl',encoding='utf-8') as file:
+            circle_vertex_src = file.read()
+        with open('my_pygame_light2d/fragment_circle.glsl',encoding='utf-8') as file:
+            circle_fragment_src = file.read()
         with open('my_pygame_light2d/polygon_vertex.glsl',encoding='utf-8') as file:
             polygon_vertex_src= file.read()
         with open('my_pygame_light2d/fragment_polygon.glsl',encoding='utf-8') as file:
@@ -142,7 +146,9 @@ class RenderEngine:
 
         self._prog_polygon_draw = self.ctx.program(vertex_shader=polygon_vertex_src,
                                                    fragment_shader= polygon_fragment_src)
-        
+
+        self._prog_circle_draw = self.ctx.program(vertex_shader=circle_vertex_src,
+                                                  fragment_shader=circle_fragment_src)
 
 
     def _create_screen_vertex_buffers(self)-> None:
@@ -1504,6 +1510,9 @@ class RenderEngine:
         polygon_vertices = []
         polygon_indices = []
 
+        circle_vertices = []
+        circle_indices = []
+
         for particle in list(particle_system._active_animation_particles):
             cur_frame = particle.animation.curr_frame()
             animationData = PARTICLE_ATLAS_POSITIONS_AND_SIZES[particle.type]
@@ -1536,7 +1545,11 @@ class RenderEngine:
                 dest = pygame.Rect(particle.pos[0]-size[0]//2-camera_scroll[0],particle.pos[1]-size[1]//2-camera_scroll[1],size[0],size[1]),
                 source = pygame.Rect(atlas_pos[0]+size[0]*cur_frame,atlas_pos[1],size[0],size[1])
             )
+            
         """
+        #TODO: change the rendering logic so that it doesn't have to change the surface to a texture,
+        # should be quite simple. 
+
         for particle in list(particle_system._active_collide_particles):
             buffer_surf = particle._buffer_surf
             tex = self.surface_to_texture(buffer_surf)
@@ -1544,8 +1557,32 @@ class RenderEngine:
                 dest = pygame.Rect(particle._pos[0]-camera_scroll[0],particle._pos[1]-camera_scroll[1],tex.width,tex.height),
                 source = pygame.Rect(0,0,tex.width,tex.height)
             )
-            tex.release()
+            tex.release()   
 
+        # using instanced rendering for circles 
+        instance_data = []
+        instance_data = np.array([
+            (*self._map_circle_to_world(particle,camera_scroll),*particle.palette[particle.i],particle.alpha,0.1)
+            for particle in particle_system._active_fire_particles
+        ],dtype= np.float32)
+
+        if instance_data.any():
+            vbo,ibo = self._rm.circle_template # precomputed template circle vbo and ibo 
+            instances_vbo = self.ctx.buffer(instance_data.tobytes())
+            vao = self.ctx.vertex_array(self._prog_circle_draw,
+                                        [
+                                            (vbo,'2f','in_vert'),
+                                            (instances_vbo,'2f 4f 1f/i','offset','in_color','size')
+                                        ],
+                                        ibo)
+            vao.render(moderngl.TRIANGLES, instances=len(particle_system._active_fire_particles))
+
+            instances_vbo.release()
+            vao.release()
+
+            
+
+        
         base_index = 0
         for spark in list(particle_system._active_sparks):
             vertices,indices = self._create_spark_vertices(spark,camera_scroll,base_index)
@@ -1565,6 +1602,23 @@ class RenderEngine:
             vao.release()
             vbo.release()
             ibo.release()
+        
+    def _map_circle_to_world(self,particle,camera_scroll):
+        x = 2. * (particle.x-camera_scroll[0]) / self._true_res[0] -1.
+        y = 1. -2 * (particle.y-camera_scroll[1]) / self._true_res[1]
+
+        return (x,y)
+
+    """
+    pygame.draw.circle(bsurf, self.palette[self.i] + (self.alpha,), (self.ren_x - offset[0], self.ren_y - offset[1]), self.r, 0)
+            
+        if self.i == 0:
+            life_ratio = (self.maxlife - self.life) / self.maxlife
+            pygame.draw.circle(bsurf, (0, 0, 0, 0), (self.ren_x + random.randint(-1, 1) - offset[0], self.ren_y - 4 - offset[1]), self.r * (life_ratio / 0.88), 0)
+        else:
+            pygame.draw.circle(bsurf, self.palette[self.i - 1] + (self.alpha,), (self.ren_x + random.randint(-1, 1) - offset[0], self.ren_y - 3 - offset[1]), self.r / 1.5, 0)
+
+    """
 
 
     def _create_spark_vertices(self,spark:"Spark",camera_scroll,base_index):
