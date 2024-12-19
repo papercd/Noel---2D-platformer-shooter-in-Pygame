@@ -268,7 +268,7 @@ class Spark:
 
         movement = self._calculate_movement(dt)
         movement[1] = min(terminal_velocity,movement[1] + force )
-        movement[0] *= friction   
+        movement[0] *= friction * dt
         self.angle = degrees(atan2(-movement[1],movement[0]))
 
     def _calculate_movement(self,dt:float)->list[float,float]:
@@ -338,10 +338,10 @@ class Spark:
 
 
         self._point_towards(90, 0.02)
-        self._velocity_adjust(0.975,0.05,8,dt)
+        #self._velocity_adjust(0.975,0.05,6,dt)
 
-        angle_jitter = uniform(-3,3)
-        self.angle += angle_jitter
+        angle_jitter = uniform(-4,4)
+        self.angle += angle_jitter * dt * 60
 
         self.speed -= 0.1*self.decay_factor*dt*110
 

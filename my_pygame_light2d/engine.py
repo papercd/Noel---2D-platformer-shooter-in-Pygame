@@ -1562,7 +1562,7 @@ class RenderEngine:
         # using instanced rendering for circles 
         instance_data = []
         instance_data = np.array([
-            (*self._map_circle_to_world(particle,camera_scroll),*particle.palette[particle.i],particle.alpha,0.01)
+            (*self._map_circle_to_world(particle,camera_scroll),*particle.palette[particle.i],particle.alpha,0.1)
             for particle in particle_system._active_fire_particles
         ],dtype= np.float32)
 

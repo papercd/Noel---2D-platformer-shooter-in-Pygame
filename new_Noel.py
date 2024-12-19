@@ -67,7 +67,7 @@ class Noel():
         self.particle_system = ParticleSystem.get_instance() 
         self.player = Player([900,11],(14,16)) 
         self.player.set_accel_rate(0.7)
-        self.player.set_default_speed(2.2)
+        self.player.set_default_speed(2.3)
 
         self._grass_manager = GrassManager()
         self._hud = HUD(self.player,self._true_res)
@@ -340,7 +340,6 @@ class Noel():
             self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
 
 
-            print(len(self.particle_system._active_fire_particles))
             self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
                                self.movement_input,camera_scroll,self._game_context,self._dt)
             self.render_engine.bind_player(self.player)
