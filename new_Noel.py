@@ -360,7 +360,7 @@ class Noel():
             screenshake_offset = (random() * screen_shake_buffer - screen_shake_buffer/2,
                                   random() * screen_shake_buffer - screen_shake_buffer/2)
 
-            self.render_engine.render_scene_with_lighting(camera_scroll, screenshake_offset)
+            self.render_engine.render_scene_with_lighting(camera_scroll,interpolation_alpha, screenshake_offset)
             pygame.display.flip()
             
         

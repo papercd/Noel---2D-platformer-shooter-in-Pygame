@@ -581,7 +581,7 @@ class Bullet(PhysicsEntity):
         self._max_life = life 
         self.dead = False
         self.center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[1]//2]
-
+        self.cur_physics_step = 0
     
     @property
     def angle(self): 
@@ -640,7 +640,7 @@ class Bullet(PhysicsEntity):
         # one sub step move the bullet up to that step 
   
         for step in range(steps):
-        
+            self.cur_physics_step = step
             self.pos[0] += scaled_dt*self.velocity[0]/steps
             # need a different way to find the center 
             self.center[0] += scaled_dt*self.velocity[0] /steps

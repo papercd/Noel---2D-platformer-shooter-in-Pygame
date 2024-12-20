@@ -948,7 +948,7 @@ class RenderEngine:
         data_ind = np.array(indices, dtype=np.int32).flatten().tobytes()
         self._ssbo_ind.write(data_ind)
 
-    def _render_to_buf_lt(self,offset):
+    def _render_to_buf_lt(self,offset,interpolation_alpha):
         # Disable alpha blending to render lights
         range = self._tilemap._ambient_node_ptr.range
 
@@ -990,7 +990,8 @@ class RenderEngine:
             if light.illuminator: 
                 
                 #light.cur_power = max(0,light.power * (light.life/light.maxlife))
-                light.position = (int(light.illuminator.center[0]) , int(light.illuminator.center[1]))    
+                light.position = (int(light.illuminator.center[0]+light.illuminator.velocity[0]*interpolation_alpha) ,\
+                                   int(light.illuminator.center[1]+light.illuminator.velocity[1]*interpolation_alpha))    
                 
             elif light.life > 0: 
                 if light.maxlife-1 == light.life: 
@@ -1261,7 +1262,7 @@ class RenderEngine:
         self._background = resource_manager.get_background_of_name(name)
     
     
-    def render_scene_with_lighting(self,offset,screen_shake):
+    def render_scene_with_lighting(self,offset,interpolation_alpha,screen_shake):
         """
         Render the lighting effects onto the screen.
 
@@ -1298,7 +1299,7 @@ class RenderEngine:
         self._send_hull_data(render_shake)
 
         # Render lights onto double buffer
-        self._render_to_buf_lt(render_shake)
+        self._render_to_buf_lt(render_shake,interpolation_alpha)
 
         # Blur lightmap for soft shadows and render onto aomap
         self._render_aomap()
@@ -1696,7 +1697,9 @@ class RenderEngine:
         vertices_list= [] 
         texture_coords_list = []
         for bullet in self._em._bullets:
-            interpolation_offset = (bullet.velocity[0] * interpolation_alpha, bullet.velocity[1] * interpolation_alpha) 
+            print(bullet.cur_physics_step)
+            interpolate_pos = bullet.cur_physics_step ==  3
+            interpolation_offset = (bullet.velocity[0] * interpolation_alpha, bullet.velocity[1] * interpolation_alpha) if interpolate_pos else (0,0)
             texture_coords = self._rm._bullet_texcoords[bullet.type]
             vertices = self._create_vertices_for_bullet(bullet.size,(bullet.center[0]+interpolation_offset[0] -camera_scroll[0],\
                                                                      bullet.center[1]+interpolation_offset[1] -camera_scroll[1]),bullet.angle,bullet.flip)
