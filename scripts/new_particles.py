@@ -1,5 +1,4 @@
 from random import choice ,randint,uniform
-from scripts.new_tilemap import Tilemap
 from pygame import Surface
 from pygame.math import Vector2 as vec2 
 from pygame import Rect
@@ -13,6 +12,8 @@ import numpy as np
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: 
+    from scripts.new_grass import GrassManager
+    from scripts.new_tilemap import Tilemap
     from my_pygame_light2d.light import PointLight
 class ParticleSystem:
     _instance = None 
@@ -142,7 +143,7 @@ class ParticleSystem:
 
 
 
-    def update(self,dt,tilemap:Tilemap,grass_manager):
+    def update(self,tilemap:"Tilemap",grass_manager:"GrassManager",dt:float):
         for particle in list(self._active_collide_particles):
             kill =particle.update(tilemap,dt)
             if kill: 
@@ -196,13 +197,15 @@ class PhysicalParticle:
         self._buffer_surf.fill(self._color)
         self._rect = Rect(self._pos[0],self._pos[1],self._size[0],self._size[1])
 
-    def update(self,tilemap:Tilemap,dt):
+    def update(self,tilemap:"Tilemap",dt):
+        scaled_dt = dt * 60
+
         # testing 
-        self._life -= dt * 60
+        self._life -= scaled_dt 
         if self._life <= 0:
             return True
-        
-        self._velocity[1] = min(6,self._velocity[1] +0.20 * self._gravity_factor)
+        gravity = 0.23
+        self._velocity[1] = min(6,self._velocity[1] + gravity* self._gravity_factor * scaled_dt)
 
         for rect_tile in tilemap.phy_rects_around(self._pos,self._size):
             if self._rect.colliderect(rect_tile[0]):
@@ -226,12 +229,12 @@ class PhysicalParticle:
                                 return True 
                 else: 
                     return True 
-        self._pos[0] += cos(radians(self._angle)) * self._speed * dt * 60  
-        self._pos[1] += sin(radians(self._angle)) * self._speed * dt * 60
-        self._pos[1] += self._velocity[1] * dt * 60 
+        self._pos[0] += cos(radians(self._angle)) * self._speed * scaled_dt   
+        self._pos[1] += sin(radians(self._angle)) * self._speed * scaled_dt 
+        self._pos[1] += self._velocity[1] *scaled_dt 
         self._rect.topleft = self._pos
 
-        self._speed = max(0,self._speed -0.1 * dt * 60)
+        self._speed = max(0,self._speed -0.1 * scaled_dt)
 
         return False 
     
@@ -272,8 +275,9 @@ class Spark:
         self.angle = degrees(atan2(-movement[1],movement[0]))
 
     def _calculate_movement(self,dt:float)->list[float,float]:
-        return [cos(radians(self.angle))*self.speed*self.speed_factor*dt* 60,
-                -sin(radians(self.angle))*self.speed*self.speed_factor*dt * 60]
+        scaled_dt = dt * 60
+        return [cos(radians(self.angle))*self.speed*self.speed_factor*scaled_dt,
+                -sin(radians(self.angle))*self.speed*self.speed_factor*scaled_dt]
 
     
     def _calculate_bounce_angle(self,axis:str): 
@@ -342,7 +346,6 @@ class Spark:
 
         angle_jitter = uniform(-4,4)
         self.angle += angle_jitter * dt * 60
-
         self.speed -= 0.1*self.decay_factor*dt*110
 
         return False 
@@ -505,10 +508,11 @@ class FireParticle:
         # If none of the above conditions are met, there's no collision
         return False
 
-    def update(self,tilemap:Tilemap,grass_manager,dt):
+    def update(self,tilemap:"Tilemap",grass_manager:"GrassManager",dt:float):
         self.damage = max(2,int(self.damage * (self.life / self.maxlife)))
+        scaled_dt = dt * 60
 
-        self.life -= dt * 60
+        self.life -= scaled_dt
         
         if self.life <= 0: 
             self.dead = True 
@@ -521,17 +525,17 @@ class FireParticle:
                 (self.rise * sin(radians(self.rise_angle)) + self.rise_normal.y * self.spread * ((self.sin * sin(self.life/(self.sinr)))/2))
         ]
 
-        self.x += velocity[0] 
-        self.y += velocity[1]
+        self.x += velocity[0] * scaled_dt
+        self.y += velocity[1] * scaled_dt
 
         self.pos = [self.x,self.y]
 
         if not randint(0,5):
-            self.r += 0.88 * dt * 60
+            self.r += 0.88 *scaled_dt 
         
         self.ren_x,self.ren_y = self.x,self.y
-        self.ren_x += self.ox*(5-self.i) * dt * 60
-        self.ren_y += self.oy*(5-self.i) * dt * 60
+        self.ren_x += self.ox*(5-self.i) * scaled_dt
+        self.ren_y += self.oy*(5-self.i) * scaled_dt
 
         self.center[0] = self.ren_x + self.r
         self.center[1] = self.ren_y + self.r
@@ -715,12 +719,13 @@ class AnimatedParticle:
         self.source = particle_data.source
         self.animation.set_new_data(PARTICLE_ANIMATION_DATA[self.type])
 
-    def update(self,dt):
+    def update(self,dt:float):
+        scaled_dt = dt * 60
         kill = False 
         if self.animation.done: 
             kill = True 
-        self.pos[0] += self.velocity[0] * dt
-        self.pos[1] += self.velocity[1] * dt
+        self.pos[0] += self.velocity[0] *scaled_dt 
+        self.pos[1] += self.velocity[1] *scaled_dt 
 
         self.animation.update(dt)
         return kill 
