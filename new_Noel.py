@@ -11,6 +11,7 @@ from scripts.entitiesManager import EntitiesManager
 from scripts.resourceManager import ResourceManager
 from scripts.new_particles import ParticleSystem
 
+from scripts.animationData import TIME_FOR_ONE_LOGICAL_STEP
 from scripts.atlass_positions import ITEM_ATLAS_POSITIONS_AND_SIZES
 from random import choice, random
 
@@ -48,6 +49,7 @@ class Noel():
 
         self._frame_count = 0
         self._dt = 0
+        self._accumulator = 0
         self._prev_frame_time = 0
         self._scroll = [0,0]
         self.movement_input = [0,0]
@@ -312,42 +314,46 @@ class Noel():
 
     def _update_render(self):
         self._frame_count = (self._frame_count+1) %360
-        self._current_time = time() 
-        self._dt = self._current_time - self._prev_frame_time
-        self._dt = min(self._dt,1/self._target_min_fps)
-        self._prev_frame_time = self._current_time
-
-
         self.render_engine.set_ambient(255,255,255, 25)
         self.render_engine.clear(0,0,0,255)
-        
+        self._ctx.screen.clear(0,0,0,0)
+
+        self._dt = min(self._clock.tick() / 1000.0,0.1)
+        self._accumulator += self._dt
         if self._game_context['gamestate']== GameState.GameLoop:  
-            self._ctx.screen.clear(0, 0, 0, 1)
+           
             self._game_context['screen_shake'] = max(0,self._game_context['screen_shake'] -self._dt*60)
             screen_shake_buffer = self._game_context['screen_shake']
 
-            self._scroll[0] += self._dt*60*(self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self._scroll[0])/20
-            self._scroll[1] += self._dt*60*(self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self._scroll[1])/20
-
+            self._scroll[0] += 2.5*self._dt*(self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self._scroll[0])
+            self._scroll[1] += 2.5*self._dt*(self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self._scroll[1])
             camera_scroll = (int(self._scroll[0]), int(self._scroll[1]))
            
             self.render_engine.hulls = self._tilemap._hull_grid.query(camera_scroll[0]-self._tilemap.tile_size * 10 ,camera_scroll[1]- self._tilemap.tile_size * 10,camera_scroll[0] \
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
 
 
+            # updates that require  physics are done in fixed time steps 
+            while self._accumulator >= TIME_FOR_ONE_LOGICAL_STEP: 
 
-            self.entities_manager.update(self._dt,self._tilemap,self.particle_system,self.render_engine.lights)
-            self.particle_system.update(self._dt,self._tilemap,self._grass_manager)
+                self.entities_manager.update(self._tilemap,self.particle_system,self.render_engine.lights,TIME_FOR_ONE_LOGICAL_STEP)
+                self.particle_system.update(self._tilemap,self._grass_manager,TIME_FOR_ONE_LOGICAL_STEP)
 
 
-            self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
-                               self.movement_input,camera_scroll,self._game_context,self._dt)
-            self.render_engine.bind_player(self.player)
-            self._hud.update(self._dt)
-            self.render_engine.bind_hud(self._hud)
+                self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
+                                self.movement_input,camera_scroll,self._game_context,TIME_FOR_ONE_LOGICAL_STEP)
+                self._accumulator -= TIME_FOR_ONE_LOGICAL_STEP
+            
             self._tilemap.update_ambient_node_ptr(self.player.pos)
+            self._hud.update(self._dt)
 
-            self.render_engine.render_background_scene_to_fbo(camera_scroll,infinite=False)
+            #self._accumulator = min(self._accumulator,TIME_FOR_ONE_LOGICAL_STEP)
+            interpolation_alpha = self._accumulator / TIME_FOR_ONE_LOGICAL_STEP
+
+            self.render_engine.bind_player(self.player)
+            self.render_engine.bind_hud(self._hud)
+
+            self.render_engine.render_background_scene_to_fbo(camera_scroll,interpolation_alpha,infinite=False)
             self.render_engine.render_foreground_scene_to_fbo()
             
 
@@ -356,8 +362,8 @@ class Noel():
 
             self.render_engine.render_scene_with_lighting(camera_scroll, screenshake_offset)
             pygame.display.flip()
-            self._clock.tick(60)
-            fps = self._clock.get_fps()
+            
+        
 
     def quit_game(self):
         pygame.quit()
@@ -367,11 +373,8 @@ class Noel():
 
 
     def start(self):
-        self.count = 0
-        self.accum_time = 0
-        self._dt = time() - self._prev_frame_time
-        self._prev_frame_time = time()
-
+        self._dt = self._clock.tick() / 1000.0
+        self._accumulator += self._dt 
         while(True):
             self._handle_events()
             self._update_render() 

@@ -2,7 +2,7 @@ from pygame import Rect
 from scripts.custom_data_types import AnimationParticleData,CollideParticleData,SPARK_COLORS,SparkData  
 from scripts.animationData import PlayerAnimationDataCollection
 from scripts.utils import get_rotated_vertices, SAT
-from random import choice as random_choice,random,randint,choice
+from random import choice as random_choice,random,randint,choice,uniform
 
 from typing import TYPE_CHECKING
 from my_pygame_light2d.light import PointLight 
@@ -75,9 +75,10 @@ class PhysicsEntity:
         # gravity 
         gravity = 0.26
         
+        self._on_ramp = 0
         self.velocity[1] = min(6, self.velocity[1] + gravity * scaled_dt)
 
-        frame_movement = (self.velocity[0] *scaled_dt , scaled_dt+ self.velocity[1] * scaled_dt) if not self.cut_movement_input else \
+        frame_movement = (self.velocity[0] *scaled_dt ,self.velocity[1] * scaled_dt) if not self.cut_movement_input else \
                             (self.velocity[0] *scaled_dt, self.velocity[1] *scaled_dt)
         self.pos[0] += frame_movement[0] if not self.cut_movement_input else 0 
         self_rect = self._collision_rect()
@@ -272,20 +273,20 @@ class Player(PhysicsEntity):
                 self.velocity[0] += acceleration * 0.2# Reduce transition step
             else:  # Normal rightward acceleration
                 self.velocity[0] += acceleration
-            print("check1")
+            #print("check1")
         elif direction < 0:  # Move left
             if self.velocity[0] > 0:  # Transition from rightward velocity
                 self.velocity[0] -= acceleration   # Reduce transition step
             else:  # Normal leftward acceleration
                 self.velocity[0] -= acceleration
-            print("check2")
+            #print("check2")
         else:  # No input, apply deceleration
             if self.velocity[0] > 0:
                 self.velocity[0] = max(0, self.velocity[0] - acceleration)  # Decelerate rightward
-                print("check3")
+            #    print("check3")
             elif self.velocity[0] < 0:
                 self.velocity[0] = min(0, self.velocity[0] + acceleration)  # Decelerate leftward
-                print("check4")
+            #    print("check4")
 
         # Clamp velocity to maximum speed
         self.velocity[0] = max(-max_speed, min(max_speed, self.velocity[0]))
@@ -368,7 +369,6 @@ class Player(PhysicsEntity):
         self._cur_animation.update(dt)
         self.cursor_pos = cursor_pos
         
-
 
         self._curr_speed = self._default_speed
 
@@ -453,7 +453,7 @@ class Player(PhysicsEntity):
                     offset = random_choice(offsets)
                     random_factor = random()
                     particle_data = CollideParticleData((1,1), [entry_pos[0] - offset[0],entry_pos[1] - 2] ,\
-                                                        -90 + randint(-88,88),2.4+random_factor,color,life= 40 + 20 * random_factor , gravity_factor= 1.2)
+                                                        -90 + randint(-88,88), 2.4+random_factor,color,life= 40 + 20 * random_factor , gravity_factor= 1)
                     particle_system.add_particle(particle_data)
         
 
@@ -577,7 +577,8 @@ class Bullet(PhysicsEntity):
     def __init__(self,life:int,pos: list[float], size: tuple[int, int],angle:int):
         super().__init__('Bullet', pos, size)
         self._angle = angle
-        self._time_flown= life
+        self._life= life
+        self._max_life = life 
         self.dead = False
         self.center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[1]//2]
 
@@ -627,23 +628,22 @@ class Bullet(PhysicsEntity):
     def adjust_flip(self,adjustment:bool) ->None: 
         self._flip = adjustment
 
-    def update(self,dt,tilemap:"Tilemap",ps: "ParticleSystem",engine_lights:list["PointLight"])->None:
-        self._time_flown-= 1*dt
-        if self._time_flown == 0:
+    def update(self,tilemap:"Tilemap",ps: "ParticleSystem",engine_lights:list["PointLight"],dt:float)->None:
+        self._life-= dt * 60
+        if self._life <= 0:
             self.dead = True
             return True
-        
+        scaled_dt = dt * 60
         steps =4 
 
         # devide one movement into steps, and if bullet collides in
         # one sub step move the bullet up to that step 
   
-
         for step in range(steps):
         
-            self.pos[0] += 60*dt*self.velocity[0]/steps
+            self.pos[0] += scaled_dt*self.velocity[0]/steps
             # need a different way to find the center 
-            self.center[0] += 60*dt*self.velocity[0] /steps
+            self.center[0] += scaled_dt*self.velocity[0] /steps
 
             rotated_bullet_rect = get_rotated_vertices(self.center,*self.size,self._angle) 
 
@@ -652,15 +652,15 @@ class Bullet(PhysicsEntity):
                 #if entity_rect.colliderect(rect_tile[0]):
                     #self.handle_tile_collision(tilemap,rect_tile)
                     if step != 0:
-                        self.pos[1] += 60*dt*self.velocity[1]/steps
-                        self.center[1] +=60* dt*self.velocity[1]/steps
+                        self.pos[1] += scaled_dt*self.velocity[1]/steps
+                        self.center[1] += scaled_dt*self.velocity[1]/steps
                         return False
                     self._create_collision_effects(tilemap,rect_tile,ps,engine_lights)
                     self.dead = True
                     return True 
             
-            self.pos[1] +=60* dt* self.velocity[1]/steps
-            self.center[1] += 60*dt * self.velocity[1]/steps
+            self.pos[1] += scaled_dt* self.velocity[1]/steps
+            self.center[1] += scaled_dt* self.velocity[1]/steps
             
             rotated_bullet_rect = get_rotated_vertices(self.center,*self.size,self._angle)
             

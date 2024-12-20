@@ -19,11 +19,11 @@ class EntitiesManager:
         self._bullets:list["Bullet"]= []
 
 
-    def update(self,dt,tilemap:"Tilemap",ps: "ParticleSystem",engine_lights:list["PointLight"]) ->None:
+    def update(self,tilemap:"Tilemap",ps: "ParticleSystem",engine_lights:list["PointLight"],dt:float) ->None:
         count = self._bullet_count
         for i in range(count-1,-1,-1):
             bullet = self._bullets[i]
-            kill = bullet.update(dt,tilemap,ps,engine_lights)
+            kill = bullet.update(tilemap,ps,engine_lights,dt)
             if kill: 
                 self._bullet_count -=1
                 del self._bullets[i]

@@ -79,12 +79,12 @@ class Item:
 
 
 class Weapon(Item): 
-    def __init__(self, name , fire_rate:int, damage:int ,knock_back:int, size: tuple[int,int]):
+    def __init__(self, name , fire_rate:int, damage:int ,bullet_speed:int, size: tuple[int,int]):
         super().__init__(name, 1, stackable = False) 
         self._type = "weapon"
         self._fire_rate = fire_rate
         self._damage = damage 
-        self._knockback_power =knock_back 
+        self._bullet_speed= bullet_speed
 
         self._size = size
 
@@ -183,7 +183,7 @@ class Weapon(Item):
 
 class AK47(Weapon):
     def __init__(self):
-        super().__init__('ak47',5,15,12,(18,9))
+        super().__init__('ak47',5,15,16,(18,9))
         self._rapid_fire_toggled = True 
         
     def copy(self):
@@ -215,16 +215,16 @@ class AK47(Weapon):
 
 
     def _emit_bullet(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem")->None: 
-        vel = (cos(radians(-self._angle_opening))*self._knockback_power*1.5,sin(radians(-self._angle_opening))*self._knockback_power*1.5)
+        vel = (cos(radians(-self._angle_opening))*self._bullet_speed*1.5,sin(radians(-self._angle_opening))*self._bullet_speed*1.5)
         bullet  = AKBullet(self._opening_pos.copy(),self._damage,-self._angle_opening,vel)
-        bullet.adjust_pos((vel[0]/2+bullet.size[0]//2,vel[1]/2+bullet.size[1]//2))
+        bullet.adjust_pos((vel[0]//2+bullet.size[0]//2,vel[1]//2+bullet.size[1]//2))
         flip = vel[0] <=0
         bullet.adjust_flip(flip)
         
         engine_lights.append(self._create_light(self._opening_pos, 1.0, 8, (253, 108, 50), 2))
         engine_lights.append(self._create_light(self._opening_pos, 0.7, 24, (248, 129, 153), 2))
         engine_lights.append(self._create_light(self._opening_pos, 0.6, 40, (248, 129, 153), 2))
-        engine_lights.append(self._create_light(self._opening_pos, 1.0, 20, (255, 255, 255), bullet._time_flown, illuminator=bullet))
+        engine_lights.append(self._create_light(self._opening_pos, 1.0, 20, (255, 255, 255), bullet._life, illuminator=bullet))
 
 
         particle_data = AnimationParticleData('ak47_smoke',self._smoke_pos,[0,0],-self._angle_opening,flip,'weapon')
@@ -241,7 +241,7 @@ class AK47(Weapon):
             ps.add_particle(particle_data)
 
         em.add_bullet(bullet)
-        self._knockback = [-vel[0]/2,-vel[1]/2]
+        #self._knockback = [-vel[0]/2,-vel[1]/2]
 
 class Flamethrower(Weapon):
     def __init__(self):
