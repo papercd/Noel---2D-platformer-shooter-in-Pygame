@@ -248,7 +248,7 @@ class Spark:
         self.scale = particle_data.scale
         self.color = particle_data.color
         self.speed = particle_data.speed
-        self.movement = [0,0]
+        self.velocity = [0,0]
         self.dead = False 
         self._active = False
         self.speed_factor = particle_data.speed_factor
@@ -274,10 +274,9 @@ class Spark:
         movement[0] *= friction * dt
         self.angle = degrees(atan2(-movement[1],movement[0]))
 
-    def _calculate_movement(self,dt:float)->list[float,float]:
-        scaled_dt = dt * 60
-        return [cos(radians(self.angle))*self.speed*self.speed_factor*scaled_dt,
-                -sin(radians(self.angle))*self.speed*self.speed_factor*scaled_dt]
+    def _calculate_velocity(self)->list[float,float]:
+        return [cos(radians(self.angle))*self.speed*self.speed_factor,
+                -sin(radians(self.angle))*self.speed*self.speed_factor]
 
     
     def _calculate_bounce_angle(self,axis:str): 
@@ -304,9 +303,10 @@ class Spark:
         if self.speed < 0:
             self.dead = True
             return True 
-        self.movement = self._calculate_movement(dt)
+        scaled_dt = dt * 60
+        self.velocity = self._calculate_velocity()
 
-        self.pos[0] += self.movement[0]
+        self.pos[0] += self.velocity[0] * scaled_dt
         key= (int(self.pos[0])//tilemap.tile_size,int(self.pos[1])//tilemap.tile_size)
 
         if key in tilemap.physical_tiles:
@@ -316,14 +316,14 @@ class Spark:
             elif tile.type.endswith('stairs') and tile.variant.split(';')[0] in ('0','1'):
                 pass 
             else: 
-                if self.movement[0] < 0 :
+                if self.velocity[0] < 0 :
                     self.pos[0] = (key[0]+1) * tilemap.tile_size  
                 else:
                     self.pos[0] = key[0] * tilemap.tile_size - 1
                 self.angle = self._calculate_bounce_angle('x')
                 self.speed *= 0.8
 
-        self.pos[1] += self.movement[1] 
+        self.pos[1] += self.velocity[1] *scaled_dt
 
         key= (int(self.pos[0])//tilemap.tile_size,int(self.pos[1])//tilemap.tile_size)
         if key in tilemap.physical_tiles:
@@ -333,7 +333,7 @@ class Spark:
             elif tile.type.endswith('stairs') and tile.variant.split(';')[0] in ('0','1'):
                 pass 
             else: 
-                if self.movement[1] < 0 :
+                if self.velocity[1] < 0 :
                     self.pos[1] = (key[1]+1) * tilemap.tile_size 
                 else:
                     self.pos[1] = key[1] * tilemap.tile_size - 1

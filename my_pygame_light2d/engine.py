@@ -257,24 +257,30 @@ class RenderEngine:
                 speed += 1 
             
     
-    def _render_player(self,fbo:moderngl.Framebuffer,offset = (0,0))-> None:
+    def _render_player(self,fbo:moderngl.Framebuffer,interpolation_alpha:float = 0.0,offset = (0,0))-> None:
         weapon = None 
         if self._player.curr_weapon_node and self._player.curr_weapon_node.weapon: 
             weapon = self._player.curr_weapon_node.weapon
         knockback = [0,0] if not weapon else weapon.knockback
 
         texture_atl_pos = ENTITIES_ATLAS_POSITIONS[self._player.type][self._player.holding_gun][self._player.state]
+
+        interpolate_position = self._player._on_ramp == 0 and self._player.state != "wall_slide" and self._player.state != "slide"
+        interpolation_offset = (int(self._player.velocity[0] * interpolation_alpha),int(self._player.velocity[1] * interpolation_alpha)) if interpolate_position else (0,0)
+        interpolated_dest_position = (self._player.pos[0] + interpolation_offset[0] + knockback[0]/self._player.knockback_reduction_factor[0] - offset[0],\
+                                      self._player.pos[1] + interpolation_offset[1] + knockback[1]/self._player.knockback_reduction_factor[1] - offset[1])
         self._render_tex_to_fbo(
             self._rm.entities_atlas,fbo,
-            dest=pygame.Rect(self._player.pos[0]+knockback[0]/self._player.knockback_reduction_factor[0] - offset[0] ,\
-                             self._player.pos[1] + knockback[1]/self._player.knockback_reduction_factor[1] - offset[1],self._player.sprite_size[0],self._player.sprite_size[1]),
+            dest=pygame.Rect(*interpolated_dest_position,self._player.sprite_size[0],self._player.sprite_size[1]),
             source = pygame.Rect(texture_atl_pos[0]+self._player.sprite_size[0]* self._player.cur_animation.curr_frame(),texture_atl_pos[1],self._player.sprite_size[0],self._player.sprite_size[1]),
             flip =self._player.flip
         )
+
         if weapon: 
             size = weapon.size
             anchor_offset = (self._player.right_anchor[0] -1,self._player.right_anchor[1]) if weapon.flipped else self._player.left_anchor
-            pos = (self._player.pos[0]+knockback[0]+anchor_offset[0] - offset[0], self._player.pos[1] +knockback[1] + anchor_offset[1] -offset[1])
+            pos = (self._player.pos[0]+interpolation_offset[0]+knockback[0]+anchor_offset[0] - offset[0],\
+                    self._player.pos[1] +interpolation_offset[1]+knockback[1] + anchor_offset[1] -offset[1])
 
             texture_coords = self._rm._in_world_item_texcoords[weapon.name]['holding'] 
             vertices = self._create_rotated_vertices(size,pos,-weapon.angle_opening,weapon.pivot,weapon.flipped)
@@ -1501,7 +1507,7 @@ class RenderEngine:
         # Release the texture
         tex.release()
 
-    def _render_particles(self,fbo,camera_scroll):
+    def _render_particles(self,fbo,interpolation_alpha,camera_scroll):
         particle_system = self._ps 
         
         vertices_list = []
@@ -1518,10 +1524,12 @@ class RenderEngine:
             animationData = PARTICLE_ATLAS_POSITIONS_AND_SIZES[particle.type]
             if particle.rotation_angle != 0:
                 pivot = PARTICLE_ANIMATION_PIVOTS[particle.type]
-                vertices = self._create_rotated_vertices(animationData[1],(particle.pos[0]-camera_scroll[0],particle.pos[1]-camera_scroll[1]),\
-                                                        particle.rotation_angle,pivot,particle.flipped)
+                vertices = self._create_rotated_vertices(animationData[1],(particle.pos[0]+particle.velocity[0]*interpolation_alpha-camera_scroll[0],\
+                                                                           particle.pos[1]+particle.velocity[1]*interpolation_alpha-camera_scroll[1]),\
+                                                                            particle.rotation_angle,pivot,particle.flipped)
             else: 
-                vertices = self._create_animation_particle_vertices(particle.pos,animationData[1],camera_scroll,fbo.width,fbo.height)
+                vertices = self._create_animation_particle_vertices((particle.pos[0]+particle.velocity[0] *interpolation_alpha,particle.pos[1] +particle.velocity[1] * interpolation_alpha),\
+                                                                    animationData[1],camera_scroll,fbo.width,fbo.height)
             
             texture_coords = particle_system._tex_dict[(particle.type,cur_frame)]
             vertices_list.append(vertices)
@@ -1554,7 +1562,8 @@ class RenderEngine:
             buffer_surf = particle._buffer_surf
             tex = self.surface_to_texture(buffer_surf)
             self.render_texture(tex,Layer_.BACKGROUND,
-                dest = pygame.Rect(particle._pos[0]-camera_scroll[0],particle._pos[1]-camera_scroll[1],tex.width,tex.height),
+                dest = pygame.Rect(particle._pos[0]+particle._velocity[0]*interpolation_alpha-camera_scroll[0],\
+                                   particle._pos[1]+particle._velocity[1]*interpolation_alpha-camera_scroll[1],tex.width,tex.height),
                 source = pygame.Rect(0,0,tex.width,tex.height)
             )
             tex.release()   
@@ -1585,7 +1594,7 @@ class RenderEngine:
         
         base_index = 0
         for spark in list(particle_system._active_sparks):
-            vertices,indices = self._create_spark_vertices(spark,camera_scroll,base_index)
+            vertices,indices = self._create_spark_vertices(spark,interpolation_alpha,camera_scroll,base_index)
             polygon_vertices.extend(vertices)
             polygon_indices.extend(indices)
             base_index +=4
@@ -1621,18 +1630,19 @@ class RenderEngine:
     """
 
 
-    def _create_spark_vertices(self,spark:"Spark",camera_scroll,base_index):
+    def _create_spark_vertices(self,spark:"Spark",interpolation_alpha,camera_scroll,base_index):
+        interpolation_offset = (spark.velocity[0] * interpolation_alpha,spark.velocity[1] * interpolation_alpha)
         vertices= [
-                spark.pos[0] -camera_scroll[0]+ cos(radians(spark.angle)) * spark.speed * spark.scale, spark.pos[1]-camera_scroll[1] - sin(radians(spark.angle)) * spark.speed * spark.scale,
+                spark.pos[0]+interpolation_offset[0] -camera_scroll[0]+ cos(radians(spark.angle)) * spark.speed * spark.scale, spark.pos[1]+interpolation_offset[1]-camera_scroll[1] - sin(radians(spark.angle)) * spark.speed * spark.scale,
                 spark.color[0],spark.color[1],spark.color[2],
 
-                spark.pos[0] -camera_scroll[0]+ cos(radians(spark.angle) + pi / 2) *spark.speed * spark.scale * 0.3, spark.pos[1]-camera_scroll[1] - sin(radians(spark.angle) + pi / 2) * spark.speed * spark.scale * 0.3,
+                spark.pos[0]+interpolation_offset[0]-camera_scroll[0]+ cos(radians(spark.angle) + pi / 2) *spark.speed * spark.scale * 0.3, spark.pos[1]+interpolation_offset[1]-camera_scroll[1] - sin(radians(spark.angle) + pi / 2) * spark.speed * spark.scale * 0.3,
                 spark.color[0],spark.color[1],spark.color[2],
 
-                spark.pos[0] -camera_scroll[0]- cos(radians(spark.angle)) * spark.speed * spark.scale * 3.5, spark.pos[1] -camera_scroll[1]+ sin(radians(spark.angle)) * spark.speed * spark.scale * 3.5,
+                spark.pos[0]+interpolation_offset[0] -camera_scroll[0]- cos(radians(spark.angle)) * spark.speed * spark.scale * 3.5, spark.pos[1]+interpolation_offset[1] -camera_scroll[1]+ sin(radians(spark.angle)) * spark.speed * spark.scale * 3.5,
                 spark.color[0],spark.color[1],spark.color[2],
 
-                spark.pos[0] -camera_scroll[0]+ cos(radians(spark.angle) - pi / 2) * spark.speed * spark.scale * 0.3, spark.pos[1]-camera_scroll[1] + sin(radians(spark.angle) + pi / 2) * spark.speed * spark.scale * 0.3,
+                spark.pos[0]+interpolation_offset[0] -camera_scroll[0]+ cos(radians(spark.angle) - pi / 2) * spark.speed * spark.scale * 0.3, spark.pos[1]+interpolation_offset[1]-camera_scroll[1] + sin(radians(spark.angle) + pi / 2) * spark.speed * spark.scale * 0.3,
                 spark.color[0],spark.color[1],spark.color[2],
         ]
 
@@ -1682,12 +1692,14 @@ class RenderEngine:
         vbo.release()
         vao.release()
 
-    def _render_bullets(self,fbo:moderngl.Framebuffer,camera_scroll):
+    def _render_bullets(self,fbo:moderngl.Framebuffer,interpolation_alpha,camera_scroll):
         vertices_list= [] 
         texture_coords_list = []
         for bullet in self._em._bullets:
+            interpolation_offset = (bullet.velocity[0] * interpolation_alpha, bullet.velocity[1] * interpolation_alpha) 
             texture_coords = self._rm._bullet_texcoords[bullet.type]
-            vertices = self._create_vertices_for_bullet(bullet.size,(bullet.center[0]-camera_scroll[0],bullet.center[1] - camera_scroll[1]),bullet.angle,bullet.flip)
+            vertices = self._create_vertices_for_bullet(bullet.size,(bullet.center[0]+interpolation_offset[0] -camera_scroll[0],\
+                                                                     bullet.center[1]+interpolation_offset[1] -camera_scroll[1]),bullet.angle,bullet.flip)
             
             vertices_list.append(vertices)
             texture_coords_list.append(texture_coords)
@@ -1752,7 +1764,7 @@ class RenderEngine:
                          tl,br,tr])
 
 
-    def render_background_scene_to_fbo(self,offset = (0,0),infinite:bool = False)-> None :
+    def render_background_scene_to_fbo(self,offset = (0,0),interpolation_alpha:float = 0.0,infinite:bool = False)-> None :
         """
         Render to the Background fbo with the parallax background, the tilemap, etc.
 
@@ -1767,9 +1779,10 @@ class RenderEngine:
         fbo = self._get_fbo(Layer_.BACKGROUND)
         self._render_background_textures_to_fbo(fbo,offset=offset,infinite=infinite)
         self._render_tilemap(fbo,offset)
-        self._render_player(fbo,offset)
-        self._render_particles(fbo,offset)
-        self._render_bullets(fbo,offset)
+
+        self._render_player(fbo,interpolation_alpha,offset)
+        self._render_particles(fbo,interpolation_alpha,offset)
+        self._render_bullets(fbo,interpolation_alpha,offset)
 
     def render_foreground_scene_to_fbo(self):
         """

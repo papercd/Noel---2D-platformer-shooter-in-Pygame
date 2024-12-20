@@ -75,6 +75,7 @@ class PhysicsEntity:
         # gravity 
         gravity = 0.26
         
+        self._on_ramp = 0
         self.velocity[1] = min(6, self.velocity[1] + gravity * scaled_dt)
 
         frame_movement = (self.velocity[0] *scaled_dt ,self.velocity[1] * scaled_dt) if not self.cut_movement_input else \
@@ -576,7 +577,8 @@ class Bullet(PhysicsEntity):
     def __init__(self,life:int,pos: list[float], size: tuple[int, int],angle:int):
         super().__init__('Bullet', pos, size)
         self._angle = angle
-        self._time_flown= life
+        self._life= life
+        self._max_life = life 
         self.dead = False
         self.center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[1]//2]
 
@@ -627,11 +629,11 @@ class Bullet(PhysicsEntity):
         self._flip = adjustment
 
     def update(self,tilemap:"Tilemap",ps: "ParticleSystem",engine_lights:list["PointLight"],dt:float)->None:
-        self._time_flown-= dt
-        if self._time_flown <= 0:
+        self._life-= dt * 60
+        if self._life <= 0:
             self.dead = True
             return True
-        
+        scaled_dt = dt * 60
         steps =4 
 
         # devide one movement into steps, and if bullet collides in
@@ -639,9 +641,9 @@ class Bullet(PhysicsEntity):
   
         for step in range(steps):
         
-            self.pos[0] += dt*self.velocity[0]/steps
+            self.pos[0] += scaled_dt*self.velocity[0]/steps
             # need a different way to find the center 
-            self.center[0] += dt*self.velocity[0] /steps
+            self.center[0] += scaled_dt*self.velocity[0] /steps
 
             rotated_bullet_rect = get_rotated_vertices(self.center,*self.size,self._angle) 
 
@@ -650,15 +652,15 @@ class Bullet(PhysicsEntity):
                 #if entity_rect.colliderect(rect_tile[0]):
                     #self.handle_tile_collision(tilemap,rect_tile)
                     if step != 0:
-                        self.pos[1] += dt*self.velocity[1]/steps
-                        self.center[1] += dt*self.velocity[1]/steps
+                        self.pos[1] += scaled_dt*self.velocity[1]/steps
+                        self.center[1] += scaled_dt*self.velocity[1]/steps
                         return False
                     self._create_collision_effects(tilemap,rect_tile,ps,engine_lights)
                     self.dead = True
                     return True 
             
-            self.pos[1] += dt* self.velocity[1]/steps
-            self.center[1] += dt * self.velocity[1]/steps
+            self.pos[1] += scaled_dt* self.velocity[1]/steps
+            self.center[1] += scaled_dt* self.velocity[1]/steps
             
             rotated_bullet_rect = get_rotated_vertices(self.center,*self.size,self._angle)
             
