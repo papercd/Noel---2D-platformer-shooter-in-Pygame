@@ -266,27 +266,22 @@ class Player(PhysicsEntity):
         max_speed = 1.3 * self._curr_speed
         acceleration = self._accel_rate * dt * 65
 
-
         # Gradual acceleration based on direction
         if direction > 0:  # Move right
             if self.velocity[0] < 0:  # Transition from leftward velocity
-                self.velocity[0] += acceleration * 0.2# Reduce transition step
+                self.velocity[0] += acceleration # Reduce transition step
             else:  # Normal rightward acceleration
                 self.velocity[0] += acceleration
-            #print("check1")
         elif direction < 0:  # Move left
             if self.velocity[0] > 0:  # Transition from rightward velocity
                 self.velocity[0] -= acceleration   # Reduce transition step
             else:  # Normal leftward acceleration
                 self.velocity[0] -= acceleration
-            #print("check2")
         else:  # No input, apply deceleration
             if self.velocity[0] > 0:
                 self.velocity[0] = max(0, self.velocity[0] - acceleration)  # Decelerate rightward
-            #    print("check3")
             elif self.velocity[0] < 0:
                 self.velocity[0] = min(0, self.velocity[0] + acceleration)  # Decelerate leftward
-            #    print("check4")
 
         # Clamp velocity to maximum speed
         self.velocity[0] = max(-max_speed, min(max_speed, self.velocity[0]))
@@ -401,9 +396,7 @@ class Player(PhysicsEntity):
             self.hard_land_recovery_time -= dt
         """
 
-
         super().update(tilemap,dt*1.1,anim_offset= (3,1))
-
         self.left_anchor = self.left_and_right_anchors[self._flip][self._state]["left"]
         self.right_anchor = self.left_and_right_anchors[self._flip][self._state]["right"]
 
@@ -581,7 +574,7 @@ class Bullet(PhysicsEntity):
         self._max_life = life 
         self.dead = False
         self.center = [self.pos[0]+self.size[0]//2,self.pos[1] +self.size[1]//2]
-        self.cur_physics_step = 0
+        self.interpolate_pos = True
     
     @property
     def angle(self): 
@@ -633,6 +626,7 @@ class Bullet(PhysicsEntity):
         if self._life <= 0:
             self.dead = True
             return True
+
         scaled_dt = dt * 60
         steps =4 
 
@@ -654,6 +648,7 @@ class Bullet(PhysicsEntity):
                     if step != 0:
                         self.pos[1] += scaled_dt*self.velocity[1]/steps
                         self.center[1] += scaled_dt*self.velocity[1]/steps
+                        self.interpolate_pos = False
                         return False
                     self._create_collision_effects(tilemap,rect_tile,ps,engine_lights)
                     self.dead = True
@@ -669,6 +664,7 @@ class Bullet(PhysicsEntity):
                 #if entity_rect.colliderect(rect_tile[0]):
                     #self.handle_tile_collision(tilemap,rect_tile)
                     if step != 0: 
+                        self.interpolate_pos =False
                         return False
                     self._create_collision_effects(tilemap,rect_tile,ps,engine_lights)
                     self.dead = True

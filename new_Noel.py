@@ -52,7 +52,7 @@ class Noel():
         self._accumulator = 0
         self._prev_frame_time = 0
         self._scroll = [0,0]
-        self.movement_input = [0,0]
+        self.movement_input = [False,False]
 
         self._initialize_game_objects()
         self._bind_objects_to_render_engine()
@@ -291,8 +291,6 @@ class Noel():
                         self.player.jump(self.particle_system)
                     if event.key == pygame.K_s:
                         self.player.crouch = True
-                    if event.key == pygame.K_d:
-                        self.player.accelerate(self._dt,1)
                     if event.key == pygame.K_LSHIFT:
                         self.player.running = True
                         self._hud.cursor.special_actions = True 

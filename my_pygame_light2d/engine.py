@@ -1697,9 +1697,7 @@ class RenderEngine:
         vertices_list= [] 
         texture_coords_list = []
         for bullet in self._em._bullets:
-            print(bullet.cur_physics_step)
-            interpolate_pos = bullet.cur_physics_step ==  3
-            interpolation_offset = (bullet.velocity[0] * interpolation_alpha, bullet.velocity[1] * interpolation_alpha) if interpolate_pos else (0,0)
+            interpolation_offset = (bullet.velocity[0] * interpolation_alpha, bullet.velocity[1] * interpolation_alpha) if bullet.interpolate_pos else (0,0)
             texture_coords = self._rm._bullet_texcoords[bullet.type]
             vertices = self._create_vertices_for_bullet(bullet.size,(bullet.center[0]+interpolation_offset[0] -camera_scroll[0],\
                                                                      bullet.center[1]+interpolation_offset[1] -camera_scroll[1]),bullet.angle,bullet.flip)
