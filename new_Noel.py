@@ -52,7 +52,7 @@ class Noel():
         self._accumulator = 0
         self._prev_frame_time = 0
         self._scroll = [0,0]
-        self.movement_input = [0,0]
+        self.movement_input = [False,False]
 
         self._initialize_game_objects()
         self._bind_objects_to_render_engine()
@@ -68,7 +68,7 @@ class Noel():
 
         self.particle_system = ParticleSystem.get_instance() 
         self.player = Player([900,11],(14,16)) 
-        self.player.set_accel_rate(0.7)
+        self.player.set_accel_rate(1)
         self.player.set_default_speed(2.3)
 
         self._grass_manager = GrassManager()
@@ -291,8 +291,6 @@ class Noel():
                         self.player.jump(self.particle_system)
                     if event.key == pygame.K_s:
                         self.player.crouch = True
-                    if event.key == pygame.K_d:
-                        self.player.accelerate(self._dt,1)
                     if event.key == pygame.K_LSHIFT:
                         self.player.running = True
                         self._hud.cursor.special_actions = True 
@@ -360,7 +358,7 @@ class Noel():
             screenshake_offset = (random() * screen_shake_buffer - screen_shake_buffer/2,
                                   random() * screen_shake_buffer - screen_shake_buffer/2)
 
-            self.render_engine.render_scene_with_lighting(camera_scroll, screenshake_offset)
+            self.render_engine.render_scene_with_lighting(camera_scroll,interpolation_alpha, screenshake_offset)
             pygame.display.flip()
             
         
