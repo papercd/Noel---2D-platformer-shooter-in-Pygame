@@ -4,6 +4,7 @@ from math import atan2,degrees,cos,sin,radians
 from scripts.custom_data_types import AnimationParticleData,CollideParticleData,FireParticleData
 from typing import TYPE_CHECKING
 from random import randint,random,choice
+from pygame.math import Vector2 as vec2
 
 TIME_FOR_LOGICAL_FRAME = 0.015969276428222656
 
@@ -91,7 +92,7 @@ class Weapon(Item):
         self._angle_opening = 0
         self._flipped = False
         self._can_RF = self._name in WPNS_WITH_RF
-        self._knockback = [0,0]
+        self._knockback = vec2(0,0) 
 
         self._opening_pos = [0,0]
         self._smoke_pos = [0,0]
@@ -116,7 +117,7 @@ class Weapon(Item):
         return self._opening_pos
 
     @property 
-    def knockback(self):
+    def knockback(self)->vec2:
         return self._knockback
     
     @property
@@ -138,18 +139,20 @@ class Weapon(Item):
             self.accum_time = 0
 
     def update(self,target_pos,holder_entity,camera_scroll,dt):
+        scaled_dt = dt * 60 
+
         self.accum_time += min(dt, 2 * TIME_FOR_LOGICAL_FRAME)
         self.accum_time = min(self.accum_time, (self._fire_rate+1) * TIME_FOR_LOGICAL_FRAME)
 
         if self._knockback[0] < 0: 
-            self._knockback[0] = min(self._knockback[0] + 1.45, 0)
+            self._knockback[0] = min(self._knockback[0] + 1.45 *scaled_dt, 0)
         if self._knockback[0] > 0 :
-            self._knockback[0] = max(self._knockback[0] -1.45, 0)
+            self._knockback[0] = max(self._knockback[0] -1.45 * scaled_dt, 0)
 
         if self._knockback[1] < 0: 
-            self._knockback[1] = min(self._knockback[1] + 1.45, 0)
+            self._knockback[1] = min(self._knockback[1] + 1.45 * scaled_dt, 0)
         if self._knockback[1] > 0 :
-            self._knockback[1] = max(self._knockback[1] -1.45, 0)
+            self._knockback[1] = max(self._knockback[1] -1.45  * scaled_dt, 0)
 
         self.target_pos=target_pos 
         # first decide on which side the cursor is on 
@@ -241,8 +244,13 @@ class AK47(Weapon):
             ps.add_particle(particle_data)
 
         em.add_bullet(bullet)
-        #self._knockback = [-vel[0]/2,-vel[1]/2]
+        self._knockback[0] = -vel[0]
+        self._knockback[1] = -vel[1]
 
+        self._knockback.normalize_ip()
+        self._knockback[0] *= 4.2
+        self._knockback[1] *= 4.2
+        
 class Flamethrower(Weapon):
     def __init__(self):
         super().__init__('flamethrower',5,30,4,(24,8))

@@ -135,7 +135,7 @@ class PhysicsEntity:
                         
                     self.pos[0] =self_rect.x - anim_offset[0]
         
-        self.pos[1] +=frame_movement[1] if self.velocity[1] <0 else frame_movement[1] * 1.1
+        self.pos[1] +=frame_movement[1] if self.velocity[1] <0 else frame_movement[1] * 1.2
         self_rect = self._collision_rect()
         for rect_tile in tilemap.phy_rects_around((self.pos[0] +anim_offset[0] ,self.pos[1] +anim_offset[1]), self.size):
             tile_type = rect_tile[1].type
@@ -264,7 +264,7 @@ class Player(PhysicsEntity):
 
     def accelerate(self, direction, dt):
         max_speed = 1.3 * self._curr_speed
-        acceleration = self._accel_rate * dt * 65
+        acceleration = self._accel_rate * dt * 60
 
         # Gradual acceleration based on direction
         if direction > 0:  # Move right
@@ -307,7 +307,7 @@ class Player(PhysicsEntity):
 
     def jump(self,particle_system: "ParticleSystem"):
         WALL_JUMP_SPEED = 2.2
-        JUMP_SPEED =4.9
+        JUMP_SPEED =4.4
 
         if self.wall_slide: 
                 self.jump_count = 1

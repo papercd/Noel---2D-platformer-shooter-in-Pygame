@@ -68,7 +68,7 @@ class Noel():
 
         self.particle_system = ParticleSystem.get_instance() 
         self.player = Player([900,11],(14,16)) 
-        self.player.set_accel_rate(0.7)
+        self.player.set_accel_rate(1)
         self.player.set_default_speed(2.3)
 
         self._grass_manager = GrassManager()
