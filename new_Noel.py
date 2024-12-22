@@ -310,14 +310,13 @@ class Noel():
     
     
 
-
     def _update_render(self):
         self._frame_count = (self._frame_count+1) %360
         self.render_engine.set_ambient(255,255,255, 25)
         self.render_engine.clear(0,0,0,255)
         self._ctx.screen.clear(0,0,0,0)
 
-        self._dt = min(self._clock.tick(60) / 1000.0,0.1)
+        self._dt = min(self._clock.tick() / 1000.0,0.1)
         self._accumulator += self._dt
         if self._game_context['gamestate']== GameState.GameLoop:  
            
@@ -326,10 +325,12 @@ class Noel():
 
             self._scroll[0] += 2.5*self._dt*(self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self._scroll[0])
             self._scroll[1] += 2.5*self._dt*(self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self._scroll[1])
+
             camera_scroll = (int(self._scroll[0]), int(self._scroll[1]))
            
             self.render_engine.hulls = self._tilemap._hull_grid.query(camera_scroll[0]-self._tilemap.tile_size * 10 ,camera_scroll[1]- self._tilemap.tile_size * 10,camera_scroll[0] \
                                                              + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
+
 
 
             # updates that require  physics are done in fixed time steps 
