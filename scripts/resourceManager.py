@@ -35,7 +35,7 @@ class ResourceManager:
             ResourceManager._instance = ResourceManager(ctx)
         return ResourceManager._instance
 
-    def __init__(self,ctx:"Context"):
+    def __init__(self,ctx:"Context")-> None:
         self.ctx = ctx 
         self._texture_atlasses:dict[str,"Texture"]= {}
         for resource_name,path in RESOURCE_NAME_TO_PATH.items():
