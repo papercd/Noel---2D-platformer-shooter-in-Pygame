@@ -1624,7 +1624,7 @@ class RenderEngine:
             ibo.release()
 
     def _create_fire_particle__instance_data(self,particle,camera_scroll):
-        divide_ratio = 88
+        divide_ratio = 90
         base_circle_pos = self._map_circle_coords_to_world_coords((particle.ren_x,particle.ren_y),camera_scroll)
 
         if particle.i == 0:

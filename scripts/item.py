@@ -266,10 +266,10 @@ class Flamethrower(Weapon):
     def shoot(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem") ->None:
         if self.accum_time >= TIME_FOR_LOGICAL_FRAME * self._fire_rate:
             self.accum_time -= TIME_FOR_LOGICAL_FRAME * self._fire_rate
-            size = 6
-            density = 4
-            rise = 3.1
-            spread = 1.8
+            size = 5.3
+            density = 6
+            rise = 3.5
+            spread = 2
             wind = 0
             for _ in range(density):
                 particle_data = FireParticleData(*self.opening_pos,size,density,rise,-self._angle_opening,spread,
