@@ -258,6 +258,7 @@ class Noel():
             for event in pygame.event.get():
                 self._handle_common_events(event)
                 if event.type == pygame.MOUSEWHEEL:
+                    print(" ")
                     self._hud.change_weapon(event.y)
                 if event.type ==pygame.KEYDOWN:
                     

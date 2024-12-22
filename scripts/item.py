@@ -104,6 +104,8 @@ class Weapon(Item):
         self.rapid_fire_toggled = False 
         self.shot = False
         self.accum_time = 0
+        
+
     @property 
     def angle_opening(self):
         return self._angle_opening
@@ -140,7 +142,6 @@ class Weapon(Item):
 
     def update(self,target_pos,holder_entity,camera_scroll,dt):
         scaled_dt = dt * 60 
-
         self.accum_time += min(dt, 2 * TIME_FOR_LOGICAL_FRAME)
         self.accum_time = min(self.accum_time, (self._fire_rate+1) * TIME_FOR_LOGICAL_FRAME)
 
@@ -179,6 +180,7 @@ class Weapon(Item):
         if isinstance(holder_entity,Player):
             if holder_entity.state == 'slide' or holder_entity.state == 'wall_slide':
                 self._flipped = holder_entity.flip 
+        
 
     def shoot(self):
         pass
@@ -206,6 +208,7 @@ class AK47(Weapon):
     def shoot(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem")-> None:
         #TODO: change the frame count system to a dt-based system later, when integrating dt. 
         
+
         if self._rapid_fire_toggled: 
             if self.accum_time >= TIME_FOR_LOGICAL_FRAME * self._fire_rate: 
                 self._emit_bullet(engine_lights,em,ps)
@@ -253,7 +256,7 @@ class AK47(Weapon):
         
 class Flamethrower(Weapon):
     def __init__(self):
-        super().__init__('flamethrower',5,30,4,(24,8))
+        super().__init__('flamethrower',1,30,4,(24,8))
 
     def copy(self):
         new_weapon = Flamethrower()

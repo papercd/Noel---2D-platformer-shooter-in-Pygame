@@ -380,7 +380,9 @@ class FireParticle:
         self.sinr = randint(5, 10)
         self.r = randint(1,2)
 
+        self.velocity = [0,0]
         self.center = [self.x + self.r,self.y+self.r]
+        self.ren_x,self.ren_y = self.x,self.y
 
         self.ox = randint(-1, 1)
         self.oy = randint(-1, 1)
@@ -425,6 +427,7 @@ class FireParticle:
         self.r = randint(1,2)
 
         self.center = [self.x + self.r,self.y+self.r]
+        self.ren_x,self.ren_y = self.x,self.y
 
         self.ox = randint(-1, 1)
         self.oy = randint(-1, 1)
