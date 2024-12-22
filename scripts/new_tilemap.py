@@ -20,10 +20,6 @@ class Tilemap:
     def __init__(self):
         """ 
         Initialize the Tilemap object. 
-
-        Args:
-            json_data (json) : the json data you want to load the tilemap with. leave this blank 
-            for empty Tilemap object. 
         
         """
        

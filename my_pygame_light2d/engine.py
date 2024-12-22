@@ -7,7 +7,7 @@ import numbers
 from OpenGL.GL import glBlitNamedFramebuffer,glViewport, GL_COLOR_BUFFER_BIT, GL_NEAREST, glGetUniformBlockIndex, glUniformBlockBinding
 from math import ceil,dist,sqrt,cos,sin,radians,pi
 import time
-from earcut import earcut
+from random import randint
 
 from pygame.math import Vector2 as vec2 
 from scripts.layer import Layer_
@@ -276,7 +276,8 @@ class RenderEngine:
             flip =self._player.flip
         )
 
-        if weapon: 
+        if weapon:
+            
             size = weapon.size
             anchor_offset = (self._player.right_anchor[0] -1,self._player.right_anchor[1]) if weapon.flipped else self._player.left_anchor
             pos = (self._player.pos[0]+interpolation_offset[0]+knockback[0]+anchor_offset[0] - offset[0],\
@@ -360,7 +361,7 @@ class RenderEngine:
 
 
 
-    def _map_world_coords_to_screen_coords(self,vertex:vec2)->None:
+    def _map_world_coords_to_screen_coords(self,vertex)->None:
         vertex[0] = 2. * vertex[0] / self._true_res[0] -1.
         vertex[1] = 1. -2 * vertex[1] / self._true_res[1] 
            
@@ -1571,11 +1572,20 @@ class RenderEngine:
 
         # using instanced rendering for circles 
         instance_data = []
-        instance_data = np.array([
-            (*self._map_circle_to_world(particle,camera_scroll),*particle.palette[particle.i],particle.alpha,0.1)
-            for particle in particle_system._active_fire_particles
-        ],dtype= np.float32)
+        for particle in list(particle_system._active_fire_particles):
+            instance_data.extend(self._create_fire_particle__instance_data(particle,interpolation_alpha,camera_scroll))
 
+        instance_data = np.array(instance_data,dtype=np.float32)
+        """
+        instance_data = np.array([
+            self._create_fire_particle__instance_data(particle,camera_scroll)
+            
+            ((*self._map_circle_to_world(particle,camera_scroll),*particle.palette[particle.i],particle.alpha/255,0.03),\
+             (*self._map_circle_to_world(particle,camera_scroll),*particle.palette[particle.i],particle.alpha/255,0.01))
+            for particle in particle_system._active_fire_particles
+            
+        ],dtype= np.float32)
+        """
         if instance_data.any():
             vbo,ibo = self._rm.circle_template # precomputed template circle vbo and ibo 
             instances_vbo = self.ctx.buffer(instance_data.tobytes())
@@ -1612,10 +1622,33 @@ class RenderEngine:
             vao.release()
             vbo.release()
             ibo.release()
-        
-    def _map_circle_to_world(self,particle,camera_scroll):
-        x = 2. * (particle.x-camera_scroll[0]) / self._true_res[0] -1.
-        y = 1. -2 * (particle.y-camera_scroll[1]) / self._true_res[1]
+
+    def _create_fire_particle__instance_data(self,particle,interpolation_alpha,camera_scroll):
+        scale_ratio = 2.4
+        base_circle_pos = self._map_circle_coords_to_world_coords((particle.ren_x,particle.ren_y),interpolation_alpha,\
+                                                                  particle.velocity,camera_scroll)
+
+        if particle.i == 0:
+            second_circle_pos = self._map_circle_coords_to_world_coords((particle.ren_x + randint(-1,1),particle.ren_y - 4),interpolation_alpha,\
+                                                                        particle.velocity,camera_scroll)
+            life_ratio = (particle.maxlife - particle.life) / particle.maxlife
+            return [
+                (*base_circle_pos,*normalize_color_arguments(*particle.palette[particle.i],particle.alpha),particle.r*scale_ratio /self._true_res[1] ),
+                (*second_circle_pos,0,0,0,0,(particle.r *life_ratio/0.88)*scale_ratio/self._true_res[1])
+            ]
+        else: 
+            second_circle_pos = self._map_circle_coords_to_world_coords((particle.ren_x+randint(-1,1),particle.ren_y -3),interpolation_alpha,\
+                                                                        particle.velocity,camera_scroll)
+            return [
+                (*base_circle_pos,*normalize_color_arguments(*particle.palette[particle.i],particle.alpha),particle.r*scale_ratio/self._true_res[1]),
+                (*second_circle_pos,*normalize_color_arguments(*particle.palette[particle.i-1],particle.alpha),(particle.r / 1.5)*scale_ratio/ self._true_res[1])
+            ] 
+
+    
+    
+    def _map_circle_coords_to_world_coords(self,pos,interpolation_alpha,velocity,camera_scroll):
+        x = 2. * (pos[0]+velocity[0]*interpolation_alpha-camera_scroll[0]) / self._true_res[0] -1.
+        y = 1. - 2 * (pos[1]+velocity[1]*interpolation_alpha-camera_scroll[1]) / self._true_res[1] 
 
         return (x,y)
 

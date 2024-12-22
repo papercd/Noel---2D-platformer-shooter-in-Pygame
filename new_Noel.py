@@ -2,7 +2,6 @@ import pygame
 import platform
 import importlib
 from os import environ
-from time import time
 from enum import Enum
 from moderngl import create_context
 from screeninfo import get_monitors
@@ -11,7 +10,7 @@ from scripts.entitiesManager import EntitiesManager
 from scripts.resourceManager import ResourceManager
 from scripts.new_particles import ParticleSystem
 
-from scripts.animationData import TIME_FOR_ONE_LOGICAL_STEP
+from scripts.magicNumbers import TIME_FOR_ONE_LOGICAL_STEP
 from scripts.atlass_positions import ITEM_ATLAS_POSITIONS_AND_SIZES
 from random import choice, random
 
@@ -61,7 +60,8 @@ class Noel():
     def _initialize_game_objects(self):
         self.entities_manager = EntitiesManager.get_instance()
         self.resource_manager = ResourceManager.get_instance(self._ctx)
-        self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
+        self.render_engine = RenderEngine(self._ctx,self._game_context["screen_res"],\
+                                          self._game_context["display_scale_ratio"],self._game_context["true_res"])
 
         self._tilemap = Tilemap()
         self._tilemap.load_map('test1.json')  
@@ -72,7 +72,7 @@ class Noel():
         self.player.set_default_speed(2.3)
 
         self._grass_manager = GrassManager()
-        self._hud = HUD(self.player,self._true_res)
+        self._hud = HUD(self.player,self._game_context["true_res"])
 
     def _bind_objects_to_render_engine(self):
         self.render_engine.bind_tilemap(self._tilemap)
@@ -105,7 +105,8 @@ class Noel():
         # reinitialize render engine 
         self.entities_manager = EntitiesManager.get_instance()
         self.resource_manager = ResourceManager.get_instance(self._ctx)
-        self.render_engine = RenderEngine(self._ctx,self._screen_res,self._true_to_screen_res_ratio,self._true_res)
+        self.render_engine = RenderEngine(self._ctx,self._game_context["screen_res"],\
+                                          self._game_context["display_scale_ratio"],self._game_context["true_res"])
 
         # explicitly reinitialize objects       
         self._tilemap = Tilemap()
@@ -118,17 +119,17 @@ class Noel():
         
         cursor_topleft = pygame.mouse.get_pos()
         cursor_topleft =  (
-            cursor_topleft[0] / self._true_to_screen_res_ratio + self._scroll[0],
-            cursor_topleft[1] / self._true_to_screen_res_ratio + self._scroll[1],
+            cursor_topleft[0] / self._game_context["display_scale_ratio"] + self._scroll[0],
+            cursor_topleft[1] / self._game_context["display_scale_ratio"] + self._scroll[1],
         )
 
         # Reinitialize Player with updated cursor position
         self.player = Player(list(cursor_topleft), (14, 16))
-        self.player.set_accel_rate(0.7)
-        self.player.set_default_speed(2.2)
+        self.player.set_accel_rate(1)
+        self.player.set_default_speed(2.3)
 
         # reinitialize hud
-        self._hud = HUD(self.player,self._true_res)
+        self._hud = HUD(self.player,self._game_context["true_res"])
 
         # rebind objects to render engine
         self._bind_objects_to_render_engine()
@@ -140,6 +141,7 @@ class Noel():
             "gamestate" : GameState.GameLoop,
             "true_res" : (0,0),
             "screen_res": (0,0),
+            "display_scale_ratio": 4
         }
 
         self._system_display_info = self._get_system_display_info()
@@ -183,17 +185,13 @@ class Noel():
 
         self._target_min_fps = 60
 
-        self._screen_res =self._system_display_info['resolution']
-        # self._screen_res = (1024,576)
+        self._game_context["screen_res"] =self._system_display_info['resolution']
         
-        self._default_true_to_screen_res_ratio = 4.0 
 
-        #self._true_res = (1024,576)
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
-        self._true_to_screen_res_ratio = 4.0 
-
-
-        self._true_res = (int(self._screen_res[0]/self._true_to_screen_res_ratio),int(self._screen_res[1]/self._true_to_screen_res_ratio))
+        self._game_context["display_scale_ratio"] = 4.0 
+        self._game_context["true_res"]= (int(self._game_context["screen_res"][0]/self._game_context["display_scale_ratio"]),\
+                                         int(self._game_context["screen_res"][1]/self._game_context["display_scale_ratio"]))
     
     def _configure_pygame(self):
         # Check that pygame has been initialized
@@ -215,13 +213,14 @@ class Noel():
 
         # Configure pygame display
         self._pygame_display = pygame.display.set_mode(
-            self._screen_res, pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF)
+            self._game_context["screen_res"], pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF)
 
     
     def _handle_common_events(self,event):
         
         self._hud.cursor.topleft= pygame.mouse.get_pos()
-        self._hud.cursor.topleft= ((self._hud.cursor.topleft[0]//self._true_to_screen_res_ratio),(self._hud.cursor.topleft[1]//self._true_to_screen_res_ratio))
+        self._hud.cursor.topleft= ((self._hud.cursor.topleft[0]//self._game_context["display_scale_ratio"]),\
+                                   (self._hud.cursor.topleft[1]//self._game_context["display_scale_ratio"]))
         self._hud.cursor.box.x,self._hud.cursor.box.y = self._hud.cursor.topleft[0] , self._hud.cursor.topleft[1]
         
 
@@ -241,7 +240,6 @@ class Noel():
             elif event.button == 3:
                 self._hud.cursor.pressed[1] = False 
  
-
         if event.type == pygame.QUIT:
                 self.quit_game() 
 
@@ -258,6 +256,7 @@ class Noel():
             for event in pygame.event.get():
                 self._handle_common_events(event)
                 if event.type == pygame.MOUSEWHEEL:
+                    print(" ")
                     self._hud.change_weapon(event.y)
                 if event.type ==pygame.KEYDOWN:
                     
@@ -309,7 +308,6 @@ class Noel():
     
     
 
-
     def _update_render(self):
         self._frame_count = (self._frame_count+1) %360
         self.render_engine.set_ambient(255,255,255, 25)
@@ -323,12 +321,14 @@ class Noel():
             self._game_context['screen_shake'] = max(0,self._game_context['screen_shake'] -self._dt*60)
             screen_shake_buffer = self._game_context['screen_shake']
 
-            self._scroll[0] += 2.5*self._dt*(self.player.pos[0]+ self.player.size[0]/2 - self._true_res[0] /2 - self._scroll[0])
-            self._scroll[1] += 2.5*self._dt*(self.player.pos[1] +self.player.size[1]/2 - self._true_res[1] /2 - self._scroll[1])
+            self._scroll[0] += 2.5*self._dt*(self.player.pos[0]+ self.player.size[0]/2 - self._game_context["true_res"][0] /2 - self._scroll[0])
+            self._scroll[1] += 2.5*self._dt*(self.player.pos[1] +self.player.size[1]/2 - self._game_context["true_res"][1] /2 - self._scroll[1])
+
             camera_scroll = (int(self._scroll[0]), int(self._scroll[1]))
            
             self.render_engine.hulls = self._tilemap._hull_grid.query(camera_scroll[0]-self._tilemap.tile_size * 10 ,camera_scroll[1]- self._tilemap.tile_size * 10,camera_scroll[0] \
-                                                             + self._true_res[0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._true_res[1]+ self._tilemap.tile_size * 10)
+                                                             + self._game_context["true_res"][0]+self._tilemap.tile_size * 10 ,camera_scroll[1]+ self._game_context["true_res"][1]+ self._tilemap.tile_size * 10)
+
 
 
             # updates that require  physics are done in fixed time steps 

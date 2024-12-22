@@ -1,6 +1,5 @@
 from scripts.custom_data_types import AnimationDataCollection, AnimationData
 
-TIME_FOR_ONE_LOGICAL_STEP = 0.01666666666666666
 
 PLAYER_ANIMATION_DATA = [
     AnimationData('idle',4,6,False,True),

@@ -171,6 +171,7 @@ class WeaponInvenList(DoublyLinkedList):
 
     def update(self,stack_limit:int,cursor:"Cursor",opacity:int,player:"Player")->None:
         current = self.head
+
         while current:
             current.update(stack_limit,cursor,opacity,player)
             current = current.next

@@ -34,8 +34,8 @@ class ParticleSystem:
             self._collide_particles = [] 
 
             # can have at most 300 fire particles 
-            self._max_fire_particle_count = 300
-            self._fire_particle_pool_index = 299
+            self._max_fire_particle_count = 600
+            self._fire_particle_pool_index = 599
             self._fire_particles = []
             
             # can have at most 300 animated particles (jump, dash, ...)
@@ -380,7 +380,9 @@ class FireParticle:
         self.sinr = randint(5, 10)
         self.r = randint(1,2)
 
+        self.velocity = [0,0]
         self.center = [self.x + self.r,self.y+self.r]
+        self.ren_x,self.ren_y = self.x,self.y
 
         self.ox = randint(-1, 1)
         self.oy = randint(-1, 1)
@@ -425,6 +427,7 @@ class FireParticle:
         self.r = randint(1,2)
 
         self.center = [self.x + self.r,self.y+self.r]
+        self.ren_x,self.ren_y = self.x,self.y
 
         self.ox = randint(-1, 1)
         self.oy = randint(-1, 1)
@@ -520,13 +523,13 @@ class FireParticle:
         
         self.i = int((self.life/self.maxlife)*6)
 
-        velocity= [
+        self.velocity= [
                 ((self.sin * sin(self.life/(self.sinr)))/2)*self.spread * self.rise_normal.x    + self.rise * cos(radians(self.rise_angle)),
                 (self.rise * sin(radians(self.rise_angle)) + self.rise_normal.y * self.spread * ((self.sin * sin(self.life/(self.sinr)))/2))
         ]
 
-        self.x += velocity[0] * scaled_dt
-        self.y += velocity[1] * scaled_dt
+        self.x += self.velocity[0] * scaled_dt
+        self.y += self.velocity[1] * scaled_dt
 
         self.pos = [self.x,self.y]
 
