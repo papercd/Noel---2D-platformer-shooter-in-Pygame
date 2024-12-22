@@ -317,7 +317,7 @@ class Noel():
         self.render_engine.clear(0,0,0,255)
         self._ctx.screen.clear(0,0,0,0)
 
-        self._dt = min(self._clock.tick() / 1000.0,0.1)
+        self._dt = min(self._clock.tick(60) / 1000.0,0.1)
         self._accumulator += self._dt
         if self._game_context['gamestate']== GameState.GameLoop:  
            
