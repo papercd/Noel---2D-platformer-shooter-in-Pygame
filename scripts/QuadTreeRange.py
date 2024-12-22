@@ -1,5 +1,3 @@
-import pygame
-
 
 class Rectangle:
     def __init__(self, position, scale):
@@ -27,11 +25,6 @@ class Rectangle:
         else:
             return False
 
-    def Draw(self, screen):
-        x, y = self.position
-        w, h = self.scale
-        pygame.draw.rect(screen, self.color, [x, y, w, h], self.lineThickness)
-    
 class Circle:
     def __init__(self, position, radius):
         self.position = position
@@ -66,6 +59,3 @@ class Circle:
             return True
 
         return (edges <= self.sqradius)
-
-    def Draw(self, screen):
-        pygame.draw.circle(screen, self.color, self.position, self.radius, self.lineThickness)

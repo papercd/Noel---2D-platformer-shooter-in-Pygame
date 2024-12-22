@@ -1,47 +1,16 @@
 from scripts.new_entities import Player,AKBullet
 from my_pygame_light2d.light import PointLight
 from math import atan2,degrees,cos,sin,radians
-from scripts.custom_data_types import AnimationParticleData,CollideParticleData,FireParticleData
+from scripts.data import AnimationParticleData,CollideParticleData,FireParticleData,TIME_FOR_ONE_LOGICAL_STEP, ITEM_DESCRIPTIONS ,\
+                        WPNS_WITH_RF , WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET,MUZZLE_PARTICLE_COLORS
 from typing import TYPE_CHECKING
 from random import randint,random,choice
 from pygame.math import Vector2 as vec2
-
-TIME_FOR_LOGICAL_FRAME = 0.015969276428222656
 
 
 if TYPE_CHECKING:
     from scripts.new_particles import ParticleSystem
     from scripts.entitiesManager import EntitiesManager
-
-ITEM_DESCRIPTIONS = {
-    "amethyst_arrow" : "Arrow made with dirty amethyst.",
-    "amethyst_clump" : "",
-    "arrow": "",
-    "string": "",
-    "ak47": "A powerful weapon that shoots bullets.",
-    "flamethrower": "Does more damage to soft enemies."
-
-}
-
-ITEM_RARITY = {
-    "common" : 0,
-    "rare" : 1,
-    "epic" : 2,
-    "legendary" : 3
-}
-
-WPNS_WITH_RF = {
-    "ak47"
-}
-
-WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET ={
-    "ak47" : ((2,2),(0,0)),
-    'flamethrower' : ((2,2),(0,0))
-}
-
-MUZZLE_PARTICLE_COLORS = {
-    'ak47' : ((238,208,88),(117,116,115),(30,30,30))
-}
 
 
 
@@ -142,8 +111,8 @@ class Weapon(Item):
 
     def update(self,target_pos,holder_entity,camera_scroll,dt):
         scaled_dt = dt * 60 
-        self.accum_time += min(dt, 2 * TIME_FOR_LOGICAL_FRAME)
-        self.accum_time = min(self.accum_time, (self._fire_rate+1) * TIME_FOR_LOGICAL_FRAME)
+        self.accum_time += min(dt, 2 * TIME_FOR_ONE_LOGICAL_STEP)
+        self.accum_time = min(self.accum_time, (self._fire_rate+1) * TIME_FOR_ONE_LOGICAL_STEP)
 
         if self._knockback[0] < 0: 
             self._knockback[0] = min(self._knockback[0] + 1.45 *scaled_dt, 0)
@@ -210,9 +179,9 @@ class AK47(Weapon):
         
 
         if self._rapid_fire_toggled: 
-            if self.accum_time >= TIME_FOR_LOGICAL_FRAME * self._fire_rate: 
+            if self.accum_time >= TIME_FOR_ONE_LOGICAL_STEP* self._fire_rate: 
                 self._emit_bullet(engine_lights,em,ps)
-                self.accum_time -= TIME_FOR_LOGICAL_FRAME * self._fire_rate
+                self.accum_time -= TIME_FOR_ONE_LOGICAL_STEP* self._fire_rate
         else: 
             if not self.shot :
                 self._emit_bullet(engine_lights,em,ps)
@@ -264,10 +233,8 @@ class Flamethrower(Weapon):
         return new_weapon
     
     def shoot(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem") ->None:
-        print("not fired")
-        if self.accum_time >= TIME_FOR_LOGICAL_FRAME * self._fire_rate:
-            print("fired")
-            self.accum_time -= TIME_FOR_LOGICAL_FRAME * self._fire_rate
+        if self.accum_time >=TIME_FOR_ONE_LOGICAL_STEP * self._fire_rate:
+            self.accum_time -= TIME_FOR_ONE_LOGICAL_STEP* self._fire_rate
             size = 5.3
             density = 7
             rise = 3.5

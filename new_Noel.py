@@ -10,8 +10,8 @@ from scripts.entitiesManager import EntitiesManager
 from scripts.resourceManager import ResourceManager
 from scripts.new_particles import ParticleSystem
 
-from scripts.magicNumbers import TIME_FOR_ONE_LOGICAL_STEP
-from scripts.atlass_positions import ITEM_ATLAS_POSITIONS_AND_SIZES
+from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
+from scripts.data import ITEM_ATLAS_POSITIONS_AND_SIZES
 from random import choice, random
 
 import scripts 

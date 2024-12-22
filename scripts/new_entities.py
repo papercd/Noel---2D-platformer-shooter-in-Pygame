@@ -1,15 +1,12 @@
 from pygame import Rect
-from scripts.custom_data_types import AnimationParticleData,CollideParticleData,SPARK_COLORS,SparkData  
-from scripts.animationData import PlayerAnimationDataCollection
+from scripts.data import AnimationParticleData,CollideParticleData,SPARK_COLORS,SparkData ,TIME_FOR_ONE_LOGICAL_STEP,PlayerAnimationDataCollection
 from scripts.utils import get_rotated_vertices, SAT
-from random import choice as random_choice,random,randint,choice,uniform
-
-from typing import TYPE_CHECKING
+from random import choice as random_choice,random,randint,choice
 from my_pygame_light2d.light import PointLight 
-TIME_FOR_ONE_LOGICAL_FRAME = 0.015969276428222656
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from scripts.custom_data_types import Animation,TileInfo
+    from scripts.data import Animation,TileInfo
     from scripts.new_tilemap import Tilemap
     from scripts.new_particles import ParticleSystem
     from scripts.entitiesManager import EntitiesManager
@@ -183,9 +180,6 @@ class PhysicsEntity:
                         self.pos[1] = self_rect.y -anim_offset[1]
                         self._collisions['down'] = True
 
-        #print(self.velocity)
-        #print(self.velocity[1] , gravity * scaled_dt* 30)
-
 class Player(PhysicsEntity):
     def __init__(self, pos: list[float], size: tuple[int, int])->None:
         self._animation_data_collection = PlayerAnimationDataCollection
@@ -299,9 +293,9 @@ class Player(PhysicsEntity):
         if not self.on_ladder: 
             if self.velocity[1] < 0: 
                 if self.velocity[1] > -4.2:
-                    if self.air_time >0 and self.air_time <= 7.2 * TIME_FOR_ONE_LOGICAL_FRAME:
+                    if self.air_time >0 and self.air_time <= 7.2 * TIME_FOR_ONE_LOGICAL_STEP:
                         self.velocity[1] = -2.28
-                    if self.air_time >7.2 * TIME_FOR_ONE_LOGICAL_FRAME and self.air_time <=11 * TIME_FOR_ONE_LOGICAL_FRAME:
+                    if self.air_time >7.2 * TIME_FOR_ONE_LOGICAL_STEP and self.air_time <=11 * TIME_FOR_ONE_LOGICAL_STEP:
                         self.velocity[1] = -2.0
 
 
@@ -454,7 +448,7 @@ class Player(PhysicsEntity):
             if self.y_inertia > 25 and self.y_inertia <50:
                 particle_data = AnimationParticleData('land',[self.pos[0] +8,self.pos[1]+14],velocity=[0,0],angle=0,flipped=False,source='player')
                 particle_system.add_particle(particle_data)
-                self.hard_land_recovery_time = 7 * TIME_FOR_ONE_LOGICAL_FRAME
+                self.hard_land_recovery_time = 7 *TIME_FOR_ONE_LOGICAL_STEP 
                 game_context['screen_shake'] = max(game_context['screen_shake'],7)
                 #self.set_state('land')
                 
@@ -462,7 +456,7 @@ class Player(PhysicsEntity):
             elif self.y_inertia >= 50:
                 particle_data = AnimationParticleData('big_land',[self.pos[0] +7,self.pos[1]+7],velocity=[0,0],angle=0,flipped=False,source='player')
                 particle_system.add_particle(particle_data)
-                self.hard_land_recovery_time = 20 * TIME_FOR_ONE_LOGICAL_FRAME
+                self.hard_land_recovery_time = 20 *TIME_FOR_ONE_LOGICAL_STEP 
                 game_context['screen_shake'] = max(game_context['screen_shake'],16)
             self.jump_count =2 
             self.air_time = 0
@@ -471,7 +465,7 @@ class Player(PhysicsEntity):
         self.wall_slide = False
         self.on_wall = self._collisions['left'] or self._collisions['right']
 
-        if self.on_wall and self.air_time > 4 * TIME_FOR_ONE_LOGICAL_FRAME:
+        if self.on_wall and self.air_time > 4 * TIME_FOR_ONE_LOGICAL_STEP:
             self.wall_slide = True 
             self.velocity[1] = min(self.velocity[1],0.5)
             if self._collisions['right']:
@@ -483,7 +477,7 @@ class Player(PhysicsEntity):
             self.y_inertia = 0
        
         if not self.wall_slide: 
-            if self.air_time > 4 * TIME_FOR_ONE_LOGICAL_FRAME:
+            if self.air_time > 4 * TIME_FOR_ONE_LOGICAL_STEP:
                 self.boost_on_next_tap = False 
                 if self.velocity[1] < 0:
                     self.y_inertia = 0

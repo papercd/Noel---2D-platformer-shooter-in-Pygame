@@ -1,6 +1,5 @@
 from pygame import Rect
-
-TIME_FOR_ONE_LOGICAL_FRAME = 0.015969276428222656
+from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
 
 class Cursor: 
     def __init__(self,in_editor :bool = False)-> None:
@@ -22,7 +21,7 @@ class Cursor:
         self.pressed = [0,0]
 
     def set_cooldown(self) -> None:
-        self.cooldown = 10 * TIME_FOR_ONE_LOGICAL_FRAME
+        self.cooldown = 10 * TIME_FOR_ONE_LOGICAL_STEP
 
     def update(self,dt)-> None:
         if not self.in_editor:

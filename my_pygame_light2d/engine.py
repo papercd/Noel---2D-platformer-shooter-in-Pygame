@@ -11,8 +11,8 @@ from random import randint
 
 from pygame.math import Vector2 as vec2 
 from scripts.layer import Layer_
-from scripts.animationData import PARTICLE_ANIMATION_PIVOTS
-from scripts.atlass_positions import UI_ATLAS_POSITIONS_AND_SIZES, TILE_ATLAS_POSITIONS,\
+from scripts.data import PARTICLE_ANIMATION_PIVOTS
+from scripts.data import UI_ATLAS_POSITIONS_AND_SIZES, TILE_ATLAS_POSITIONS,\
                                     ENTITIES_ATLAS_POSITIONS,PARTICLE_ATLAS_POSITIONS_AND_SIZES
 from scripts.lists import interpolatedLightNode
 from scripts.new_particles import ParticleSystem
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from scripts.new_cursor import Cursor
     from scripts.new_HUD import HUD
     from scripts.new_tilemap import Tilemap
-    from scripts.custom_data_types import TileInfo
+    from scripts.data import TileInfo
     from scripts.lists import TileCategories
 
 class RenderEngine:

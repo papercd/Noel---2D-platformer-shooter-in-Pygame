@@ -3,9 +3,9 @@ from pygame import Surface
 from pygame.math import Vector2 as vec2 
 from pygame import Rect
 from math import cos,sin,radians,sqrt,degrees,atan2
-from scripts.custom_data_types import CollideParticleData,FireParticleData,AnimationParticleData,Animation,SparkData
-from scripts.animationData import PARTICLE_ANIMATION_DATA
-from scripts.atlass_positions import PARTICLE_ATLAS_POSITIONS_AND_SIZES
+from scripts.data import CollideParticleData,FireParticleData,AnimationParticleData,Animation,SparkData
+from scripts.data import PARTICLE_ANIMATION_DATA
+from scripts.data import PARTICLE_ATLAS_POSITIONS_AND_SIZES
 from scripts.resourceManager import ResourceManager
 import numpy as np 
 

@@ -1,5 +1,5 @@
-from scripts.atlass_positions import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES
-from scripts.custom_data_types import TileInfo,LightInfo,DoorInfo,DoorAnimation
+from scripts.data import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES
+from scripts.data import TileInfo,LightInfo,DoorInfo,DoorAnimation
 from scripts.tileformatdata import get_tile_rectangle, PHYSICS_APPLIED_TILE_TYPES,TILE_SIDE_TO_SAMPLE_POS
 from scripts.spatial_grid import SpatialGrid
 from scripts.lists import ambientNodeList,interpolatedLightNode
