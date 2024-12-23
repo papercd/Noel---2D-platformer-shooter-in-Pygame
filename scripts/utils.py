@@ -2,7 +2,7 @@ import os
 import pygame 
 import math
 import numpy as np
-from scripts.custom_data_types import TileInfo
+from scripts.data import TileInfo
 from moderngl import Context,Texture,NEAREST
 #from PIL import Image, ImageFilter
 

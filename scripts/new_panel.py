@@ -1,4 +1,4 @@
-from scripts.atlass_positions import TILE_ATLAS_POSITIONS
+from scripts.data import TILE_ATLAS_POSITIONS
 from scripts.lists import TileCategories,Category
 from scripts.new_cursor import Cursor 
 

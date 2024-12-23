@@ -3,9 +3,9 @@ from pygame import Surface
 from pygame.math import Vector2 as vec2 
 from pygame import Rect
 from math import cos,sin,radians,sqrt,degrees,atan2
-from scripts.custom_data_types import CollideParticleData,FireParticleData,AnimationParticleData,Animation,SparkData
-from scripts.animationData import PARTICLE_ANIMATION_DATA
-from scripts.atlass_positions import PARTICLE_ATLAS_POSITIONS_AND_SIZES
+from scripts.data import CollideParticleData,FireParticleData,AnimationParticleData,Animation,SparkData
+from scripts.data import PARTICLE_ANIMATION_DATA
+from scripts.data import PARTICLE_ATLAS_POSITIONS_AND_SIZES
 from scripts.resourceManager import ResourceManager
 import numpy as np 
 
@@ -448,7 +448,7 @@ class FireParticle:
         return distance <= self.r
 
 
-    def collide_with_rect(self,other):
+    def check_collision_with_rect(self,other):
         """
         Check if a circle has collided with a rectangle and return collision information.
         """
@@ -527,6 +527,83 @@ class FireParticle:
                 ((self.sin * sin(self.life/(self.sinr)))/2)*self.spread * self.rise_normal.x    + self.rise * cos(radians(self.rise_angle)),
                 (self.rise * sin(radians(self.rise_angle)) + self.rise_normal.y * self.spread * ((self.sin * sin(self.life/(self.sinr)))/2))
         ]
+
+        for rect_tile in tilemap.phy_rects_around((self.pos[0]-self.r,self.pos[1] - self.r),(self.r * 2, self.r * 2)):
+            
+            side_point, collided = self.check_collision_with_rect(rect_tile[0])
+            
+            if collided: 
+                if not rect_tile[1].type == 'stairs':
+                    if rect_tile[1].type =='live_grass':
+                        loc = (rect_tile[1].pos[0]//16,rect_tile[1].pos[1]//16)
+                        if loc in self.game.gm.grass_tiles:
+                            self.game.gm.grass_tiles[loc].burning -= 0.3
+                        #self.game.gm.burn_tile((rect_tile[1].pos[0]//16,rect_tile[1].pos[1]//16))
+                    else:
+                        incid_angle = degrees(atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
+                        if side_point == "Top" or side_point == "Bottom":
+                            self.rise *= 0.7
+                            self.rise_angle = incid_angle
+                        elif side_point == 'Left' or side_point == 'Right':
+                            self.rise *= 0.7
+                            self.rise_angle = -180 + incid_angle
+                        elif side_point == 'Center':
+                            self.rise *= 0.3
+                        else:
+                            self.rise *= 0.7
+                            self.rise_angle += 180  
+                else: 
+                    #collision with stairs 
+                    incid_angle = degrees(atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
+
+                    if rect_tile[1].variant.split(';')[0] == '0' :
+                        #left stairs
+                        #this part where check rects are created is not dynamic, so if tilesize changes this part needs to be changed manually. maybe figure out an algorithmic 
+                        #way to create rects for stairs. 
+                        check_rects = [Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
+                                       Rect(rect_tile[0].left + 12,rect_tile[0].top,4,12),
+                                       Rect(rect_tile[0].left + 6,rect_tile[0].top + 6,6,6)
+                                       ]
+                        for check_rect in check_rects:
+                            side_point,collided = self.collide_with_rect(check_rect)
+                            if collided: 
+                                if side_point == "Top" or side_point == "Bottom":
+                                    self.rise *= 0.7
+                                    self.rise_angle = incid_angle
+                                elif side_point == 'Left' or side_point == 'Right':
+                                    self.rise *= 0.7
+                                    self.rise_angle = -180 + incid_angle
+                                elif side_point == 'Center':
+                                    self.rise *= 0.3
+                                else:
+                                    self.rise *= 0.7
+                                    self.rise_angle += 180  
+                                
+                                break 
+                        
+                    elif rect_tile[1].variant.split(';')[0] == '1' :
+                        #right stairs 
+                        check_rects = [Rect(rect_tile[0].left,rect_tile[0].bottom + 4,rect_tile[0].width,4),
+                                       Rect(rect_tile[0].left,rect_tile[0].top,4,12),
+                                       Rect(rect_tile[0].left + 4,rect_tile[0].top + 6,6,6)
+                                       ]
+                        for check_rect in check_rects:
+                            side_point,collided = self.collide_with_rect(check_rect)
+                            if collided: 
+                                if side_point == "Top" or side_point == "Bottom":
+                                    self.rise *= 0.7
+                                    self.rise_angle = incid_angle
+                                elif side_point == 'Left' or side_point == 'Right':
+                                    self.rise *= 0.7
+                                    self.rise_angle = -180 + incid_angle
+                                elif side_point == 'Center':
+                                    self.rise *= 0.3
+                                else:
+                                    self.rise *= 0.7
+                                    self.rise_angle += 180  
+                                
+                                break 
+ 
 
         self.x += self.velocity[0] * scaled_dt
         self.y += self.velocity[1] * scaled_dt
