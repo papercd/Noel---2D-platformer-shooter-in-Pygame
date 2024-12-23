@@ -71,7 +71,8 @@ class Noel():
         self.player.set_accel_rate(1)
         self.player.set_default_speed(2.3)
 
-        self._grass_manager = GrassManager()
+        self._grass_manager = GrassManager(self.resource_manager.get_ga_of_name('test_grass'),self._tilemap.tile_size,stiffness=600,\
+                                           max_unique=5,place_range=[1,1],burn_spread_speed=3,burn_rate=1.2)
         self._hud = HUD(self.player,self._game_context["true_res"])
 
     def _bind_objects_to_render_engine(self):
@@ -262,7 +263,9 @@ class Noel():
                     
                     if event.key == pygame.K_F5:
                         self._hot_reload()
-                    
+                    if event.key == pygame.K_n:  
+                        for _ in range(20):
+                            self._grass_manager.place_tile((74+_,11),10,[0,1,2,3,4])
                     if event.key == pygame.K_e:
                         self._hud.set_inven_open_state(not self._hud.inven_open_state)
                     if event.key == pygame.K_a:
@@ -337,7 +340,7 @@ class Noel():
                 self.entities_manager.update(self._tilemap,self.particle_system,self.render_engine.lights,TIME_FOR_ONE_LOGICAL_STEP)
                 self.particle_system.update(self._tilemap,self._grass_manager,TIME_FOR_ONE_LOGICAL_STEP)
 
-
+                self._grass_manager.update(self._game_context["true_res"],TIME_FOR_ONE_LOGICAL_STEP,camera_scroll)
                 self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
                                 self.movement_input,camera_scroll,self._game_context,TIME_FOR_ONE_LOGICAL_STEP)
                 self._accumulator -= TIME_FOR_ONE_LOGICAL_STEP

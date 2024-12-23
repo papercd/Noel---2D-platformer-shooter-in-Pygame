@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING
 from os import listdir
 from json import load as jsLoad
 import numpy as np 
-from scripts.data import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,\
-                                    TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,BULLET_ATLAS_POSITIONS_AND_SIZES
+from scripts.data import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,GRASS_ASSET_ATLAS_POS_AND_INFO,\
+                                  TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,BULLET_ATLAS_POSITIONS_AND_SIZES
 
 if TYPE_CHECKING: 
     from moderngl import Context,Texture
@@ -22,9 +22,22 @@ RESOURCE_NAME_TO_PATH = {
     'tilemap_jsons' : 'map_jsons',
     'holding_weapons' : TEXTURE_BASE_PATH + 'weapons/holding',
     'weapons' : TEXTURE_BASE_PATH+'weapons/weapon_atlas.png',
-    'bullets' : TEXTURE_BASE_PATH+'bullets/bullet_atlas.png'
+    'bullets' : TEXTURE_BASE_PATH+'bullets/bullet_atlas.png',
+    'grass_assets' : [
+        TEXTURE_BASE_PATH + 'tiles/grass_atlasses/test_grass.png',
+    ]
 }
 
+# maintain the grass assets class, so you can have different grass tilesets 
+class GrassAssets:
+    def __init__(self,asset_name:str)->None: 
+        self.asset_name = asset_name
+        self.grass_count_for_grass_var = GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][0]
+        self.texture_dim =  GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][1]
+        self.burn_palette = GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][2]
+        self.gm = None 
+         
+   
 
 class ResourceManager: 
     _instance = None 
@@ -45,6 +58,8 @@ class ResourceManager:
                 self._load_tilemap_jsons(path)
             elif resource_name == 'holding_weapons':
                 self._load_held_wpn_textures(path)
+            elif resource_name =='grass_assets':
+                self._load_grass_assets(path)
             else: 
                 self._texture_atlasses[resource_name] = load_texture(path,self.ctx)
 
@@ -83,6 +98,17 @@ class ResourceManager:
     def circle_template(self) -> tuple["Context.buffer","Context.buffer"]:
         return (self._circle_vbo,self._circle_ibo)
 
+    def _load_grass_assets(self,paths:str)->None: 
+        self._grass_assets = {}
+        for path in paths:
+            split_path = path.split('/')
+            asset_name = split_path[-1].split('.')[0] 
+
+            self._grass_assets[asset_name] = GrassAssets(asset_name)
+
+
+
+
     def _load_backgrounds(self,path:str)->None:
         self._backgrounds= {}
         
@@ -114,6 +140,9 @@ class ResourceManager:
 
     def get_background_of_name(self,name:str):
         return self._backgrounds[name]
+    
+    def get_ga_of_name(self,name:str)->GrassAssets: 
+        return self._grass_assets[name]
     
 
     def _compute_particle_resources(self) -> None: 
