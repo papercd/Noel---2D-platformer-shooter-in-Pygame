@@ -40,7 +40,6 @@ class Editor:
         self._main_tile_panel = TilePanel(self._true_res)
         self._cursor = Cursor(self._atlas_dict['cursor'],in_editor= True)
 
-
     def _initalize_game_settings(self):
         self._system_display_info = self._set_system_display_info()
         self._set_initial_display_settings()
