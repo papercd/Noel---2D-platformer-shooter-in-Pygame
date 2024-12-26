@@ -58,20 +58,21 @@ class Noel():
 
 
     def _initialize_game_objects(self):
-        self.entities_manager = EntitiesManager.get_instance()
         self.resource_manager = ResourceManager.get_instance(self._ctx)
-        self.render_engine = RenderEngine(self._ctx,self._game_context["screen_res"],\
-                                          self._game_context["display_scale_ratio"],self._game_context["true_res"])
+        self.entities_manager = EntitiesManager.get_instance()
+        self.particle_system = ParticleSystem.get_instance() 
 
         self._tilemap = Tilemap()
         self._tilemap.load_map('test1.json')  
 
-        self.particle_system = ParticleSystem.get_instance() 
+        self._grass_manager = GrassManager.get_instance(self.resource_manager.get_ga_of_name('test_grass'),self._tilemap.tile_size,stiffness=600,\
+                                           max_unique=5,place_range=[1,1],burn_spread_speed=3,burn_rate=1.2)
+
+        self.render_engine = RenderEngine(self._ctx,self._game_context["screen_res"],\
+                                          self._game_context["display_scale_ratio"],self._game_context["true_res"])
         self.player = Player([900,11],(14,16)) 
         self.player.set_accel_rate(1)
         self.player.set_default_speed(2.3)
-
-        self._grass_manager = GrassManager()
         self._hud = HUD(self.player,self._game_context["true_res"])
 
     def _bind_objects_to_render_engine(self):
@@ -102,19 +103,23 @@ class Noel():
         from scripts.new_tilemap import Tilemap
         from scripts.resourceManager import ResourceManager
 
-        # reinitialize render engine 
-        self.entities_manager = EntitiesManager.get_instance()
+        # reinitialize singletons
+
         self.resource_manager = ResourceManager.get_instance(self._ctx)
-        self.render_engine = RenderEngine(self._ctx,self._game_context["screen_res"],\
-                                          self._game_context["display_scale_ratio"],self._game_context["true_res"])
+        self.entities_manager = EntitiesManager.get_instance()
+        self.particle_system = ParticleSystem.get_instance() 
 
         # explicitly reinitialize objects       
         self._tilemap = Tilemap()
         self._tilemap.load_map('test1.json')  
 
-        self.particle_system = ParticleSystem.get_instance() 
-        self._grass_manager = GrassManager()
-        
+        self._grass_manager = GrassManager.get_instance(self.resource_manager.get_ga_of_name('test_grass'),self._tilemap.tile_size,stiffness=600,\
+                                           max_unique=5,place_range=[1,1],burn_spread_speed=3,burn_rate=1.2)
+
+        self.render_engine = RenderEngine(self._ctx,self._game_context["screen_res"],\
+                                          self._game_context["display_scale_ratio"],self._game_context["true_res"])
+
+
         # Update cursor's position
         
         cursor_topleft = pygame.mouse.get_pos()
@@ -262,7 +267,9 @@ class Noel():
                     
                     if event.key == pygame.K_F5:
                         self._hot_reload()
-                    
+                    if event.key == pygame.K_n:  
+                        for _ in range(20):
+                            self._grass_manager.place_tile((74+_,11),10,[0,1,2,3,4])
                     if event.key == pygame.K_e:
                         self._hud.set_inven_open_state(not self._hud.inven_open_state)
                     if event.key == pygame.K_a:
@@ -337,7 +344,7 @@ class Noel():
                 self.entities_manager.update(self._tilemap,self.particle_system,self.render_engine.lights,TIME_FOR_ONE_LOGICAL_STEP)
                 self.particle_system.update(self._tilemap,self._grass_manager,TIME_FOR_ONE_LOGICAL_STEP)
 
-
+                self._grass_manager.update(self._game_context["true_res"],TIME_FOR_ONE_LOGICAL_STEP,camera_scroll)
                 self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
                                 self.movement_input,camera_scroll,self._game_context,TIME_FOR_ONE_LOGICAL_STEP)
                 self._accumulator -= TIME_FOR_ONE_LOGICAL_STEP
@@ -357,7 +364,6 @@ class Noel():
 
             screenshake_offset = (random() * screen_shake_buffer - screen_shake_buffer/2,
                                   random() * screen_shake_buffer - screen_shake_buffer/2)
-
             self.render_engine.render_scene_with_lighting(camera_scroll,interpolation_alpha, screenshake_offset)
             pygame.display.flip()
             

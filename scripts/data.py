@@ -289,3 +289,13 @@ WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET ={
     'flamethrower' : ((2,2),(0,0))
 }
 
+
+"""  Grass Data  """
+
+GRASS_ASSET_ATLAS_POS_AND_INFO = {
+  
+
+    "test_grass" : ((8,6,6,6,3,6),(11,26),(153,46,17))
+}
+
+

@@ -511,6 +511,14 @@ class FireParticle:
         # If none of the above conditions are met, there's no collision
         return False
 
+    def _calculate_bounce_angle(self,axis:str): 
+        if axis == 'x':
+            reflected_angle = 180 - self.rise_angle
+        else: 
+            reflected_angle = -self.rise_angle
+        return reflected_angle
+
+
     def update(self,tilemap:"Tilemap",grass_manager:"GrassManager",dt:float):
         self.damage = max(2,int(self.damage * (self.life / self.maxlife)))
         scaled_dt = dt * 60
@@ -522,6 +530,8 @@ class FireParticle:
             return True 
         
         self.i = int((self.life/self.maxlife)*6)
+
+        # TODO: don't oscillate particle if it has collided. 
 
         self.velocity= [
                 ((self.sin * sin(self.life/(self.sinr)))/2)*self.spread * self.rise_normal.x    + self.rise * cos(radians(self.rise_angle)),
@@ -543,15 +553,15 @@ class FireParticle:
                         incid_angle = degrees(atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
                         if side_point == "Top" or side_point == "Bottom":
                             self.rise *= 0.7
-                            self.rise_angle = incid_angle
+                            #self.rise_angle = self._calculate_bounce_angle('x')
                         elif side_point == 'Left' or side_point == 'Right':
                             self.rise *= 0.7
-                            self.rise_angle = -180 + incid_angle
+                            #self.rise_angle = self._calculate_bounce_angle('y')
                         elif side_point == 'Center':
                             self.rise *= 0.3
                         else:
                             self.rise *= 0.7
-                            self.rise_angle += 180  
+
                 else: 
                     #collision with stairs 
                     incid_angle = degrees(atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
@@ -569,15 +579,14 @@ class FireParticle:
                             if collided: 
                                 if side_point == "Top" or side_point == "Bottom":
                                     self.rise *= 0.7
-                                    self.rise_angle = incid_angle
+                                    #self.rise_angle = self._calculate_bounce_angle('x')
                                 elif side_point == 'Left' or side_point == 'Right':
                                     self.rise *= 0.7
-                                    self.rise_angle = -180 + incid_angle
+                                    #self.rise_angle = self._calculate_bounce_angle('y')
                                 elif side_point == 'Center':
                                     self.rise *= 0.3
                                 else:
                                     self.rise *= 0.7
-                                    self.rise_angle += 180  
                                 
                                 break 
                         
@@ -592,15 +601,14 @@ class FireParticle:
                             if collided: 
                                 if side_point == "Top" or side_point == "Bottom":
                                     self.rise *= 0.7
-                                    self.rise_angle = incid_angle
+                                    #self.rise_angle = self._calculate_bounce_angle('x')
                                 elif side_point == 'Left' or side_point == 'Right':
                                     self.rise *= 0.7
-                                    self.rise_angle = -180 + incid_angle
+                                    #self.rise_angle  = self._calculate_bounce_angle('y')
                                 elif side_point == 'Center':
                                     self.rise *= 0.3
                                 else:
                                     self.rise *= 0.7
-                                    self.rise_angle += 180  
                                 
                                 break 
  
@@ -669,15 +677,15 @@ class FireParticle:
                         incid_angle = degrees(atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
                         if side_point == "Top" or side_point == "Bottom":
                             self.rise *= 0.7
-                            self.rise_angle = incid_angle
+                            #self.rise_angle = incid_angle
                         elif side_point == 'Left' or side_point == 'Right':
                             self.rise *= 0.7
-                            self.rise_angle = -180 + incid_angle
+                            #self.rise_angle = -180 + incid_angle
                         elif side_point == 'Center':
                             self.rise *= 0.3
                         else:
                             self.rise *= 0.7
-                            self.rise_angle += 180  
+                            #self.rise_angle += 180  
                 else: 
                     #collision with stairs 
                     incid_angle = degrees(atan2(self.pos[1] - self.origin[1],self.pos[0] - self.origin[0]))
@@ -695,15 +703,15 @@ class FireParticle:
                             if collided: 
                                 if side_point == "Top" or side_point == "Bottom":
                                     self.rise *= 0.7
-                                    self.rise_angle = incid_angle
+                                    #self.rise_angle = incid_angle
                                 elif side_point == 'Left' or side_point == 'Right':
                                     self.rise *= 0.7
-                                    self.rise_angle = -180 + incid_angle
+                                    #self.rise_angle = -180 + incid_angle
                                 elif side_point == 'Center':
                                     self.rise *= 0.3
                                 else:
                                     self.rise *= 0.7
-                                    self.rise_angle += 180  
+                                    #self.rise_angle += 180  
                                 
                                 break 
 

@@ -18,6 +18,7 @@ from scripts.lists import interpolatedLightNode
 from scripts.new_particles import ParticleSystem
 from scripts.entitiesManager import EntitiesManager
 from scripts.resourceManager import ResourceManager
+from scripts.new_grass import GrassManager
 
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.color import normalize_color_arguments, denormalize_color
@@ -58,6 +59,7 @@ class RenderEngine:
         self._rm = ResourceManager.get_instance()
         self._em = EntitiesManager.get_instance()
         self._ps = ParticleSystem.get_instance()
+        self._gm = GrassManager.get_instance()
 
         # Initialize  members
         self._true_to_native_ratio = true_to_screen_res_ratio 
@@ -1726,6 +1728,76 @@ class RenderEngine:
         vbo.release()
         vao.release()
 
+
+    def _render_grass(self,fbo:moderngl.Framebuffer,camera_scroll)->None: 
+        if self._gm.ground_shadow[0]:
+            shadow_offset = (camera_scroll[0] - self._gm.ground_shadow[3][0],camera_scroll[1] - self._gm.ground_shadow[3][1])
+            for pos in self._gm.render_list: 
+                self._render_grass_shadow(self._gm.grass_tiles[pos],shadow_offset)
+
+        for key,tile in self._gm.burning_grass_tiles.items():
+            if self._gm.base_pos[0] <= key[0]  <= self._gm.base_pos[0] + self._gm.visible_tile_range[0] and \
+                self._gm.base_pos[1] <= key[1] <= self._gm.base_pos[1] + self._gm.visible_tile_range[1]:
+                self._render_tile(fbo,key,tile,camera_scroll)
+
+        for pos in self._gm.render_list:
+            tile = self._gm.grass_tiles[pos]
+            self._render_tile(fbo,pos,tile,camera_scroll)
+
+    def _render_grass_shadow(self,camera_scroll)->None: 
+        pass 
+
+
+    def _render_tile(self,fbo,base_pos,tile,camera_scroll)->None: 
+        if tile.custom_blade_data:
+            blades = tile.custom_blade_data
+        else: 
+            blades = tile.blades 
+
+
+        vertices_list = []
+        texture_coords_list = []
+
+        for blade in blades:
+            # You have to render the shade, then the grass. 
+
+            # grass parameters: 
+            # blade[1] = blade id, blade[2] = variation, (blade[0][0] + tile.padding,blade[0][1] + tile.padding) = location 
+            # rotation = max(-90, min(90,blade[3] + tile.true_rotation)), scale = tile.burn_life/tile.max_burn_life
+            topleft = (base_pos[0] * tile.size + blade[0][0],\
+                       base_pos[1] * tile.size + blade[0][1]-tile.padding)
+            vertices = self._create_blade_vertices(fbo,topleft,camera_scroll) 
+            texture_coords = self._rm._grass_asset_texture_coords[self._gm.ga.asset_name][blade[1]][blade[2]]
+
+            vertices_list.append(vertices)
+            texture_coords_list.append(texture_coords)
+
+        if vertices_list: 
+            vertices_array = np.concatenate(vertices_list,axis = 0)
+            texture_coords_array = np.concatenate(texture_coords_list,axis=0 )
+
+            buffer_data = np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
+            vbo = self.ctx.buffer(buffer_data)
+            vao = self.ctx.vertex_array(self._prog_draw,[(vbo, '2f 2f','vertexPos','vertexTexCoord')])
+            
+            self._rm._texture_atlasses[self._gm.ga.asset_name].use()
+            fbo.use()
+            vao.render()
+            vbo.release()
+            vao.release()
+            
+        
+
+    def _create_blade_vertices(self,fbo,topleft,offset) ->None: 
+        x = 2. * (topleft[0] - offset[0]) / self._true_res[0] - 1.
+        y = 1. - 2. *(topleft[1] - offset[1]) / self._true_res[1] 
+        w = 2. *(self._gm.ga.texture_dim[0]) / self._true_res[0] 
+        h = 2. *(self._gm.ga.texture_dim[1]) / self._true_res[1]
+        
+        return np.array([(x,y),(x+w,y),(x,y-h),
+                         (x,y-h), (x+w,y),(x+w,y-h)],dtype=np.float32)
+
+
     def _render_bullets(self,fbo:moderngl.Framebuffer,interpolation_alpha,camera_scroll):
         vertices_list= [] 
         texture_coords_list = []
@@ -1815,6 +1887,7 @@ class RenderEngine:
         self._render_tilemap(fbo,offset)
 
         self._render_player(fbo,interpolation_alpha,offset)
+        self._render_grass(fbo,offset)
         self._render_particles(fbo,interpolation_alpha,offset)
         self._render_bullets(fbo,interpolation_alpha,offset)
 
