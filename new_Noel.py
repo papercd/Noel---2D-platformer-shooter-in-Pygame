@@ -6,6 +6,7 @@ from enum import Enum
 from moderngl import create_context
 from screeninfo import get_monitors
 
+import cProfile
 from scripts.entitiesManager import EntitiesManager 
 from scripts.resourceManager import ResourceManager
 from scripts.new_particles import ParticleSystem
@@ -358,6 +359,7 @@ class Noel():
             self.render_engine.bind_player(self.player)
             self.render_engine.bind_hud(self._hud)
 
+
             self.render_engine.render_background_scene_to_fbo(camera_scroll,interpolation_alpha,infinite=False)
             self.render_engine.render_foreground_scene_to_fbo()
             
@@ -366,6 +368,10 @@ class Noel():
                                   random() * screen_shake_buffer - screen_shake_buffer/2)
             self.render_engine.render_scene_with_lighting(camera_scroll,interpolation_alpha, screenshake_offset)
             pygame.display.flip()
+           
+            
+            
+            
             
         
 
@@ -387,4 +393,5 @@ class Noel():
 
 
 game = Noel()
+
 game.start()
