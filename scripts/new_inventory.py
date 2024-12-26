@@ -325,7 +325,8 @@ class Cell:
                             self._item = temp 
 
                             cursor.set_cooldown()
-                elif cursor.item is not None and self._hovered and cursor.cooldown <= 0: 
+                elif cursor.item is not None and cursor.item.type == self._type \
+                     and self._hovered and cursor.cooldown <= 0: 
                     if cursor.pressed[0] :
                         if cursor.item.name == self._item.name: 
                             if self._item.count + cursor.item.count <= stack_limit and self._item.stackable: 

@@ -206,8 +206,8 @@ class GrassManager:
             #    quadtree.insert(tile)
             tile.update_burn_state(dt)
             #tile.render(dt, offset=offset)
-            #if rot_function:
-            #    tile.set_rotation(rot_function(tile.pos[0], tile.pos[1]), dt * tile.rot_random_factor_seed)
+            if rot_function:
+                tile.set_rotation(rot_function(tile.pos[0], tile.pos[1]), dt * tile.rot_random_factor_seed)
         
         
 
@@ -489,6 +489,15 @@ class GrassTile:
         
         self.render_data = (self.base_id, self.master_rotation)
         self.true_rotation = self.inc * self.master_rotation
+        if self.custom_blade_data:
+            matching = True
+            for i, blade in enumerate(self.custom_blade_data):
+                blade[3] = normalize(blade[3], self.gm.stiffness * dt, self.blades[i][3])
+                if blade[3] != self.blades[i][3]:
+                    matching = False
+            # mark the data as non-custom once in base position so the cache can be used
+            if matching:
+                self.custom_blade_data = None
 
     
     def update_burn_state(self,dt):
