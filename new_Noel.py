@@ -58,21 +58,21 @@ class Noel():
 
 
     def _initialize_game_objects(self):
-        self.entities_manager = EntitiesManager.get_instance()
         self.resource_manager = ResourceManager.get_instance(self._ctx)
-        self.render_engine = RenderEngine(self._ctx,self._game_context["screen_res"],\
-                                          self._game_context["display_scale_ratio"],self._game_context["true_res"])
+        self.entities_manager = EntitiesManager.get_instance()
+        self.particle_system = ParticleSystem.get_instance() 
 
         self._tilemap = Tilemap()
         self._tilemap.load_map('test1.json')  
 
-        self.particle_system = ParticleSystem.get_instance() 
+        self._grass_manager = GrassManager.get_instance(self.resource_manager.get_ga_of_name('test_grass'),self._tilemap.tile_size,stiffness=600,\
+                                           max_unique=5,place_range=[1,1],burn_spread_speed=3,burn_rate=1.2)
+
+        self.render_engine = RenderEngine(self._ctx,self._game_context["screen_res"],\
+                                          self._game_context["display_scale_ratio"],self._game_context["true_res"])
         self.player = Player([900,11],(14,16)) 
         self.player.set_accel_rate(1)
         self.player.set_default_speed(2.3)
-
-        self._grass_manager = GrassManager(self.resource_manager.get_ga_of_name('test_grass'),self._tilemap.tile_size,stiffness=600,\
-                                           max_unique=5,place_range=[1,1],burn_spread_speed=3,burn_rate=1.2)
         self._hud = HUD(self.player,self._game_context["true_res"])
 
     def _bind_objects_to_render_engine(self):
@@ -103,19 +103,23 @@ class Noel():
         from scripts.new_tilemap import Tilemap
         from scripts.resourceManager import ResourceManager
 
-        # reinitialize render engine 
-        self.entities_manager = EntitiesManager.get_instance()
+        # reinitialize singletons
+
         self.resource_manager = ResourceManager.get_instance(self._ctx)
-        self.render_engine = RenderEngine(self._ctx,self._game_context["screen_res"],\
-                                          self._game_context["display_scale_ratio"],self._game_context["true_res"])
+        self.entities_manager = EntitiesManager.get_instance()
+        self.particle_system = ParticleSystem.get_instance() 
 
         # explicitly reinitialize objects       
         self._tilemap = Tilemap()
         self._tilemap.load_map('test1.json')  
 
-        self.particle_system = ParticleSystem.get_instance() 
-        self._grass_manager = GrassManager()
-        
+        self._grass_manager = GrassManager.get_instance(self.resource_manager.get_ga_of_name('test_grass'),self._tilemap.tile_size,stiffness=600,\
+                                           max_unique=5,place_range=[1,1],burn_spread_speed=3,burn_rate=1.2)
+
+        self.render_engine = RenderEngine(self._ctx,self._game_context["screen_res"],\
+                                          self._game_context["display_scale_ratio"],self._game_context["true_res"])
+
+
         # Update cursor's position
         
         cursor_topleft = pygame.mouse.get_pos()

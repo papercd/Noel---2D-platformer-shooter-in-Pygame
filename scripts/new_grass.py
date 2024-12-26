@@ -27,6 +27,18 @@ def normalize(val, amt, target):
 
 # the main object that manages the grass system
 class GrassManager:
+    
+    _instance = None 
+
+    @staticmethod
+    def get_instance(grass_asset = None,tile_size:int = 16,shade_amount:int = 100, stiffness:int = 360, max_unique:int = 10, 
+                     place_range:list[int,int] = [1,1] , padding:int = 13, burn_spread_speed:int = 1, burn_rate:int = 1):
+        if GrassManager._instance is None: 
+            GrassManager._instance = GrassManager(grass_asset,tile_size,shade_amount,stiffness,max_unique,\
+                                                  place_range,padding,burn_spread_speed,burn_rate)
+        return GrassManager._instance
+
+
     def __init__(self, grass_asset,tile_size=15, shade_amount=100, stiffness=360, max_unique=10, place_range=[1, 1], padding=13,burn_spread_speed = 1,burn_rate = 1):
 
         self.ga = grass_asset
@@ -39,8 +51,12 @@ class GrassManager:
         self.formats = {}
 
         # tile data
+        self.render_list = set()
         self.grass_tiles = {}
         self.burning_grass_tiles = {}
+
+        self.visible_tile_range = (0,0)
+        self.base_pos = (0,0)
 
         # config
         self.tile_size = tile_size
@@ -119,14 +135,14 @@ class GrassManager:
     # an update and render combination function
 
     def update(self,native_res,dt, offset=(0, 0), rot_function=None):
-        visible_tile_range = (int(native_res[0] // self.tile_size) + 1, int(native_res[1] // self.tile_size) + 1)
-        base_pos = (int(offset[0] // self.tile_size), int(offset[1] // self.tile_size))
+        self.visible_tile_range = (int(native_res[0] // self.tile_size) + 1, int(native_res[1] // self.tile_size) + 1)
+        self.base_pos = (int(offset[0] // self.tile_size), int(offset[1] // self.tile_size))
 
         # Precompute the visible grass tiles 
-        render_list = {(base_pos[0] + x, base_pos[1] + y) 
-                    for y in range(visible_tile_range[1]) 
-                    for x in range(visible_tile_range[0]) 
-                    if (base_pos[0] + x, base_pos[1] + y) in self.grass_tiles}
+        self.render_list = {(self.base_pos[0] + x, self.base_pos[1] + y) 
+                    for y in range(self.visible_tile_range[1]) 
+                    for x in range(self.visible_tile_range[0]) 
+                    if (self.base_pos[0] + x, self.base_pos[1] + y) in self.grass_tiles}
 
         # Render shadows if ground_shadow is set
         """
@@ -140,7 +156,6 @@ class GrassManager:
         keys_to_remove = []
         keys_to_add = []
 
-        print(render_list)
 
         for key, tile in self.burning_grass_tiles.items():
             if not tile.appended: 
@@ -172,8 +187,8 @@ class GrassManager:
 
         # Update dictionaries outside the main loop
         for key in keys_to_add:
-            if key in render_list:
-                render_list.remove(key)
+            if key in self.render_list:
+                self.render_list.remove(key)
             burning_tile = self.grass_tiles.pop(key, None)
             if burning_tile:
                 self.burning_grass_tiles[key] = burning_tile
@@ -184,17 +199,17 @@ class GrassManager:
 
         # Render the grass tiles
         
-        """
-        for pos in render_list:
+        
+        for pos in self.render_list:
             tile = self.grass_tiles[pos]
-            if quadtree:
-                quadtree.insert(tile)
+            #if quadtree:
+            #    quadtree.insert(tile)
             tile.update_burn_state(dt)
             #tile.render(dt, offset=offset)
-            if rot_function:
-                tile.set_rotation(rot_function(tile.pos[0], tile.pos[1]), dt * tile.rot_random_factor_seed)
+            #if rot_function:
+            #    tile.set_rotation(rot_function(tile.pos[0], tile.pos[1]), dt * tile.rot_random_factor_seed)
         
-        """
+        
 
 
 
@@ -393,7 +408,7 @@ class GrassTile:
         y_range = self.gm.vertical_place_range[1] - self.gm.vertical_place_range[0]
         for i in range(amt):
             new_blade = random.choice(config)
-            variation_choice = random.randint(0,self.ga.grass_count_for_grass_var[new_blade]) -1
+            variation_choice = random.randint(0,self.ga.grass_count_for_grass_var[new_blade]-1) 
             """
             img = self.ga.blades[new_blade][variation_choice]
             self.org_img_dim = (img.get_width(),img.get_height())

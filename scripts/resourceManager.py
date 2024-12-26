@@ -100,13 +100,22 @@ class ResourceManager:
 
     def _load_grass_assets(self,paths:str)->None: 
         self._grass_assets = {}
+        self._grass_asset_texture_coords = {}
+
         for path in paths:
             split_path = path.split('/')
             asset_name = split_path[-1].split('.')[0] 
-
+            self._texture_atlasses[asset_name] = load_texture(path,self.ctx)
             self._grass_assets[asset_name] = GrassAssets(asset_name)
 
-
+            self._grass_asset_texture_coords[asset_name] = {}
+            grass_variation_info,size = GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][0], GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][1] 
+            for i,variations in enumerate(grass_variation_info):
+                if i not in self._grass_asset_texture_coords[asset_name]:
+                    self._grass_asset_texture_coords[asset_name][i] = []
+                for j in range(variations):
+                    bottomleft = (size[0]*j,size[1]*i) 
+                    self._grass_asset_texture_coords[asset_name][i].append(self._create_texture_coords(bottomleft,size,self._texture_atlasses[asset_name]))
 
 
     def _load_backgrounds(self,path:str)->None:
