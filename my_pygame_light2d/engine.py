@@ -54,6 +54,8 @@ class RenderEngine:
             true_to_screen_res_ratio : the ratio of the screen resolution from the true resolution. 
             true_res:  (tuple[int, int]): true (native) resolution of the game (width, height) -pixel resolution.
         """
+        # Retrieve context 
+        self.ctx = context
 
         # singleton references 
         self._rm = ResourceManager.get_instance()
@@ -70,6 +72,10 @@ class RenderEngine:
         self._lightmap_res = true_res 
         self._ambient = (.25, .25, .25, .25)
 
+        # Initialize buffers for particles 
+        self._fire_instance_buffer = self.ctx.buffer(reserve= self._ps._max_fire_particle_count*2 * 28)
+
+
         # Objects that need to be bound to engine before rendering : 
         self._tilemap:"Tilemap" = None
         self._player:"Player"= None
@@ -80,9 +86,7 @@ class RenderEngine:
         self.hulls: list["Hull"] = []
         self.shadow_blur_radius: int =5
 
-        # Retrieve context 
-        self.ctx = context
-
+        
         # Load shaders
         self._load_shaders()
 
@@ -175,6 +179,13 @@ class RenderEngine:
         self._vao_draw = self.ctx.vertex_array(self._prog_draw, [
             (screen_vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
         ])
+
+        self._vao_fire = self.ctx.vertex_array(self._prog_circle_draw,
+                                               [
+                                                   (self._rm.circle_template[0], '2f', 'in_vert'),
+                                                   (self._fire_instance_buffer, '2f 4f 1f/i', 'offset','in_color','size')
+                                               ],
+                                               self._rm.circle_template[1])
 
     def _create_frame_buffers(self)->None:
         # Frame buffers
@@ -1520,8 +1531,6 @@ class RenderEngine:
         polygon_vertices = []
         polygon_indices = []
 
-        circle_vertices = []
-        circle_indices = []
 
         for particle in list(particle_system._active_animation_particles):
             cur_frame = particle.animation.curr_frame()
@@ -1572,37 +1581,18 @@ class RenderEngine:
             )
             tex.release()   
 
-        # using instanced rendering for circles 
+        # using instanced rendering for circles
+         
+         
         instance_data = []
         for particle in list(particle_system._active_fire_particles):
             instance_data.extend(self._create_fire_particle__instance_data(particle,interpolation_alpha,camera_scroll))
 
         instance_data = np.array(instance_data,dtype=np.float32)
-        """
-        instance_data = np.array([
-            self._create_fire_particle__instance_data(particle,camera_scroll)
-            
-            ((*self._map_circle_to_world(particle,camera_scroll),*particle.palette[particle.i],particle.alpha/255,0.03),\
-             (*self._map_circle_to_world(particle,camera_scroll),*particle.palette[particle.i],particle.alpha/255,0.01))
-            for particle in particle_system._active_fire_particles
-            
-        ],dtype= np.float32)
-        """
         if instance_data.any():
-            vbo,ibo = self._rm.circle_template # precomputed template circle vbo and ibo 
-            instances_vbo = self.ctx.buffer(instance_data.tobytes())
-            vao = self.ctx.vertex_array(self._prog_circle_draw,
-                                        [
-                                            (vbo,'2f','in_vert'),
-                                            (instances_vbo,'2f 4f 1f/i','offset','in_color','size')
-                                        ],
-                                        ibo)
-            vao.render(moderngl.TRIANGLES, instances=len(particle_system._active_fire_particles))
-
-            instances_vbo.release()
-            vao.release()
-
-            
+            self._fire_instance_buffer.write(np.array(instance_data,dtype=np.float32).tobytes())
+            self._vao_fire.render(moderngl.TRIANGLES,instances=len(self._ps._active_fire_particles))
+        
 
         
         base_index = 0
@@ -1735,28 +1725,51 @@ class RenderEngine:
             for pos in self._gm.render_list: 
                 self._render_grass_shadow(self._gm.grass_tiles[pos],shadow_offset)
 
+        burning_grass_vertices_list = []
+        burning_grass_texture_coords_list = []
+
+        grass_vertices_list = []
+        grass_texture_coords_list = []
+
         for key,tile in self._gm.burning_grass_tiles.items():
             if self._gm.base_pos[0] <= key[0]  <= self._gm.base_pos[0] + self._gm.visible_tile_range[0] and \
                 self._gm.base_pos[1] <= key[1] <= self._gm.base_pos[1] + self._gm.visible_tile_range[1]:
-                self._render_tile(fbo,key,tile,camera_scroll)
+                self._render_tile(fbo,key,tile,burning_grass_vertices_list,\
+                                  burning_grass_texture_coords_list,camera_scroll)
 
         for pos in self._gm.render_list:
             tile = self._gm.grass_tiles[pos]
-            self._render_tile(fbo,pos,tile,camera_scroll)
+            self._render_tile(fbo,pos,tile,grass_vertices_list,
+                              grass_texture_coords_list,camera_scroll)
+        if grass_vertices_list: 
+            vertices_array = np.concatenate(grass_vertices_list,axis = 0)
+            texture_coords_array = np.concatenate(grass_texture_coords_list,axis=0 )
+
+            buffer_data = np.column_stack((vertices_array,texture_coords_array)).astype(np.float32)
+            vbo = self.ctx.buffer(buffer_data)
+            vao = self.ctx.vertex_array(self._prog_draw,[(vbo, '2f 2f','vertexPos','vertexTexCoord')])
+            
+            self._rm._texture_atlasses[self._gm.ga.asset_name].use()
+            fbo.use()
+            vao.render()
+            vbo.release()
+            vao.release()
+            
+        
+
+
 
     def _render_grass_shadow(self,camera_scroll)->None: 
         pass 
 
 
-    def _render_tile(self,fbo,base_pos,tile,camera_scroll)->None: 
+    def _render_tile(self,fbo,base_pos,tile,vertices_list,
+                     texture_coords_list,camera_scroll)->None: 
         if tile.custom_blade_data:
             blades = tile.custom_blade_data
         else: 
             blades = tile.blades 
 
-
-        vertices_list = []
-        texture_coords_list = []
 
         for blade in blades:
             # You have to render the shade, then the grass. 
@@ -1771,7 +1784,7 @@ class RenderEngine:
 
             vertices_list.append(vertices)
             texture_coords_list.append(texture_coords)
-
+        """
         if vertices_list: 
             vertices_array = np.concatenate(vertices_list,axis = 0)
             texture_coords_array = np.concatenate(texture_coords_list,axis=0 )
@@ -1785,6 +1798,7 @@ class RenderEngine:
             vao.render()
             vbo.release()
             vao.release()
+        """
             
         
 

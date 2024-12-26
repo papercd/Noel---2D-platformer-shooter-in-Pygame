@@ -7,6 +7,7 @@ from scripts.data import CollideParticleData,FireParticleData,AnimationParticleD
 from scripts.data import PARTICLE_ANIMATION_DATA
 from scripts.data import PARTICLE_ATLAS_POSITIONS_AND_SIZES
 from scripts.resourceManager import ResourceManager
+from concurrent.futures import ThreadPoolExecutor
 import numpy as np 
 
 from typing import TYPE_CHECKING
@@ -141,34 +142,37 @@ class ParticleSystem:
             self._active_animation_particles.add(particle)
             self._animation_particle_pool_index = (self._animation_particle_pool_index -1) % self._max_animation_particle_count 
 
+    
+    
+    def _update_particle_group(self, particles, update_function, *args):
+        particles_to_remove = set()
+        for particle in particles:
+            if update_function(particle, *args):
+                particles_to_remove.add(particle)
+        return particles_to_remove
 
 
-    def update(self,tilemap:"Tilemap",grass_manager:"GrassManager",dt:float):
-        for particle in list(self._active_collide_particles):
-            kill =particle.update(tilemap,dt)
-            if kill: 
-                particle._active = False 
-                self._active_collide_particles.remove(particle)
 
-        for particle in list(self._active_fire_particles):
-            kill = particle.update(tilemap,grass_manager,dt)
-            if kill:
-                particle._active = False 
-                self._active_fire_particles.remove(particle)
-        
-        for particle in list(self._active_animation_particles):
-            kill = particle.update(dt)
-            if kill: 
-                particle._active = False 
-                self._active_animation_particles.remove(particle)
-        
-        for spark in list(self._active_sparks):
-            kill = spark.update(tilemap,dt)
-            if kill: 
-                spark._active = False
-                self._active_sparks.remove(spark)
+    def update(self, tilemap, grass_manager, dt):
+            groups = [
+                (self._active_collide_particles, lambda p: p.update(tilemap, dt)),
+                (self._active_fire_particles, lambda p: p.update(tilemap, grass_manager, dt)),
+                (self._active_animation_particles, lambda p: p.update(dt)),
+                (self._active_sparks, lambda p: p.update(tilemap, dt)),
+            ]
 
+            # Thread-safe removal and processing
+            with ThreadPoolExecutor() as executor:
 
+              
+                futures = {
+                    executor.submit(self._update_particle_group, group[0], group[1]): group[0]
+                    for group in groups
+                }
+
+                for future in futures:
+                    particles_to_remove = future.result()
+                    futures[future] -= particles_to_remove
 
 class PhysicalParticle: 
     def __init__(self,particle_data:CollideParticleData):
@@ -537,7 +541,7 @@ class FireParticle:
                 ((self.sin * sin(self.life/(self.sinr)))/2)*self.spread * self.rise_normal.x    + self.rise * cos(radians(self.rise_angle)),
                 (self.rise * sin(radians(self.rise_angle)) + self.rise_normal.y * self.spread * ((self.sin * sin(self.life/(self.sinr)))/2))
         ]
-
+        """
         for rect_tile in tilemap.phy_rects_around((self.pos[0]-self.r,self.pos[1] - self.r),(self.r * 2, self.r * 2)):
             
             side_point, collided = self.check_collision_with_rect(rect_tile[0])
@@ -611,7 +615,7 @@ class FireParticle:
                                     self.rise *= 0.7
                                 
                                 break 
- 
+        """
 
         self.x += self.velocity[0] * scaled_dt
         self.y += self.velocity[1] * scaled_dt
