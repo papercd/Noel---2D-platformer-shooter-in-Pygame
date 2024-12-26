@@ -5,6 +5,7 @@ from os import environ
 from enum import Enum
 from moderngl import create_context
 from screeninfo import get_monitors
+from math import sin 
 
 import cProfile
 from scripts.entitiesManager import EntitiesManager 
@@ -49,6 +50,7 @@ class Noel():
 
         self._frame_count = 0
         self._dt = 0
+        self._rot_func_t = 0
         self._accumulator = 0
         self._prev_frame_time = 0
         self._scroll = [0,0]
@@ -324,6 +326,7 @@ class Noel():
 
         self._dt = min(self._clock.tick() / 1000.0,0.1)
         self._accumulator += self._dt
+        self._rot_func_t += self._dt * 100
         if self._game_context['gamestate']== GameState.GameLoop:  
            
             self._game_context['screen_shake'] = max(0,self._game_context['screen_shake'] -self._dt*60)
@@ -345,7 +348,11 @@ class Noel():
                 self.entities_manager.update(self._tilemap,self.particle_system,self.render_engine.lights,TIME_FOR_ONE_LOGICAL_STEP)
                 self.particle_system.update(self._tilemap,self._grass_manager,TIME_FOR_ONE_LOGICAL_STEP)
 
-                self._grass_manager.update(self._game_context["true_res"],TIME_FOR_ONE_LOGICAL_STEP,camera_scroll)
+                rot_func = lambda x,y : int(sin(self._rot_func_t / 60 + x/100)* 7) 
+                if not self.player.crouch: 
+                    self._grass_manager.apply_force((self.player.pos[0] + self.player.size[0]//2,self.player.pos[1] + self.player.size[1]//2),\
+                                                    self._tilemap.tile_size//4,self._tilemap.tile_size*4//7)
+                self._grass_manager.update(self._game_context["true_res"],TIME_FOR_ONE_LOGICAL_STEP,camera_scroll,rot_function= rot_func)
                 self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
                                 self.movement_input,camera_scroll,self._game_context,TIME_FOR_ONE_LOGICAL_STEP)
                 self._accumulator -= TIME_FOR_ONE_LOGICAL_STEP

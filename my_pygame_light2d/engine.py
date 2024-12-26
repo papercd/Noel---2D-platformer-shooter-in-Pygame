@@ -1777,9 +1777,13 @@ class RenderEngine:
             # grass parameters: 
             # blade[1] = blade id, blade[2] = variation, (blade[0][0] + tile.padding,blade[0][1] + tile.padding) = location 
             # rotation = max(-90, min(90,blade[3] + tile.true_rotation)), scale = tile.burn_life/tile.max_burn_life
-            topleft = (base_pos[0] * tile.size + blade[0][0],\
-                       base_pos[1] * tile.size + blade[0][1]-tile.padding)
-            vertices = self._create_blade_vertices(fbo,topleft,camera_scroll) 
+            #vertices = self._create_blade_vertices(fbo,base_pos,tile.size,tile.padding,\
+            #                                       blade,camera_scroll) 
+            topleft=  (base_pos[0] * tile.size + blade[0][0] - camera_scroll[0],
+                       base_pos[1] * tile.size + blade[0][1] -camera_scroll[1])
+            rotation_angle = max(-90, min(90, blade[3] + tile.true_rotation))
+            vertices = self._create_rotated_vertices(self._gm.ga.texture_dim,topleft,rotation_angle,
+                                                     (self._gm.ga.texture_dim[0]//2,self._gm.ga.texture_dim[1]//2),False)
             texture_coords = self._rm._grass_asset_texture_coords[self._gm.ga.asset_name][blade[1]][blade[2]]
 
             vertices_list.append(vertices)
@@ -1802,7 +1806,14 @@ class RenderEngine:
             
         
 
-    def _create_blade_vertices(self,fbo,topleft,offset) ->None: 
+    def _create_blade_vertices(self,fbo,base_pos,tile_size,
+                               padding,blade,offset) ->None: 
+
+        topleft = (base_pos[0] * tile_size + blade[0][0],\
+                       base_pos[1] * tile_size + blade[0][1]-padding)
+        
+        
+
         x = 2. * (topleft[0] - offset[0]) / self._true_res[0] - 1.
         y = 1. - 2. *(topleft[1] - offset[1]) / self._true_res[1] 
         w = 2. *(self._gm.ga.texture_dim[0]) / self._true_res[0] 
