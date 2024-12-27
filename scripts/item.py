@@ -235,7 +235,9 @@ class Flamethrower(Weapon):
     def shoot(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem") ->None:
         if self.accum_time >=TIME_FOR_ONE_LOGICAL_STEP * self._fire_rate:
             self.accum_time -= TIME_FOR_ONE_LOGICAL_STEP* self._fire_rate
-            size = 5.3
+            # Creating new system for fire  
+            
+            size = 5
             density = 7
             rise = 3.5
             spread = 3
@@ -248,7 +250,7 @@ class Flamethrower(Weapon):
                 light.cast_shadows = False
                 ps.add_particle(particle_data,light)
                 engine_lights.append(light)
-
+            
     def reset_shot(self)-> None: 
         self.shot = False
 
