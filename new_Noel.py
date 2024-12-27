@@ -5,8 +5,8 @@ from os import environ
 from enum import Enum
 from moderngl import create_context
 from screeninfo import get_monitors
-from math import sin 
-
+from math import sin,ceil
+import numpy as np
 
 import cProfile
 from scripts.entitiesManager import EntitiesManager 
@@ -348,7 +348,6 @@ class Noel():
 
                 self.entities_manager.update(self._tilemap,self.particle_system,self.render_engine.lights,TIME_FOR_ONE_LOGICAL_STEP)
                 self.particle_system.update(self._tilemap,self._grass_manager,TIME_FOR_ONE_LOGICAL_STEP)
-                self.render_engine._fire_compute_shader.run(600,1,1)
 
                 rot_func = lambda x,y : int(sin(self._rot_func_t / 60 + x/100)* 7) 
                 if not self.player.crouch: 
