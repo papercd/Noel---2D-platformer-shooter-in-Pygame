@@ -242,6 +242,7 @@ class Flamethrower(Weapon):
             rise = 3.5
             spread = 3
             wind = 0
+            
             for _ in range(density):
                 particle_data = FireParticleData(*self.opening_pos,size,density,rise,-self._angle_opening,spread,
                                                 wind,self._damage)

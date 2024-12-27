@@ -38,14 +38,14 @@ class ParticleSystem:
 
             # Creating new fire particle system 
 
-            #self._max_fire_particle_count = 600
-            #self._fire_particle_pool_index = 599
-            #self._fire_particles = []
+            self._max_fire_particle_count = 600
+            self._fire_particle_pool_index = 599
+            self._fire_particles = []
 
             # testing new fire particle system to utilize compute shader
-            self._max_fire_particle_count = 600 
-            self._fire_particle_pool_index = 599 
-
+            #self._max_fire_particle_count = 600 
+            #self._fire_particle_pool_index = 599 
+            
             """ particle data attributes
             
             damage , life, dead, i, position(vec2) , velocity(vec2) , 
@@ -53,9 +53,8 @@ class ParticleSystem:
             
             """
 
-            self._fire_particle_data = np.zeros((self._max_fire_particle_count,20),dtype= np.float32)            
-            
-            
+            #self._fire_particle_data = np.zeros((self._max_fire_particle_count,20),dtype= np.float32) 
+
             # can have at most 300 animated particles (jump, dash, ...)
             self._max_animation_particle_count = 300
             self._animation_particle_pool_index = 299        
@@ -114,11 +113,11 @@ class ParticleSystem:
             self._collide_particles.append(PhysicalParticle(particle_data))
 
         # Creating new fire particle system 
-        """
+        
         for i in range(self._max_fire_particle_count):
             particle_data = FireParticleData(0,0,0,0,0,0,0,0,0)
             self._fire_particles.append(FireParticle(particle_data))
-        """
+        
 
         for i in range(self._max_animation_particle_count):
             animation = Animation(0,0,False,False)
@@ -139,7 +138,7 @@ class ParticleSystem:
             self._active_collide_particles.add(particle)
             self._collide_particle_pool_index = (self._collide_particle_pool_index -1) % self._max_collide_particle_count 
             # creating new fire particle system 
-            """
+            
         elif isinstance(particle_data,FireParticleData):
             particle = self._fire_particles[self._fire_particle_pool_index]
             particle._active = True 
@@ -148,11 +147,16 @@ class ParticleSystem:
                 light.illuminator = particle 
             self._active_fire_particles.add(particle)
             self._fire_particle_pool_index = (self._fire_particle_pool_index -1) % self._max_fire_particle_count 
-            """ 
+            
+            """
         elif isinstance(particle_data,FireParticleData):
             queried_particle_data = self._fire_particle_data[self._fire_particle_pool_index]
-            self._set_fire_particle_data(queried_particle_data,particle_data)
-            self._fire_particle_pool_index = (self._fire_particle_pool_index -1) % self._max_fire_particle_count
+            if self._active_fire_particle_indices[self._fire_particle_pool_index] == 0 :
+                self._active_fire_particle_indices[self._fire_particle_pool_index] = 1
+                self._active_fire_particle_count += 1
+                self._set_fire_particle_data(queried_particle_data,particle_data)
+                self._fire_particle_pool_index = (self._fire_particle_pool_index -1) % self._max_fire_particle_count
+            """
 
         elif isinstance(particle_data,SparkData):
             particle = self._sparks[self._sparks_pool_index]
@@ -218,9 +222,11 @@ class ParticleSystem:
 
 
     def update(self, tilemap, grass_manager, dt):
+
             groups = [
                 (self._active_collide_particles, lambda p: p.update(tilemap, dt)),
                 (self._active_animation_particles, lambda p: p.update(dt)),
+                (self._active_fire_particles,lambda p:p.update(tilemap,grass_manager,dt)),
                 (self._active_sparks, lambda p: p.update(tilemap, dt)),
             ]
 

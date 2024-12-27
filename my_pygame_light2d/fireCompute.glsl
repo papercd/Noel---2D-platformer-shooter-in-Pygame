@@ -26,31 +26,45 @@ layout(std430, binding = 0) buffer ParticleBuffer {
     FireParticle particles[];
 };
 
+layout(std430, binding = 1) buffer ActiveIndicesBuffer{
+    uint activeIndices[];
+};
+
 uniform float dt; 
 uniform vec2 iResolution; 
 
 void main(){
     uint id = gl_GlobalInvocationID.x; 
 
+    if (ActiveIndicesBuffer[id] == 0) return;  
+
+ 
+
+    uint particleIndex = activeIndices[id];
+
+    FireParticle particle = particles[particleIndex];
+
     float scaled_dt = dt * 60;
 
-    if (particles[id].life >0.0) {
-        particles[id].damage = max(2.,particles[id].damage * (particles[id].life/particles[id].maxlife));
+    if (particle.life >0.0) {
+        particle.damage = max(2.,particle.damage * (particle.life/particle.maxlife));
 
-        particles[id].life -= scaled_dt;
-        particles[id].i = round((particles[id].life / particles[id].maxlife) * 6);
+        particle.life -= scaled_dt;
+        particle.i = round((particle.life / particle.maxlife) * 6);
 
-        particles[id].velocity.x = ((particles[id].sin * sin(particles[id].life/(particles[id].sinr)))/2)*particles[id].spread * particles[id].rise_normal.x    + particles[id].rise * cos(radians(particles[id].rise_angle));
-        particles[id].velocity.y = (particles[id].rise * sin(radians(particles[id].rise_angle)) + particles[id].rise_normal.y * particles[id].spread * ((particles[id].sin * sin(particles[id].life/(particles[id].sinr)))/2));
+        particle.velocity.x = ((particle.sin * sin(particle.life/(particle.sinr)))/2)*particle.spread * particle.rise_normal.x    + particle.rise * cos(radians(particle.rise_angle));
+        particle.velocity.y = (particle.rise * sin(radians(particle.rise_angle)) + particle.rise_normal.y * particle.spread * ((particle.sin * sin(particle.life/(particle.sinr)))/2));
 
 
 
-        particles[id].position += particles[id].velocity * dt; 
+        particle.position += particle.velocity * scaled_dt; 
+        
+   
 
-        particles[id].life -= dt;
-
-        particles[id].dead = 0;
+        particle.dead = 0;
     }else{
-        particles[id].dead = 1;
+        particle.dead = 1;
     }
+
+    particles[particleIndex] = particle; 
 }
