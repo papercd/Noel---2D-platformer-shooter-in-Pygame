@@ -73,7 +73,7 @@ class RenderEngine:
         self._ambient = (.25, .25, .25, .25)
 
         # Initialize buffers for particles 
-        self._fire_instance_buffer = self.ctx.buffer(reserve= self._ps._max_fire_particle_count*2 * 28)
+        #self._fire_instance_buffer = self.ctx.buffer(reserve= self._ps._max_fire_particle_count*2 * 28)
 
 
         # Objects that need to be bound to engine before rendering : 
@@ -184,13 +184,15 @@ class RenderEngine:
         self._vao_draw = self.ctx.vertex_array(self._prog_draw, [
             (screen_vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
         ])
-
+        
+        """
         self._vao_fire = self.ctx.vertex_array(self._prog_circle_draw,
                                                [
                                                    (self._rm.circle_template[0], '2f', 'in_vert'),
                                                    (self._fire_instance_buffer, '2f 4f 1f/i', 'offset','in_color','size')
                                                ],
                                                self._rm.circle_template[1])
+        """
 
     def _create_frame_buffers(self)->None:
         # Frame buffers
@@ -242,6 +244,9 @@ class RenderEngine:
         self._ssbo_v.bind_to_uniform_block(1)
         self._ssbo_ind = self.ctx.buffer(reserve=20*256)
         self._ssbo_ind.bind_to_uniform_block(2)
+
+        self._ssbo_fp = self.ctx.buffer(self._ps._fire_particle_data.tobytes())
+        self._ssbo_fp.bind_to_storage_buffer(0)
 
 
     def _render_background_textures_to_fbo(self,fbo:moderngl.Framebuffer,infinite:bool = False,offset = (0,0))-> None:
@@ -1588,9 +1593,9 @@ class RenderEngine:
             )
             tex.release()   
 
-        # using instanced rendering for circles
+        # creating new fire particle system 
          
-         
+        """
         instance_data = []
         for particle in list(particle_system._active_fire_particles):
             instance_data.extend(self._create_fire_particle__instance_data(particle,interpolation_alpha,camera_scroll))
@@ -1600,8 +1605,7 @@ class RenderEngine:
             self._fire_instance_buffer.write(np.array(instance_data,dtype=np.float32).tobytes())
             self._vao_fire.render(moderngl.TRIANGLES,instances=len(self._ps._active_fire_particles))
         
-
-        
+        """        
         base_index = 0
         for spark in list(particle_system._active_sparks):
             vertices,indices = self._create_spark_vertices(spark,interpolation_alpha,camera_scroll,base_index)

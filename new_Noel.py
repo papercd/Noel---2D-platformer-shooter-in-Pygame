@@ -63,8 +63,8 @@ class Noel():
 
     def _initialize_game_objects(self):
         self.resource_manager = ResourceManager.get_instance(self._ctx)
+        self.particle_system = ParticleSystem.get_instance(self._ctx) 
         self.entities_manager = EntitiesManager.get_instance()
-        self.particle_system = ParticleSystem.get_instance() 
 
         self._tilemap = Tilemap()
         self._tilemap.load_map('test1.json')  
@@ -110,8 +110,8 @@ class Noel():
         # reinitialize singletons
 
         self.resource_manager = ResourceManager.get_instance(self._ctx)
+        self.particle_system = ParticleSystem.get_instance(self._ctx) 
         self.entities_manager = EntitiesManager.get_instance()
-        self.particle_system = ParticleSystem.get_instance() 
 
         # explicitly reinitialize objects       
         self._tilemap = Tilemap()
@@ -348,6 +348,7 @@ class Noel():
 
                 self.entities_manager.update(self._tilemap,self.particle_system,self.render_engine.lights,TIME_FOR_ONE_LOGICAL_STEP)
                 self.particle_system.update(self._tilemap,self._grass_manager,TIME_FOR_ONE_LOGICAL_STEP)
+                self.render_engine._fire_compute_shader.run(600,1,1)
 
                 rot_func = lambda x,y : int(sin(self._rot_func_t / 60 + x/100)* 7) 
                 if not self.player.crouch: 
