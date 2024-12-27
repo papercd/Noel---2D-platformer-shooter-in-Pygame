@@ -403,6 +403,20 @@ class FireParticle:
         self.dead = False
         self._active = False 
 
+        """
+        attributes that change: 
+        self.damage 
+        self.life 
+        self.dead 
+        self.i 
+        self.velocity
+        self.x,self.y 
+        self.ren_x,self.ren_y 
+        self.center 
+        self.alpha 
+        
+        """
+
     def set_new_data(self,particle_data:FireParticleData):
         self.origin = (particle_data.x,particle_data.y) 
        

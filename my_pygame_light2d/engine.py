@@ -105,6 +105,9 @@ class RenderEngine:
 
 
         # Read source files
+
+        with open('my_pygame_light2d/fireCompute.glsl',encoding='utf-8') as file:
+            fire_compute_shader_src = file.read()
         with open('my_pygame_light2d/vertex_circle.glsl',encoding='utf-8') as file:
             circle_vertex_src = file.read()
         with open('my_pygame_light2d/fragment_circle.glsl',encoding='utf-8') as file:
@@ -155,6 +158,8 @@ class RenderEngine:
 
         self._prog_circle_draw = self.ctx.program(vertex_shader=circle_vertex_src,
                                                   fragment_shader=circle_fragment_src)
+        self._fire_compute_shader = self.ctx.compute_shader(fire_compute_shader_src)
+
 
 
     def _create_screen_vertex_buffers(self)-> None:
@@ -229,6 +234,8 @@ class RenderEngine:
 
         blockIndex = glGetUniformBlockIndex(prog_glo, 'hullIndSSBO')
         glUniformBlockBinding(prog_glo, blockIndex, 2)
+
+        
 
         # Create SSBOs
         self._ssbo_v = self.ctx.buffer(reserve=20*2048)

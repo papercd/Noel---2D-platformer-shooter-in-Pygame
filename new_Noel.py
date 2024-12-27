@@ -7,6 +7,7 @@ from moderngl import create_context
 from screeninfo import get_monitors
 from math import sin 
 
+
 import cProfile
 from scripts.entitiesManager import EntitiesManager 
 from scripts.resourceManager import ResourceManager
@@ -214,7 +215,7 @@ class Noel():
         pygame.mouse.set_visible(False)
 
         # Set OpenGL version to 3.3 core
-        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 4)
         pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
         pygame.display.gl_set_attribute(
             pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
