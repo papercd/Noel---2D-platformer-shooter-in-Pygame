@@ -172,6 +172,15 @@ class WeaponInventory(Inventory):
     def add_weapon(self,weapon:"Weapon") -> None:
         self._weapons_list.add_weapon(weapon)
 
+    def remove_current_weapon(self)->None: 
+        if self._weapons_list.curr_node.weapon: 
+            temp = self._weapons_list.curr_node
+            left,right = temp.check_nearest_node_with_item()
+            self._weapons_list.curr_node.weapon = None 
+            if left: 
+                self._weapons_list.curr_node = left
+            elif right: 
+                self._weapons_list.curr_node = right 
 
     def update(self,cursor:"Cursor",inven_open_state:bool,player:"Player")->bool:
         inven_active = ( not self._expandable ) or (self._expandable and inven_open_state)
