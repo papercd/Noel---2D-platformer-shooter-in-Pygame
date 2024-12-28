@@ -1,5 +1,5 @@
 from scripts.new_cursor import Cursor 
-from scripts.new_entities import Player
+from scripts.new_entities import Player,CollectableItem
 from scripts.new_inventory import Inventory_Engine,Inventory,WeaponInventory    
 from scripts.data import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES
 from scripts.new_ui import HealthBar,StaminaBar
@@ -210,9 +210,10 @@ class HUD:
             self._inven_list[0].add_item(item) 
 
 
-    def remove_current_weapon(self)->None: 
+    def remove_current_weapon(self,em)->None: 
         self._inven_list[2].remove_current_weapon()
-        pass 
+        # em.add_collectable_item()
+
 
     def change_weapon(self,scroll):
         self._inven_list[2].change_weapon(scroll)

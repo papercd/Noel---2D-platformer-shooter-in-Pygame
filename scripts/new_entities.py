@@ -180,6 +180,26 @@ class PhysicsEntity:
                         self.pos[1] = self_rect.y -anim_offset[1]
                         self._collisions['down'] = True
 
+
+
+class CollectableItem(PhysicsEntity):
+    def __init__(self, type, pos, size,life)->None:
+        super().__init__(type, pos, size)
+        self.item = None 
+        self.life = life
+        self.dead = False
+
+
+    def _collision_rect(self):
+        return Rect(self.pos[0]+self.size[0]//2,self.pos[1]+self.size[1]//2,
+                    self.size[0],self.size[1])
+    
+    def update(self, tilemap, dt, anim_offset=(0, 0)):
+        self.life -= dt * 60 
+        if self.life <= 0: 
+            self.dead = True 
+        super().update(tilemap, dt, anim_offset)
+    
 class Player(PhysicsEntity):
     def __init__(self, pos: list[float], size: tuple[int, int])->None:
         self._animation_data_collection = PlayerAnimationDataCollection
