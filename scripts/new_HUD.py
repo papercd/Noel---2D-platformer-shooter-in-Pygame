@@ -210,6 +210,10 @@ class HUD:
             self._inven_list[0].add_item(item) 
 
 
+    def remove_current_weapon(self)->None: 
+        self._inven_list[2].remove_current_weapon()
+        pass 
+
     def change_weapon(self,scroll):
         self._inven_list[2].change_weapon(scroll)
 
