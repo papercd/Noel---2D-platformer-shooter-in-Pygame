@@ -401,5 +401,5 @@ class Noel():
 
 
 game = Noel()
-
+#cProfile.run("game.start()")
 game.start()
