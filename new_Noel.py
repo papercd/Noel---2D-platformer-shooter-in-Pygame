@@ -274,6 +274,9 @@ class Noel():
                     if event.key == pygame.K_n:  
                         for _ in range(20):
                             self._grass_manager.place_tile((74+_,11),10,[0,1,2,3,4])
+                    if event.key == pygame.K_q:
+                        self._hud.remove_current_weapon(self.entities_manager)
+                        pass 
                     if event.key == pygame.K_e:
                         self._hud.set_inven_open_state(not self._hud.inven_open_state)
                     if event.key == pygame.K_a:
