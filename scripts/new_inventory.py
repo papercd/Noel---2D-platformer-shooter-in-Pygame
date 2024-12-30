@@ -1,9 +1,11 @@
 from pygame import Rect
 from scripts.lists import WeaponInvenList
-       
+from scripts.new_entities import CollectableItem
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: 
+    from scripts.entitiesManager import EntitiesManager
     from scripts.item import Item,Weapon 
     from scripts.new_cursor import Cursor 
     from scripts.new_entities import Player
@@ -172,15 +174,20 @@ class WeaponInventory(Inventory):
     def add_weapon(self,weapon:"Weapon") -> None:
         self._weapons_list.add_weapon(weapon)
 
-    def remove_current_weapon(self)->None: 
+    def remove_current_weapon(self,em:"EntitiesManager")->"Item": 
         if self._weapons_list.curr_node.weapon: 
             temp = self._weapons_list.curr_node
+            weapon = self._weapons_list.curr_node.weapon
+
             left,right = temp.check_nearest_node_with_item()
+
             self._weapons_list.curr_node.weapon = None 
             if left: 
                 self._weapons_list.curr_node = left
             elif right: 
                 self._weapons_list.curr_node = right 
+
+            return weapon 
 
     def update(self,cursor:"Cursor",inven_open_state:bool,player:"Player")->bool:
         inven_active = ( not self._expandable ) or (self._expandable and inven_open_state)

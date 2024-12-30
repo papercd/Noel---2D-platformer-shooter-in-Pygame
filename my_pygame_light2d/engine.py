@@ -300,13 +300,13 @@ class RenderEngine:
 
         if weapon:
             
-            size = weapon.size
+            size = weapon.held_size
             anchor_offset = (self._player.right_anchor[0] -1,self._player.right_anchor[1]) if weapon.flipped else self._player.left_anchor
             pos = (self._player.pos[0]+interpolation_offset[0]+knockback[0]+anchor_offset[0] - offset[0],\
                     self._player.pos[1] +interpolation_offset[1]+knockback[1] + anchor_offset[1] -offset[1])
 
             texture_coords = self._rm._in_world_item_texcoords[weapon.name]['holding'] 
-            vertices = self._create_rotated_vertices(size,pos,-weapon.angle_opening,weapon.pivot,weapon.flipped)
+            vertices = self._create_rotated_vertices(size,pos,-weapon.angle,weapon.pivot,weapon.flipped)
 
             buffer_data =  np.column_stack([vertices,texture_coords]).astype(np.float32)
 
