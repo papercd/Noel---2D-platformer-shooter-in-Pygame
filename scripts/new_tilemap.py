@@ -15,22 +15,24 @@ import numpy as np
 
 
 class Tilemap:
-    def __init__(self):
+    def __init__(self,json_file= None):
         """ 
-        Initialize the Tilemap object. 
-        
+        Initialize the Tilemap object.
+
         """
+
+        if json_file:
+            self.load_map(json_file)
+
        
 
-    def load_map(self,name:str):
-        resource_manager = ResourceManager.get_instance()
-        json_data = resource_manager.get_tilemap_json(name)
+    def load_map(self,json_file):
         
-        self._regular_tile_size = json_data['tile_size']
+        self._regular_tile_size = json_file['tile_size']
         self._hull_grid = SpatialGrid(cell_size= self._regular_tile_size)
 
         # one step at a time.The tilemap.
-        self._non_physical_tile_layers= json_data['offgrid_layers']
+        self._non_physical_tile_layers= json_file['offgrid_layers']
         self.lights = []
 
         self.ambientNodes = ambientNodeList()
@@ -39,48 +41,48 @@ class Tilemap:
         self.non_physical_tiles = [{} for i in range(0,self._non_physical_tile_layers)]
 
 
-        for tile_key in json_data['tilemap']: 
+        for tile_key in json_file['tilemap']: 
 
-            tile_size = (self._regular_tile_size,self._regular_tile_size) if json_data['tilemap'][tile_key]['type'] \
-                                    not in IRREGULAR_TILE_SIZES else IRREGULAR_TILE_SIZES[json_data['tilemap'][tile_key]['type']]
-            atl_pos = TILE_ATLAS_POSITIONS[json_data['tilemap'][tile_key]['type']]
-            tile_pos = tuple(json_data['tilemap'][tile_key]["pos"])
+            tile_size = (self._regular_tile_size,self._regular_tile_size) if json_file['tilemap'][tile_key]['type'] \
+                                    not in IRREGULAR_TILE_SIZES else IRREGULAR_TILE_SIZES[json_file['tilemap'][tile_key]['type']]
+            atl_pos = TILE_ATLAS_POSITIONS[json_file['tilemap'][tile_key]['type']]
+            tile_pos = tuple(json_file['tilemap'][tile_key]["pos"])
 
-            if json_data['tilemap'][tile_key]['type'] != "lights":
-                if json_data['tilemap'][tile_key]['type'].endswith('door'):
-                    if json_data['tilemap'][tile_key]['type'].split('_')[0] == 'trap':
+            if json_file['tilemap'][tile_key]['type'] != "lights":
+                if json_file['tilemap'][tile_key]['type'].endswith('door'):
+                    if json_file['tilemap'][tile_key]['type'].split('_')[0] == 'trap':
                         # Tile info creation for trap door 
 
                         rect = Rect(tile_pos[0] * self._regular_tile_size, self.pos[1] * self._regular_tile_size, self._regular_tile_size,5)
             
-                        self._physical_tiles[tile_key] = [DoorInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
+                        self._physical_tiles[tile_key] = [DoorInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],\
                                                                  tile_pos,tile_size,rect,atl_pos),False]
                     else: 
                         if tile_key in self._physical_tiles: continue 
                         else: 
                             rect = Rect(tile_pos[0] * self._regular_tile_size + 3, tile_pos[1] * self._regular_tile_size ,6,32)
 
-                            door = [DoorInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
+                            door = [DoorInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],\
                                                                  tile_pos,tile_size,rect,atl_pos),DoorAnimation(5,5)]
                             self._physical_tiles[tile_pos] = door 
                             pos_below = (tile_pos[0],tile_pos[1] +1)
                             self._physical_tiles[pos_below]  = door 
 
                 else:   
-                    #hull = self._create_hulls(json_data['tilemap'][tile_key])
+                    #hull = self._create_hulls(json_file['tilemap'][tile_key])
                     # TODO: THE TILE KEYS NEED TO BE CHANGED TO INTS, NOT STRINGS. 
 
-                    self._physical_tiles[tile_pos] = [TileInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],
+                    self._physical_tiles[tile_pos] = [TileInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],
                                                     tile_pos,tile_size,atl_pos),None] 
             
             else: 
-                if isinstance(json_data['tilemap'][tile_key]["pos"][0],int):
+                if isinstance(json_file['tilemap'][tile_key]["pos"][0],int):
                     # for lights that are on the tile grid 
                     #TODO: ADD LIGHTING LATER 
                     
-                    light = PointLight(position = (json_data['tilemap'][tile_key]["pos"][0]*self._regular_tile_size+7,json_data['tilemap'][tile_key]["pos"][1]*self._regular_tile_size+3),\
-                                         power= json_data['tilemap'][tile_key]["power"],radius = json_data['tilemap'][tile_key]["radius"] )
-                    light.set_color(*json_data['tilemap'][tile_key]["colorValue"])
+                    light = PointLight(position = (json_file['tilemap'][tile_key]["pos"][0]*self._regular_tile_size+7,json_file['tilemap'][tile_key]["pos"][1]*self._regular_tile_size+3),\
+                                         power= json_file['tilemap'][tile_key]["power"],radius = json_file['tilemap'][tile_key]["radius"] )
+                    light.set_color(*json_file['tilemap'][tile_key]["colorValue"])
                     self.lights.append(light)
                     
                     pass 
@@ -88,49 +90,49 @@ class Tilemap:
                     # for lights that are not placed on the tile grid  
                     # TODO : ADD LIGHTING LATER
                   
-                    light = PointLight(position = (json_data['tilemap'][tile_key]["pos"][0]+7,json_data['tilemap'][tile_key]["pos"][1]+3),\
-                                         power= json_data['tilemap'][tile_key]["power"],radius = json_data['tilemap'][tile_key]["radius"] )
-                    light.set_color(*json_data['tilemap'][tile_key]["colorValue"])
+                    light = PointLight(position = (json_file['tilemap'][tile_key]["pos"][0]+7,json_file['tilemap'][tile_key]["pos"][1]+3),\
+                                         power= json_file['tilemap'][tile_key]["power"],radius = json_file['tilemap'][tile_key]["radius"] )
+                    light.set_color(*json_file['tilemap'][tile_key]["colorValue"])
                     self.lights.append(light)
                     
                 rect = Rect(tile_pos[0] * self._regular_tile_size +3, tile_pos[1] * self._regular_tile_size, 10,6)
-                self._physical_tiles[tile_pos] = [LightInfo(json_data['tilemap'][tile_key]["type"],json_data['tilemap'][tile_key]["variant"],\
-                                                 tile_pos,tile_size,rect,json_data['tilemap'][tile_key]["radius"], json_data['tilemap'][tile_key]["power"],
-                                                 json_data['tilemap'][tile_key]["colorValue"],atl_pos),light]
+                self._physical_tiles[tile_pos] = [LightInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],\
+                                                 tile_pos,tile_size,rect,json_file['tilemap'][tile_key]["radius"], json_file['tilemap'][tile_key]["power"],
+                                                 json_file['tilemap'][tile_key]["colorValue"],atl_pos),light]
                 #self._physical_tiles[tile_key].light_ptr = light 
         
         for i in range(0,self._non_physical_tile_layers):
             tilemap_key = f"offgrid_{i}"
-            for tile_key in json_data[tilemap_key]:
-                tile_pos = tuple(json_data[tilemap_key][tile_key]["pos"])
-                atl_pos = TILE_ATLAS_POSITIONS[json_data[tilemap_key][tile_key]["type"]]
-                tile_size = (self._regular_tile_size,self._regular_tile_size) if json_data[tilemap_key][tile_key]['type'] \
-                                    not in IRREGULAR_TILE_SIZES else IRREGULAR_TILE_SIZES[json_data[tilemap_key][tile_key]['type']]
+            for tile_key in json_file[tilemap_key]:
+                tile_pos = tuple(json_file[tilemap_key][tile_key]["pos"])
+                atl_pos = TILE_ATLAS_POSITIONS[json_file[tilemap_key][tile_key]["type"]]
+                tile_size = (self._regular_tile_size,self._regular_tile_size) if json_file[tilemap_key][tile_key]['type'] \
+                                    not in IRREGULAR_TILE_SIZES else IRREGULAR_TILE_SIZES[json_file[tilemap_key][tile_key]['type']]
 
-                if json_data[tilemap_key][tile_key]["type"] == "lights":
+                if json_file[tilemap_key][tile_key]["type"] == "lights":
                     pass 
                     """
                     
-                    if isinstance(json_data['offgrid_'+ str(i)][tile_key]["pos"][0],int):
-                        light = PointLight(position = (json_data['offgrid_'+ str(i)][tile_key]["pos"][0]*self.tile_size+7,json_data['offgrid_'+ str(i)][tile_key]["pos"][1]*self.tile_size+3),\
-                                         power= json_data['offgrid_'+ str(i)][tile_key]["power"],radius = json_data['offgrid_'+ str(i)][tile_key]["radius"] )
-                        light.set_color(*json_data['offgrid_' + str(i)][tile_key]["colorValue"])
+                    if isinstance(json_file['offgrid_'+ str(i)][tile_key]["pos"][0],int):
+                        light = PointLight(position = (json_file['offgrid_'+ str(i)][tile_key]["pos"][0]*self.tile_size+7,json_file['offgrid_'+ str(i)][tile_key]["pos"][1]*self.tile_size+3),\
+                                         power= json_file['offgrid_'+ str(i)][tile_key]["power"],radius = json_file['offgrid_'+ str(i)][tile_key]["radius"] )
+                        light.set_color(*json_file['offgrid_' + str(i)][tile_key]["colorValue"])
                         lights.append(light)
-                        self.offgrid_tiles[i][tile_key] = Light(json_data['offgrid_'+str(i)][tile_key]["type"],json_data['offgrid_'+str(i)][tile_key]["variant"],json_data['offgrid_'+str(i)][tile_key]["pos"],\
-                                                                radius = json_data['offgrid_'+str(i)][tile_key]['radius'],power = json_data['offgrid_'+str(i)][tile_key]['power'],color_value=json_data['offgrid_'+str(i)][tile_key]['colorValue'] )
+                        self.offgrid_tiles[i][tile_key] = Light(json_file['offgrid_'+str(i)][tile_key]["type"],json_file['offgrid_'+str(i)][tile_key]["variant"],json_file['offgrid_'+str(i)][tile_key]["pos"],\
+                                                                radius = json_file['offgrid_'+str(i)][tile_key]['radius'],power = json_file['offgrid_'+str(i)][tile_key]['power'],color_value=json_file['offgrid_'+str(i)][tile_key]['colorValue'] )
                     else: 
-                        light = PointLight(position = (json_data['offgrid_'+ str(i)][tile_key]["pos"][0]+7,json_data['offgrid_'+ str(i)][tile_key]["pos"][1]+3),\
-                                         power= json_data['offgrid_'+ str(i)][tile_key]["power"],radius = json_data['offgrid_'+ str(i)][tile_key]["radius"] )
-                        light.set_color(*json_data['offgrid_' + str(i)][tile_key]["colorValue"])
+                        light = PointLight(position = (json_file['offgrid_'+ str(i)][tile_key]["pos"][0]+7,json_file['offgrid_'+ str(i)][tile_key]["pos"][1]+3),\
+                                         power= json_file['offgrid_'+ str(i)][tile_key]["power"],radius = json_file['offgrid_'+ str(i)][tile_key]["radius"] )
+                        light.set_color(*json_file['offgrid_' + str(i)][tile_key]["colorValue"])
                         lights.append(light)
-                        self.offgrid_tiles[i][tile_key] = Light(json_data['offgrid_'+str(i)][tile_key]["type"],json_data['offgrid_'+str(i)][tile_key]["variant"],(json_data['offgrid_'+str(i)][tile_key]["pos"][0] // self.tile_size,json_data['offgrid_'+str(i)][tile_key]["pos"][1] // self.tile_size),\
-                                                            radius = json_data['offgrid_'+str(i)][tile_key]['radius'],power = json_data['offgrid_'+str(i)][tile_key]['power'],color_value=json_data['offgrid_'+str(i)][tile_key]['colorValue'] )
+                        self.offgrid_tiles[i][tile_key] = Light(json_file['offgrid_'+str(i)][tile_key]["type"],json_file['offgrid_'+str(i)][tile_key]["variant"],(json_file['offgrid_'+str(i)][tile_key]["pos"][0] // self.tile_size,json_file['offgrid_'+str(i)][tile_key]["pos"][1] // self.tile_size),\
+                                                            radius = json_file['offgrid_'+str(i)][tile_key]['radius'],power = json_file['offgrid_'+str(i)][tile_key]['power'],color_value=json_file['offgrid_'+str(i)][tile_key]['colorValue'] )
                     """
                 else: 
-                    self.non_physical_tiles[i][tile_pos] = TileInfo(json_data[tilemap_key][tile_key]["type"],json_data[tilemap_key][tile_key]["variant"],
+                    self.non_physical_tiles[i][tile_pos] = TileInfo(json_file[tilemap_key][tile_key]["type"],json_file[tilemap_key][tile_key]["variant"],
                                                             tile_pos,tile_size,atl_pos)
         
-        for node_data in json_data['ambient_nodes']:
+        for node_data in json_file['ambient_nodes']:
             if len(node_data.items()) ==4:
                 self.ambientNodes.insert_interpolated_ambient_node(node_data["range"],node_data['hull_range'],node_data["leftColorValue"],node_data["rightColorValue"])
             else: 
