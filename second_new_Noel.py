@@ -49,7 +49,7 @@ class Noel():
         self._resource_manager = ResourceManager.get_instance(self._ctx)
         self._particle_system = ParticleSystem.get_instance()
         self._entities_manager = EntitiesManager.get_instance()
-        self._tilemap = Tilemap()
+        self._tilemap = Tilemap(self._resource_manager.get_tilemap_json('test1.json'))
 
         #self._render_engine = RenderEngine()
         
