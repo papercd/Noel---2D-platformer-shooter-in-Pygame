@@ -11,7 +11,6 @@ from scripts.entitiesManager import EntitiesManager
 from scripts.new_tilemap import Tilemap
 
 
-from my_pygame_light2d.engine import RenderEngine
 
 class GameState(Enum): 
     StartSequence = 0

@@ -1,50 +1,55 @@
-from scripts.data import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES,TEXTURE_BASE_PATH ,TileInfo,LightInfo,DoorInfo,DoorAnimation
-from scripts.tileformatdata import get_tile_rectangle, PHYSICS_APPLIED_TILE_TYPES,TILE_SIDE_TO_SAMPLE_POS
+from scripts.data import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES,TEXTURE_BASE_PATH ,TileInfo,LightInfo,DoorInfo,DoorAnimation,\
+                            DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,RegularTileInfo,LightTileInfo
+from scripts.tileformatdata import get_tile_rectangle, PHYSICS_APPLIED_TILE_TYPES
 from scripts.spatial_grid import SpatialGrid
-from scripts.lists import ambientNodeList,interpolatedLightNode
+from scripts.lists import ambientNodeList,ambientNode
 from my_pygame_light2d.hull import Hull 
-from moderngl import Texture
 from pygame import Rect
 from my_pygame_light2d.light import PointLight
-from scripts.utils import load_texture
 from scripts.resourceManager import ResourceManager
-import numpy as np 
 
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING: 
+    from scripts.data import TileInfoDataClass
 
 
 
 class Tilemap:
     def __init__(self,json_file= None):
-        """ 
-        Initialize the Tilemap object.
-
-        """
-
         if json_file:
             self.load_map(json_file)
 
-       
+    @property
+    def physical_tiles(self):
+        return self._physical_tiles
+    
+    @property 
+    def non_physical_tiles(self):
+        return self._non_physical_tiles
+        
 
     def load_map(self,json_file):
         
         self._regular_tile_size:int = json_file['tile_size']
-        self._non_physical_tile_layers= json_file['offgrid_layers']
+        self._non_physical_tile_layers:int= json_file['offgrid_layers']
+        self._non_physical_tiles:list[dict[tuple[int,int],TileInfo]] = [{} for i in range(0,self._non_physical_tile_layers)]
+        self._physical_tiles:dict[tuple[int,int],TileInfoDataClass] = {}
+        self._ambient_node_ptr:ambientNode = None
+
 
 
         self.hull_grid  = SpatialGrid(cell_size= self._regular_tile_size)
         self.lights : list["PointLight"]= []
         self.ambientNodes = ambientNodeList()
-        self.physical_tiles = {}
-        self.non_physical_tiles= [{} for i in range(0,self._non_physical_tile_layers)]
         self.tile_colors = {}
         self.tile_texcoords = {}
 
 
         for tile_key in json_file['tilemap']: 
-
             tile_size = (self._regular_tile_size,self._regular_tile_size) if json_file['tilemap'][tile_key]['type'] \
                                     not in IRREGULAR_TILE_SIZES else IRREGULAR_TILE_SIZES[json_file['tilemap'][tile_key]['type']]
+
             atl_pos = TILE_ATLAS_POSITIONS[json_file['tilemap'][tile_key]['type']]
             tile_pos = tuple(json_file['tilemap'][tile_key]["pos"])
 
@@ -54,26 +59,37 @@ class Tilemap:
                         # Tile info creation for trap door 
 
                         rect = Rect(tile_pos[0] * self._regular_tile_size, self.pos[1] * self._regular_tile_size, self._regular_tile_size,5)
-            
-                        self.physical_tiles[tile_key] = [DoorInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],\
-                                                                 tile_pos,tile_size,rect,atl_pos),False]
+
+                        self._physical_tiles[tile_pos] = TrapDoorTileInfoWithOpenState(
+                                                            info = DoorInfo((json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],\
+                                                                 tile_pos,tile_size,rect,atl_pos)),
+                                                            open= False
+                                                         )
                     else: 
-                        if tile_key in self.physical_tiles: continue 
+                        if tile_key in self._physical_tiles: continue 
                         else: 
                             rect = Rect(tile_pos[0] * self._regular_tile_size + 3, tile_pos[1] * self._regular_tile_size ,6,32)
 
-                            door = [DoorInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],\
-                                                                 tile_pos,tile_size,rect,atl_pos),DoorAnimation(5,5)]
-                            self.physical_tiles[tile_pos] = door 
+                            door = DoorTileInfoWithAnimation(
+                                info = DoorInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],\
+                                tile_pos,tile_size,rect,atl_pos),
+                                animation= DoorAnimation(5,5)
+                            )
+
+                            self._physical_tiles[tile_pos] = door 
+
                             pos_below = (tile_pos[0],tile_pos[1] +1)
-                            self.physical_tiles[pos_below]  = door 
+                            self._physical_tiles[pos_below]  = door 
 
                 else:   
                     #hull = self._create_hulls(json_file['tilemap'][tile_key])
                     # TODO: THE TILE KEYS NEED TO BE CHANGED TO INTS, NOT STRINGS. 
 
-                    self.physical_tiles[tile_pos] = [TileInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],
-                                                    tile_pos,tile_size,atl_pos),None] 
+                    self._physical_tiles[tile_pos] = RegularTileInfo(
+                                                        info =TileInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],
+                                                        tile_pos,tile_size,atl_pos) 
+                                                    )
+
             
             else: 
                 if isinstance(json_file['tilemap'][tile_key]["pos"][0],int):
@@ -96,10 +112,13 @@ class Tilemap:
                     self.lights.append(light)
                     
                 rect = Rect(tile_pos[0] * self._regular_tile_size +3, tile_pos[1] * self._regular_tile_size, 10,6)
-                self.physical_tiles[tile_pos] = [LightInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],\
+
+                self._physical_tiles[tile_pos] = LightTileInfo(
+                                                   info = LightInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],\
                                                  tile_pos,tile_size,rect,json_file['tilemap'][tile_key]["radius"], json_file['tilemap'][tile_key]["power"],
-                                                 json_file['tilemap'][tile_key]["colorValue"],atl_pos),light]
-                #self.physical_tiles[tile_key].light_ptr = light 
+                                                 json_file['tilemap'][tile_key]["colorValue"],atl_pos) ,
+                                                 refPointLight= light
+                                                )
         
         for i in range(0,self._non_physical_tile_layers):
             tilemap_key = f"offgrid_{i}"
@@ -129,7 +148,7 @@ class Tilemap:
                                                             radius = json_file['offgrid_'+str(i)][tile_key]['radius'],power = json_file['offgrid_'+str(i)][tile_key]['power'],color_value=json_file['offgrid_'+str(i)][tile_key]['colorValue'] )
                     """
                 else: 
-                    self.non_physical_tiles[i][tile_pos] = TileInfo(json_file[tilemap_key][tile_key]["type"],json_file[tilemap_key][tile_key]["variant"],
+                    self._non_physical_tiles[i][tile_pos] = TileInfo(json_file[tilemap_key][tile_key]["type"],json_file[tilemap_key][tile_key]["variant"],
                                                             tile_pos,tile_size,atl_pos)
         
         for node_data in json_file['ambient_nodes']:
@@ -138,57 +157,20 @@ class Tilemap:
             else: 
                 self.ambientNodes.insert_ambient_node(node_data["range"],node_data['hull_range'],node_data["colorValue"])
         
-        self._ambient_node_ptr = None
 
         self._create_hulls()
         for hull in self._hulls:
             self.hull_grid.insert(hull)
 
-        #self.tile_texcoords = ResourceManager.get_tile_texcoords(self.physical_tiles,self.non_physical_tiles)
-        #self.tile_colors = ResourceManager.get_tile_colors(self.physical_tiles)
-
-
-
-
-    def _precompute_tile_colors(self):
         rm = ResourceManager.get_instance()
-        tile_texture_atlas = rm.tile_atlas 
 
-        raw_data = tile_texture_atlas.read(alignment=4)
-        width,height = tile_texture_atlas.size
-        image_data = np.frombuffer(raw_data,dtype= np.uint8).reshape((height,width,4))
- 
-        self._tile_colors = {}
-
-        for key in self.physical_tiles:
-            tile_info_list = self.physical_tiles[key]
-            tile_info = tile_info_list[0]
-            rel_pos,variant = map(int,tile_info.variant.split(';'))
-
-            if tile_info.type.endswith('stairs'):
-                for side in ['top','bottom','left','right']:
-                    if (tile_info.type,(rel_pos,variant),side) not in self._tile_colors:
-                        sample_side_ratio = TILE_SIDE_TO_SAMPLE_POS['stairs']
-                        texture_coords = (TILE_ATLAS_POSITIONS[tile_info.type][0] + variant * tile_info.tile_size[0] + int((tile_info.tile_size[0]-1) *sample_side_ratio[0]),\
-                                                TILE_ATLAS_POSITIONS[tile_info.type][1] + rel_pos* tile_info.tile_size[1] + int((tile_info.tile_size[1]-1) * sample_side_ratio[1]))
-                        color = tuple(image_data[texture_coords[1],texture_coords[0]])
-                        self._tile_colors[(tile_info.type,(rel_pos,variant),side)] = color
-
-                   
-            elif tile_info.type.endswith('door'):
-                pass 
-            else: 
-                for side in ['top','bottom','left','right']:
-                    sample_side_ratio = TILE_SIDE_TO_SAMPLE_POS['regular'][side]
-                    if (tile_info.type,(rel_pos,variant),side) not in self._tile_colors:
-                        texture_coords = (TILE_ATLAS_POSITIONS[tile_info.type][0] + variant * tile_info.tile_size[0] + int((tile_info.tile_size[0]-1) *sample_side_ratio[0]),\
-                                        TILE_ATLAS_POSITIONS[tile_info.type][1] + rel_pos* tile_info.tile_size[1] + int((tile_info.tile_size[1]-1) * sample_side_ratio[1]))
-                        color = tuple(image_data[texture_coords[1],texture_coords[0]])
-                        self._tile_colors[(tile_info.type,(rel_pos,variant),side)] = color
+        self.tile_colors = rm.get_tile_colors(self._physical_tiles)
+        self.tile_texcoords = rm.get_tile_texcoords(self._physical_tiles,self._non_physical_tiles)
 
 
 
-    def update_ambient_node_ptr(self,pos):
+
+    def update_ambient_node_ptr(self,pos)->None:
         if self._ambient_node_ptr is None: 
             self._ambient_node_ptr = self.ambientNodes.set_ptr(pos[0])
         else: 
@@ -200,65 +182,16 @@ class Tilemap:
                     self._ambient_node_ptr = self._ambient_node_ptr.next
 
     
-    def _precompute_texture_coordinates(self):
-        rm = ResourceManager.get_instance()
-        tile_texture_atlas = rm.tile_atlas
-
-        self._texcoord_dict = {}
-        for key in self.physical_tiles:
-            tile_info_list = self.physical_tiles[key]
-            tile_info = tile_info_list[0]
-            door_data = None 
-            if (tile_info.type,tile_info.variant) not in self._texcoord_dict:
-                if tile_info.type == 'trap_door':
-                    door_data = tile_info_list[1]
-                elif tile_info.type == 'building_door':
-                    door_data = tile_info_list[1]
-                texture_coords = self._get_texture_coords_for_tile(tile_texture_atlas,tile_info,door_data)
-                self._texcoord_dict[(tile_info.type,tile_info.variant)] = texture_coords
-
-        for i,dict in enumerate(self.non_physical_tiles):
-            for key in dict:
-                tile_info = dict[key]
-                if (tile_info.type,tile_info.variant) not in self._texcoord_dict:
-                    texture_coords = self._get_texture_coords_for_tile(tile_texture_atlas,tile_info)
-                    self._texcoord_dict[(tile_info.type,tile_info.variant)] = texture_coords
- 
-    def _get_texture_coords_for_tile(self,texture_atlas,tile_info:TileInfo,door_data:DoorAnimation|bool= None):
-        # Fetch the texture from the atlas based on tile type and variant
-        if not door_data:
-            rel_pos,variant = map(int,tile_info.variant.split(';'))
-            tile_type = tile_info.type
-
-            x = (TILE_ATLAS_POSITIONS[tile_type][0] + variant * tile_info.tile_size[0]) / texture_atlas.width
-            y = (TILE_ATLAS_POSITIONS[tile_type][1] + rel_pos * tile_info.tile_size[1]) / texture_atlas.height
-
-            w = tile_info.tile_size[0] /texture_atlas.width
-            h = tile_info.tile_size[1] / texture_atlas.height
-            
-            p1 = (x, y + h) 
-            p2 = (x + w, y + h) 
-            p3 = (x, y) 
-            p4 = (x + w, y) 
-            tex_coords = np.array([p1, p2, p3,
-                                p3, p2, p4], dtype=np.float32)
-        
-        else: 
-            if isinstance(door_data,DoorAnimation):
-                pass 
-            else: 
-                pass 
-
-        return tex_coords
 
 
 
 
-    def _create_rectangles(self,tile_info: TileInfo) -> tuple[int,int,int,int]:
-        return get_tile_rectangle(tile_info,self._regular_tile_size,self.physical_tiles)
+
+    def _create_rectangles(self,tile_general_info: TileInfo) -> tuple[int,int,int,int]:
+        return get_tile_rectangle(tile_general_info,self._regular_tile_size,self._physical_tiles)
         
           
-    def _create_hulls(self):
+    def _create_hulls(self)->None:
         """
         Merges rectangles in a dictionary where only rectangles of type "regular" are merged.
         
@@ -269,10 +202,11 @@ class Tilemap:
         """
         # Convert rect_dict into a list of rectangles with positions
         self._rectangles = []
-        for pos,tile_info_list  in sorted(self.physical_tiles.items()):
-            tile_info = tile_info_list[0]
-            if tile_info.type != 'spawners' and tile_info.type != 'lights':
-                self._rectangles.extend(self._create_rectangles(tile_info))
+
+        for pos, tile_data in sorted(self._physical_tiles.items()):
+            tile_general_info = tile_data.info
+            if tile_general_info.type != 'spawners' and tile_general_info.type != 'lights':
+                self._rectangles.extend(self._create_rectangles(tile_general_info))
 
         # extend rectangle sides for tiles with neighbors
         
@@ -331,20 +265,7 @@ class Tilemap:
 
             x1, y1, x2, y2 = rectangle
             self._hulls.append(Hull( vertices=[(x1, y1), (x2, y1), (x2, y2), (x1, y2)]))
-    
-
-    def get_lights(self) -> list[PointLight]:
-        """
-        Return all the lights that are in the tilemap.
-
-        Is supposed to be used to initialize the pointlights for the render engine. 
-
-        Returns: 
-            list[PointLight] 
-        """
-
-        return self.lights
-    
+        
 
 
     def tiles_around(self,pos,size) -> list[TileInfo]:
@@ -365,19 +286,19 @@ class Tilemap:
             for y in range(y_start, y_end + 1):
                 tile_key = (x,y) 
 
-                if tile_key in self.physical_tiles:
-                    tile ,hull = self.physical_tiles[tile_key]
+                if tile_key in self._physical_tiles:
+                    tile ,hull = self._physical_tiles[tile_key]
 
                     # TODO : differentiate tile info objects based on tile type
                     if tile.type.endswith('door') and not tile.open:
                         # Check whether there is a door tile above, and if there isn't, add it to the list. 
-                        if (x,y) in self.physical_tiles:
-                            if not self.physical_tiles[(x,y)].type.endswith('door'):
-                                tiles.append(self.physical_tiles[tile_key])
+                        if (x,y) in self._physical_tiles:
+                            if not self._physical_tiles[(x,y)].type.endswith('door'):
+                                tiles.append(self._physical_tiles[tile_key])
                         else: 
-                            tiles.append(self.physical_tiles[tile_key])
+                            tiles.append(self._physical_tiles[tile_key])
                     else: 
-                        tiles.append(self.physical_tiles[tile_key])
+                        tiles.append(self._physical_tiles[tile_key])
                 
                 # TODO: add grass tiles later.  
 
@@ -387,7 +308,7 @@ class Tilemap:
 
     def get_at(self,check_pos,side):
         coor =(check_pos[0] // self._regular_tile_size , check_pos[1] //self._regular_tile_size)       
-        tile_info_list = self.physical_tiles[coor]
+        tile_info_list = self._physical_tiles[coor]
         tile_info = tile_info_list[0] 
         rel_pos,variant = map(int,tile_info.variant.split(';'))
         return self._tile_colors[(tile_info.type,(rel_pos,variant),side)]
@@ -396,8 +317,8 @@ class Tilemap:
     
     def solid_check(self,check_pos) -> bool:
         coor =(check_pos[0]//self._regular_tile_size,check_pos[1]//self._regular_tile_size)
-        return coor  in self.physical_tiles\
-                and self.physical_tiles[coor][0].type in PHYSICS_APPLIED_TILE_TYPES
+        return coor  in self._physical_tiles\
+                and self._physical_tiles[coor][0].type in PHYSICS_APPLIED_TILE_TYPES
 
     def phy_rects_around(self,pos,size)->tuple[Rect,TileInfo]:
         surrounding_rects = []

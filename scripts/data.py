@@ -1,4 +1,6 @@
 from collections import namedtuple
+from dataclasses import dataclass 
+from my_pygame_light2d.light import PointLight
 
 TileInfo = namedtuple('TileInfo',['type','variant','tile_pos','tile_size','atl_pos'])
 LightInfo = namedtuple('LightInfo',['type','variant','tile_pos','tile_size','rect','radius','power','colorValue','atl_pos'])
@@ -13,6 +15,8 @@ AnimationParticleData = namedtuple('AnimationParticleData',['type','pos','veloci
 
 TEXTURE_BASE_PATH = 'data/images/'
 TIME_FOR_ONE_LOGICAL_STEP= 0.016666666666
+
+
 
 class Animation: 
     """ Animation class to handle entities' animations update """
@@ -87,6 +91,31 @@ class DoorAnimation(Animation):
             if self.frame == 0 : self.done = True 
     
 
+
+@dataclass 
+class TileInfoDataClass:
+    info: namedtuple
+
+@dataclass
+class DoorTileInfoWithAnimation(TileInfoDataClass):
+    info: DoorInfo
+    animation: DoorAnimation 
+
+
+@dataclass 
+class TrapDoorTileInfoWithOpenState(TileInfoDataClass):
+    info: DoorInfo
+    open: bool 
+
+
+class RegularTileInfo(TileInfoDataClass):
+    info: TileInfo
+    
+
+@dataclass 
+class LightTileInfo(TileInfoDataClass):
+    info: LightInfo
+    refPointLight : PointLight
 
 class AnimationDataCollection:
     def __init__(self,animation_data :list[AnimationData]):

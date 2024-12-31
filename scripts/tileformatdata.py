@@ -1,4 +1,8 @@
 from scripts.data import TileInfo
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: 
+    from scripts.new_tilemap import Tilemap
 
 PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs','building_door','trap_door',\
                               'ladder'}
@@ -76,7 +80,7 @@ TILE_NEIGHBOR_MAP = {
 
 
 
-def get_tile_rectangle(tile_info:TileInfo,tile_size:int,physical_tiles) -> tuple[int,int,int,int]:
+def get_tile_rectangle(tile_info:TileInfo,tile_size:int,physical_tiles:"Tilemap.physical_tiles") -> tuple[int,int,int,int]:
     """
     Get the rectangle (not pygame.Rect nor Hull) for a tile.
 
@@ -124,9 +128,9 @@ def get_tile_rectangle(tile_info:TileInfo,tile_size:int,physical_tiles) -> tuple
         axis =[x1,x2,y1,y2]
         for offset in open_side_offsets:
             if (tile_info.tile_pos[0] +offset[0],tile_info.tile_pos[1] + offset[1]) in physical_tiles:
-                neighbor_tile_info_list = physical_tiles [ (tile_info.tile_pos[0] +offset[0],tile_info.tile_pos[1] + offset[1])]
-                neighbor_tile_info = neighbor_tile_info_list[0]
-                if neighbor_tile_info.type == 'lights' or neighbor_tile_info.type.endswith('stairs'):
+                neightbor_tile_data = physical_tiles [ (tile_info.tile_pos[0] +offset[0],tile_info.tile_pos[1] + offset[1])]
+                neighbor_tile_general_info = neightbor_tile_data.info
+                if neighbor_tile_general_info.type == 'lights' or neighbor_tile_general_info.type.endswith('stairs'):
                     axis_ind = OPEN_SIDE_OFFSET_TO_AXIS_NUM[offset]
                     dir = -offset[0] if offset[1] == 0 else -offset[1]
                     axis[axis_ind] += dir * HULL_OUTER_EDGE_OFFSET

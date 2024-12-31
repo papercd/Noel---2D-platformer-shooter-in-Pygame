@@ -7,6 +7,7 @@ from scripts.data import TEXTURE_BASE_PATH,UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATL
                                   TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,BULLET_ATLAS_POSITIONS_AND_SIZES,PARTICLE_ATLAS_POSITIONS_AND_SIZES
 
 if TYPE_CHECKING: 
+    from scripts.new_tilemap import Tilemap
     from moderngl import Context,Texture
     from scripts.new_grass import GrassManager
 
@@ -52,6 +53,7 @@ class ResourceManager:
             ResourceManager._instance = ResourceManager()
         return ResourceManager._instance
     
+
 
     def __init__(self)-> None:
         if not hasattr(self,"initialized") :
@@ -131,8 +133,6 @@ class ResourceManager:
             self.tilemap_data[file_name] = tilemap_data
 
 
-
-    
 
     def _compute_fire_particle_vertices_and_indices(self) -> None: 
         # circle template for the fire particles 
@@ -237,10 +237,26 @@ class ResourceManager:
     def get_tilemap_json(self,name:str):
         return self.tilemap_data[name]
 
-    def get_background_of_name(self,name:str):
+    def get_background_of_name(self,name:str)->list["Texture"]:
         return self.backgrounds[name]
     
     def get_ga_of_name(self,name:str)->GrassAssets: 
         return self.grass_assets[name]
     
 
+    def get_tile_texcoords(self,physical_tiles:"Tilemap.physical_tiles",non_physical_tiles:"Tilemap.non_physical_tiles"): 
+        return {}
+
+    def get_tile_colors(self,physical_tiles:"Tilemap.physical_tiles"):
+        tile_atlas_byte_data = self.texture_atlasses["tiles"].read(alignment=4)
+        width,height = self.texture_atlasses["tiles"].size
+        image_data = np.frombuffer(tile_atlas_byte_data,dtype = np.uint8).reshape((height,width,4))
+
+        tile_colors = {}
+
+        for tile_key in physical_tiles: 
+            tile_data = physical_tiles[tile_key]
+            tile_general_info = tile_data.info 
+
+
+        return {} 
