@@ -63,11 +63,11 @@ class Noel():
 
     def _initialize_game_objects(self):
         self.resource_manager = ResourceManager.get_instance(self._ctx)
-        self.particle_system = ParticleSystem.get_instance(self._ctx) 
+        self.particle_system = ParticleSystem.get_instance() 
         self.entities_manager = EntitiesManager.get_instance()
 
         self._tilemap = Tilemap()
-        self._tilemap.load_map('test1.json')  
+        self._tilemap.load_map(self.resource_manager.get_tilemap_json('test1.json'))  
 
         self._grass_manager = GrassManager.get_instance(self.resource_manager.get_ga_of_name('test_grass'),self._tilemap.tile_size,stiffness=600,\
                                            max_unique=5,place_range=[1,1],burn_spread_speed=3,burn_rate=1.2)

@@ -41,18 +41,21 @@ class GrassAssets:
 
 class ResourceManager: 
     _instance = None 
+    _ctx = None
+
+
 
     @staticmethod
     def get_instance(ctx:"Context" = None)->"ResourceManager":
         if ResourceManager._instance is None: 
-            ResourceManager._instance = ResourceManager(ctx)
+            ResourceManager._ctx = ctx
+            ResourceManager._instance = ResourceManager()
         return ResourceManager._instance
+    
 
-    def __init__(self,ctx:"Context")-> None:
+    def __init__(self)-> None:
         if not hasattr(self,"initialized") :
             self.initialized: bool = True
-            self._ctx = ctx 
-
             self.texture_atlasses:dict[str,"Texture"]= {}
 
             self.backgrounds:dict[str,list["Texture"]] = {}
@@ -80,7 +83,7 @@ class ResourceManager:
                 elif resource_name =='grass_assets':
                     self._load_grass_assets_and_texcoords(path)
                 else: 
-                    self.texture_atlasses[resource_name] = load_texture(path,self._ctx)
+                    self.texture_atlasses[resource_name] = load_texture(path,ResourceManager._ctx)
 
             self._compute_texture_coords()
             self._compute_fire_particle_vertices_and_indices()
@@ -91,7 +94,7 @@ class ResourceManager:
         for path in paths:
             split_path = path.split('/')
             asset_name = split_path[-1].split('.')[0] 
-            self.texture_atlasses[asset_name] = load_texture(path,self._ctx)
+            self.texture_atlasses[asset_name] = load_texture(path,ResourceManager._ctx)
             self.grass_assets[asset_name] = GrassAssets(asset_name)
 
             self.grass_asset_texcoords[asset_name] = {}
@@ -109,7 +112,7 @@ class ResourceManager:
         for folder in listdir(path = path):
             textures = []
             for tex_path in listdir(path= path+'/'+folder):
-                tex = load_texture(path+ '/' +folder + '/' + tex_path,self._ctx)
+                tex = load_texture(path+ '/' +folder + '/' + tex_path,ResourceManager._ctx)
                 textures.append(tex)
 
             self.backgrounds[folder] = textures
@@ -117,7 +120,7 @@ class ResourceManager:
     def _load_held_wpn_textures(self,path:str)-> None:
         for texture_name in listdir(path = path):
             texture_name = texture_name.split('.')[0]
-            self.held_wpn_textures[texture_name] = load_texture(f"{path}/{texture_name}.png",self._ctx)
+            self.held_wpn_textures[texture_name] = load_texture(f"{path}/{texture_name}.png",ResourceManager._ctx)
 
 
     def _load_tilemap_jsons(self,path:str) -> None:
@@ -127,24 +130,17 @@ class ResourceManager:
             tilemap_data = jsLoad(f)
             self.tilemap_data[file_name] = tilemap_data
 
-    def get_tilemap_json(self,name:str):
-        return self.tilemap_data[name]
 
-    def get_background_of_name(self,name:str):
-        return self.backgrounds[name]
+
     
-    def get_ga_of_name(self,name:str)->GrassAssets: 
-        return self.grass_assets[name]
-
 
     def _compute_fire_particle_vertices_and_indices(self) -> None: 
         # circle template for the fire particles 
         circle_vertices = self._generate_circle_vertices((0.0,0.0),1.0,segments = 100)
-        self.circle_vbo = self._ctx.buffer(np.array(circle_vertices,dtype=np.float32).tobytes())
+        self.circle_vbo = ResourceManager._ctx.buffer(np.array(circle_vertices,dtype=np.float32).tobytes())
         
         circle_indices = self._generate_circle_indices(segments =100)
-        self.circle_ibo = self._ctx.buffer(np.array(circle_indices,dtype ='i4').tobytes())
-
+        self.circle_ibo = ResourceManager._ctx.buffer(np.array(circle_indices,dtype ='i4').tobytes())
 
 
     def _generate_circle_vertices(self,center:tuple[float,float],radius:float,segments:int)->list[tuple[float,float]]: 
@@ -236,3 +232,14 @@ class ResourceManager:
 
         return np.array([p1,p2,p3,
                         p3,p2,p4],dtype = np.float32 )
+
+
+    def get_tilemap_json(self,name:str):
+        return self.tilemap_data[name]
+
+    def get_background_of_name(self,name:str):
+        return self.backgrounds[name]
+    
+    def get_ga_of_name(self,name:str)->GrassAssets: 
+        return self.grass_assets[name]
+        
