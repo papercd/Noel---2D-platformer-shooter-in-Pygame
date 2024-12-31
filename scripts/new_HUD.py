@@ -4,9 +4,7 @@ from scripts.new_inventory import Inventory_Engine,Inventory,WeaponInventory
 from scripts.data import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES
 from scripts.new_ui import HealthBar,StaminaBar
 from scripts.item import Item,Weapon
-from scripts.resourceManager import ResourceManager
 import numpy as np
-
 
 class HUD: 
     def __init__(self,player:Player,true_res:tuple[int,int]):
@@ -211,7 +209,7 @@ class HUD:
 
 
     def remove_current_weapon(self,em)->None: 
-        self._inven_list[2].remove_current_weapon()
+        item = self._inven_list[2].remove_current_weapon(em)
         # em.add_collectable_item()
 
 

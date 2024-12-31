@@ -49,16 +49,21 @@ class Item:
 
 
 class Weapon(Item): 
-    def __init__(self, name , fire_rate:int, damage:int ,bullet_speed:int, size: tuple[int,int]):
+    def __init__(self, name , fire_rate:int, damage:int ,bullet_speed:int, \
+                 hud_size:tuple[int,int],in_world_size:tuple[int,int],held_size:tuple[int,int]):
+
         super().__init__(name, 1, stackable = False) 
         self._type = "weapon"
         self._fire_rate = fire_rate
         self._damage = damage 
         self._bullet_speed= bullet_speed
 
-        self._size = size
+        self._HUD_display_size = hud_size 
+        self._in_world_size = in_world_size 
+        self._held_size = held_size 
+    
 
-        self._angle_opening = 0
+        self._angle = 0
         self._flipped = False
         self._can_RF = self._name in WPNS_WITH_RF
         self._knockback = vec2(0,0) 
@@ -71,17 +76,25 @@ class Weapon(Item):
         self.magazine = 0 
         self.target_pos= None
         self.rapid_fire_toggled = False 
-        self.shot = False
+        self.single_fire_shot = False
         self.accum_time = 0
         
 
     @property 
-    def angle_opening(self):
-        return self._angle_opening
+    def angle(self):
+        return self._angle
 
     @property
-    def size(self)->tuple[int,int]:
-        return self._size
+    def HUD_display_size(self)->tuple[int,int]:
+        return self._HUD_display_size
+
+    @property 
+    def in_world_size(self) -> tuple[int,int]:
+        return self._in_world_size
+
+    @property 
+    def held_size(self) -> tuple[int,int]:
+        return self._held_size
 
     @property
     def opening_pos(self):
@@ -136,9 +149,9 @@ class Weapon(Item):
         dx,dy = (self.target_pos[0] +camera_scroll[0] - (holder_entity.pos[0]+pivot[0] + self._pivot_to_opening_offset[0]),\
                  self.target_pos[1] +camera_scroll[1]-  (holder_entity.pos[1]+pivot[1] + self._pivot_to_opening_offset[1]))
         
-        self._angle_opening = degrees(atan2(-dy,dx))
+        self._angle= degrees(atan2(-dy,dx))
 
-        rotation_offset = (cos(radians(-self._angle_opening)) * self._size[0],sin(radians(-self._angle_opening)) * self._size[0])
+        rotation_offset = (cos(radians(-self._angle)) * self._held_size[0],sin(radians(-self._angle)) * self._held_size[0])
 
         self._opening_pos[0] = holder_entity.pos[0]+pivot[0] + self._pivot_to_opening_offset[0] + rotation_offset[0]
         self._opening_pos[1] = holder_entity.pos[1]+ pivot[1] + self._pivot_to_opening_offset[1] + rotation_offset[1]
@@ -157,7 +170,7 @@ class Weapon(Item):
 
 class AK47(Weapon):
     def __init__(self):
-        super().__init__('ak47',5,15,16,(18,9))
+        super().__init__('ak47',5,15,16,(18,9),(18,9),(18,9))
         self._rapid_fire_toggled = True 
         
     def copy(self):
@@ -172,7 +185,7 @@ class AK47(Weapon):
         return light
 
     def reset_shot(self)->None: 
-        self.shot = False 
+        self.single_fire_shot= False 
 
     def shoot(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem")-> None:
         #TODO: change the frame count system to a dt-based system later, when integrating dt. 
@@ -183,15 +196,15 @@ class AK47(Weapon):
                 self._emit_bullet(engine_lights,em,ps)
                 self.accum_time -= TIME_FOR_ONE_LOGICAL_STEP* self._fire_rate
         else: 
-            if not self.shot :
+            if not self.single_fire_shot:
                 self._emit_bullet(engine_lights,em,ps)
-                self.shot = True 
+                self.single_fire_shot= True 
         
 
 
     def _emit_bullet(self,engine_lights:list["PointLight"],em:"EntitiesManager",ps:"ParticleSystem")->None: 
-        vel = (cos(radians(-self._angle_opening))*self._bullet_speed*1.5,sin(radians(-self._angle_opening))*self._bullet_speed*1.5)
-        bullet  = AKBullet(self._opening_pos.copy(),self._damage,-self._angle_opening,vel)
+        vel = (cos(radians(-self._angle))*self._bullet_speed*1.5,sin(radians(-self._angle))*self._bullet_speed*1.5)
+        bullet  = AKBullet(self._opening_pos.copy(),self._damage,-self._angle,vel)
         bullet.adjust_pos((vel[0]//2+bullet.size[0]//2,vel[1]//2+bullet.size[1]//2))
         flip = vel[0] <=0
         bullet.adjust_flip(flip)
@@ -202,7 +215,7 @@ class AK47(Weapon):
         engine_lights.append(self._create_light(self._opening_pos, 1.0, 20, (255, 255, 255), bullet._life, illuminator=bullet))
 
 
-        particle_data = AnimationParticleData('ak47_smoke',self._smoke_pos,[0,0],-self._angle_opening,flip,'weapon')
+        particle_data = AnimationParticleData('ak47_smoke',self._smoke_pos,[0,0],-self._angle,flip,'weapon')
         ps.add_particle(particle_data)
         for _ in range(randint(6,13)):
             speed_factor = random()
@@ -211,7 +224,7 @@ class AK47(Weapon):
             life = randint(1,8)
 
 
-            particle_data = CollideParticleData((1,1),self._smoke_pos.copy(),-(self._angle_opening + randomize_angle),\
+            particle_data = CollideParticleData((1,1),self._smoke_pos.copy(),-(self._angle+ randomize_angle),\
                                                 5*speed_factor,color,life,1) 
             ps.add_particle(particle_data)
 
@@ -225,7 +238,7 @@ class AK47(Weapon):
         
 class Flamethrower(Weapon):
     def __init__(self):
-        super().__init__('flamethrower',1,30,4,(24,8))
+        super().__init__('flamethrower',1,30,4,(24,8),(24,8),(24,8))
 
     def copy(self):
         new_weapon = Flamethrower()
@@ -244,7 +257,7 @@ class Flamethrower(Weapon):
             wind = 0
             
             for _ in range(density):
-                particle_data = FireParticleData(*self.opening_pos,size,density,rise,-self._angle_opening,spread,
+                particle_data = FireParticleData(*self.opening_pos,size,density,rise,-self._angle,spread,
                                                 wind,self._damage)
                 light = PointLight((self.opening_pos[0],self.opening_pos[1]),0.12,42,life= 70)
                 light.set_color(255,35,19)
@@ -253,7 +266,7 @@ class Flamethrower(Weapon):
                 engine_lights.append(light)
             
     def reset_shot(self)-> None: 
-        self.shot = False
+        self.single_fire_shot= False
 
 class Shotgun(Weapon):
     def __init__(self):

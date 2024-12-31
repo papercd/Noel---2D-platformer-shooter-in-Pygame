@@ -1,33 +1,17 @@
 import pygame 
 import platform
-import importlib
 from os import environ
 from enum import Enum
 from moderngl import create_context
 from screeninfo import get_monitors
-from math import sin,ceil
-import numpy as np
 
-import cProfile
-from scripts.entitiesManager import EntitiesManager 
 from scripts.resourceManager import ResourceManager
 from scripts.new_particles import ParticleSystem
-
-from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
-from scripts.data import ITEM_ATLAS_POSITIONS_AND_SIZES
-from random import choice, random
-
-import scripts 
-import my_pygame_light2d.engine
-
-from scripts.item import Item,AK47,Flamethrower
-from scripts.new_HUD import HUD
-from scripts.new_grass import GrassManager
-from scripts.new_entities import Player
+from scripts.entitiesManager import EntitiesManager
 from scripts.new_tilemap import Tilemap
+
+
 from my_pygame_light2d.engine import RenderEngine
-
-
 
 class GameState(Enum): 
     StartSequence = 0
@@ -36,7 +20,6 @@ class GameState(Enum):
     GameLoop = 3
     PauseMenu = 4 
     PauseMenuSettings =5
-
 
 
 class Noel():
@@ -49,19 +32,30 @@ class Noel():
         # TODO : think adding a game context to the main game structure would benefit 
         # the readability of the code. Refactor. 
 
-        self._frame_count = 0
-        self._dt = 0
-        self._rot_func_t = 0
-        self._accumulator = 0
-        self._prev_frame_time = 0
-        self._scroll = [0,0]
-        self.movement_input = [False,False]
+        self._frame_count:int = 0
+        self._dt :float = 0
+        self._grass_rotation_function_time:float = 0
+        self._time_accumulator:float = 0
+        self._prev_frame_time :float = 0
+        self._scroll:list[int,int] = [0,0]
+        self._movement_input:list[bool,bool] = [False,False]
 
         self._initialize_game_objects()
         self._bind_objects_to_render_engine()
 
 
     def _initialize_game_objects(self):
+        
+        self._resource_manager = ResourceManager.get_instance(self._ctx)
+        self._particle_system = ParticleSystem.get_instance()
+        self._entities_manager = EntitiesManager.get_instance()
+        self._tilemap = Tilemap()
+
+        #self._render_engine = RenderEngine()
+        
+        
+
+        """
         self.resource_manager = ResourceManager.get_instance(self._ctx)
         self.particle_system = ParticleSystem.get_instance(self._ctx) 
         self.entities_manager = EntitiesManager.get_instance()
@@ -78,14 +72,16 @@ class Noel():
         self.player.set_accel_rate(1)
         self.player.set_default_speed(2.3)
         self._hud = HUD(self.player,self._game_context["true_res"])
+        """
 
     def _bind_objects_to_render_engine(self):
+        """
         self.render_engine.bind_tilemap(self._tilemap)
         self.render_engine.bind_background('building')
         self.render_engine.bind_hud(self._hud)
         self.render_engine.lights = self._tilemap.lights
-    
-   
+        """
+    """
     def _hot_reload(self):
         # import changed modules
         importlib.reload(scripts.new_HUD)
@@ -142,7 +138,7 @@ class Noel():
 
         # rebind objects to render engine
         self._bind_objects_to_render_engine()
-    
+    """
 
     def _initalize_game_settings(self):
         self._game_context = {
@@ -226,6 +222,8 @@ class Noel():
 
     
     def _handle_common_events(self,event):
+
+        """
         
         self._hud.cursor.topleft= pygame.mouse.get_pos()
         self._hud.cursor.topleft= ((self._hud.cursor.topleft[0]//self._game_context["display_scale_ratio"]),\
@@ -248,13 +246,19 @@ class Noel():
                 self._hud.cursor.pressed[0] = False 
             elif event.button == 3:
                 self._hud.cursor.pressed[1] = False 
- 
+        """
         if event.type == pygame.QUIT:
+                self.quit_game() 
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
                 self.quit_game() 
 
 
     def _handle_events(self):
         if self._game_context['gamestate']== GameState.GameLoop:
+            for event in pygame.event.get():
+                self._handle_common_events(event)
+            """
             if self._hud.cursor.pressed[0]:
                 if not self._hud.cursor.interacting:
                     self.player.shoot_weapon(self.render_engine.lights,self.entities_manager,self.particle_system)
@@ -318,19 +322,21 @@ class Noel():
                     if event.key == pygame.K_LSHIFT:
                         self.player.running = False
                         self._hud.cursor.special_actions = False 
-    
+            """
     
 
     def _update_render(self):
         self._frame_count = (self._frame_count+1) %360
-        self.render_engine.set_ambient(255,255,255, 25)
-        self.render_engine.clear(0,0,0,255)
+        #self.render_engine.set_ambient(255,255,255, 25)
+        #self.render_engine.clear(0,0,0,255)
         self._ctx.screen.clear(0,0,0,0)
 
         self._dt = min(self._clock.tick() / 1000.0,0.1)
-        self._accumulator += self._dt
-        self._rot_func_t += self._dt * 100
+        self._time_accumulator += self._dt
+        self._grass_rotation_function_time += self._dt * 100
         if self._game_context['gamestate']== GameState.GameLoop:  
+            
+            """
            
             self._game_context['screen_shake'] = max(0,self._game_context['screen_shake'] -self._dt*60)
             screen_shake_buffer = self._game_context['screen_shake']
@@ -377,6 +383,7 @@ class Noel():
             screenshake_offset = (random() * screen_shake_buffer - screen_shake_buffer/2,
                                   random() * screen_shake_buffer - screen_shake_buffer/2)
             self.render_engine.render_scene_with_lighting(camera_scroll,interpolation_alpha, screenshake_offset)
+            """
             pygame.display.flip()
            
             
@@ -394,7 +401,7 @@ class Noel():
 
     def start(self):
         self._dt = self._clock.tick() / 1000.0
-        self._accumulator += self._dt 
+        self._time_accumulator += self._dt 
         while(True):
             self._handle_events()
             self._update_render() 

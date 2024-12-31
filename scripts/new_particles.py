@@ -5,8 +5,6 @@ from pygame import Rect
 from math import cos,sin,radians,sqrt,degrees,atan2
 from scripts.data import CollideParticleData,FireParticleData,AnimationParticleData,Animation,SparkData
 from scripts.data import PARTICLE_ANIMATION_DATA
-from scripts.data import PARTICLE_ATLAS_POSITIONS_AND_SIZES
-from scripts.resourceManager import ResourceManager
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np 
 
@@ -16,18 +14,19 @@ if TYPE_CHECKING:
     from scripts.new_grass import GrassManager
     from scripts.new_tilemap import Tilemap
     from my_pygame_light2d.light import PointLight
+
+
 class ParticleSystem:
     _instance = None 
     
     @staticmethod
-    def get_instance(context = None):
+    def get_instance()-> "ParticleSystem":
         if ParticleSystem._instance is None: 
-            ParticleSystem._instance = ParticleSystem(context)
+            ParticleSystem._instance = ParticleSystem()
         return ParticleSystem._instance
 
-    def __init__(self,context) -> None:
+    def __init__(self) -> None:
         if not hasattr(self,"initialized"):
-            self._ctx = context
 
             self.initialized = True 
 
@@ -73,39 +72,9 @@ class ParticleSystem:
 
             # create particle pools
             self._initialize_particle_containers()
-            self._precompute_particle_animation_texture_coords()
-    
-
-    # refactor all resource creation and management 
-    # to be located within the resource manager. 
-
-    def _precompute_particle_animation_texture_coords(self):
-        rm = ResourceManager.get_instance()
-        particle_texture_atl = rm.particles_atlas
-        self._tex_dict = {}
-        for key in PARTICLE_ATLAS_POSITIONS_AND_SIZES:
-            atl_pos,tex_size = PARTICLE_ATLAS_POSITIONS_AND_SIZES[key]
-            animationData = PARTICLE_ANIMATION_DATA[key]
-            for frame in range(animationData.n_textures):
-                self._tex_dict[(key,frame)] = self._get_texture_coords_for_animation_frame(particle_texture_atl,atl_pos,tex_size,frame)
 
 
 
-     
-    def _get_texture_coords_for_animation_frame(self,texture_atl,atl_pos :tuple[int,int],tex_size:tuple[int,int],frame: int ) -> np.array:
-        x = (atl_pos[0] + tex_size[0] * frame) / texture_atl.width
-        y = (atl_pos[1] ) / texture_atl.height
-
-        w = tex_size[0] / texture_atl.width
-        h = tex_size[1] / texture_atl.height
-        
-        p1 = (x,y+h) 
-        p2 = (x+w,y+h)
-        p3 = (x,y) 
-        p4 = (x+w,y)
-
-        return np.array([p1,p2,p3,
-                         p3,p2,p4],dtype = np.float32 )
 
     def _initialize_particle_containers(self):
         for i in range(self._max_collide_particle_count):

@@ -183,9 +183,9 @@ class PhysicsEntity:
 
 
 class CollectableItem(PhysicsEntity):
-    def __init__(self, type, pos, size,life)->None:
-        super().__init__(type, pos, size)
-        self.item = None 
+    def __init__(self, item, pos, size,life = 200)->None:
+        super().__init__("collectableItem", pos, size)
+        self.item = item 
         self.life = life
         self.dead = False
 
@@ -199,6 +199,8 @@ class CollectableItem(PhysicsEntity):
         if self.life <= 0: 
             self.dead = True 
         super().update(tilemap, dt, anim_offset)
+
+        return self.dead
     
 class Player(PhysicsEntity):
     def __init__(self, pos: list[float], size: tuple[int, int])->None:
