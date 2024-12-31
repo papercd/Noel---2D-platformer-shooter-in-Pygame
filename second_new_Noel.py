@@ -5,7 +5,13 @@ from enum import Enum
 from moderngl import create_context
 from screeninfo import get_monitors
 
-from new_scripts.resourceManager import ResourceManager
+from scripts.resourceManager import ResourceManager
+from scripts.new_particles import ParticleSystem
+from scripts.entitiesManager import EntitiesManager
+from scripts.new_tilemap import Tilemap
+
+
+from my_pygame_light2d.engine import RenderEngine
 
 class GameState(Enum): 
     StartSequence = 0
@@ -26,20 +32,28 @@ class Noel():
         # TODO : think adding a game context to the main game structure would benefit 
         # the readability of the code. Refactor. 
 
-        self._frame_count = 0
-        self._dt = 0
-        self._rot_func_t = 0
-        self._accumulator = 0
-        self._prev_frame_time = 0
-        self._scroll = [0,0]
-        self._movement_input = [False,False]
+        self._frame_count:int = 0
+        self._dt :float = 0
+        self._grass_rotation_function_time:float = 0
+        self._time_accumulator:float = 0
+        self._prev_frame_time :float = 0
+        self._scroll:list[int,int] = [0,0]
+        self._movement_input:list[bool,bool] = [False,False]
 
         self._initialize_game_objects()
         self._bind_objects_to_render_engine()
 
 
     def _initialize_game_objects(self):
+        
         self._resource_manager = ResourceManager.get_instance(self._ctx)
+        self._particle_system = ParticleSystem.get_instance()
+        self._entities_manager = EntitiesManager.get_instance()
+        self._tilemap = Tilemap()
+
+        #self._render_engine = RenderEngine()
+        
+        
 
         """
         self.resource_manager = ResourceManager.get_instance(self._ctx)
@@ -318,8 +332,8 @@ class Noel():
         self._ctx.screen.clear(0,0,0,0)
 
         self._dt = min(self._clock.tick() / 1000.0,0.1)
-        self._accumulator += self._dt
-        self._rot_func_t += self._dt * 100
+        self._time_accumulator += self._dt
+        self._grass_rotation_function_time += self._dt * 100
         if self._game_context['gamestate']== GameState.GameLoop:  
             
             """
@@ -387,7 +401,7 @@ class Noel():
 
     def start(self):
         self._dt = self._clock.tick() / 1000.0
-        self._accumulator += self._dt 
+        self._time_accumulator += self._dt 
         while(True):
             self._handle_events()
             self._update_render() 

@@ -11,6 +11,7 @@ FireParticleData = namedtuple('FireParticleData',['x','y','size','density','rise
 AnimationParticleData = namedtuple('AnimationParticleData',['type','pos','velocity','angle','flipped','source'])
 
 
+TEXTURE_BASE_PATH = 'data/images/'
 TIME_FOR_ONE_LOGICAL_STEP= 0.016666666666
 
 class Animation: 

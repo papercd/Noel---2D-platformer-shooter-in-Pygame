@@ -10,17 +10,19 @@ class EntitiesManager:
     _instance = None
 
     @staticmethod
-    def get_instance():
+    def get_instance()->"EntitiesManager":
         if EntitiesManager._instance is None: 
             EntitiesManager._instance = EntitiesManager()
         return EntitiesManager._instance
 
     def __init__(self) -> None:
-        self._bullet_count:int= 0
-        self._bullets:list["Bullet"]= []
+        if hasattr(self,"initialized"):
+            self.initialized = True 
+            self._bullet_count:int= 0
+            self._bullets:list["Bullet"]= []
 
-        self._collectable_items_count:int = 0
-        self._collectable_items:list["CollectableItem"] = []
+            self._collectable_items_count:int = 0
+            self._collectable_items:list["CollectableItem"] = []
 
 
 

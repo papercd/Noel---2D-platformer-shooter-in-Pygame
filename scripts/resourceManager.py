@@ -3,14 +3,14 @@ from typing import TYPE_CHECKING
 from os import listdir
 from json import load as jsLoad
 import numpy as np 
-from scripts.data import UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,GRASS_ASSET_ATLAS_POS_AND_INFO,\
-                                  TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,BULLET_ATLAS_POSITIONS_AND_SIZES
+from scripts.data import TEXTURE_BASE_PATH,UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,GRASS_ASSET_ATLAS_POS_AND_INFO,PARTICLE_ANIMATION_DATA,\
+                                  TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,BULLET_ATLAS_POSITIONS_AND_SIZES,PARTICLE_ATLAS_POSITIONS_AND_SIZES
 
 if TYPE_CHECKING: 
     from moderngl import Context,Texture
+    from scripts.new_grass import GrassManager
 
 
-TEXTURE_BASE_PATH = 'data/images/'
 RESOURCE_NAME_TO_PATH = {
     'tiles' : TEXTURE_BASE_PATH + "tiles/tile_atlas.png",
     'entities' : TEXTURE_BASE_PATH + 'entities/entities_atlas.png',
@@ -31,11 +31,11 @@ RESOURCE_NAME_TO_PATH = {
 # maintain the grass assets class, so you can have different grass tilesets 
 class GrassAssets:
     def __init__(self,asset_name:str)->None: 
-        self.asset_name = asset_name
-        self.grass_count_for_grass_var = GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][0]
-        self.texture_dim =  GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][1]
-        self.burn_palette = GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][2]
-        self.gm = None 
+        self.asset_name:str = asset_name
+        self.grass_count_for_grass_var: tuple[int] = GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][0]
+        self.texture_dim:tuple[int,int]=  GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][1]
+        self.burn_palette:tuple[int,int,int] = GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][2]
+        self.gm : "GrassManager" = None 
          
    
 
@@ -43,127 +43,111 @@ class ResourceManager:
     _instance = None 
 
     @staticmethod
-    def get_instance(ctx:"Context" = None):
+    def get_instance(ctx:"Context" = None)->"ResourceManager":
         if ResourceManager._instance is None: 
             ResourceManager._instance = ResourceManager(ctx)
         return ResourceManager._instance
 
     def __init__(self,ctx:"Context")-> None:
-        self.ctx = ctx 
-        self._texture_atlasses:dict[str,"Texture"]= {}
-        for resource_name,path in RESOURCE_NAME_TO_PATH.items():
-            if resource_name == 'backgrounds':
-                self._load_backgrounds(path)
-            elif resource_name == 'tilemap_jsons':
-                self._load_tilemap_jsons(path)
-            elif resource_name == 'holding_weapons':
-                self._load_held_wpn_textures(path)
-            elif resource_name =='grass_assets':
-                self._load_grass_assets(path)
-            else: 
-                self._texture_atlasses[resource_name] = load_texture(path,self.ctx)
+        if not hasattr(self,"initialized") :
+            self.initialized: bool = True
+            self._ctx = ctx 
 
-        self._compute_texture_coords()
-        self._compute_particle_resources()
+            self.texture_atlasses:dict[str,"Texture"]= {}
 
-    @property 
-    def bullet_atlas(self) -> "Texture":
-        return self._texture_atlasses["bullets"]
+            self.backgrounds:dict[str,list["Texture"]] = {}
+            self.tilemap_data = {}
+            self.held_wpn_textures:dict[str,"Texture"] = {}
+            
+            self.grass_assets:dict[str,GrassAssets] = {}
+            self.grass_asset_texcoords:dict[str,dict[int,np.array]] = {}
 
-    @property
-    def ui_item_atlas(self) -> "Texture":
-        return self._texture_atlasses["UI_and_items"]
-    
-    @property 
-    def tile_atlas(self) -> "Texture": 
-        return self._texture_atlasses['tiles']
 
-    @property
-    def entities_atlas(self) -> "Texture": 
-        return self._texture_atlasses['entities']
-    
-    @property
-    def particles_atlas(self) ->"Texture": 
-        return self._texture_atlasses['particles']
-    
-    @property
-    def held_wpn_atlas(self) -> "Texture": 
-        return self._texture_atlasses['weapons']
+            self.ui_texcoords = {}
+            self.item_texcoords = {}
+            self.text_texcoords:dict[str,list[np.array]] = {}
+            self.bullet_texcoords:dict[str,np.array] = {}
+            self.in_world_item_texcoords:dict[str,dict[str,np.array]] = {}
+            self.animated_particle_texcoords:dict[tuple[str,int],np.array] = {}
 
-    @property
-    def held_wpn_textures(self) ->dict[str,"Texture"]:
-        return self._held_wpn_textures
-    
-    @property 
-    def circle_template(self) -> tuple["Context.buffer","Context.buffer"]:
-        return (self._circle_vbo,self._circle_ibo)
+            for resource_name,path in RESOURCE_NAME_TO_PATH.items():
+                if resource_name == 'backgrounds':
+                    self._load_backgrounds(path)
+                elif resource_name == 'tilemap_jsons':
+                    self._load_tilemap_jsons(path)
+                elif resource_name == 'holding_weapons':
+                    self._load_held_wpn_textures(path)
+                elif resource_name =='grass_assets':
+                    self._load_grass_assets_and_texcoords(path)
+                else: 
+                    self.texture_atlasses[resource_name] = load_texture(path,self._ctx)
 
-    def _load_grass_assets(self,paths:str)->None: 
-        self._grass_assets = {}
-        self._grass_asset_texture_coords = {}
+            self._compute_texture_coords()
+            self._compute_fire_particle_vertices_and_indices()
+
+
+    def _load_grass_assets_and_texcoords(self,paths:list[str])->None: 
 
         for path in paths:
             split_path = path.split('/')
             asset_name = split_path[-1].split('.')[0] 
-            self._texture_atlasses[asset_name] = load_texture(path,self.ctx)
-            self._grass_assets[asset_name] = GrassAssets(asset_name)
+            self.texture_atlasses[asset_name] = load_texture(path,self._ctx)
+            self.grass_assets[asset_name] = GrassAssets(asset_name)
 
-            self._grass_asset_texture_coords[asset_name] = {}
+            self.grass_asset_texcoords[asset_name] = {}
             grass_variation_info,size = GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][0], GRASS_ASSET_ATLAS_POS_AND_INFO[asset_name][1] 
             for i,variations in enumerate(grass_variation_info):
-                if i not in self._grass_asset_texture_coords[asset_name]:
-                    self._grass_asset_texture_coords[asset_name][i] = []
+                if i not in self.grass_asset_texcoords[asset_name]:
+                    self.grass_asset_texcoords[asset_name][i] = []
                 for j in range(variations):
                     bottomleft = (size[0]*j,size[1]*i) 
-                    self._grass_asset_texture_coords[asset_name][i].append(self._create_texture_coords(bottomleft,size,self._texture_atlasses[asset_name]))
+                    self.grass_asset_texcoords[asset_name][i].append(self._create_texture_coords(bottomleft,size,self.texture_atlasses[asset_name]))
 
 
     def _load_backgrounds(self,path:str)->None:
-        self._backgrounds= {}
         
         for folder in listdir(path = path):
             textures = []
             for tex_path in listdir(path= path+'/'+folder):
-                tex = load_texture(path+ '/' +folder + '/' + tex_path,self.ctx)
+                tex = load_texture(path+ '/' +folder + '/' + tex_path,self._ctx)
                 textures.append(tex)
 
-            self._backgrounds[folder] = textures
+            self.backgrounds[folder] = textures
         
     def _load_held_wpn_textures(self,path:str)-> None:
-        self._held_wpn_textures = {}
         for texture_name in listdir(path = path):
             texture_name = texture_name.split('.')[0]
-            self._held_wpn_textures[texture_name] = load_texture(f"{path}/{texture_name}.png",self.ctx)
+            self.held_wpn_textures[texture_name] = load_texture(f"{path}/{texture_name}.png",self._ctx)
 
 
     def _load_tilemap_jsons(self,path:str) -> None:
-        self._tilemap_data = {}
 
         for file_name in listdir(path = path):
             f = open(path+'/'+file_name,'r')
             tilemap_data = jsLoad(f)
-            self._tilemap_data[file_name] = tilemap_data
+            self.tilemap_data[file_name] = tilemap_data
 
     def get_tilemap_json(self,name:str):
-        return self._tilemap_data[name]
+        return self.tilemap_data[name]
 
     def get_background_of_name(self,name:str):
-        return self._backgrounds[name]
+        return self.backgrounds[name]
     
     def get_ga_of_name(self,name:str)->GrassAssets: 
-        return self._grass_assets[name]
-    
+        return self.grass_assets[name]
 
-    def _compute_particle_resources(self) -> None: 
+
+    def _compute_fire_particle_vertices_and_indices(self) -> None: 
         # circle template for the fire particles 
         circle_vertices = self._generate_circle_vertices((0.0,0.0),1.0,segments = 100)
-        self._circle_vbo = self.ctx.buffer(np.array(circle_vertices,dtype=np.float32).tobytes())
+        self.circle_vbo = self._ctx.buffer(np.array(circle_vertices,dtype=np.float32).tobytes())
         
         circle_indices = self._generate_circle_indices(segments =100)
-        self._circle_ibo = self.ctx.buffer(np.array(circle_indices,dtype ='i4').tobytes())
- 
+        self.circle_ibo = self._ctx.buffer(np.array(circle_indices,dtype ='i4').tobytes())
 
-    def _generate_circle_vertices(self,center,radius,segments)-> list: 
+
+
+    def _generate_circle_vertices(self,center:tuple[float,float],radius:float,segments:int)->list[tuple[float,float]]: 
         vertices = [center]
         for i in range(segments + 1):
             angle = 2 * np.pi * i / segments 
@@ -172,7 +156,7 @@ class ResourceManager:
             vertices.append((x,y))
         return vertices
 
-    def _generate_circle_indices(self,segments)-> list:
+    def _generate_circle_indices(self,segments:int)->list[int]:
         indices = []
         for i in range(1,segments):
             indices.extend([0,i,i+1])
@@ -181,59 +165,62 @@ class ResourceManager:
         return indices
 
     def _compute_texture_coords(self)-> None:
-        self._ui_texcoords = {}
-        self._item_texcoords = {}
-        self._text_texcoords = {}
-        self._bullet_texcoords = {}
-        self._in_world_item_texcoords = {}
 
         for key in UI_ATLAS_POSITIONS_AND_SIZES:
             if key.endswith('slot'):
-                self._ui_texcoords[key] = {}
+                self.ui_texcoords[key] = {}
                 for state in UI_ATLAS_POSITIONS_AND_SIZES[key]:
                     pos,size = UI_ATLAS_POSITIONS_AND_SIZES[key][state]
-                    self._ui_texcoords[key][state] = self._create_texture_coords(pos,size,self.ui_item_atlas)
+                    self.ui_texcoords[key][state] = self._create_texture_coords(pos,size,self.texture_atlasses["UI_and_items"])
 
             elif key == "cursor":
-                self._ui_texcoords[key] = {}
+                self.ui_texcoords[key] = {}
                 for state in UI_ATLAS_POSITIONS_AND_SIZES[key]:
                     pos,size = UI_ATLAS_POSITIONS_AND_SIZES[key][state]
-                    self._ui_texcoords[key][state] = self._create_texture_coords(pos,size,self.ui_item_atlas)
+                    self.ui_texcoords[key][state] = self._create_texture_coords(pos,size,self.texture_atlasses["UI_and_items"])
             else: 
                 pos,size = UI_ATLAS_POSITIONS_AND_SIZES[key]
-                self._ui_texcoords[key] = self._create_texture_coords(pos,size,self.ui_item_atlas)
+                self.ui_texcoords[key] = self._create_texture_coords(pos,size,self.texture_atlasses["UI_and_items"])
 
         for key in ITEM_ATLAS_POSITIONS_AND_SIZES:
             pos,size= ITEM_ATLAS_POSITIONS_AND_SIZES[key]
-            self._item_texcoords[key] = self._create_texture_coords(pos,size,self.ui_item_atlas)
+            self.item_texcoords[key] = self._create_texture_coords(pos,size,self.texture_atlasses["UI_and_items"])
 
         for key in UI_WEAPON_ATLAS_POSITIONS_AND_SIZES:
             pos,size = UI_WEAPON_ATLAS_POSITIONS_AND_SIZES[key]
-            self._item_texcoords[key] = self._create_texture_coords(pos,size,self.ui_item_atlas)
+            self.item_texcoords[key] = self._create_texture_coords(pos,size,self.texture_atlasses["UI_and_items"])
 
         for key in TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES:
             pos,space,size = TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES[key]
-            self._text_texcoords[key] = []
+            self.text_texcoords[key] = []
             if key == 'CAPITAL' or key == 'LOWER':
                 count = 26
             else:
                 count = 10
             for i in range(count):
                 bottomleft = (pos[0] + space[0] *i,pos[1])
-                self._text_texcoords[key].append(self._create_texture_coords(bottomleft,size,self.ui_item_atlas))
+                self.text_texcoords[key].append(self._create_texture_coords(bottomleft,size,self.texture_atlasses["UI_and_items"]))
 
         for key in IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES:
             weapon = IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES[key]
-            self._in_world_item_texcoords[key] = {}
+            self.in_world_item_texcoords[key] = {}
             for state in weapon: 
                 pos,size = weapon[state] 
-                self._in_world_item_texcoords[key][state] = self._create_texture_coords(pos,size,self.held_wpn_atlas)
+                self.in_world_item_texcoords[key][state] = self._create_texture_coords(pos,size,self.texture_atlasses['weapons'])
 
         for key in BULLET_ATLAS_POSITIONS_AND_SIZES: 
             pos,size = BULLET_ATLAS_POSITIONS_AND_SIZES[key]
-            self._bullet_texcoords[key] = self._create_texture_coords(pos,size,self.bullet_atlas)
+            self.bullet_texcoords[key] = self._create_texture_coords(pos,size,self.texture_atlasses['bullets'])
  
     
+        # precompute animated particle texture coords 
+        for key in PARTICLE_ATLAS_POSITIONS_AND_SIZES: 
+            atl_pos,tex_size = PARTICLE_ATLAS_POSITIONS_AND_SIZES[key]
+            animationData =PARTICLE_ANIMATION_DATA[key]
+            for frame in range(animationData.n_textures):
+                bottomleft = (atl_pos[0] + tex_size[0] * frame, atl_pos[1])
+                self.animated_particle_texcoords[(key,frame)] = self._create_texture_coords(bottomleft,tex_size,self.texture_atlasses["particles"])
+
 
     def _create_texture_coords(self,bottomleft:tuple[int,int],size:tuple[int,int],atlas :"Texture")->np.array:
         x = (bottomleft[0] ) / atlas.width
