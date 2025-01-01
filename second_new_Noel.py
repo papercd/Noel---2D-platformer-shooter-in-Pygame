@@ -9,9 +9,9 @@ from scripts.resourceManager import ResourceManager
 from scripts.new_particles import ParticleSystem
 from scripts.entitiesManager import EntitiesManager
 from scripts.new_tilemap import Tilemap
+from my_pygame_light2d.new_engine import RenderEngine
 
 
-from my_pygame_light2d.engine import RenderEngine
 
 class GameState(Enum): 
     StartSequence = 0
@@ -51,7 +51,8 @@ class Noel():
         self._entities_manager = EntitiesManager.get_instance()
         self._tilemap = Tilemap(self._resource_manager.get_tilemap_json('test1.json'))
 
-        #self._render_engine = RenderEngine()
+        self._render_engine = RenderEngine.get_instance(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res']
+                                                        ,self._game_context['true_res'])
         
         
 
