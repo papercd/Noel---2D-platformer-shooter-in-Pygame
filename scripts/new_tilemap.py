@@ -1,6 +1,6 @@
-from scripts.data import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES,TEXTURE_BASE_PATH ,TileInfo,LightInfo,DoorInfo,DoorAnimation,\
-                            DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,RegularTileInfo,LightTileInfo
-from scripts.tileformatdata import get_tile_rectangle, PHYSICS_APPLIED_TILE_TYPES
+from scripts.data import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES,TileInfo,LightInfo,DoorInfo,DoorAnimation,\
+                            DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,RegularTileInfo,LightTileInfo,get_tile_rectangle, PHYSICS_APPLIED_TILE_TYPES
+
 from scripts.spatial_grid import SpatialGrid
 from scripts.lists import ambientNodeList,ambientNode
 from my_pygame_light2d.hull import Hull 
@@ -10,8 +10,9 @@ from scripts.resourceManager import ResourceManager
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: 
-    from scripts.data import TileInfoDataClass
+if TYPE_CHECKING:
+    import numpy as np
+    from scripts.data import TileColorKey,RGBA_tuple,TileInfoDataClass,TileTexcoordsKey
 
 
 
@@ -33,8 +34,8 @@ class Tilemap:
         
         self._regular_tile_size:int = json_file['tile_size']
         self._non_physical_tile_layers:int= json_file['offgrid_layers']
-        self._non_physical_tiles:list[dict[tuple[int,int],TileInfo]] = [{} for i in range(0,self._non_physical_tile_layers)]
-        self._physical_tiles:dict[tuple[int,int],TileInfoDataClass] = {}
+        self._non_physical_tiles:list[dict[tuple[int,int],"TileInfo"]] = [{} for i in range(0,self._non_physical_tile_layers)]
+        self._physical_tiles:dict[tuple[int,int],"TileInfoDataClass"] = {}
         self._ambient_node_ptr:ambientNode = None
 
 
@@ -42,8 +43,8 @@ class Tilemap:
         self.hull_grid  = SpatialGrid(cell_size= self._regular_tile_size)
         self.lights : list["PointLight"]= []
         self.ambientNodes = ambientNodeList()
-        self.tile_colors = {}
-        self.tile_texcoords = {}
+        self.tile_colors:dict["TileColorKey","RGBA_tuple"]= {}
+        self.tile_texcoords: dict["TileTexcoordsKey","np.array"] = {}
 
 
         for tile_key in json_file['tilemap']: 
