@@ -475,3 +475,5 @@ def get_tile_rectangle(tile_info:TileInfo,tile_size:int,physical_tiles:"Tilemap.
                 axis[axis_ind] += dir * HULL_OUTER_EDGE_OFFSET
 
         return [(axis[0],axis[2],axis[1],axis[3])]
+
+

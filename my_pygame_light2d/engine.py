@@ -22,7 +22,7 @@ from scripts.new_grass import GrassManager
 
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.color import normalize_color_arguments, denormalize_color
-from my_pygame_light2d.double_buff import DoubleBuff
+from my_pygame_light2d.double_buff import DoubleBuffer
 from my_pygame_light2d.util import create_rotated_rect,to_dest_coords
 
 BASE_PATH = 'data/images/'
@@ -208,7 +208,7 @@ class RenderEngine:
         self._fbo_fg = self.ctx.framebuffer([self._tex_fg])
 
         # Double buffer for lights
-        self._buf_lt = DoubleBuff(self.ctx, self._lightmap_res)
+        self._buf_lt = DoubleBuffer(self.ctx, self._lightmap_res)
 
         # Ambient occlussion map
         self._tex_ao = self.ctx.texture(
