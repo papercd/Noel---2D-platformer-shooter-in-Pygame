@@ -22,11 +22,11 @@ class Tilemap:
             self.load_map(json_file)
 
     @property
-    def physical_tiles(self):
+    def physical_tiles(self)->dict[tuple[int,int],"TileInfoDataClass"]:
         return self._physical_tiles
     
     @property 
-    def non_physical_tiles(self):
+    def non_physical_tiles(self)->list[dict[tuple[int,int],"TileInfo"]]:
         return self._non_physical_tiles
         
 

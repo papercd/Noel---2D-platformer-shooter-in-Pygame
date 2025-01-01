@@ -55,43 +55,41 @@ class ResourceManager:
             ResourceManager._ctx = ctx
             ResourceManager._instance = ResourceManager()
         return ResourceManager._instance
-    
+   
 
 
     def __init__(self)-> None:
-        if not hasattr(self,"initialized") :
-            self.initialized: bool = True
-            self.texture_atlasses:dict[str,"Texture"]= {}
+        self.texture_atlasses:dict[str,"Texture"]= {}
 
-            self.backgrounds:dict[str,list["Texture"]] = {}
-            self.tilemap_data = {}
-            self.held_wpn_textures:dict[str,"Texture"] = {}
-            
-            self.grass_assets:dict[str,"GrassAssets"] = {}
-            self.grass_asset_texcoords:dict[str,dict[int,np.array]] = {}
+        self.backgrounds:dict[str,list["Texture"]] = {}
+        self.tilemap_data = {}
+        self.held_wpn_textures:dict[str,"Texture"] = {}
+        
+        self.grass_assets:dict[str,"GrassAssets"] = {}
+        self.grass_asset_texcoords:dict[str,dict[int,np.array]] = {}
 
 
-            self.ui_texcoords = {}
-            self.item_texcoords = {}
-            self.text_texcoords:dict[str,list[np.array]] = {}
-            self.bullet_texcoords:dict[str,np.array] = {}
-            self.in_world_item_texcoords:dict[str,dict[str,np.array]] = {}
-            self.animated_particle_texcoords:dict[tuple[str,int],np.array] = {}
+        self.ui_texcoords = {}
+        self.item_texcoords = {}
+        self.text_texcoords:dict[str,list[np.array]] = {}
+        self.bullet_texcoords:dict[str,np.array] = {}
+        self.in_world_item_texcoords:dict[str,dict[str,np.array]] = {}
+        self.animated_particle_texcoords:dict[tuple[str,int],np.array] = {}
 
-            for resource_name,path in RESOURCE_NAME_TO_PATH.items():
-                if resource_name == 'backgrounds':
-                    self._load_backgrounds(path)
-                elif resource_name == 'tilemap_jsons':
-                    self._load_tilemap_jsons(path)
-                elif resource_name == 'holding_weapons':
-                    self._load_held_wpn_textures(path)
-                elif resource_name =='grass_assets':
-                    self._load_grass_assets_and_texcoords(path)
-                else: 
-                    self.texture_atlasses[resource_name] = load_texture(path,ResourceManager._ctx)
+        for resource_name,path in RESOURCE_NAME_TO_PATH.items():
+            if resource_name == 'backgrounds':
+                self._load_backgrounds(path)
+            elif resource_name == 'tilemap_jsons':
+                self._load_tilemap_jsons(path)
+            elif resource_name == 'holding_weapons':
+                self._load_held_wpn_textures(path)
+            elif resource_name =='grass_assets':
+                self._load_grass_assets_and_texcoords(path)
+            else: 
+                self.texture_atlasses[resource_name] = load_texture(path,ResourceManager._ctx)
 
-            self._compute_texture_coords()
-            self._compute_fire_particle_vertices_and_indices()
+        self._compute_texture_coords()
+        self._compute_fire_particle_vertices_and_indices()
 
 
     def _load_grass_assets_and_texcoords(self,paths:list[str])->None: 

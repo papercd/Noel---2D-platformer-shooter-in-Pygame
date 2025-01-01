@@ -26,52 +26,48 @@ class ParticleSystem:
         return ParticleSystem._instance
 
     def __init__(self) -> None:
-        if not hasattr(self,"initialized"):
+        # can have at most 300 collide particles (when landing, when a bullet collides with a wall)
+        self._max_collide_particle_count = 300
+        self._collide_particle_pool_index = 299
+        self._collide_particles = [] 
 
-            self.initialized = True 
+        # Creating new fire particle system 
 
-            # can have at most 300 collide particles (when landing, when a bullet collides with a wall)
-            self._max_collide_particle_count = 300
-            self._collide_particle_pool_index = 299
-            self._collide_particles = [] 
+        self._max_fire_particle_count = 600
+        self._fire_particle_pool_index = 599
+        self._fire_particles = []
 
-            # Creating new fire particle system 
+        # testing new fire particle system to utilize compute shader
+        #self._max_fire_particle_count = 600 
+        #self._fire_particle_pool_index = 599 
+        
+        """ particle data attributes
+        
+        damage , life, dead, i, position(vec2) , velocity(vec2) , 
+        sin , sinr , spread , rise_normal(vec2) , rise , rise_angle , r , 0's (vec2), alpha 
+        
+        """
 
-            self._max_fire_particle_count = 600
-            self._fire_particle_pool_index = 599
-            self._fire_particles = []
+        #self._fire_particle_data = np.zeros((self._max_fire_particle_count,20),dtype= np.float32) 
 
-            # testing new fire particle system to utilize compute shader
-            #self._max_fire_particle_count = 600 
-            #self._fire_particle_pool_index = 599 
-            
-            """ particle data attributes
-            
-            damage , life, dead, i, position(vec2) , velocity(vec2) , 
-            sin , sinr , spread , rise_normal(vec2) , rise , rise_angle , r , 0's (vec2), alpha 
-            
-            """
-
-            #self._fire_particle_data = np.zeros((self._max_fire_particle_count,20),dtype= np.float32) 
-
-            # can have at most 300 animated particles (jump, dash, ...)
-            self._max_animation_particle_count = 300
-            self._animation_particle_pool_index = 299        
-            self._animation_particles = []
+        # can have at most 300 animated particles (jump, dash, ...)
+        self._max_animation_particle_count = 300
+        self._animation_particle_pool_index = 299        
+        self._animation_particles = []
 
 
-            # can have at most 300 sparks 
-            self._max_sparks_count = 300
-            self._sparks_pool_index = 299
-            self._sparks = []
+        # can have at most 300 sparks 
+        self._max_sparks_count = 300
+        self._sparks_pool_index = 299
+        self._sparks = []
 
-            self._active_collide_particles = set( )
-            self._active_animation_particles = set( )
-            self._active_fire_particles = set()
-            self._active_sparks = set()
+        self._active_collide_particles = set( )
+        self._active_animation_particles = set( )
+        self._active_fire_particles = set()
+        self._active_sparks = set()
 
-            # create particle pools
-            self._initialize_particle_containers()
+        # create particle pools
+        self._initialize_particle_containers()
 
 
 

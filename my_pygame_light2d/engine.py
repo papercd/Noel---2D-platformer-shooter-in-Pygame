@@ -41,6 +41,8 @@ if TYPE_CHECKING:
     from scripts.data import TileInfo
     from scripts.lists import TileCategories
 
+
+
 class RenderEngine:
     """A class for managing rendering for my game within a Pygame environment."""
 
@@ -106,8 +108,9 @@ class RenderEngine:
 
         # Read source files
 
-        with open('my_pygame_light2d/fireCompute.glsl',encoding='utf-8') as file:
-            fire_compute_shader_src = file.read()
+        #with open('my_pygame_light2d/fireCompute.glsl',encoding='utf-8') as file:
+        #    fire_compute_shader_src = file.read()
+        
         with open('my_pygame_light2d/vertex_circle.glsl',encoding='utf-8') as file:
             circle_vertex_src = file.read()
         with open('my_pygame_light2d/fragment_circle.glsl',encoding='utf-8') as file:
