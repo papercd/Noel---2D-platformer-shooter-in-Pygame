@@ -1,7 +1,7 @@
 import moderngl
 
 
-class DoubleBuff:
+class DoubleBuffer:
     def __init__(self, ctx: moderngl.Context, resolution: tuple[int], components=4, dtype='f2', filter=moderngl.LINEAR) -> None:
         # Create the textures
         self._tex1 = ctx.texture(
