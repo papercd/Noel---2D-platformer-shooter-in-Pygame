@@ -98,7 +98,7 @@ class RenderEngine:
             with open(fragment_src_path,encoding= 'utf-8') as file: 
                 fragment_src = file.read()
         except:
-            print("vertex shader source file could not be opened.")
+            print("fragment shader source file could not be opened.")
 
         return (vertex_src,fragment_src)
 
