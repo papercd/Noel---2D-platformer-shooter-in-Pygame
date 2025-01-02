@@ -143,13 +143,11 @@ class RenderEngine:
         tile_size = self._ref_tilemap.regular_tile_size
 
         has_something_to_render = False
-        tile_data_count =  0
 
-        for x in range(camera_scroll[0] // tile_size- 3, (camera_scroll[0] + self._true_res[0]) // tile_size+ 3):
-            for y in range(camera_scroll[1] // tile_size- 3, (camera_scroll[1] + self._true_res[1]) // tile_size+3):
+        for x in range(camera_scroll[0] // tile_size- 1, (camera_scroll[0] + self._true_res[0]) // tile_size+ 1):
+            for y in range(camera_scroll[1] // tile_size- 1, (camera_scroll[1] + self._true_res[1]) // tile_size+1):
                 coor = (x,y) 
                 if coor in self._ref_tilemap.physical_tiles:
-                    tile_data_count +=1
                     has_something_to_render = True
                     tile_data = self._ref_tilemap.physical_tiles[coor]
                     tile_general_info =tile_data.info
@@ -160,6 +158,7 @@ class RenderEngine:
 
                     vertices_array.append(position)
                     texcoords_array.append(texcoords)
+                    
 
         if has_something_to_render:
             vertices_array = np.concatenate(vertices_array,axis= 0)
@@ -170,7 +169,7 @@ class RenderEngine:
 
             self._fbo_bg.use()
             self._ref_tilemap.ref_texture_atlas.use()
-            self._vao_physical_tiles_draw.render(vertices=12 * tile_data_count)
+            self._vao_physical_tiles_draw.render()
 
     def _create_tile_vertices(self,tile_info:"TileInfo",camera_scroll:tuple[int,int])->np.array: 
         tile_pos = tile_info.tile_pos 
@@ -180,9 +179,13 @@ class RenderEngine:
         y = 1. - 2. * (tile_pos[1] * self._ref_tilemap._regular_tile_size- camera_scroll[1])/ fbo_h
         w = 2. * 16 / fbo_w
         h = 2. * 16 /fbo_h 
-        vertices = np.array([(x, y), (x + w, y), (x, y - h),
-                            (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
         
+        # vertices = np.array([(x, y), (x + w, y), (x, y - h),
+        #                    (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
+        
+        vertices = [(x, y), (x + w, y), (x, y - h),
+                            (x, y - h), (x + w, y), (x + w, y - h)]
+
         return vertices
 
 

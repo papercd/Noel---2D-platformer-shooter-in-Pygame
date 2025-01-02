@@ -347,9 +347,9 @@ class ResourceManager:
         return tile_colors
 
 
-    def create_tilemap_vbos(self,non_physical_tile_layers:int)->list["Context.buffer","Context.buffer"]:
+    def create_tilemap_vbos(self,tile_size:int, non_physical_tile_layers:int)->list["Context.buffer","Context.buffer"]:
 
-        max_visible_tiles_plus_extra = (self._true_res[0]+6) * (self._true_res[1]+6) 
+        max_visible_tiles_plus_extra = ((self._true_res[0]//tile_size)+ 2) * ((self._true_res[1]//tile_size)+2) 
         vertex_size = 4 * 4
         physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size
         non_physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size * non_physical_tile_layers

@@ -182,7 +182,7 @@ class Tilemap:
 
         
 
-        self._physical_tiles_vbo, self._non_physical_tiles_vbo = rm.create_tilemap_vbos(self._non_physical_tile_layers)
+        self._physical_tiles_vbo, self._non_physical_tiles_vbo = rm.create_tilemap_vbos(self._regular_tile_size,self._non_physical_tile_layers)
 
         self.tile_colors = rm.get_tile_colors(self._physical_tiles)
         self.tile_texcoords = rm.get_tile_texcoords(self._physical_tiles,self._non_physical_tiles)
