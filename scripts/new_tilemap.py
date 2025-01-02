@@ -41,6 +41,14 @@ class Tilemap:
     @property 
     def non_physical_tiles_vbo(self)->"Context.buffer":
         return self._non_physical_tiles_vbo
+    
+    @property 
+    def physical_tiles_vbo_vertices(self)->int: 
+        return self._physical_tiles_vbo_vertices
+
+    @property 
+    def non_physical_tiles_vbo_vertices(self)->int: 
+        return self._non_physical_tiles_vbo_vertices
        
     def load_map(self,json_file):
 
@@ -145,7 +153,7 @@ class Tilemap:
                 atl_pos = TILE_ATLAS_POSITIONS[json_file[tilemap_key][tile_key]["type"]]
                 tile_size = (self._regular_tile_size,self._regular_tile_size) if json_file[tilemap_key][tile_key]['type'] \
                                     not in IRREGULAR_TILE_SIZES else IRREGULAR_TILE_SIZES[json_file[tilemap_key][tile_key]['type']]
-
+                relative_position_index,variant = map(int,json_file[tilemap_key][tile_key]['variant'].split(';'))
                 if json_file[tilemap_key][tile_key]["type"] == "lights":
                     pass 
                     """
@@ -183,6 +191,9 @@ class Tilemap:
         
 
         self._physical_tiles_vbo, self._non_physical_tiles_vbo = rm.create_tilemap_vbos(self._regular_tile_size,self._non_physical_tile_layers)
+        self._physical_tiles_vbo_vertices = self._physical_tiles_vbo.size // 16 
+        self._non_physical_tiles_vbo_vertices = self._non_physical_tiles_vbo.size // 16
+        
 
         self.tile_colors = rm.get_tile_colors(self._physical_tiles)
         self.tile_texcoords = rm.get_tile_texcoords(self._physical_tiles,self._non_physical_tiles)
@@ -366,5 +377,9 @@ class Tilemap:
 
         return surrounding_rects
 
-    def write_to_physical_tiles(self,buffer_data:"np.array")->None: 
-        self._physical_tiles_vbo.write(buffer_data.tobytes())
+    def write_to_physical_tiles_vbo(self,buffer_data:"np.array",buffer_data_size:int)->None: 
+        self._physical_tiles_vbo.write(buffer_data.tobytes(),offset = self._physical_tiles_vbo.size-buffer_data_size)
+
+
+    def write_to_non_physical_tiles_vbo(self,buffer_data:"np.array",buffer_data_size:int)->None: 
+        self._non_physical_tiles_vbo.write(buffer_data.tobytes(),offset = self._non_physical_tiles_vbo.size-buffer_data_size)
