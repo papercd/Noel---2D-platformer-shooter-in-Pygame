@@ -46,13 +46,15 @@ class GrassAssets:
 class ResourceManager: 
     _instance = None 
     _ctx : "Context" = None
+    _true_res :tuple[int,int] = None
 
 
 
     @staticmethod
-    def get_instance(ctx:"Context" = None)->"ResourceManager":
+    def get_instance(ctx:"Context" = None,true_res:tuple[int,int]= None)->"ResourceManager":
         if ResourceManager._instance is None: 
             ResourceManager._ctx = ctx
+            ResourceManager._true_res = true_res
             ResourceManager._instance = ResourceManager()
         return ResourceManager._instance
    
@@ -86,7 +88,7 @@ class ResourceManager:
             elif resource_name =='grass_assets':
                 self._load_grass_assets_and_texcoords(path)
             else: 
-                self.texture_atlasses[resource_name] = load_texture(path,ResourceManager._ctx)
+                self.texture_atlasses[resource_name] = load_texture(path,self._ctx)
 
         self._compute_texture_coords()
         self._compute_fire_particle_vertices_and_indices()
@@ -97,7 +99,7 @@ class ResourceManager:
         for path in paths:
             split_path = path.split('/')
             asset_name = split_path[-1].split('.')[0] 
-            self.texture_atlasses[asset_name] = load_texture(path,ResourceManager._ctx)
+            self.texture_atlasses[asset_name] = load_texture(path,self._ctx)
             self.grass_assets[asset_name] = GrassAssets(asset_name)
 
             self.grass_asset_texcoords[asset_name] = {}
@@ -115,7 +117,7 @@ class ResourceManager:
         for folder in listdir(path = path):
             textures = []
             for tex_path in listdir(path= path+'/'+folder):
-                tex = load_texture(path+ '/' +folder + '/' + tex_path,ResourceManager._ctx)
+                tex = load_texture(path+ '/' +folder + '/' + tex_path,self._ctx)
                 textures.append(tex)
 
             self.backgrounds[folder] = textures
@@ -123,7 +125,7 @@ class ResourceManager:
     def _load_held_wpn_textures(self,path:str)-> None:
         for texture_name in listdir(path = path):
             texture_name = texture_name.split('.')[0]
-            self.held_wpn_textures[texture_name] = load_texture(f"{path}/{texture_name}.png",ResourceManager._ctx)
+            self.held_wpn_textures[texture_name] = load_texture(f"{path}/{texture_name}.png",self._ctx)
 
 
     def _load_tilemap_jsons(self,path:str) -> None:
@@ -138,10 +140,10 @@ class ResourceManager:
     def _compute_fire_particle_vertices_and_indices(self) -> None: 
         # circle template for the fire particles 
         circle_vertices = self._generate_circle_vertices((0.0,0.0),1.0,segments = 100)
-        self.circle_vbo = ResourceManager._ctx.buffer(np.array(circle_vertices,dtype=np.float32).tobytes())
+        self.circle_vbo = self._ctx.buffer(np.array(circle_vertices,dtype=np.float32).tobytes())
         
         circle_indices = self._generate_circle_indices(segments =100)
-        self.circle_ibo = ResourceManager._ctx.buffer(np.array(circle_indices,dtype ='i4').tobytes())
+        self.circle_ibo = self._ctx.buffer(np.array(circle_indices,dtype ='i4').tobytes())
 
 
     def _generate_circle_vertices(self,center:tuple[float,float],radius:float,segments:int)->list[tuple[float,float]]: 
@@ -245,7 +247,7 @@ class ResourceManager:
                 tile_info =tile_info_source 
             else: 
                 tile_info = tile_info_source.info
-            relative_position_index ,variant = map(int,tile_info.variant.split(';'))
+            relative_position_index ,variant = tile_info.relative_pos_ind, tile_info.variant
             tile_type = tile_info.type
 
             atlas_width,atlas_height = self.texture_atlasses['tiles'].size
@@ -281,7 +283,7 @@ class ResourceManager:
 
         for key in physical_tiles:
             tile_data = physical_tiles[key]
-            relative_position_index,variant = map(int,tile_data.info.variant.split(';'))
+            relative_position_index,variant = tile_data.info.relative_pos_ind, tile_data.info.variant
             tile_texcoord_key = (tile_data.info.type,relative_position_index,variant)
 
             if tile_texcoord_key not in tile_texcoords:
@@ -298,7 +300,7 @@ class ResourceManager:
         for i,dict in enumerate(non_physical_tiles):
             for key in dict:
                 tile_info = dict[key]
-                relative_position_index,variant = map(int,tile_info.variant.split(';'))
+                relative_position_index,variant = tile_info.relative_pos_ind,tile_info.variant
                 tile_texcoord_key = (tile_info.type,relative_position_index,variant)
                 if  tile_texcoord_key not in tile_texcoords:
                     texcoords = self._get_texcoords_for_tile(tile_info)
@@ -317,7 +319,7 @@ class ResourceManager:
         for tile_key in physical_tiles: 
             tile_data = physical_tiles[tile_key]
             tile_general_info = tile_data.info 
-            relative_position_index,variant = map(int,tile_general_info.variant.split(';'))
+            relative_position_index,variant = tile_general_info.relative_pos_ind,tile_general_info.variant
 
             if tile_general_info.type.endswith('stairs'):
                 for side in ('top','bottom','left','right'):
@@ -344,3 +346,15 @@ class ResourceManager:
         
         return tile_colors
 
+
+    def create_tilemap_vbos(self,tile_size:int, non_physical_tile_layers:int)->list["Context.buffer","Context.buffer"]:
+
+        max_visible_tiles_plus_extra = ((self._true_res[0]//tile_size)+ 2) * ((self._true_res[1]//tile_size)+2) 
+        vertex_size = 4 * 4
+        physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size
+        non_physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size * non_physical_tile_layers
+
+        physical_tiles_vbo = self._ctx.buffer(reserve=physical_tiles_buffer_size,dynamic=True)
+        non_physical_tiles_vbo = self._ctx.buffer(reserve=non_physical_tiles_buffer_size,dynamic=True)
+
+        return [physical_tiles_vbo,non_physical_tiles_vbo]

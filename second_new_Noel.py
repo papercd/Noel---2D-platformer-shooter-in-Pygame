@@ -5,6 +5,7 @@ from enum import Enum
 from moderngl import create_context
 from screeninfo import get_monitors
 
+from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
 from scripts.resourceManager import ResourceManager
 from scripts.new_particles import ParticleSystem
 from scripts.entitiesManager import EntitiesManager
@@ -46,14 +47,16 @@ class Noel():
 
     def _initialize_game_objects(self):
         
-        self._resource_manager = ResourceManager.get_instance(self._ctx)
+        self._resource_manager = ResourceManager.get_instance(self._ctx,self._game_context['true_res'])
         self._particle_system = ParticleSystem.get_instance()
         self._entities_manager = EntitiesManager.get_instance()
         self._tilemap = Tilemap(self._resource_manager.get_tilemap_json('test1.json'))
 
+        
         self._render_engine = RenderEngine.get_instance(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res']
                                                         ,self._game_context['true_res'])
-        
+       
+        self._render_engine.bind_tilemap(self._tilemap)
         
 
         """
@@ -259,6 +262,17 @@ class Noel():
         if self._game_context['gamestate']== GameState.GameLoop:
             for event in pygame.event.get():
                 self._handle_common_events(event)
+                
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_w: 
+                        self._scroll[1] -= 10
+                    if event.key == pygame.K_s: 
+                        self._scroll[1] += 10
+                    if event.key == pygame.K_a: 
+                        self._scroll[0] -= 10
+                    if event.key == pygame.K_d: 
+                        self._scroll[0] += 10
+                    
             """
             if self._hud.cursor.pressed[0]:
                 if not self._hud.cursor.interacting:
@@ -330,13 +344,20 @@ class Noel():
         self._frame_count = (self._frame_count+1) %360
         #self.render_engine.set_ambient(255,255,255, 25)
         #self.render_engine.clear(0,0,0,255)
-        self._ctx.screen.clear(0,0,0,0)
+        self._render_engine.clear(0,0,0,255)
 
         self._dt = min(self._clock.tick() / 1000.0,0.1)
         self._time_accumulator += self._dt
         self._grass_rotation_function_time += self._dt * 100
         if self._game_context['gamestate']== GameState.GameLoop:  
             
+            while self._time_accumulator >= TIME_FOR_ONE_LOGICAL_STEP:
+                self._time_accumulator -= TIME_FOR_ONE_LOGICAL_STEP
+            
+            interpolation_delta = self._time_accumulator / TIME_FOR_ONE_LOGICAL_STEP
+
+            self._render_engine.render_to_background_fbo(self._scroll)
+            self._render_engine.render_fbos_to_screen_with_lighting()
             """
            
             self._game_context['screen_shake'] = max(0,self._game_context['screen_shake'] -self._dt*60)
