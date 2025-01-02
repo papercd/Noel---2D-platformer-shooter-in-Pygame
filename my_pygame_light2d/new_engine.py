@@ -2,11 +2,12 @@
 from math import sqrt
 import numpy as np 
 from moderngl import Context,NEAREST,LINEAR
+from my_pygame_light2d.color import normalize_color_arguments
 from my_pygame_light2d.double_buff import DoubleBuffer
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: 
+    from scripts.data import TileInfo 
     from scripts.new_tilemap import Tilemap 
     from my_pygame_light2d.light import PointLight
     from my_pygame_light2d.hull import Hull
@@ -30,6 +31,7 @@ class RenderEngine:
 
     def __init__(self,true_to_screen_res_ratio:int, screen_res:tuple[int,int],true_res :tuple[int,int])->None:
 
+
         # Initialize  members
         self._true_to_native_ratio = true_to_screen_res_ratio 
         self._screen_res = screen_res
@@ -48,7 +50,7 @@ class RenderEngine:
         self._create_programs()
         self._create_frame_buffers()
 
-        #self._create_screen_vertex_buffers()
+        self._create_screen_vertex_buffers()
 
 
 
@@ -135,8 +137,53 @@ class RenderEngine:
 
 
     def _render_tilemap(self,camera_scroll:tuple[int,int])->None: 
+        vertices_array = []
+        texcoords_array = []
+
+        tile_size = self._ref_tilemap.regular_tile_size
+
+        has_something_to_render = False
+        tile_data_count =  0
+
+        for x in range(camera_scroll[0] // tile_size- 3, (camera_scroll[0] + self._true_res[0]) // tile_size+ 3):
+            for y in range(camera_scroll[1] // tile_size- 3, (camera_scroll[1] + self._true_res[1]) // tile_size+3):
+                coor = (x,y) 
+                if coor in self._ref_tilemap.physical_tiles:
+                    tile_data_count +=1
+                    has_something_to_render = True
+                    tile_data = self._ref_tilemap.physical_tiles[coor]
+                    tile_general_info =tile_data.info
+                    relative_position_index,variant = tile_general_info.relative_pos_ind,tile_general_info.variant
+                    
+                    position = self._create_tile_vertices(tile_general_info,camera_scroll)
+                    texcoords= self._ref_tilemap.tile_texcoords[(tile_general_info.type,relative_position_index,variant)]
+
+                    vertices_array.append(position)
+                    texcoords_array.append(texcoords)
+
+        if has_something_to_render:
+            vertices_array = np.concatenate(vertices_array,axis= 0)
+            texcoords_array = np.concatenate(texcoords_array,axis=0)
+
+            buffer_data = np.column_stack((vertices_array,texcoords_array)).astype(np.float32)
+            self._ref_tilemap.write_to_physical_tiles(buffer_data)
+
+            self._fbo_bg.use()
+            self._ref_tilemap.ref_texture_atlas.use()
+            self._vao_physical_tiles_draw.render(vertices=12 * tile_data_count)
+
+    def _create_tile_vertices(self,tile_info:"TileInfo",camera_scroll:tuple[int,int])->np.array: 
+        tile_pos = tile_info.tile_pos 
+        fbo_w,fbo_h = self._fbo_bg.size
+
+        x = 2. * (tile_pos[0] * self._ref_tilemap._regular_tile_size-camera_scroll[0] )/ fbo_w- 1.
+        y = 1. - 2. * (tile_pos[1] * self._ref_tilemap._regular_tile_size- camera_scroll[1])/ fbo_h
+        w = 2. * 16 / fbo_w
+        h = 2. * 16 /fbo_h 
+        vertices = np.array([(x, y), (x + w, y), (x, y - h),
+                            (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
         
-        pass
+        return vertices
 
 
     def bind_tilemap(self,tilemap:"Tilemap")->None: 
@@ -144,16 +191,30 @@ class RenderEngine:
         self._vao_physical_tiles_draw = RenderEngine._ctx.vertex_array(
             self._tile_draw_prog,
             [
-                (self._ref_tilemap.non_physical_tiles_vbo, '2f 2f', 'in_position', 'in_texcoord'),
+                (self._ref_tilemap.physical_tiles_vbo, '2f 2f', 'in_position', 'in_texcoord'),
             ]
         )
 
 
 
-    def render_background_fbo_to_screen(self,camera_scroll:tuple[int,int])->None: 
+    def render_to_background_fbo(self,camera_scroll:tuple[int,int])->None: 
         self._render_tilemap(camera_scroll)
 
 
+
+    def clear(self,R = 0,G= 0 ,B= 0 ,A = 255)->None:
+        R,G,B,A = normalize_color_arguments(R,G,B,A) 
+        self._ctx.screen.clear(0,0,0,255)
+        self._fbo_bg.clear(R,G,B,A) 
+
+
+    def render_fbos_to_screen_with_lighting(self)->None: 
+        # TESTING, doesn't have lighting yet. 
+
+
+        RenderEngine._ctx.screen.use()
+        self._tex_bg.use()
+        self._vao_to_screen_draw.render()
 
 
     

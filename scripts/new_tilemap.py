@@ -23,6 +23,10 @@ class Tilemap:
             self.load_map(json_file)
 
     @property
+    def regular_tile_size(self)->int: 
+        return self._regular_tile_size
+
+    @property
     def physical_tiles(self)->dict[tuple[int,int],"TileInfoDataClass"]:
         return self._physical_tiles
     
@@ -40,7 +44,9 @@ class Tilemap:
        
     def load_map(self,json_file):
 
-        
+        rm = ResourceManager.get_instance()
+
+
         self._regular_tile_size:int = json_file['tile_size']
         self._non_physical_tile_layers:int= json_file['offgrid_layers']
         self._non_physical_tiles:list[dict[tuple[int,int],"TileInfo"]] = [{} for i in range(0,self._non_physical_tile_layers)]
@@ -48,7 +54,7 @@ class Tilemap:
         self._ambient_node_ptr:ambientNode = None
 
 
-
+        self.ref_texture_atlas = rm.texture_atlasses['tiles']
         self.hull_grid  = SpatialGrid(cell_size= self._regular_tile_size)
         self.lights : list["PointLight"]= []
         self.ambientNodes = ambientNodeList()
@@ -63,6 +69,8 @@ class Tilemap:
             atl_pos = TILE_ATLAS_POSITIONS[json_file['tilemap'][tile_key]['type']]
             tile_pos = tuple(json_file['tilemap'][tile_key]["pos"])
 
+            relative_position_index,variant = map(int,json_file['tilemap'][tile_key]['variant'].split(';'))
+
             if json_file['tilemap'][tile_key]['type'] != "lights":
                 if json_file['tilemap'][tile_key]['type'].endswith('door'):
                     if json_file['tilemap'][tile_key]['type'].split('_')[0] == 'trap':
@@ -71,7 +79,7 @@ class Tilemap:
                         rect = Rect(tile_pos[0] * self._regular_tile_size, self.pos[1] * self._regular_tile_size, self._regular_tile_size,5)
 
                         self._physical_tiles[tile_pos] = TrapDoorTileInfoWithOpenState(
-                                                            info = DoorInfo((json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],\
+                                                            info = DoorInfo((json_file['tilemap'][tile_key]["type"],relative_position_index,variant,\
                                                                  tile_pos,tile_size,rect,atl_pos)),
                                                             open= False
                                                          )
@@ -81,7 +89,7 @@ class Tilemap:
                             rect = Rect(tile_pos[0] * self._regular_tile_size + 3, tile_pos[1] * self._regular_tile_size ,6,32)
 
                             door = DoorTileInfoWithAnimation(
-                                info = DoorInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],\
+                                info = DoorInfo(json_file['tilemap'][tile_key]["type"],relative_position_index,variant,\
                                 tile_pos,tile_size,rect,atl_pos),
                                 animation= DoorAnimation(5,5)
                             )
@@ -96,7 +104,7 @@ class Tilemap:
                     # TODO: THE TILE KEYS NEED TO BE CHANGED TO INTS, NOT STRINGS. 
 
                     self._physical_tiles[tile_pos] = RegularTileInfo(
-                                                        info =TileInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],
+                                                        info =TileInfo(json_file['tilemap'][tile_key]["type"],relative_position_index,variant,
                                                         tile_pos,tile_size,atl_pos) 
                                                     )
 
@@ -124,7 +132,7 @@ class Tilemap:
                 rect = Rect(tile_pos[0] * self._regular_tile_size +3, tile_pos[1] * self._regular_tile_size, 10,6)
 
                 self._physical_tiles[tile_pos] = LightTileInfo(
-                                                   info = LightInfo(json_file['tilemap'][tile_key]["type"],json_file['tilemap'][tile_key]["variant"],\
+                                                   info = LightInfo(json_file['tilemap'][tile_key]["type"],relative_position_index,variant,\
                                                  tile_pos,tile_size,rect,json_file['tilemap'][tile_key]["radius"], json_file['tilemap'][tile_key]["power"],
                                                  json_file['tilemap'][tile_key]["colorValue"],atl_pos) ,
                                                  refPointLight= light
@@ -158,7 +166,7 @@ class Tilemap:
                                                             radius = json_file['offgrid_'+str(i)][tile_key]['radius'],power = json_file['offgrid_'+str(i)][tile_key]['power'],color_value=json_file['offgrid_'+str(i)][tile_key]['colorValue'] )
                     """
                 else: 
-                    self._non_physical_tiles[i][tile_pos] = TileInfo(json_file[tilemap_key][tile_key]["type"],json_file[tilemap_key][tile_key]["variant"],
+                    self._non_physical_tiles[i][tile_pos] = TileInfo(json_file[tilemap_key][tile_key]["type"],relative_position_index,variant,
                                                             tile_pos,tile_size,atl_pos)
         
         for node_data in json_file['ambient_nodes']:
@@ -172,7 +180,6 @@ class Tilemap:
         for hull in self._hulls:
             self.hull_grid.insert(hull)
 
-        rm = ResourceManager.get_instance()
         
 
         self._physical_tiles_vbo, self._non_physical_tiles_vbo = rm.create_tilemap_vbos(self._non_physical_tile_layers)
@@ -323,8 +330,8 @@ class Tilemap:
         coor =(check_pos[0] // self._regular_tile_size , check_pos[1] //self._regular_tile_size)       
         tile_info_list = self._physical_tiles[coor]
         tile_info = tile_info_list[0] 
-        rel_pos,variant = map(int,tile_info.variant.split(';'))
-        return self._tile_colors[(tile_info.type,(rel_pos,variant),side)]
+        rel_pos,variant = tile_info.relative_pos_ind,tile_info.variant
+        return self._tile_colors[(tile_info.type,rel_pos,variant,side)]
 
 
     
@@ -358,3 +365,6 @@ class Tilemap:
                 pass 
 
         return surrounding_rects
+
+    def write_to_physical_tiles(self,buffer_data:"np.array")->None: 
+        self._physical_tiles_vbo.write(buffer_data.tobytes())

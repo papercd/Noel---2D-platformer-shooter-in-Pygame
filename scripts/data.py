@@ -9,10 +9,10 @@ if TYPE_CHECKING:
 RGBA_tuple = namedtuple('RGBA_tuple',['r','g','b','a'])
 TileTexcoordsKey = namedtuple('TileTexcoordsKey',['type','relative_pos_ind','variant'])
 TileColorKey = namedtuple('TileColorKey',['type','relative_pos_ind','variant','side'])
-TileInfo = namedtuple('TileInfo',['type','variant','tile_pos','tile_size','atl_pos'])
-LightInfo = namedtuple('LightInfo',['type','variant','tile_pos','tile_size','rect','radius','power','colorValue','atl_pos'])
+TileInfo = namedtuple('TileInfo',['type','relative_pos_ind','variant','tile_pos','tile_size','atl_pos'])
+LightInfo = namedtuple('LightInfo',['type','relative_pos_ind','variant','tile_pos','tile_size','rect','radius','power','colorValue','atl_pos'])
 AnimationData = namedtuple('AnimationData',['state','n_textures','img_dur','halt','loop'])
-DoorInfo = namedtuple('DoorInfo', ['type','variant','tile_pos','tile_size','rect','atl_pos'])
+DoorInfo = namedtuple('DoorInfo', ['type','relative_pos_ind','variant','tile_pos','tile_size','rect','atl_pos'])
 
 SparkData = namedtuple('SparkData',['pos','decay_factor','angle','speed','scale','color','speed_factor'])
 CollideParticleData = namedtuple('CollideParticleData',['size','pos','angle','speed','color','life','gravity_factor'])
@@ -424,7 +424,7 @@ def get_tile_rectangle(tile_info:TileInfo,tile_size:int,physical_tiles:"Tilemap.
 
     """
 
-    rel_pos,variant = map(int,tile_info.variant.split(';'))
+    rel_pos,variant = tile_info.relative_pos_ind,tile_info.variant
     x1 = tile_info.tile_pos[0] * tile_size
     x2 = (tile_info.tile_pos[0] + 1 ) * tile_size
     y1 = tile_info.tile_pos[1] * tile_size

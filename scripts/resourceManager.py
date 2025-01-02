@@ -247,7 +247,7 @@ class ResourceManager:
                 tile_info =tile_info_source 
             else: 
                 tile_info = tile_info_source.info
-            relative_position_index ,variant = map(int,tile_info.variant.split(';'))
+            relative_position_index ,variant = tile_info.relative_pos_ind, tile_info.variant
             tile_type = tile_info.type
 
             atlas_width,atlas_height = self.texture_atlasses['tiles'].size
@@ -283,7 +283,7 @@ class ResourceManager:
 
         for key in physical_tiles:
             tile_data = physical_tiles[key]
-            relative_position_index,variant = map(int,tile_data.info.variant.split(';'))
+            relative_position_index,variant = tile_data.info.relative_pos_ind, tile_data.info.variant
             tile_texcoord_key = (tile_data.info.type,relative_position_index,variant)
 
             if tile_texcoord_key not in tile_texcoords:
@@ -300,7 +300,7 @@ class ResourceManager:
         for i,dict in enumerate(non_physical_tiles):
             for key in dict:
                 tile_info = dict[key]
-                relative_position_index,variant = map(int,tile_info.variant.split(';'))
+                relative_position_index,variant = tile_info.relative_pos_ind,tile_info.variant
                 tile_texcoord_key = (tile_info.type,relative_position_index,variant)
                 if  tile_texcoord_key not in tile_texcoords:
                     texcoords = self._get_texcoords_for_tile(tile_info)
@@ -319,7 +319,7 @@ class ResourceManager:
         for tile_key in physical_tiles: 
             tile_data = physical_tiles[tile_key]
             tile_general_info = tile_data.info 
-            relative_position_index,variant = map(int,tile_general_info.variant.split(';'))
+            relative_position_index,variant = tile_general_info.relative_pos_ind,tile_general_info.variant
 
             if tile_general_info.type.endswith('stairs'):
                 for side in ('top','bottom','left','right'):
