@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import numpy as np
+    from moderngl import Context
     from scripts.data import TileColorKey,RGBA_tuple,TileInfoDataClass,TileTexcoordsKey
 
 
@@ -28,9 +29,17 @@ class Tilemap:
     @property 
     def non_physical_tiles(self)->list[dict[tuple[int,int],"TileInfo"]]:
         return self._non_physical_tiles
-        
+    
+    @property 
+    def physical_tiles_vbo(self)->"Context.buffer":
+        return self._physical_tiles_vbo
 
+    @property 
+    def non_physical_tiles_vbo(self)->"Context.buffer":
+        return self._non_physical_tiles_vbo
+       
     def load_map(self,json_file):
+
         
         self._regular_tile_size:int = json_file['tile_size']
         self._non_physical_tile_layers:int= json_file['offgrid_layers']
@@ -164,6 +173,9 @@ class Tilemap:
             self.hull_grid.insert(hull)
 
         rm = ResourceManager.get_instance()
+        
+
+        self._physical_tiles_vbo, self._non_physical_tiles_vbo = rm.create_tilemap_vbos(self._non_physical_tile_layers)
 
         self.tile_colors = rm.get_tile_colors(self._physical_tiles)
         self.tile_texcoords = rm.get_tile_texcoords(self._physical_tiles,self._non_physical_tiles)

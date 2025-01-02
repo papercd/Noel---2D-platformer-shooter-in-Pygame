@@ -5,6 +5,7 @@ from enum import Enum
 from moderngl import create_context
 from screeninfo import get_monitors
 
+from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
 from scripts.resourceManager import ResourceManager
 from scripts.new_particles import ParticleSystem
 from scripts.entitiesManager import EntitiesManager
@@ -46,14 +47,16 @@ class Noel():
 
     def _initialize_game_objects(self):
         
-        self._resource_manager = ResourceManager.get_instance(self._ctx)
+        self._resource_manager = ResourceManager.get_instance(self._ctx,self._game_context['true_res'])
         self._particle_system = ParticleSystem.get_instance()
         self._entities_manager = EntitiesManager.get_instance()
         self._tilemap = Tilemap(self._resource_manager.get_tilemap_json('test1.json'))
 
+        
         self._render_engine = RenderEngine.get_instance(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res']
                                                         ,self._game_context['true_res'])
-        
+       
+        self._render_engine.bind_tilemap(self._tilemap)
         
 
         """
@@ -337,6 +340,13 @@ class Noel():
         self._grass_rotation_function_time += self._dt * 100
         if self._game_context['gamestate']== GameState.GameLoop:  
             
+            while self._time_accumulator >= TIME_FOR_ONE_LOGICAL_STEP:
+                self._time_accumulator -= TIME_FOR_ONE_LOGICAL_STEP
+            
+            interpolation_delta = self._time_accumulator / TIME_FOR_ONE_LOGICAL_STEP
+
+            self._render_engine.render_background_fbo_to_screen(self._scroll)
+
             """
            
             self._game_context['screen_shake'] = max(0,self._game_context['screen_shake'] -self._dt*60)

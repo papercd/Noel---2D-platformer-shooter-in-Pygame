@@ -7,6 +7,7 @@ from my_pygame_light2d.double_buff import DoubleBuffer
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: 
+    from scripts.new_tilemap import Tilemap 
     from my_pygame_light2d.light import PointLight
     from my_pygame_light2d.hull import Hull
 
@@ -45,10 +46,10 @@ class RenderEngine:
         self.shadow_blur_radious = 5
 
         self._create_programs()
-
-        self._create_screen_vertex_buffers()
-
         self._create_frame_buffers()
+
+        #self._create_screen_vertex_buffers()
+
 
 
 
@@ -98,7 +99,7 @@ class RenderEngine:
             with open(fragment_src_path,encoding= 'utf-8') as file: 
                 fragment_src = file.read()
         except:
-            print("fragment shader source file could not be opened.")
+            print("vertex shader source file could not be opened.")
 
         return (vertex_src,fragment_src)
 
@@ -107,9 +108,14 @@ class RenderEngine:
         vertex_src,fragment_src = self._load_shader_srcs('my_pygame_light2d/vertex.glsl',
                                                                'my_pygame_light2d/fragment_draw.glsl')
         
-        self._no_transform_draw_prog = RenderEngine._ctx.program(vertex_shader =vertex_src,
-                                                                 fragment_shader= fragment_src)
+        tile_draw_vert_src,tile_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/tile_vert.glsl',
+                                                               'my_pygame_light2d/tile_frag.glsl')
         
+        
+        self._to_screen_draw_prog = RenderEngine._ctx.program(vertex_shader =vertex_src,
+                                                                 fragment_shader= fragment_src)
+        self._tile_draw_prog = RenderEngine._ctx.program(vertex_shader=tile_draw_vert_src,
+                                                         fragment_shader= tile_draw_frag_src)
 
     def _create_screen_vertex_buffers(self)->None: 
         screen_vertices = np.array([(-1.0, 1.0), (1.0, 1.0), (-1.0, -1.0),
@@ -119,9 +125,35 @@ class RenderEngine:
         screen_vertex_data = np.hstack([screen_vertices, screen_tex_coords])
 
         screen_vbo = RenderEngine._ctx.buffer(screen_vertex_data) 
-        self._vao_no_transform_draw = RenderEngine._ctx.vertex_array(
-            self._no_transform_draw_prog,
+
+        self._vao_to_screen_draw = RenderEngine._ctx.vertex_array(
+            self._to_screen_draw_prog,
             [
                 (screen_vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
             ]
         )
+
+
+    def _render_tilemap(self,camera_scroll:tuple[int,int])->None: 
+        
+        pass
+
+
+    def bind_tilemap(self,tilemap:"Tilemap")->None: 
+        self._ref_tilemap = tilemap 
+        self._vao_physical_tiles_draw = RenderEngine._ctx.vertex_array(
+            self._tile_draw_prog,
+            [
+                (self._ref_tilemap.non_physical_tiles_vbo, '2f 2f', 'in_position', 'in_texcoord'),
+            ]
+        )
+
+
+
+    def render_background_fbo_to_screen(self,camera_scroll:tuple[int,int])->None: 
+        self._render_tilemap(camera_scroll)
+
+
+
+
+    
