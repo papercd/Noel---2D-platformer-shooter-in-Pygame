@@ -56,7 +56,10 @@ class Noel():
         self._render_engine = RenderEngine.get_instance(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res']
                                                         ,self._game_context['true_res'])
        
+
+        self._render_engine.bind_background(self._resource_manager.backgrounds['building'])
         self._render_engine.bind_tilemap(self._tilemap)
+        
         
 
         """

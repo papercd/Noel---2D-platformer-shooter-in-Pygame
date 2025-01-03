@@ -1,12 +1,13 @@
 
 from math import sqrt
 import numpy as np 
-from moderngl import Context,NEAREST,LINEAR,BLEND
+from moderngl import Texture,Context,NEAREST,LINEAR,BLEND
 from my_pygame_light2d.color import normalize_color_arguments
 from my_pygame_light2d.double_buff import DoubleBuffer
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: 
+    from scripts.background import Background
     from scripts.data import TileInfo 
     from scripts.new_tilemap import Tilemap 
     from my_pygame_light2d.light import PointLight
@@ -31,6 +32,10 @@ class RenderEngine:
 
     def __init__(self,true_to_screen_res_ratio:int, screen_res:tuple[int,int],true_res :tuple[int,int])->None:
 
+        # references
+        self._ref_tilemap:"Tilemap" = None 
+        self._ref_background : "Background" = None
+        self._ref_background_vertices_buffer: Context.buffer = None
 
         # Initialize  members
         self._true_to_native_ratio = true_to_screen_res_ratio 
@@ -135,6 +140,29 @@ class RenderEngine:
             ]
         )
 
+    def _render_background(self,camera_scroll:tuple[int,int])->None: 
+        speed = 1
+        
+        for tex in self._ref_background.textures:
+            vertex_data = self._create_background_texture_vertex_data(camera_scroll,speed)
+            self._ref_background_vertices_buffer.write(vertex_data)
+
+            self._fbo_bg.use()
+            tex.use()
+
+            self._vao_background_draw.render()
+
+
+    def _create_background_texture_vertex_data(self,camera_scroll:tuple[int,int],speed:int):
+        width,height = self._fbo_bg.size 
+        x = 2. * (-camera_scroll[0] *0.05 * speed) / width - 1.
+        y = 1. -2. * (-min(0,camera_scroll[1]) * 0.05) / height
+        w = 2.
+        h = 2. 
+
+        return np.array([(x,y),(x+w,y),(x,y-h),
+                         (x,y-h),(x+w,y),(x+w,y-h)],dtype= np.float32)
+
 
     def _render_tilemap(self,camera_scroll:tuple[int,int])->None: 
         physical_tiles_vertices_array = []
@@ -198,6 +226,7 @@ class RenderEngine:
             texcoords_array = np.concatenate(physical_tiles_texcoords_array,axis=0)
 
             buffer_data = np.column_stack((vertices_array,texcoords_array)).astype(np.float32)
+
             self._ref_tilemap.write_to_physical_tiles_vbo(buffer_data,physical_tiles_buffer_data_size)
 
             self._fbo_bg.use()
@@ -237,10 +266,26 @@ class RenderEngine:
             ]
         )
 
+    def bind_background(self,background:"Background")->None:
+        self._ref_background = background
+
+        background_vertices = np.zeros(shape=(12,),dtype=np.float32)
+
+        self._ref_background_vertices_buffer = RenderEngine._ctx.buffer(background_vertices,dynamic=True)
+        texcoords_buffer = RenderEngine._ctx.buffer(self._ref_background.identity_texcoords)
+
+        self._vao_background_draw = RenderEngine._ctx.vertex_array(
+            self._to_screen_draw_prog,
+            [
+                (self._ref_background_vertices_buffer, '2f' , 'vertexPos'),
+                (texcoords_buffer, '2f' , 'vertexTexCoord'),
+            ]
+        )
 
 
     def render_to_background_fbo(self,camera_scroll:tuple[int,int])->None: 
         RenderEngine._ctx.enable(BLEND)
+        self._render_background(camera_scroll)
         self._render_tilemap(camera_scroll)
 
 
