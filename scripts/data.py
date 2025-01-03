@@ -144,6 +144,7 @@ class AnimationDataCollection:
 """ Animation Data """
 
 GRAVITY = 0.965
+TERMINAL_VELOCITY = 6 
 
 PLAYER_ANIMATION_DATA = [
     AnimationData('idle',4,6,False,True),
