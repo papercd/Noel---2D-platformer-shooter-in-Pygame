@@ -20,5 +20,4 @@ class EntitiesManager:
 
     def update(self,tilemap:Tilemap,dt:float)->None: 
         self.player.update(tilemap,dt)
-        print(self.player._collision_rect.y)
         #print(self.player._collisions['down'])
