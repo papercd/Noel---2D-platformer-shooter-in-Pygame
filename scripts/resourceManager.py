@@ -1,5 +1,5 @@
 from scripts.utils import load_texture
-
+from scripts.background import Background
 from typing import TYPE_CHECKING
 from os import listdir
 from json import load as jsLoad
@@ -61,9 +61,11 @@ class ResourceManager:
 
 
     def __init__(self)-> None:
-        self.texture_atlasses:dict[str,"Texture"]= {}
+        self.identity_texcoords = np.array([(0.,1.),(1.,1.),(0.,0.),
+                                            (0.,0.),(1.,1.),(1.,0.)],dtype=np.float32)
 
-        self.backgrounds:dict[str,list["Texture"]] = {}
+        self.texture_atlasses:dict[str,"Texture"]= {}
+        self.backgrounds:dict[str,Background] = {}
         self.tilemap_data = {}
         self.held_wpn_textures:dict[str,"Texture"] = {}
         
@@ -90,7 +92,7 @@ class ResourceManager:
             else: 
                 self.texture_atlasses[resource_name] = load_texture(path,self._ctx)
 
-        self._compute_texture_coords()
+        self._compute_objects_texture_coords()
         self._compute_fire_particle_vertices_and_indices()
 
 
@@ -119,9 +121,9 @@ class ResourceManager:
             for tex_path in listdir(path= path+'/'+folder):
                 tex = load_texture(path+ '/' +folder + '/' + tex_path,self._ctx)
                 textures.append(tex)
+            self.backgrounds[folder] =Background(textures,self.identity_texcoords) 
+    
 
-            self.backgrounds[folder] = textures
-        
     def _load_held_wpn_textures(self,path:str)-> None:
         for texture_name in listdir(path = path):
             texture_name = texture_name.split('.')[0]
@@ -163,7 +165,8 @@ class ResourceManager:
 
         return indices
 
-    def _compute_texture_coords(self)-> None:
+    def _compute_objects_texture_coords(self)-> None:
+
 
         for key in UI_ATLAS_POSITIONS_AND_SIZES:
             if key.endswith('slot'):
@@ -271,7 +274,7 @@ class ResourceManager:
     def get_tilemap_json(self,name:str):
         return self.tilemap_data[name]
 
-    def get_background_of_name(self,name:str)->list["Texture"]:
+    def get_background_of_name(self,name:str)->Background:
         return self.backgrounds[name]
     
     def get_ga_of_name(self,name:str)->"GrassAssets": 
@@ -350,8 +353,8 @@ class ResourceManager:
     def create_tilemap_vbos(self,tile_size:int, non_physical_tile_layers:int)->list["Context.buffer","Context.buffer"]:
 
         max_visible_tiles_plus_extra = ((self._true_res[0]//tile_size)+ 2) * ((self._true_res[1]//tile_size)+2) 
-        vertex_size = 4 * 4
-        physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size
+        vertex_size = 4 * 4 # 4 floats per vertex, 4 bytes per float. 
+        physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size # 6 vertices per physical tile.
         non_physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size * non_physical_tile_layers
 
         physical_tiles_vbo = self._ctx.buffer(reserve=physical_tiles_buffer_size,dynamic=True)

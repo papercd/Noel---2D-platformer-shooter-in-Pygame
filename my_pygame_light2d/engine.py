@@ -915,7 +915,7 @@ class RenderEngine:
         x = source.x / tex.width
         y = source.y / tex.height
         w = source.w / tex.width
-        h = source.h / tex.height
+        h = source.h / tex/height
 
         if flip: 
             p1 = (x + w, y + h)  # Top-right becomes top-left
