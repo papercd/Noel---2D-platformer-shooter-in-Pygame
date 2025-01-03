@@ -8,7 +8,7 @@ class PhysicsEntity:
         self._collision_rect = collision_rect
         self._name = name 
 
-        self._on_ramp = False
+        self._on_ramp = 0 
         self._state = 'idle'
         self._flip = False
 
@@ -20,7 +20,7 @@ class PhysicsEntity:
 
 
 
-    def _handle_collision(self,rect_tile:tuple[Rect,TileInfoDataClass],tile_size:int, axis_bit: bool)->None: 
+    def _handle_collision(self,rect_tile:tuple[Rect,TileInfoDataClass],tile_size:int, dt:float, axis_bit: bool)->None: 
         if axis_bit == True: # x axis
             if rect_tile[1].info.type.endswith('stairs'):
                 return 
@@ -43,7 +43,7 @@ class PhysicsEntity:
                     else: 
                         self._collisions['left']
                         self._collision_rect.left = rect_tile[0].right
-
+                    self._velocity[0] = 0
                     self.pos[0] = self._collision_rect.x 
         else: 
             if rect_tile[1].info.type.endswith('stairs'):
@@ -68,10 +68,30 @@ class PhysicsEntity:
                 y_coord_in_world_space = rect_tile[0].y + tile_size - stair_push_up_offset
 
                 if self._collision_rect.bottom > y_coord_in_world_space:
-                    self._on_ramp = True if tile_relative_pos_ind == 0 else False 
+                    self._on_ramp = 1 if tile_relative_pos_ind == 0 else -1 
                     self._collision_rect.bottom = y_coord_in_world_space
                     self._pos[1] = self._collision_rect.y
                     self._collisions['down'] = True
+                    self._velocity[1] = 0
+            else: 
+                if rect_tile[1].info.type.endswith('door'):
+                    # TODO: handle collisions with doors once you have them 
+                    pass 
+
+                if self._velocity[1] > 0 :
+                    self._collisions['down'] = True 
+                    self._velocity[1] = GRAVITY * dt
+                    self._on_ramp = 0 
+                    self._collision_rect.bottom = rect_tile[0].top
+                elif self._velocity[1] < 0:
+                    self._collisions['up'] = True 
+                    self._velocity[1] = 0 
+                    self._collision_rect.top = rect_tile[0].bottom
+                self.pos[1] = self._collision_rect.y 
+                     
+
+
+
 
 
 
@@ -92,7 +112,7 @@ class PhysicsEntity:
 
         for rect_tile in tilemap.query_rect_tile_pair_around_ent(self._collision_rect.topleft,self._collision_rect.size):
             if self._collision_rect.colliderect(rect_tile[0]):
-                self._handle_collision(rect_tile,tilemap.regular_tile_size,axis_bit = False)
+                self._handle_collision(rect_tile,tilemap.regular_tile_size,dt,axis_bit = False)
 
         self._pos[1] += self._velocity[1] * dt 
         self._collision_rect.y += self._velocity[1] * dt 
@@ -100,7 +120,7 @@ class PhysicsEntity:
 
         for rect_tile in tilemap.query_rect_tile_pair_around_ent(self._collision_rect.topleft,self._collision_rect.size):
             if self._collision_rect.colliderect(rect_tile[0]):
-                self._handle_collision(rect_tile,tilemap.regular_tile_size,axis_bit= True)
+                self._handle_collision(rect_tile,tilemap.regular_tile_size,dt,axis_bit= True)
 
 
 
