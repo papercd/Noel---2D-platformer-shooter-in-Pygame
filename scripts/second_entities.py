@@ -77,16 +77,18 @@ class PhysicsEntity:
                 if rect_tile[1].info.type.endswith('door'):
                     # TODO: handle collisions with doors once you have them 
                     pass 
-
+                print("check0")
                 if self._velocity[1] > 0 :
                     self._collisions['down'] = True 
                     self._velocity[1] = GRAVITY * dt
                     self._on_ramp = 0 
+                    print("check1")
                     self._collision_rect.bottom = rect_tile[0].top
                 elif self._velocity[1] < 0:
                     self._collisions['up'] = True 
                     self._velocity[1] = 0 
                     self._collision_rect.top = rect_tile[0].bottom
+                
                 self.pos[1] = self._collision_rect.y 
                      
 
@@ -116,9 +118,9 @@ class PhysicsEntity:
 
         self._pos[1] += self._velocity[1] * dt 
         self._collision_rect.y += self._velocity[1] * dt 
-         
 
         for rect_tile in tilemap.query_rect_tile_pair_around_ent(self._collision_rect.topleft,self._collision_rect.size):
+            print(rect_tile)
             if self._collision_rect.colliderect(rect_tile[0]):
                 self._handle_collision(rect_tile,tilemap.regular_tile_size,dt,axis_bit= True)
 

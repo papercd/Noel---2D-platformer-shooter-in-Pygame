@@ -383,7 +383,6 @@ class Tilemap:
             else: 
                 # TODO: add this when you have non physical tiles. 
                 pass 
-
         return surrounding_rects
 
     def write_to_physical_tiles_vbo(self,buffer_data:"np.array",buffer_data_size:int)->None: 
