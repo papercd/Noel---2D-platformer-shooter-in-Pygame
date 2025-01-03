@@ -7,8 +7,9 @@ from screeninfo import get_monitors
 
 from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
 from scripts.resourceManager import ResourceManager
+from scripts.second_entities import Player
 from scripts.new_particles import ParticleSystem
-from scripts.entitiesManager import EntitiesManager
+from scripts.new_entities_manager import EntitiesManager
 from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.new_engine import RenderEngine
 
@@ -48,11 +49,11 @@ class Noel():
     def _initialize_game_objects(self):
         
         self._resource_manager = ResourceManager.get_instance(self._ctx,self._game_context['true_res'])
-        self._particle_system = ParticleSystem.get_instance()
+        #self._particle_system = ParticleSystem.get_instance()
+        #self._entities_manager = EntitiesManager.get_instance()
         self._entities_manager = EntitiesManager.get_instance()
-        self._tilemap = Tilemap(self._resource_manager.get_tilemap_json('test1.json'))
 
-        
+        self._tilemap = Tilemap(self._resource_manager.get_tilemap_json('test1.json'))
         self._render_engine = RenderEngine.get_instance(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res']
                                                         ,self._game_context['true_res'])
        

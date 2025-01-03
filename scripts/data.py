@@ -143,6 +143,8 @@ class AnimationDataCollection:
 
 """ Animation Data """
 
+GRAVITY = 0.965
+
 PLAYER_ANIMATION_DATA = [
     AnimationData('idle',4,6,False,True),
     AnimationData('crouch',1,4,True,False),
