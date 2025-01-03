@@ -57,7 +57,7 @@ class Noel():
                                                         ,self._game_context['true_res'])
        
 
-        self._render_engine.bind_background(self._resource_manager.backgrounds['building'])
+        self._render_engine.bind_background(self._resource_manager.backgrounds['start'])
         self._render_engine.bind_tilemap(self._tilemap)
         
         
@@ -268,13 +268,13 @@ class Noel():
                 
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_w: 
-                        self._scroll[1] -= 10
+                        self._scroll[1] -= 100
                     if event.key == pygame.K_s: 
-                        self._scroll[1] += 10
+                        self._scroll[1] += 100
                     if event.key == pygame.K_a: 
-                        self._scroll[0] -= 10
+                        self._scroll[0] -= 100
                     if event.key == pygame.K_d: 
-                        self._scroll[0] += 10
+                        self._scroll[0] += 100
                     
             """
             if self._hud.cursor.pressed[0]:

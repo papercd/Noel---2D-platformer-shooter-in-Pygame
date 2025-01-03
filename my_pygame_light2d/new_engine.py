@@ -36,6 +36,7 @@ class RenderEngine:
         self._ref_tilemap:"Tilemap" = None 
         self._ref_background : "Background" = None
         self._ref_background_vertices_buffer: Context.buffer = None
+        self._background_panels :int = 3
 
         # Initialize  members
         self._true_to_native_ratio = true_to_screen_res_ratio 
@@ -140,22 +141,48 @@ class RenderEngine:
             ]
         )
 
-    def _render_background(self,camera_scroll:tuple[int,int])->None: 
+    def _render_background(self,camera_scroll:tuple[int,int],infinite:bool = False)->None: 
         speed = 1
         
         for tex in self._ref_background.textures:
-            vertex_data = self._create_background_texture_vertex_data(camera_scroll,speed)
-            self._ref_background_vertices_buffer.write(vertex_data)
+            if infinite: 
+                num_tiles = (self._true_res[0]//tex.width) + 2
 
-            self._fbo_bg.use()
-            tex.use()
+                for panel in range(-1,num_tiles):
+                    x_pos = panel*tex.width - (camera_scroll[0] * 0.05 *speed) % tex.width
+                    vertex_data = self._create_infinite_background_texture_vertex_data(camera_scroll,x_pos)
+                    self._ref_background_vertices_buffer.write(vertex_data)
 
-            self._vao_background_draw.render()
+                    self._fbo_bg.use()
+                    tex.use()
 
+                    self._vao_background_draw.render()
+            else: 
+                for panel in range(-self._background_panels//2 , self._background_panels//2 +1):
+                    vertex_data = self._create_background_texture_vertex_data(camera_scroll,panel,speed)
+                    self._ref_background_vertices_buffer.write(vertex_data)
 
-    def _create_background_texture_vertex_data(self,camera_scroll:tuple[int,int],speed:int):
+                    self._fbo_bg.use()
+                    tex.use()
+
+                    self._vao_background_draw.render()
+            speed += 1
+
+    def _create_infinite_background_texture_vertex_data(self,camera_scroll:tuple[int,int],x_pos:int)->np.array:
         width,height = self._fbo_bg.size 
-        x = 2. * (-camera_scroll[0] *0.05 * speed) / width - 1.
+        x = 2. * (x_pos) / width - 1.
+        y = 1. -2 * (-min(0,camera_scroll[1]) * 0.05) / height
+        w = 2.
+        h = 2.
+
+        return np.array([(x,y),(x+w,y),(x,y-h),
+                         (x,y-h),(x+w,y),(x+w,y-h)],dtype= np.float32)
+
+
+
+    def _create_background_texture_vertex_data(self,camera_scroll:tuple[int,int],panel_num,speed:int)->np.array:
+        width,height = self._fbo_bg.size 
+        x = 2. * (panel_num*self._true_res[0]-camera_scroll[0] *0.05 * speed) / width - 1.
         y = 1. -2. * (-min(0,camera_scroll[1]) * 0.05) / height
         w = 2.
         h = 2. 
@@ -285,7 +312,7 @@ class RenderEngine:
 
     def render_to_background_fbo(self,camera_scroll:tuple[int,int])->None: 
         RenderEngine._ctx.enable(BLEND)
-        self._render_background(camera_scroll)
+        self._render_background(camera_scroll,infinite=True)
         self._render_tilemap(camera_scroll)
 
 
