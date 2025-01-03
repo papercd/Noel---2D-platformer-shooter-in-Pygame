@@ -295,11 +295,11 @@ class Tilemap:
         for rectangle in self._rectangles:
 
             x1, y1, x2, y2 = rectangle
-            self._hulls.append(Hull( vertices=[(x1, y1), (x2, y1), (x2, y2), (x1, y2)]))
+            self._hulls.append(Hull( vertices=[(x2, y1), (x2, y1), (x2, y2), (x1, y2)]))
         
 
 
-    def tiles_around(self,pos,size) -> list[TileInfo]:
+    def tiles_around(self,pos,size) -> list["TileInfoDataClass"]:
         
         tiles = []
     
@@ -318,10 +318,20 @@ class Tilemap:
                 tile_key = (x,y) 
 
                 if tile_key in self._physical_tiles:
-                    tile ,hull = self._physical_tiles[tile_key]
+                    tile_general_info  = self._physical_tiles[tile_key].info
+
+                    if isinstance(tile_general_info,DoorTileInfoWithAnimation):
+                        pass 
+                    elif isinstance(tile_general_info,TrapDoorTileInfoWithOpenState):
+                        pass 
+                    elif isinstance(tile_general_info,LightInfo):
+                        pass
+                    else: 
+                        tiles.append(self._physical_tiles[tile_key])
 
                     # TODO : differentiate tile info objects based on tile type
-                    if tile.type.endswith('door') and not tile.open:
+                    """
+                    if tile_general_info.type.endswith('door') and not tile.open:
                         # Check whether there is a door tile above, and if there isn't, add it to the list. 
                         if (x,y) in self._physical_tiles:
                             if not self._physical_tiles[(x,y)].type.endswith('door'):
@@ -330,9 +340,9 @@ class Tilemap:
                             tiles.append(self._physical_tiles[tile_key])
                     else: 
                         tiles.append(self._physical_tiles[tile_key])
+                    """
                 
                 # TODO: add grass tiles later.  
-
 
         return tiles
 
@@ -351,30 +361,28 @@ class Tilemap:
         return coor  in self._physical_tiles\
                 and self._physical_tiles[coor][0].type in PHYSICS_APPLIED_TILE_TYPES
 
-    def phy_rects_around(self,pos,size)->tuple[Rect,TileInfo]:
+    def query_rect_tile_pair_around_ent(self,pos,size)->list[tuple[Rect,"TileInfoDataClass"]]:
         surrounding_rects = []
-
         tiles_around = self.tiles_around(pos,size)
         
-        for tile in tiles_around:
-            if tile[0].type in PHYSICS_APPLIED_TILE_TYPES: 
-                if tile[0].type.endswith('door'):
+        for tile_data in tiles_around:
+            if tile_data.info.type in PHYSICS_APPLIED_TILE_TYPES: 
+                if tile_data.info.type.endswith('door'):
                     #TODO: add this when you have doors. 
                     pass 
                 else: 
                     rect = (
-                        tile[0].tile_pos[0] * self._regular_tile_size,         # left
-                        tile[0].tile_pos[1] * self._regular_tile_size,         # top
-                        self._regular_tile_size,                       # width
-                        self._regular_tile_size# height
+                        tile_data.info.tile_pos[0] * self._regular_tile_size,       # left
+                        tile_data.info.tile_pos[1] * self._regular_tile_size,       # top
+                        self._regular_tile_size,                                    # width
+                        self._regular_tile_size                                     # height
                     )
                 
-                    surrounding_rects.append((Rect(*rect),tile[0]))
+                    surrounding_rects.append((Rect(*rect),tile_data))
 
             else: 
                 # TODO: add this when you have non physical tiles. 
                 pass 
-
         return surrounding_rects
 
     def write_to_physical_tiles_vbo(self,buffer_data:"np.array",buffer_data_size:int)->None: 
