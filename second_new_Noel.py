@@ -49,11 +49,15 @@ class Noel():
     def _initialize_game_objects(self):
         
         self._resource_manager = ResourceManager.get_instance(self._ctx,self._game_context['true_res'])
+        self._tilemap = Tilemap(self._resource_manager.get_tilemap_json('test1.json'))
         #self._particle_system = ParticleSystem.get_instance()
         #self._entities_manager = EntitiesManager.get_instance()
         self._entities_manager = EntitiesManager.get_instance()
+        self._entities_manager.attatch_tilemap_to_physics_system(self._tilemap)
 
-        self._tilemap = Tilemap(self._resource_manager.get_tilemap_json('test1.json'))
+
+
+
         self._render_engine = RenderEngine.get_instance(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res']
                                                         ,self._game_context['true_res'])
        
@@ -356,7 +360,7 @@ class Noel():
         if self._game_context['gamestate']== GameState.GameLoop:  
             
             while self._time_accumulator >= TIME_FOR_ONE_LOGICAL_STEP:
-                self._entities_manager.update(self._tilemap,TIME_FOR_ONE_LOGICAL_STEP)
+                self._entities_manager.physics_system.process(TIME_FOR_ONE_LOGICAL_STEP)
                 self._time_accumulator -= TIME_FOR_ONE_LOGICAL_STEP
             
             interpolation_delta = self._time_accumulator / TIME_FOR_ONE_LOGICAL_STEP
