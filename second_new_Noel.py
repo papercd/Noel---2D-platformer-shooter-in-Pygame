@@ -356,7 +356,6 @@ class Noel():
         if self._game_context['gamestate']== GameState.GameLoop:  
             
             while self._time_accumulator >= TIME_FOR_ONE_LOGICAL_STEP:
-                self._entities_manager.update(self._tilemap,TIME_FOR_ONE_LOGICAL_STEP)
                 self._time_accumulator -= TIME_FOR_ONE_LOGICAL_STEP
             
             interpolation_delta = self._time_accumulator / TIME_FOR_ONE_LOGICAL_STEP
