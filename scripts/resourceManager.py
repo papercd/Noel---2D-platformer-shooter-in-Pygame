@@ -5,7 +5,8 @@ from os import listdir
 from json import load as jsLoad
 import numpy as np 
 from scripts.data import TileInfo,TileInfoDataClass,DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TEXTURE_BASE_PATH,UI_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,\
-GRASS_ASSET_ATLAS_POS_AND_INFO,PARTICLE_ANIMATION_DATA,TILE_ATLAS_POSITIONS,TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,BULLET_ATLAS_POSITIONS_AND_SIZES,PARTICLE_ATLAS_POSITIONS_AND_SIZES, TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO
+GRASS_ASSET_ATLAS_POS_AND_INFO,PARTICLE_ANIMATION_DATA,TILE_ATLAS_POSITIONS,TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES,IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,BULLET_ATLAS_POSITIONS_AND_SIZES,PARTICLE_ATLAS_POSITIONS_AND_SIZES, TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,\
+ENTITIES_ATLAS_POSITIONS
 
 if TYPE_CHECKING: 
 
@@ -72,7 +73,7 @@ class ResourceManager:
         self.grass_assets:dict[str,"GrassAssets"] = {}
         self.grass_asset_texcoords:dict[str,dict[int,np.array]] = {}
 
-
+        self.entity_texcoords = {}
         self.ui_texcoords = {}
         self.item_texcoords = {}
         self.text_texcoords:dict[str,list[np.array]] = {}
@@ -223,6 +224,10 @@ class ResourceManager:
                 bottomleft = (atl_pos[0] + tex_size[0] * frame, atl_pos[1])
                 self.animated_particle_texcoords[(key,frame)] = self._create_texture_coords(bottomleft,tex_size,self.texture_atlasses["particles"])
 
+        for key in ENTITIES_ATLAS_POSITIONS: 
+            if key == 'player':
+                pass
+            pass
 
     def _create_texture_coords(self,bottomleft:tuple[int,int],size:tuple[int,int],atlas :"Texture")->np.array:
         x = (bottomleft[0] ) / atlas.width

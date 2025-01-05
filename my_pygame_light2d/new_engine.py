@@ -3,7 +3,7 @@ from math import sqrt
 import numpy as np 
 from moderngl import Texture,Context,NEAREST,LINEAR,BLEND
 from my_pygame_light2d.color import normalize_color_arguments
-from my_pygame_light2d.double_buff import DoubleBuffer
+from my_pygame_light2d.double_buffer import DoubleBuffer
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: 

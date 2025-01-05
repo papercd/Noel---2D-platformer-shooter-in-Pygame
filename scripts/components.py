@@ -1,13 +1,14 @@
 from dataclasses import dataclass as component 
 from dataclasses import field
-from pygame import FRect
+from moderngl import Texture
+from scripts.frect import FRect
 from pygame.math import Vector2 as vec2
 from scripts.data import GRAVITY
 import numpy as np
 
 
 @component 
-class MovementComponent: 
+class PhysicsComponent: 
     size :     tuple[int,int] 
     flip :     bool = False
     position : vec2  = field(default_factory= lambda:vec2(0,0))         # world coordinates of entity. 
@@ -32,4 +33,12 @@ class MovementComponent:
             [sin_a * self.scale[0], cos_a  * self.scale[1], ty],
             [0,0,1]
         ])
+
+
+
+@component 
+class RenderComponent:
+    ref_texture_atlass : Texture
+    texcoords: np.array 
+    vertices : np.array = field(default_factory= lambda: np.zeros(6))
 
