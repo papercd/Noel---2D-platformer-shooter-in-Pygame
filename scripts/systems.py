@@ -64,7 +64,7 @@ class PhysicsSystem(esper.Processor):
             
 
             physics_comp.position[1] += physics_comp.velocity[1] * dt 
-            physics_comp.collision_rect.move(0,physics_comp.velocity[0] * dt)
+            physics_comp.collision_rect.move(0,physics_comp.velocity[1] * dt)
 
             for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
                                                                                physics_comp.collision_rect.size):
@@ -136,8 +136,7 @@ class RenderSystem(esper.Processor):
                                                                  fragment_shader= fragment_src)
         self._tile_draw_prog = self._ctx.program(vertex_shader=tile_draw_vert_src,
                                                          fragment_shader= tile_draw_frag_src)
-
-
+        
 
     def _create_frame_buffers(self)->None: 
         # Frame buffers

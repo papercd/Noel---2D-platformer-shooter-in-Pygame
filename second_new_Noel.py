@@ -6,7 +6,7 @@ from moderngl import create_context
 from screeninfo import get_monitors
 
 from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
-from scripts.resourceManager import ResourceManager
+from scripts.new_entities_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager
 from scripts.systems import PhysicsSystem,RenderSystem
 from scripts.new_tilemap import Tilemap

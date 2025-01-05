@@ -1,0 +1,189 @@
+from typing import TYPE_CHECKING
+from scripts.background import Background
+from scripts.utils import load_texture
+from os import listdir
+from json import load as jsLoad
+from scripts.data import TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState
+import numpy as np
+
+if TYPE_CHECKING: 
+    from moderngl import Context,Texture
+    from scripts.new_tilemap import Tilemap
+    from scripts.data import TileColorKey,RGBA_tuple,TileTexcoordsKey,TileInfoDataClass,TileInfo
+
+TEXTURE_ATLAS_NAMES_TO_PATH = {
+    'tiles' : TEXTURE_BASE_PATH + 'tiles/tile_atlas.png',
+}
+
+
+
+class ResourceManager:
+    _instance = None 
+    _ctx : "Context" = None
+    _true_res :tuple[int,int] = None
+
+
+
+    @staticmethod
+    def get_instance(ctx:"Context" = None,true_res:tuple[int,int]= None)->"ResourceManager":
+        if ResourceManager._instance is None: 
+            ResourceManager._ctx = ctx
+            ResourceManager._true_res = true_res
+            ResourceManager._instance = ResourceManager()
+        return ResourceManager._instance
+   
+
+
+    def __init__(self)->None: 
+        # identity texcoords that represent texcoords for textures without an atlas 
+        self.identity_texcoords = np.array([(0.,1.),(1.,1.),(0.,0.),
+                                            (0.,0.),(1.,1.),(1.,0.)],dtype=np.float32)
+
+        # load the background textures and create background objects 
+        self._load_backgrounds(TEXTURE_BASE_PATH + 'backgrounds')
+
+
+        # load tilemap json files 
+        self._load_tilemap_json_files('map_jsons')
+
+        # load texture atlasses 
+        self._load_texture_atlasses()
+
+
+    def _load_backgrounds(self,path:str)->None:
+        self.backgrounds : dict[str,Background] = {}
+        for folder in listdir(path):
+            textures = []
+            for tex_path in listdir(path = path + '/' + folder):
+                textures.append(load_texture(path +'/'+folder+'/'+tex_path,self._ctx))
+                
+            self.backgrounds[folder] = Background(textures,self.identity_texcoords)
+
+
+    def _load_tilemap_json_files(self,path:str)->None: 
+        self.tilemap_jsons = {}
+
+        for file_name in listdir(path = path):
+            f = open(path+'/'+file_name,'r')
+            tilemap_data = jsLoad(f)
+            self.tilemap_data[file_name] = tilemap_data
+
+
+    def _load_texture_atlasses(self)->None: 
+        self.texture_atlasses: dict[str,"Texture"] = {}
+        for atlas_name in TEXTURE_ATLAS_NAMES_TO_PATH:
+            self.texture_atlasses[atlas_name] = load_texture(TEXTURE_ATLAS_NAMES_TO_PATH[atlas_name],self._ctx)
+
+
+    def _get_texcoords_for_tile(self,tile_info_source:TileInfoDataClass|TileInfo)->np.array:
+        if isinstance(tile_info_source,DoorTileInfoWithAnimation):
+            pass
+        elif isinstance(tile_info_source,TrapDoorTileInfoWithOpenState):
+            pass 
+        else:
+            if isinstance(tile_info_source,TileInfo):
+                tile_info =tile_info_source 
+            else: 
+                tile_info = tile_info_source.info
+            relative_position_index ,variant = tile_info.relative_pos_ind, tile_info.variant
+            tile_type = tile_info.type
+
+            atlas_width,atlas_height = self.texture_atlasses['tiles'].size
+
+            x = (TILE_ATLAS_POSITIONS[tile_type][0] + variant * tile_info.tile_size[0]) / atlas_width
+            y = (TILE_ATLAS_POSITIONS[tile_type][1] + relative_position_index * tile_info.tile_size[1]) / atlas_height 
+
+            w = tile_info.tile_size[0] /atlas_width
+            h = tile_info.tile_size[1] / atlas_height            
+
+            p1 = (x, y + h) 
+            p2 = (x + w, y + h) 
+            p3 = (x, y) 
+            p4 = (x + w, y)
+
+            texcoords = np.array([p1, p2, p3,
+                                p3, p2, p4], dtype=np.float32)
+
+        return texcoords
+
+
+    def create_tilemap_vbos(self,tile_size:int,non_physical_tile_layers:int)->tuple["Context.buffer","Context.buffer"]:
+        max_visible_tiles_plus_extra = ((self._true_res[0]//tile_size)+ 2) * ((self._true_res[1]//tile_size)+2) 
+        vertex_size = 4 * 4 # 4 floats per vertex, 4 bytes per float. 
+        physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size # 6 vertices per physical tile.
+        non_physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size * non_physical_tile_layers
+
+        physical_tiles_vbo = self._ctx.buffer(reserve=physical_tiles_buffer_size,dynamic=True)
+        non_physical_tiles_vbo = self._ctx.buffer(reserve=non_physical_tiles_buffer_size,dynamic=True)
+
+        return (physical_tiles_vbo,non_physical_tiles_vbo)
+
+
+
+    def get_tile_colors(self,physical_tiles:"Tilemap.physical_tiles")->dict["TileColorKey","RGBA_tuple"]:
+
+        tile_atlas_byte_data = self.texture_atlasses["tiles"].read(alignment=4)
+        width,height = self.texture_atlasses["tiles"].size
+        image_data = np.frombuffer(tile_atlas_byte_data,dtype = np.uint8).reshape((height,width,4))
+
+        tile_colors = {}
+
+        for tile_key in physical_tiles: 
+            tile_data = physical_tiles[tile_key]
+            tile_general_info = tile_data.info 
+            relative_position_index,variant = tile_general_info.relative_pos_ind,tile_general_info.variant
+
+            if tile_general_info.type.endswith('stairs'):
+                for side in ('top','bottom','left','right'):
+                    tile_color_key = (tile_general_info.type,relative_position_index,variant,side)
+                    if tile_color_key not in tile_colors:
+                        sample_pos_to_dim_ratio = TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO['stairs']
+
+                        texture_coords = (TILE_ATLAS_POSITIONS[tile_general_info.type][0] + variant * tile_general_info.tile_size[0] + int((tile_general_info.tile_size[0]-1) *sample_pos_to_dim_ratio[0]),\
+                                                TILE_ATLAS_POSITIONS[tile_general_info.type][1] + relative_position_index* tile_general_info.tile_size[1] + int((tile_general_info.tile_size[1]-1) * sample_pos_to_dim_ratio[1]))
+                        color = tuple(image_data[texture_coords[1],texture_coords[0]])
+                        tile_colors[tile_color_key] = color
+                  
+            elif tile_general_info.type.endswith('door'):
+                pass 
+            else: 
+                for side in ('top','bottom','left','right'):
+                    sample_side_ratio = TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO['regular'][side]
+                    tile_color_key = (tile_general_info.type,relative_position_index,variant,side)
+                    if tile_color_key not in tile_colors:
+                        texture_coords = (TILE_ATLAS_POSITIONS[tile_general_info.type][0] + variant * tile_general_info.tile_size[0] + int((tile_general_info.tile_size[0]-1) *sample_side_ratio[0]),\
+                                        TILE_ATLAS_POSITIONS[tile_general_info.type][1] + relative_position_index* tile_general_info.tile_size[1] + int((tile_general_info.tile_size[1]-1) * sample_side_ratio[1]))
+                        color = tuple(image_data[texture_coords[1],texture_coords[0]])
+                        tile_colors[tile_color_key] = color
+        
+        return tile_colors
+
+    def get_tile_texcoords(self,physical_tiles:"Tilemap.physical_tiles",non_physical_tiles:"Tilemap.non_physical_tiles")->dict["TileTexcoordsKey",np.array]: 
+        tile_texcoords = {}
+
+        for key in physical_tiles:
+            tile_data = physical_tiles[key]
+            relative_position_index,variant = tile_data.info.relative_pos_ind, tile_data.info.variant
+            tile_texcoord_key = (tile_data.info.type,relative_position_index,variant)
+
+            if tile_texcoord_key not in tile_texcoords:
+                texcoords = self._get_texcoords_for_tile(tile_data)
+                """
+                if isinstance(tile_data,TrapDoorTileInfoWithOpenState):
+                    texcoords = self._get_texcoords_for_tile(self.texture_atlasses['tiles'],tile_general_info,tile)
+                elif tile_info.type == 'building_door':
+                    door_data = tile_info_list[1]
+                """
+                #texture_coords = self._get_texture_coords_for_tile(tile_texture_atlas,tile_info,door_data)
+                tile_texcoords[tile_texcoord_key] = texcoords 
+
+        for i,dict in enumerate(non_physical_tiles):
+            for key in dict:
+                tile_info = dict[key]
+                relative_position_index,variant = tile_info.relative_pos_ind,tile_info.variant
+                tile_texcoord_key = (tile_info.type,relative_position_index,variant)
+                if  tile_texcoord_key not in tile_texcoords:
+                    texcoords = self._get_texcoords_for_tile(tile_info)
+                    tile_texcoords[tile_texcoord_key] = texcoords 
+
+        return tile_texcoords 
