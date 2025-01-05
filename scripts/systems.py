@@ -55,7 +55,7 @@ class PhysicsSystem(esper.Processor):
             physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt)
             
             physics_comp.position[0] += physics_comp.velocity[0] * dt
-            physics_comp.collision_rect.x += physics_comp.velocity[0] * dt
+            physics_comp.collision_rect.move(physics_comp.velocity[0] * dt,0)
 
             for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
                                                                                physics_comp.collision_rect.size):
@@ -64,7 +64,7 @@ class PhysicsSystem(esper.Processor):
             
 
             physics_comp.position[1] += physics_comp.velocity[1] * dt 
-            physics_comp.collision_rect.y += physics_comp.velocity[1] * dt
+            physics_comp.collision_rect.move(0,physics_comp.velocity[0] * dt)
 
             for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
                                                                                physics_comp.collision_rect.size):

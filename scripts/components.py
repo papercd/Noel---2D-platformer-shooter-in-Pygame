@@ -1,7 +1,7 @@
 from dataclasses import dataclass as component 
 from dataclasses import field
 from moderngl import Texture
-from pygame import FRect
+from scripts.frect import FRect
 from pygame.math import Vector2 as vec2
 from scripts.data import GRAVITY
 import numpy as np
