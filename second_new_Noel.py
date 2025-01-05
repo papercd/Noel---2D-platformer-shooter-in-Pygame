@@ -7,11 +7,9 @@ from screeninfo import get_monitors
 
 from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
 from scripts.resourceManager import ResourceManager
-from scripts.second_entities import Player
-from scripts.new_particles import ParticleSystem
 from scripts.new_entities_manager import EntitiesManager
+from scripts.systems import PhysicsSystem,RenderSystem
 from scripts.new_tilemap import Tilemap
-from my_pygame_light2d.new_engine import RenderEngine
 
 
 
@@ -53,17 +51,22 @@ class Noel():
         #self._particle_system = ParticleSystem.get_instance()
         #self._entities_manager = EntitiesManager.get_instance()
         self._entities_manager = EntitiesManager.get_instance()
-        self._entities_manager.attatch_tilemap_to_physics_system(self._tilemap)
+        #self._entities_manager.attatch_tilemap_to_physics_system(self._tilemap)
 
 
+        self._physics_system = PhysicsSystem()
+        self._physics_system.attatch_tilemap(self._tilemap)
 
 
-        self._render_engine = RenderEngine.get_instance(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res']
-                                                        ,self._game_context['true_res'])
+        self._render_system = RenderSystem(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res'],\
+                                           self._game_context['true_res'])
+
+        self._render_system.attatch_tilemap(self._tilemap)
+        self._render_system.attatch_background(self._resource_manager.backgrounds['start'])
+
+
        
 
-        self._render_engine.bind_background(self._resource_manager.backgrounds['start'])
-        self._render_engine.bind_tilemap(self._tilemap)
         
         
 
@@ -352,21 +355,20 @@ class Noel():
         self._frame_count = (self._frame_count+1) %360
         #self.render_engine.set_ambient(255,255,255, 25)
         #self.render_engine.clear(0,0,0,255)
-        self._render_engine.clear(0,0,0,255)
-
+        self._render_system.clear(0,0,0,255)
         self._dt = min(self._clock.tick() / 1000.0,0.1)
         self._time_accumulator += self._dt
         self._grass_rotation_function_time += self._dt * 100
         if self._game_context['gamestate']== GameState.GameLoop:  
             
             while self._time_accumulator >= TIME_FOR_ONE_LOGICAL_STEP:
-                self._entities_manager.physics_system.process(TIME_FOR_ONE_LOGICAL_STEP)
+                self._physics_system.process(TIME_FOR_ONE_LOGICAL_STEP)
                 self._time_accumulator -= TIME_FOR_ONE_LOGICAL_STEP
             
             interpolation_delta = self._time_accumulator / TIME_FOR_ONE_LOGICAL_STEP
 
-            self._render_engine.render_to_background_fbo(self._scroll)
-            self._render_engine.render_fbos_to_screen_with_lighting()
+            self._render_system.process(self._scroll,interpolation_delta)
+
             """
            
             self._game_context['screen_shake'] = max(0,self._game_context['screen_shake'] -self._dt*60)
