@@ -190,73 +190,77 @@ class RenderSystem(esper.Processor):
 
 
     def _render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
-        physical_tiles_vertices_array = []
-        physical_tiles_texcoords_array = []
+        
 
-        non_physical_tiles_vertices_array = []
-        non_physical_tiles_texcoords_array = []
-
-        tile_size = self._ref_tilemap.regular_tile_size
-
-        physical_tiles_render_bit = False 
+        physical_tiles_render_bit = False
         non_physical_tiles_render_bit = False
 
-        physical_tiles_buffer_data_size = 0
-        non_physical_tiles_buffer_data_size = 0
+        physical_tiles_texcoords_array = []
+        physical_tiles_positions_array = []
+
+        non_physical_tiles_texcoords_array = []
+        non_physical_tiles_positions_array = []
+
+        tile_size = self._ref_tilemap.regular_tile_size
+        physical_tile_instances = 0
+        non_physical_tile_instances= 0
 
         for x in range(camera_offset[0] // tile_size- 1, (camera_offset[0] + self._true_res[0]) // tile_size+ 1):
             for y in range(camera_offset[1] // tile_size- 1, (camera_offset[1] + self._true_res[1]) // tile_size+1):
                 coor = (x,y) 
-                for i,dict in enumerate(self._ref_tilemap.non_physical_tiles):
+
+                for i, dict in enumerate(self._ref_tilemap.non_physical_tiles):
                     if coor in dict:
+                        non_physical_tile_instances += 1
                         non_physical_tiles_render_bit = True
                         tile_info = self._ref_tilemap.non_physical_tiles[i][coor]
-                        
-                        vertices = self._create_tile_vertices(tile_info,camera_offset)
-                        texcoords = self._ref_tilemap.tile_texcoords[(tile_info.type,tile_info.relative_pos_ind,tile_info.variant)]
 
-                        non_physical_tiles_vertices_array.append(vertices)
-                        non_physical_tiles_texcoords_array.append(texcoords)
-
-                        non_physical_tiles_buffer_data_size += 96 
+                        non_physical_tiles_texcoords_array.append(self._ref_tilemap.tile_texcoords[(tile_info.type,tile_info.relative_pos_ind,tile_info.variant)])
+                        non_physical_tiles_positions_array.append(self._tile_position_to_ndc(coor,camera_offset))
 
                 if coor in self._ref_tilemap.physical_tiles:
+                    physical_tile_instances +=1
                     physical_tiles_render_bit = True
                     tile_data = self._ref_tilemap.physical_tiles[coor]
-                    tile_general_info =tile_data.info
-                    relative_position_index,variant = tile_general_info.relative_pos_ind,tile_general_info.variant
+                    tile_general_info = tile_data.info 
+                    relative_position_index, variant = tile_general_info.relative_pos_ind, tile_general_info.variant 
+
                     
-                    vertices = self._create_tile_vertices(tile_general_info,camera_offset)
-                    texcoords= self._ref_tilemap.tile_texcoords[(tile_general_info.type,relative_position_index,variant)]
+                    physical_tiles_texcoords_array.append(self._ref_tilemap.tile_texcoords[(tile_general_info.type,relative_position_index,variant)])
+                    physical_tiles_positions_array.append(self._tile_position_to_ndc(coor,camera_offset))
 
-                    physical_tiles_vertices_array.append(vertices)
-                    physical_tiles_texcoords_array.append(texcoords)
 
-                    physical_tiles_buffer_data_size += 96 
-        
         if non_physical_tiles_render_bit:
-            
-            vertices_array = np.concatenate(non_physical_tiles_vertices_array,axis = 0)
-            texcoords_array = np.concatenate(non_physical_tiles_texcoords_array,axis = 0)
+            buffer_data = np.array(non_physical_tiles_texcoords_array).astype(np.float32)
+            self._ref_tilemap.write_to_non_physical_tiles_texcoords_vbo(buffer_data)
 
-            buffer_data = np.column_stack((vertices_array,texcoords_array)).astype(np.float32)
-            self._ref_tilemap.write_to_non_physical_tiles_vbo(buffer_data,non_physical_tiles_buffer_data_size)
+            positions_buffer_data = np.array(non_physical_tiles_positions_array).astype(np.float32)
+            self._ref_tilemap.write_to_non_physical_tiles_positions_vbo(positions_buffer_data)
 
             self._fbo_bg.use()
             self._ref_tilemap.ref_texture_atlas.use()
-            self._vao_non_physical_tiles_draw.render(first = self._ref_tilemap.non_physical_tiles_vbo_vertices - non_physical_tiles_buffer_data_size // 16)
+
+            self._vao_non_physical_tiles_draw.render(vertices = 6, instances= non_physical_tile_instances)
 
         if physical_tiles_render_bit:
-            vertices_array = np.concatenate(physical_tiles_vertices_array,axis= 0)
-            texcoords_array = np.concatenate(physical_tiles_texcoords_array,axis=0)
+            buffer_data = np.array(physical_tiles_texcoords_array).astype(np.float32)
+            self._ref_tilemap.write_to_physical_tiles_texcoords_vbo(buffer_data)
 
-            buffer_data = np.column_stack((vertices_array,texcoords_array)).astype(np.float32)
-
-            self._ref_tilemap.write_to_physical_tiles_vbo(buffer_data,physical_tiles_buffer_data_size)
+            positions_buffer_data = np.array(physical_tiles_positions_array).astype(np.float32)
+            self._ref_tilemap.write_to_physical_tiles_positions_vbo(positions_buffer_data)
 
             self._fbo_bg.use()
             self._ref_tilemap.ref_texture_atlas.use()
-            self._vao_physical_tiles_draw.render(first = self._ref_tilemap.physical_tiles_vbo_vertices - physical_tiles_buffer_data_size // 16)
+
+            self._vao_physical_tiles_draw.render(vertices=6,instances= physical_tile_instances)
+
+
+
+    def _tile_position_to_ndc(self,position:tuple[int,int],camera_offset:tuple[int,int])->tuple[float,float]:
+        fbo_w,fbo_h = self._fbo_bg.size
+
+        return (2. * (position[0] *self._ref_tilemap.regular_tile_size -camera_offset[0]) / fbo_w -1.
+                , 1. - 2. * (position[1] * self._ref_tilemap.regular_tile_size - camera_offset[1]) / fbo_h)
 
 
     def _create_tile_vertices(self,tile_info:"TileInfo",camera_scroll:tuple[int,int])->np.array: 
@@ -271,10 +275,10 @@ class RenderSystem(esper.Processor):
         # vertices = np.array([(x, y), (x + w, y), (x, y - h),
         #                    (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
         
-        vertices = [(x, y), (x + w, y), (x, y - h),
+
+        return np.array[(x, y), (x + w, y), (x, y - h),
                             (x, y - h), (x + w, y), (x + w, y - h)]
 
-        return vertices
 
 
 
@@ -333,18 +337,25 @@ class RenderSystem(esper.Processor):
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None:
         self._ref_tilemap = tilemap
+
+        self._tile_draw_prog['NDCVertices'] = self._ref_tilemap.default_tile_vertices
+
         self._vao_physical_tiles_draw = self._ctx.vertex_array(
             self._tile_draw_prog,
             [
-                (self._ref_tilemap.physical_tiles_vbo, '2f 2f', 'in_position', 'in_texcoord'),
+                (self._ref_tilemap.physical_tiles_position_vbo,'2f/i','in_position'),
+                (self._ref_tilemap.physical_tiles_texcoords_vbo,'12f/i','in_texcoord'),
             ]
         )
+
         self._vao_non_physical_tiles_draw = self._ctx.vertex_array(
             self._tile_draw_prog,
             [
-                (self._ref_tilemap.non_physical_tiles_vbo,'2f 2f','in_position','in_texcoord'),
+                (self._ref_tilemap.non_physical_tiles_position_vbo, '2f/i' , 'in_position'),
+                (self._ref_tilemap.non_physical_tiles_texcoords_vbo, '12f/i' ,'in_texcoord')
             ]
         )
+
 
     def attatch_background(self,background:"Background")->None: 
         self._ref_background = background 

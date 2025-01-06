@@ -4,7 +4,7 @@ from pygame.math import Vector2 as vec2
 from scripts.components import * 
 import esper
 
-from scripts.resourceManager import ResourceManager
+from scripts.new_resource_manager import ResourceManager
 
 class EntitiesManager:
     _instance = None

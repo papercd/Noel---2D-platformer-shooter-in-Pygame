@@ -3,13 +3,13 @@ from scripts.background import Background
 from scripts.utils import load_texture
 from os import listdir
 from json import load as jsLoad
-from scripts.data import TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState
+from scripts.data import TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TileInfo,TileInfoDataClass
 import numpy as np
 
 if TYPE_CHECKING: 
     from moderngl import Context,Texture
     from scripts.new_tilemap import Tilemap
-    from scripts.data import TileColorKey,RGBA_tuple,TileTexcoordsKey,TileInfoDataClass,TileInfo
+    from scripts.data import TileColorKey,RGBA_tuple,TileTexcoordsKey
 
 TEXTURE_ATLAS_NAMES_TO_PATH = {
     'tiles' : TEXTURE_BASE_PATH + 'tiles/tile_atlas.png',
@@ -39,6 +39,7 @@ class ResourceManager:
         self.identity_texcoords = np.array([(0.,1.),(1.,1.),(0.,0.),
                                             (0.,0.),(1.,1.),(1.,0.)],dtype=np.float32)
 
+
         # load the background textures and create background objects 
         self._load_backgrounds(TEXTURE_BASE_PATH + 'backgrounds')
 
@@ -48,6 +49,8 @@ class ResourceManager:
 
         # load texture atlasses 
         self._load_texture_atlasses()
+
+
 
 
     def _load_backgrounds(self,path:str)->None:
@@ -66,7 +69,7 @@ class ResourceManager:
         for file_name in listdir(path = path):
             f = open(path+'/'+file_name,'r')
             tilemap_data = jsLoad(f)
-            self.tilemap_data[file_name] = tilemap_data
+            self.tilemap_jsons[file_name] = tilemap_data
 
 
     def _load_texture_atlasses(self)->None: 
@@ -107,16 +110,32 @@ class ResourceManager:
         return texcoords
 
 
-    def create_tilemap_vbos(self,tile_size:int,non_physical_tile_layers:int)->tuple["Context.buffer","Context.buffer"]:
+    def create_tilemap_vbos(self,tile_size:int,non_physical_tile_layers:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
         max_visible_tiles_plus_extra = ((self._true_res[0]//tile_size)+ 2) * ((self._true_res[1]//tile_size)+2) 
-        vertex_size = 4 * 4 # 4 floats per vertex, 4 bytes per float. 
-        physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size # 6 vertices per physical tile.
+
+
+        vertex_size = 2 * 4
+        physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size
         non_physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size * non_physical_tile_layers
 
         physical_tiles_vbo = self._ctx.buffer(reserve=physical_tiles_buffer_size,dynamic=True)
         non_physical_tiles_vbo = self._ctx.buffer(reserve=non_physical_tiles_buffer_size,dynamic=True)
 
-        return (physical_tiles_vbo,non_physical_tiles_vbo)
+
+        position_vertex_size = 2 * 4
+        physical_tiles_position_buffer_size = max_visible_tiles_plus_extra * position_vertex_size
+        non_physical_tiles_position_buffer_size = max_visible_tiles_plus_extra * position_vertex_size * non_physical_tile_layers
+
+        physical_tiles_position_vbo = self._ctx.buffer(reserve=physical_tiles_position_buffer_size,dynamic= True)
+        non_physical_tiles_position_vbo =self._ctx.buffer(reserve=non_physical_tiles_position_buffer_size,dynamic=True)
+
+
+        return (physical_tiles_vbo,non_physical_tiles_vbo,physical_tiles_position_vbo,non_physical_tiles_position_vbo)
+
+
+
+
+
 
 
 
@@ -187,3 +206,13 @@ class ResourceManager:
                     tile_texcoords[tile_texcoord_key] = texcoords 
 
         return tile_texcoords 
+
+
+    def get_default_tile_vertices(self,tile_size:int)->np.array:
+        x = 0.
+        y = 0.
+        w = 2. * tile_size / self._true_res[0]
+        h = 2. * tile_size / self._true_res[1]
+
+        return np.array([(x, y), (x + w, y), (x, y - h),
+                (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)

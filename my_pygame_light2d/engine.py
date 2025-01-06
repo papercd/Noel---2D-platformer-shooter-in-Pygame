@@ -22,7 +22,7 @@ from scripts.new_grass import GrassManager
 
 from my_pygame_light2d.shader import Shader 
 from my_pygame_light2d.color import normalize_color_arguments, denormalize_color
-from my_pygame_light2d.double_buff import DoubleBuffer
+from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.util import create_rotated_rect,to_dest_coords
 
 BASE_PATH = 'data/images/'

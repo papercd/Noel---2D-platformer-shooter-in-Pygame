@@ -6,7 +6,7 @@ from moderngl import create_context
 from screeninfo import get_monitors
 
 from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
-from scripts.new_entities_manager import ResourceManager
+from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager
 from scripts.systems import PhysicsSystem,RenderSystem
 from scripts.new_tilemap import Tilemap
@@ -47,7 +47,7 @@ class Noel():
     def _initialize_game_objects(self):
         
         self._resource_manager = ResourceManager.get_instance(self._ctx,self._game_context['true_res'])
-        self._tilemap = Tilemap(self._resource_manager.get_tilemap_json('test1.json'))
+        self._tilemap = Tilemap(self._resource_manager.tilemap_jsons['test1.json'])
         #self._particle_system = ParticleSystem.get_instance()
         #self._entities_manager = EntitiesManager.get_instance()
         self._entities_manager = EntitiesManager.get_instance()
