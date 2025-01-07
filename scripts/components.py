@@ -1,9 +1,8 @@
 from dataclasses import dataclass as component 
 from dataclasses import field
-from moderngl import Texture
 from scripts.frect import FRect
 from pygame.math import Vector2 as vec2
-from scripts.data import GRAVITY
+from scripts.data import GRAVITY, AnimationDataCollection
 import numpy as np
 
 
@@ -36,9 +35,15 @@ class PhysicsComponent:
 
 
 
+@component
+class TypeComponent:
+    type : str = "default"
+
+
 @component 
 class RenderComponent:
-    ref_texture_atlass : Texture
+    animation_data_collection : AnimationDataCollection
     texcoords: np.array 
     vertices : np.array = field(default_factory= lambda: np.zeros(6))
+    curr_state : str = "idle"
 

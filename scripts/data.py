@@ -146,7 +146,8 @@ class AnimationDataCollection:
 GRAVITY = 0.965
 TERMINAL_VELOCITY = 6 
 
-PLAYER_ANIMATION_DATA = [
+ENTITY_ANIMATION_DATA = {
+    'player' : (
     AnimationData('idle',4,6,False,True),
     AnimationData('crouch',1,4,True,False),
     AnimationData('jump_up',1,5,True,False),
@@ -156,7 +157,8 @@ PLAYER_ANIMATION_DATA = [
     AnimationData('slide',1,5,True,False),
     AnimationData('wall_slide',1,4,True,False),
     AnimationData('sprint',6,3,False,True)
-]
+    )
+}
 
 PARTICLE_ANIMATION_DATA = {
     'jump': AnimationData('jump',9,2,True,False),
@@ -172,7 +174,6 @@ PARTICLE_ANIMATION_PIVOTS = {
     'ak47_smoke': (2,4)
 }
 
-PlayerAnimationDataCollection = AnimationDataCollection(PLAYER_ANIMATION_DATA)  
 
 
 """  Texture Data  """
@@ -279,6 +280,10 @@ ENTITIES_ATLAS_POSITIONS ={
                 }                        
                 } 
 
+}
+
+ENTITY_SIZES = {
+    "player" : (16,16)
 }
 
 IRREGULAR_TILE_SIZES = {
