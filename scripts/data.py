@@ -27,28 +27,28 @@ TIME_FOR_ONE_LOGICAL_STEP= 0.016666666666
 class Animation: 
     """ Animation class to handle entities' animations update """
     def __init__(self,n_textures:int,img_dur:int=5,halt:bool = False,loop :bool =True):
-        self._count = n_textures 
         self._loop= loop
         self._halt = halt
         self._img_dur = img_dur
         self.finished = False 
         self.accum_time = 0
         self.frame = 0
+        self.count = n_textures 
 
     def set_new_data(self,animation_data:AnimationData):
-        self._count = animation_data.n_textures
         self._loop = animation_data.loop
         self._halt = animation_data.halt
         self._img_dur = animation_data.img_dur
         self.finished= False 
         self.frame = 0
+        self.count = animation_data.n_textures
 
     def reset(self):
         self.frame = 0
         self.finished= False
     
     def copy(self):
-        return Animation(self._count,self._img_dur,self._halt,self._loop)
+        return Animation(self.count,self._img_dur,self._halt,self._loop)
     
     def update(self,dt):
         dt = min(dt, 2 * TIME_FOR_ONE_LOGICAL_STEP)
@@ -56,14 +56,14 @@ class Animation:
         self.accum_time += dt 
         if self.accum_time >= TIME_FOR_ONE_LOGICAL_STEP: 
             if self._halt: 
-                self.frame = min(self.frame+1,self._img_dur * self._count -1)
-                if self.frame == self._img_dur * self._count -1 : self.finished= True 
+                self.frame = min(self.frame+1,self._img_dur * self.count -1)
+                if self.frame == self._img_dur * self.count -1 : self.finished= True 
             else: 
                 if self._loop:
-                    self.frame = (self.frame+1) % (self._img_dur * self._count)
+                    self.frame = (self.frame+1) % (self._img_dur * self.count)
                 else: 
-                    self.frame = min(self.frame+1,self._img_dur *self._count -1)
-                    if self.frame >= self._img_dur *self._count -1:
+                    self.frame = min(self.frame+1,self._img_dur *self.count -1)
+                    if self.frame >= self._img_dur *self.count -1:
                         self.finished= True 
             self.accum_time -= TIME_FOR_ONE_LOGICAL_STEP
 
@@ -79,17 +79,17 @@ class DoorAnimation(Animation):
         super().__init__(n_textures, img_dur, True,False)
 
     def reset(self):
-        self.frame = 0 if self.opened else self._img_dur * self._count -1
+        self.frame = 0 if self.opened else self._img_dur * self.count -1
         self.finished= False 
     
     def open(self,is_open = False):
         self.opened = is_open
-        self.frame = 0 if self.opened else self._img_dur * self._count -1 
+        self.frame = 0 if self.opened else self._img_dur * self.count -1 
 
     def update(self):
         if self.opened: 
-            self.frame = min(self.frame+1,self._img_dur * self._count -1)
-            if self.frame == self._img_dur * self._count - 1 : self.finished= True 
+            self.frame = min(self.frame+1,self._img_dur * self.count -1)
+            if self.frame == self._img_dur * self.count - 1 : self.finished= True 
         else: 
             self.frame = max(0,self.frame-1) 
             if self.frame == 0 : self.finished= True 
@@ -129,7 +129,7 @@ class AnimationDataCollection:
 
 
     
-    def get_animation_data(self,state:str) -> Animation:
+    def get_animation(self,state:str) -> Animation:
         """
         Returns the animation that corresponds to the entity's state. 
 

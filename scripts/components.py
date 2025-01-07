@@ -36,14 +36,21 @@ class PhysicsComponent:
 
 
 @component
-class TypeComponent:
+class StateInfoComponent:
+
     type : str = "default"
+    curr_state : str = "idle"
+    has_weapon : bool = False
+    
+    collide_left : bool = False
+    collide_right : bool = False
+    collide_top : bool = False
+    collide_bottom : bool = False
+
 
 
 @component 
 class RenderComponent:
     animation_data_collection : AnimationDataCollection
-    texcoords: np.array 
     vertices : np.array = field(default_factory= lambda: np.zeros(6))
-    curr_state : str = "idle"
 

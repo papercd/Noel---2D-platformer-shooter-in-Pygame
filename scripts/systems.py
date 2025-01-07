@@ -1,7 +1,7 @@
 import esper
 from scripts.data import TERMINAL_VELOCITY,GRAVITY
 from scripts.new_resource_manager import ResourceManager
-from scripts.components import PhysicsComponent,RenderComponent,TypeComponent
+from scripts.components import PhysicsComponent,RenderComponent, StateInfoComponent
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
 from moderngl import NEAREST,LINEAR,BLEND
@@ -375,7 +375,17 @@ class RenderSystem(esper.Processor):
         self._tex_bg.use()
         self._vao_to_screen_draw.render()
 
-        for entity, (type_comp,physics_comp,render_comp) in esper.get_components(TypeComponent,PhysicsComponent,RenderComponent):
+        for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             
-            # gotta have the transform that transforms the world coords to ndc 
-            pass
+            if state_info_comp.type == 'player':
+                animation_data_collection = self._ref_rm.animation_data_collections['player']
+                animation = animation_data_collection.get_animation(state_info_comp.curr_state)
+
+                texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,state_info_comp.has_weapon,state_info_comp.curr_state,animation.curr_frame())] 
+                default_entity_vertices = self._ref_rm.entity_default_vertices[state_info_comp.type]
+
+                transform = physics_comp.transform # transform matrix transforms the default entity vertices to the world space.
+                to_ndc_transform = self._ref_rm.projection_matrix 
+
+                
+            

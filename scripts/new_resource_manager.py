@@ -38,6 +38,14 @@ class ResourceManager:
         # identity texcoords that represent texcoords for textures without an atlas 
         self.identity_texcoords = np.array([(0.,1.),(1.,1.),(0.,0.),
                                             (0.,0.),(1.,1.),(1.,0.)],dtype=np.float32)
+        
+
+        self.projection_matrix = np.array([
+            [2 / self._true_res[0] , 0 , -1],
+            [0, 2 / self._true_res[1]  ,  1],
+            [0,0,1]
+        ])
+
 
 
         # create animation data collections for entities' animations 
@@ -98,6 +106,10 @@ class ResourceManager:
                 player_texture_atlas_positions = ENTITIES_ATLAS_POSITIONS[entity_type]
                 for gun_holding_state in player_texture_atlas_positions:
                     for animation_state in player_texture_atlas_positions[gun_holding_state]:
+                        animation = self.animation_data_collections[entity_type].animations[animation_state]
+                        for frame in range(animation.count): 
+                            self.entity_texcoords[(entity_type,gun_holding_state,animation_state,frame)] = self._create_entity_texcoords(player_texture_atlas_positions[gun_holding_state][animation_state],ENTITY_SIZES[entity_type],frame)
+                        
                         pass
             else: 
                 pass
@@ -108,8 +120,8 @@ class ResourceManager:
         pass
 
 
-    def _create_entity_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int])->np.array:
-        x =  (texture_atlas_position[0]) / self.texture_atlasses['tiles'].size[0]
+    def _create_entity_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int],animation_frame:int)->np.array:
+        x =  (texture_atlas_position[0] + animation_frame * texture_size[0]) / self.texture_atlasses['tiles'].size[0]
         y = (texture_atlas_position[1]) / self.texture_atlasses['tiles'].size[1]
         w = texture_size[0] / self.texture_atlasses['tiles'].size[0]
         h = texture_size[1] / self.texture_atlasses['tiles'].size[1]

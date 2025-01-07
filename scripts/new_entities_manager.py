@@ -22,7 +22,8 @@ class EntitiesManager:
 
 
     def _create_player_entity(self)->None: 
-        self._player = esper.create_entity(TypeComponent('player'),PhysicsComponent(size=(16,16),position= vec2(1186,150),collision_rect=FRect(1188,152,12,14)))
+        self._player = esper.create_entity(StateInfoComponent(type='player'),PhysicsComponent(size=(16,16),position= vec2(1186,150),collision_rect=FRect(1188,152,12,14)),
+                                           RenderComponent(self._ref_rm.animation_data_collections['player'],self._ref_rm.entity_default_vertices['player']))
                                            
 
     def attatch_tilemap_to_physics_system(self,tilemap:Tilemap)->None: 
