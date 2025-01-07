@@ -3,7 +3,7 @@ from scripts.background import Background
 from scripts.utils import load_texture
 from os import listdir
 from json import load as jsLoad
-from scripts.data import TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TileInfo,TileInfoDataClass
+from scripts.data import TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TileInfo,TileInfoDataClass,AnimationDataCollection
 import numpy as np
 
 if TYPE_CHECKING: 
@@ -40,6 +40,10 @@ class ResourceManager:
                                             (0.,0.),(1.,1.),(1.,0.)],dtype=np.float32)
 
 
+        # create animation data collections for entities' animations 
+        self._create_animation_data_collections()
+
+
         # load the background textures and create background objects 
         self._load_backgrounds(TEXTURE_BASE_PATH + 'backgrounds')
 
@@ -47,10 +51,17 @@ class ResourceManager:
         # load tilemap json files 
         self._load_tilemap_json_files('map_jsons')
 
+
         # load texture atlasses 
         self._load_texture_atlasses()
 
 
+        # load entity texcoords 
+        self._load_entity_texcoords_and_default_vertices()
+
+    def _create_animation_data_collections(self)->None: 
+        self.animation_data_collections = {}
+        self.animation_data_collections['player'] = AnimationDataCollection(ENTITY_ANIMATION_DATA['player'])  
 
 
     def _load_backgrounds(self,path:str)->None:
@@ -76,6 +87,52 @@ class ResourceManager:
         self.texture_atlasses: dict[str,"Texture"] = {}
         for atlas_name in TEXTURE_ATLAS_NAMES_TO_PATH:
             self.texture_atlasses[atlas_name] = load_texture(TEXTURE_ATLAS_NAMES_TO_PATH[atlas_name],self._ctx)
+
+
+    def _load_entity_texcoords_and_default_vertices(self)->None:
+        self.entity_texcoords = {}
+        self.entity_default_vertices = {}
+
+        for entity_type in ENTITIES_ATLAS_POSITIONS: 
+            if entity_type == 'player':
+                player_texture_atlas_positions = ENTITIES_ATLAS_POSITIONS[entity_type]
+                for gun_holding_state in player_texture_atlas_positions:
+                    for animation_state in player_texture_atlas_positions[gun_holding_state]:
+                        pass
+            else: 
+                pass
+            
+            self.entity_default_vertices[entity_type] = self._create_entity_default_vertices(ENTITY_SIZES[entity_type])
+        # load the player entity texcoords for now
+
+        pass
+
+
+    def _create_entity_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int])->np.array:
+        x =  (texture_atlas_position[0]) / self.texture_atlasses['tiles'].size[0]
+        y = (texture_atlas_position[1]) / self.texture_atlasses['tiles'].size[1]
+        w = texture_size[0] / self.texture_atlasses['tiles'].size[0]
+        h = texture_size[1] / self.texture_atlasses['tiles'].size[1]
+
+        p1 = (x, y + h)
+        p2 = (x + w, y + h)
+        p3 = (x, y)
+        p4 = (x + w, y)
+
+        return np.array([p1, p2, p3,
+                        p3, p2, p4], dtype=np.float32)
+
+    def _create_entity_default_vertices(self,entity_size:tuple[int,int])->np.array:
+        x = 0.
+        y = 0.
+        w =  entity_size[0] 
+        h =  entity_size[1] 
+
+        return np.array([(x, y), (x + w, y), (x, y - h),
+                (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)
+
+        # return the default vertices in world coordinates for the entity type
+
 
 
     def _get_texcoords_for_tile(self,tile_info_source:TileInfoDataClass|TileInfo)->np.array:

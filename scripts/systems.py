@@ -1,6 +1,7 @@
 import esper
 from scripts.data import TERMINAL_VELOCITY,GRAVITY
-from scripts.components import PhysicsComponent,RenderComponent
+from scripts.new_resource_manager import ResourceManager
+from scripts.components import PhysicsComponent,RenderComponent,TypeComponent
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
 from moderngl import NEAREST,LINEAR,BLEND
@@ -85,6 +86,8 @@ class RenderSystem(esper.Processor):
         self._ctx = ctx
 
         # references 
+        self._ref_rm = ResourceManager.get_instance()
+
         self._ref_tilemap: "Tilemap" = None
         self._ref_background: "Background" = None
         self._ref_background_vertices_buffer : "Context.buffer" = None 
@@ -263,23 +266,6 @@ class RenderSystem(esper.Processor):
                 , 1. - 2. * (position[1] * self._ref_tilemap.regular_tile_size - camera_offset[1]) / fbo_h)
 
 
-    def _create_tile_vertices(self,tile_info:"TileInfo",camera_scroll:tuple[int,int])->np.array: 
-        tile_pos = tile_info.tile_pos 
-        fbo_w,fbo_h = self._fbo_bg.size
-
-        x = 2. * (tile_pos[0] * self._ref_tilemap._regular_tile_size-camera_scroll[0] )/ fbo_w- 1.
-        y = 1. - 2. * (tile_pos[1] * self._ref_tilemap._regular_tile_size- camera_scroll[1])/ fbo_h
-        w = 2. * 16 / fbo_w
-        h = 2. * 16 /fbo_h 
-        
-        # vertices = np.array([(x, y), (x + w, y), (x, y - h),
-        #                    (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
-        
-
-        return np.array[(x, y), (x + w, y), (x, y - h),
-                            (x, y - h), (x + w, y), (x + w, y - h)]
-
-
 
 
 
@@ -389,5 +375,7 @@ class RenderSystem(esper.Processor):
         self._tex_bg.use()
         self._vao_to_screen_draw.render()
 
-        for entity, (physics_comp,render_comp) in esper.get_components(PhysicsComponent,RenderComponent):
+        for entity, (type_comp,physics_comp,render_comp) in esper.get_components(TypeComponent,PhysicsComponent,RenderComponent):
+            
+            # gotta have the transform that transforms the world coords to ndc 
             pass
