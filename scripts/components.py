@@ -24,8 +24,8 @@ class PhysicsComponent:
         cos_a = np.cos(self.rotation)
         sin_a = np.sin(self.rotation)
 
-        tx = self.position[0] - self.origin[0] * self.scale[0]
-        ty = self.position[1] - self.origin[1] * self.scale[1]
+        tx = (self.position[0] - self.origin[0] * self.scale[0]) / 640
+        ty = (self.position[1] - self.origin[1] * self.scale[1]) / 360
 
         return np.array([
             [cos_a * self.scale[0], -sin_a * self.scale[1], tx],
@@ -34,16 +34,22 @@ class PhysicsComponent:
         ])
 
 
-
 @component
-class TypeComponent:
+class StateInfoComponent:
+
     type : str = "default"
+    curr_state : str = "idle"
+    has_weapon : bool = False
+    
+    collide_left : bool = False
+    collide_right : bool = False
+    collide_top : bool = False
+    collide_bottom : bool = False
+
 
 
 @component 
 class RenderComponent:
     animation_data_collection : AnimationDataCollection
-    texcoords: np.array 
     vertices : np.array = field(default_factory= lambda: np.zeros(6))
-    curr_state : str = "idle"
 

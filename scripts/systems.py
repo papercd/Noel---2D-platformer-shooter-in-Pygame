@@ -1,7 +1,8 @@
 import esper
 from scripts.data import TERMINAL_VELOCITY,GRAVITY
 from scripts.new_resource_manager import ResourceManager
-from scripts.components import PhysicsComponent,RenderComponent,TypeComponent
+from scripts.new_entities_manager import EntitiesManager 
+from scripts.components import PhysicsComponent,RenderComponent, StateInfoComponent
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
 from moderngl import NEAREST,LINEAR,BLEND
@@ -112,6 +113,7 @@ class RenderSystem(esper.Processor):
         self._create_programs()
         self._create_frame_buffers()
         self._create_screen_vertex_buffers()
+        self._create_entity_vertex_buffers()
 
     def _load_shader_srcs(self,vertex_src_path:str,fragment_src_path:str)->tuple[str,str]:
         try:
@@ -134,6 +136,15 @@ class RenderSystem(esper.Processor):
 
         tile_draw_vert_src,tile_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/tile_vert.glsl',
                                                                        'my_pygame_light2d/tile_frag.glsl')
+
+
+        entities_draw_vert_src,entities_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/entity_draw_vert.glsl',
+                                                                                 'my_pygame_light2d/entity_draw_frag.glsl')
+        
+
+        self._entity_draw_prog = self._ctx.program(vertex_shader = entities_draw_vert_src,
+                                                    fragment_shader = entities_draw_frag_src)
+
 
         self._to_screen_draw_prog = self._ctx.program(vertex_shader =vertex_src,
                                                                  fragment_shader= fragment_src)
@@ -191,6 +202,38 @@ class RenderSystem(esper.Processor):
             ]
         )
 
+
+    def _create_entity_vertex_buffers(self)->None:
+        default_vertex_size = 2 * 4
+        default_vertices_buffer_size = default_vertex_size * 6 * EntitiesManager.max_entities
+
+        texcoords_vertex_size = 2 * 4
+        texcoords_buffer_size = texcoords_vertex_size * 6 * EntitiesManager.max_entities
+
+        transform_matrix_col_size  = 3 * 4 
+        transform_column_buffer_size = transform_matrix_col_size  * EntitiesManager.max_entities 
+
+        self._entity_default_vertices_vbo = self._ctx.buffer(reserve=default_vertices_buffer_size, dynamic=True)
+        self._entity_texcoords_vbo = self._ctx.buffer(reserve = texcoords_buffer_size, dynamic=True)
+        
+        
+        self._entity_first_column_vbo = self._ctx.buffer(reserve=transform_column_buffer_size, dynamic=True)
+        self._entity_second_column_vbo = self._ctx.buffer(reserve=transform_column_buffer_size, dynamic=True)
+        self._entity_third_column_vbo = self._ctx.buffer(reserve=transform_column_buffer_size, dynamic=True)
+
+
+        self._vao_entity_draw = self._ctx.vertex_array(
+            self._entity_draw_prog,
+            [
+                (self._entity_default_vertices_vbo, '2f', 'in_position'),
+                (self._entity_texcoords_vbo, '2f', 'texcoord'),
+                (self._entity_first_column_vbo, '3f', 'col1'),
+                (self._entity_second_column_vbo, '3f', 'col2'),
+                (self._entity_third_column_vbo, '3f', 'col3')
+
+
+            ]
+        )
 
     def _render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
         
@@ -371,11 +414,80 @@ class RenderSystem(esper.Processor):
         self._render_background_to_bg_fbo(camera_offset)
         self._render_tilemap_to_bg_fbo(camera_offset)
 
+       
+
+        entity_vertices = []
+        entity_texcoords = []
+        entity_matrices_first = []
+        entity_matrices_second= []
+        entity_matrices_third = []
+
+        instance = 0
+
+        camera_offset_transform = np.array([
+            [1,0,-camera_offset[0]],
+            [0,1.,camera_offset[1]],
+            [0,0,1]
+        ],dtype=np.float32)
+
+        test = np.array((-16,16,1),dtype=np.float32)
+
+        for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
+            instance +=1            
+            if state_info_comp.type == 'player':
+                animation_data_collection = render_comp.animation_data_collection
+                animation = animation_data_collection.get_animation(state_info_comp.curr_state)
+
+                texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,state_info_comp.has_weapon,state_info_comp.curr_state,animation.curr_frame())] 
+                default_entity_vertices = render_comp.vertices
+
+                transform = physics_comp.transform # transform matrix transforms the default entity vertices to the world space.
+
+                to_ndc_transform = self._ref_rm.projection_matrix 
+
+                
+                #  to_ndc_transform @ transform @ vertices 
+
+                tf =  transform @ camera_offset_transform 
+
+                entity_vertices.extend(default_entity_vertices)
+                entity_texcoords.extend(texcoords)
+
+                column_major = tf.T.flatten()
+
+
+                entity_matrices_first.extend(column_major[:3])
+                entity_matrices_second.extend(column_major[3:6])
+                entity_matrices_third.extend(column_major[6:])
+
+        """
+        print(entity_matrices_first)
+        print(entity_matrices_second)
+        print(entity_matrices_third)
+
+        print()
+        print(tf)
+        """
+
+        if instance > 0:
+            self._entity_default_vertices_vbo.write(np.array(entity_vertices,dtype=np.float32).tobytes())
+            self._entity_texcoords_vbo.write(np.array(entity_texcoords,dtype=np.float32).tobytes())
+
+            self._entity_first_column_vbo.write(np.array(entity_matrices_first,dtype=np.float32).tobytes())
+            self._entity_second_column_vbo.write(np.array(entity_matrices_second,dtype=np.float32).tobytes())
+            self._entity_third_column_vbo.write(np.array(entity_matrices_third,dtype=np.float32).tobytes())
+
+        
+        self._ref_rm.texture_atlasses['entities'].use()
+        self._fbo_bg.use()
+        self._vao_entity_draw.render()
+
         self._ctx.screen.use()
         self._tex_bg.use()
         self._vao_to_screen_draw.render()
 
-        for entity, (type_comp,physics_comp,render_comp) in esper.get_components(TypeComponent,PhysicsComponent,RenderComponent):
-            
-            # gotta have the transform that transforms the world coords to ndc 
-            pass
+
+
+
+
+
