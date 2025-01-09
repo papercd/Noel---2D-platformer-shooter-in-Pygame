@@ -42,6 +42,7 @@ class Noel():
 
         self._initialize_game_objects()
         self._bind_objects_to_render_engine()
+        print(self._game_context["true_res"])
 
 
     def _initialize_game_objects(self):

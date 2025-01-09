@@ -8,6 +8,7 @@ from scripts.new_resource_manager import ResourceManager
 
 class EntitiesManager:
     _instance = None
+    max_entities = 1000
 
     @staticmethod
     def get_instance()->"EntitiesManager":
