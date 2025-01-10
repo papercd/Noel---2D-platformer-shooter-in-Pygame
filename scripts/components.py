@@ -17,7 +17,7 @@ class PhysicsComponent:
     velocity:  vec2  = field(default_factory= lambda:vec2(0,0))
     acceleration: vec2 = field(default_factory= lambda:vec2(0,GRAVITY))
     
-    collision_rect : FRect = field(default_factory= lambda:FRect(0,0,1,1))
+    collision_rect : FRect = field(default_factory= lambda: FRect(0,0,1,1))
 
     @property 
     def transform(self)->np.array: 

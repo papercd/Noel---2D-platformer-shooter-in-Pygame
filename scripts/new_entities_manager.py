@@ -23,7 +23,7 @@ class EntitiesManager:
 
 
     def _create_player_entity(self)->None: 
-        self._player = esper.create_entity(StateInfoComponent(type='player'),PhysicsComponent(size=(16,16),position= vec2(1186,150),collision_rect=FRect(1180,144,12,14)),
+        self._player = esper.create_entity(StateInfoComponent(type='player'),PhysicsComponent(size=(16,16),position= vec2(1186,0),collision_rect=FRect(1180,0,12,16)),
                                            RenderComponent(self._ref_rm.animation_data_collections['player'],self._ref_rm.entity_local_vertices['player']),InputComponent())
                                            
 

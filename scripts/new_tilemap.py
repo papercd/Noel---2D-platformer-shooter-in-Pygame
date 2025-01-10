@@ -206,7 +206,7 @@ class Tilemap:
         
 
 
-        self.default_tile_vertices = rm.get_default_tile_vertices(self._regular_tile_size)
+        self.NDC_tile_vertices = rm.get_NDC_tile_vertices(self._regular_tile_size)
         self.tile_colors = rm.get_tile_colors(self._physical_tiles)
         self.tile_texcoords = rm.get_tile_texcoords(self._physical_tiles,self._non_physical_tiles)
 

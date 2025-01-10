@@ -272,7 +272,7 @@ class ResourceManager:
         return tile_texcoords 
 
 
-    def get_default_tile_vertices(self,tile_size:int)->np.array:
+    def get_NDC_tile_vertices(self,tile_size:int)->np.array:
         x = 0.
         y = 0.
         w = 2. * tile_size / self._true_res[0]

@@ -9,7 +9,7 @@ from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
 import pygame
 from moderngl import NEAREST,LINEAR,BLEND
-from math import sqrt
+from math import sqrt,ceil
 import numpy as np
 
 from typing import TYPE_CHECKING 
@@ -40,13 +40,14 @@ class PhysicsSystem(esper.Processor):
                     pass
 
                 if physics_comp.velocity[1] >0 :
-                    physics_comp.velocity[1] = GRAVITY * dt
+                    physics_comp.position[1] = rect_tile[0].top - physics_comp.size[1] // 2
                     physics_comp.collision_rect.bottom = rect_tile[0].top 
-                elif physics_comp.velocity[1] < 0 :
+                    physics_comp.velocity[1] = GRAVITY * dt
+                elif physics_comp.velocity[1] < 0:
+                    physics_comp.position[1] = rect_tile[0].bottom + physics_comp.size[1] // 2
+                    physics_comp.collision_rect.top = rect_tile[0].bottom 
                     physics_comp.velocity[1] = 0
-                    physics_comp.collision_rect.top = rect_tile[0].bottom
-                
-                physics_comp.position[1] = physics_comp.collision_rect.y + physics_comp.position[1] - physics_comp.collision_rect.y
+
 
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
@@ -54,13 +55,15 @@ class PhysicsSystem(esper.Processor):
 
     def process(self,dt:float)->None: 
         for entity, physics_comp in esper.get_component(PhysicsComponent):
+            #print(physics_comp.velocity[1])
             physics_comp.flip = physics_comp.velocity[0] < 0
             
             physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt
             physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt)
             
+            
             physics_comp.position[0] += physics_comp.velocity[0] * dt
-            physics_comp.collision_rect.move(physics_comp.velocity[0] * dt,0)
+            physics_comp.collision_rect.x += physics_comp.velocity[0] * dt
 
             for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
                                                                                physics_comp.collision_rect.size):
@@ -68,8 +71,9 @@ class PhysicsSystem(esper.Processor):
                     self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
             
 
+
             physics_comp.position[1] += physics_comp.velocity[1] * dt 
-            physics_comp.collision_rect.move(0,physics_comp.velocity[1] * dt)
+            physics_comp.collision_rect.y += physics_comp.velocity[1] * dt
 
             for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
                                                                                physics_comp.collision_rect.size):
@@ -221,8 +225,8 @@ class RenderSystem(esper.Processor):
 
 
     def _create_entity_vertex_buffers(self)->None:
-        default_vertex_size = 2 * 4
-        default_vertices_buffer_size = default_vertex_size * 6 * EntitiesManager.max_entities
+        local_space_vertex_size = 2 * 4
+        local_space_vertices_buffer_size = local_space_vertex_size * 6 * EntitiesManager.max_entities
 
         texcoords_vertex_size = 2 * 4
         texcoords_buffer_size = texcoords_vertex_size * 6 * EntitiesManager.max_entities
@@ -230,7 +234,7 @@ class RenderSystem(esper.Processor):
         transform_matrix_col_size  = 3 * 4 
         transform_column_buffer_size = transform_matrix_col_size *  3  * EntitiesManager.max_entities 
 
-        self._entity_default_vertices_vbo = self._ctx.buffer(reserve=default_vertices_buffer_size, dynamic=True)
+        self._entity_local_vertices_vbo= self._ctx.buffer(reserve=local_space_vertices_buffer_size, dynamic=True)
         self._entity_texcoords_vbo = self._ctx.buffer(reserve = texcoords_buffer_size, dynamic=True)
         
         
@@ -240,7 +244,7 @@ class RenderSystem(esper.Processor):
         self._vao_entity_draw = self._ctx.vertex_array(
             self._entity_draw_prog,
             [
-                (self._entity_default_vertices_vbo, '12f/i', 'in_position'),
+                (self._entity_local_vertices_vbo, '12f/i', 'in_position'),
                 (self._entity_texcoords_vbo, '12f/i', 'texcoord'),
                 (self._entity_transform_matrices_vbo, '3f 3f 3f/i', 'col1', 'col2' ,'col3')
             ]
@@ -286,7 +290,7 @@ class RenderSystem(esper.Processor):
                     physical_tiles_texcoords_array.append(self._ref_tilemap.tile_texcoords[(tile_general_info.type,relative_position_index,variant)])
                     physical_tiles_positions_array.append(self._tile_position_to_ndc(coor,camera_offset))
 
-
+        """
         if non_physical_tiles_render_bit:
             buffer_data = np.array(non_physical_tiles_texcoords_array).astype(np.float32)
             self._ref_tilemap.write_to_non_physical_tiles_texcoords_vbo(buffer_data)
@@ -298,7 +302,7 @@ class RenderSystem(esper.Processor):
             self._ref_tilemap.ref_texture_atlas.use()
 
             self._vao_non_physical_tiles_draw.render(vertices = 6, instances= non_physical_tile_instances)
-
+        """
         if physical_tiles_render_bit:
             buffer_data = np.array(physical_tiles_texcoords_array).astype(np.float32)
             self._ref_tilemap.write_to_physical_tiles_texcoords_vbo(buffer_data)
@@ -318,8 +322,6 @@ class RenderSystem(esper.Processor):
 
         return (2. * (position[0] *self._ref_tilemap.regular_tile_size -camera_offset[0]) / fbo_w -1.
                 , 1. - 2. * (position[1] * self._ref_tilemap.regular_tile_size - camera_offset[1]) / fbo_h)
-
-
 
 
 
@@ -378,7 +380,7 @@ class RenderSystem(esper.Processor):
     def attatch_tilemap(self,tilemap:"Tilemap")->None:
         self._ref_tilemap = tilemap
 
-        self._tile_draw_prog['NDCVertices'] = self._ref_tilemap.default_tile_vertices
+        self._tile_draw_prog['NDCVertices'] = self._ref_tilemap.NDC_tile_vertices
 
         self._vao_physical_tiles_draw = self._ctx.vertex_array(
             self._tile_draw_prog,
@@ -454,7 +456,7 @@ class RenderSystem(esper.Processor):
                 pass
             instance += 1
 
-        self._entity_default_vertices_vbo.write(np.array(entity_vertices,dtype=np.float32).tobytes())
+        self._entity_local_vertices_vbo.write(np.array(entity_vertices,dtype=np.float32).tobytes())
         self._entity_texcoords_vbo.write(np.array(entity_texcoords,dtype=np.float32).tobytes())
         self._entity_transform_matrices_vbo.write(np.array(entity_matrices,dtype=np.float32).tobytes())
 
@@ -480,7 +482,8 @@ class InputHandler(esper.Processor):
     def _handle_common_events(self,event:pygame.Event)->None:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                self.quit_game() 
+                pygame.quit()
+                quit()
             if event.key == pygame.K_F12:
                 pygame.display.toggle_fullscreen()
 
@@ -493,6 +496,17 @@ class InputHandler(esper.Processor):
                 self._handle_common_events(event)
 
                 if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_w:
+                        player_input_comp.up = True
+                        # move player up by 1 pixel to avoid collision with the ground
+                        
+                        player_physics_comp.position[1] -= 1
+                        player_physics_comp.collision_rect.y -= 1
+
+                        player_physics_comp.velocity[1] = -400
+
+
+                    """
                     if event.key == pygame.K_w: 
                         self._scroll[1] -= 100
                     if event.key == pygame.K_s: 
@@ -501,6 +515,7 @@ class InputHandler(esper.Processor):
                         self._scroll[0] -= 100
                     if event.key == pygame.K_d: 
                         self._scroll[0] += 100
+                    """
  
         
 

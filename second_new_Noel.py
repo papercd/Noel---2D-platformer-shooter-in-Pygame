@@ -26,7 +26,7 @@ class Noel():
         self._grass_rotation_function_time:float = 0
         self._time_accumulator:float = 0
         self._prev_frame_time :float = 0
-        self._scroll:list[int,int] = [0,0]
+        self._scroll:list[int,int] = [1000,0]
         self._movement_input:list[bool,bool] = [False,False]
 
         self._initialize_game_objects()
@@ -387,15 +387,6 @@ class Noel():
            
             
             
-            
-            
-        
-
-    def quit_game(self):
-        pygame.quit()
-        
-        #TODO: release render engine
-        quit()
 
 
     def start(self):
@@ -409,5 +400,4 @@ class Noel():
 
 
 game = Noel()
-#cProfile.run("game.start()")
 game.start()
