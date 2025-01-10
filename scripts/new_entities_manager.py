@@ -1,5 +1,5 @@
 from scripts.new_tilemap import Tilemap
-from scripts.frect import FRect
+from pygame.rect import Rect
 from pygame.math import Vector2 as vec2
 from scripts.components import * 
 import esper
@@ -23,7 +23,7 @@ class EntitiesManager:
 
 
     def _create_player_entity(self)->None: 
-        self._player = esper.create_entity(StateInfoComponent(type='player'),PhysicsComponent(size=(16,16),position= vec2(1186,0),collision_rect=FRect(1180,0,12,16)),
+        self._player = esper.create_entity(StateInfoComponent(type='player'),PhysicsComponent(size=(16,16),position= vec2(1186,0),collision_rect=Rect(1180,0,12,16),floating_point_rect_position_buffer=vec2(0,0)),
                                            RenderComponent(self._ref_rm.animation_data_collections['player'],self._ref_rm.entity_local_vertices['player']),InputComponent())
                                            
 

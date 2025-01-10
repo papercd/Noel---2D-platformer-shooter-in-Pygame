@@ -1,5 +1,6 @@
 from dataclasses import dataclass as component 
 from dataclasses import field
+from pygame.rect import Rect
 from scripts.frect import FRect
 from pygame.math import Vector2 as vec2
 from scripts.data import GRAVITY, AnimationDataCollection
@@ -17,7 +18,8 @@ class PhysicsComponent:
     velocity:  vec2  = field(default_factory= lambda:vec2(0,0))
     acceleration: vec2 = field(default_factory= lambda:vec2(0,GRAVITY))
     
-    collision_rect : FRect = field(default_factory= lambda: FRect(0,0,1,1))
+    collision_rect : Rect = field(default_factory= lambda: Rect(0,0,1,1))
+    floating_point_rect_position_buffer : vec2 = field(default_factory= lambda: vec2(0,0))
 
     @property 
     def transform(self)->np.array: 

@@ -40,10 +40,12 @@ class PhysicsSystem(esper.Processor):
                     pass
 
                 if physics_comp.velocity[1] >0 :
+                    #print("check1")
                     physics_comp.position[1] = rect_tile[0].top - physics_comp.size[1] // 2
                     physics_comp.collision_rect.bottom = rect_tile[0].top 
-                    physics_comp.velocity[1] = GRAVITY * dt
+                    physics_comp.velocity[1] = 0
                 elif physics_comp.velocity[1] < 0:
+                    #print("check2")
                     physics_comp.position[1] = rect_tile[0].bottom + physics_comp.size[1] // 2
                     physics_comp.collision_rect.top = rect_tile[0].bottom 
                     physics_comp.velocity[1] = 0
@@ -55,18 +57,52 @@ class PhysicsSystem(esper.Processor):
 
     def process(self,dt:float)->None: 
         for entity, physics_comp in esper.get_component(PhysicsComponent):
-            #print(physics_comp.velocity[1])
-            physics_comp.flip = physics_comp.velocity[0] < 0
             
+
+            print(physics_comp)
+            physics_comp.flip = physics_comp.velocity[0] < 0 
+
             physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt
             physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt)
+
+            physics_comp.floating_point_rect_position_buffer[0] += physics_comp.velocity[0] * dt
+            physics_comp.floating_point_rect_position_buffer[1] += physics_comp.velocity[1] * dt
+
+            if physics_comp.floating_point_rect_position_buffer[0] >= 1.0:
+                displacement = int(physics_comp.floating_point_rect_position_buffer[0])
+                physics_comp.position[0] +=  displacement
+                physics_comp.collision_rect[0] += displacement
+                physics_comp.floating_point_rect_position_buffer[0] -= displacement
+
+            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
+                                                                            physics_comp.collision_rect.size):
+                if physics_comp.collision_rect.colliderect(rect_tile[0]):
+                    self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
+
+            if physics_comp.floating_point_rect_position_buffer[1] >= 1.0:
+                displacement = int(physics_comp.floating_point_rect_position_buffer[1])
+                physics_comp.position[1] +=  displacement
+                physics_comp.collision_rect[1] += displacement
+                physics_comp.floating_point_rect_position_buffer[1] -= displacement
+
+            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
+                                                                            physics_comp.collision_rect.size):
+                if physics_comp.collision_rect.colliderect(rect_tile[0]):
+                    self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = True)
+
+            """
+            physics_comp.flip = physics_comp.velocity[0] < 0
+            
+
+            physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt  
+            physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt )
             
             
             physics_comp.position[0] += physics_comp.velocity[0] * dt
             physics_comp.collision_rect.x += physics_comp.velocity[0] * dt
 
             for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
-                                                                               physics_comp.collision_rect.size):
+                                                                            physics_comp.collision_rect.size):
                 if physics_comp.collision_rect.colliderect(rect_tile[0]):
                     self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
             
@@ -76,10 +112,10 @@ class PhysicsSystem(esper.Processor):
             physics_comp.collision_rect.y += physics_comp.velocity[1] * dt
 
             for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
-                                                                               physics_comp.collision_rect.size):
+                                                                            physics_comp.collision_rect.size):
                 if physics_comp.collision_rect.colliderect(rect_tile[0]):
                     self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = True)
- 
+            """
 
 
 
@@ -504,6 +540,10 @@ class InputHandler(esper.Processor):
                         player_physics_comp.collision_rect.y -= 1
 
                         player_physics_comp.velocity[1] = -400
+
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_w:
+                        player_input_comp.up = False
 
 
                     """
