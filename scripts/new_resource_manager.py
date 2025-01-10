@@ -40,14 +40,7 @@ class ResourceManager:
         self.identity_texcoords = np.array([(0.,1.),(1.,1.),(0.,0.),
                                             (0.,0.),(1.,1.),(1.,0.)],dtype=np.float32)
         
-        self.projection_matrix = np.array( 
-            [
-            [2. / self._true_res[0] , 0 , -1.],
-            [0, -2. / self._true_res[1]  ,  1.],
-            [0,0,1.]
-        ],dtype=np.float32)
-
-
+    
 
         # create animation data collections for entities' animations 
         self._create_animation_data_collections()

@@ -1,10 +1,13 @@
 import esper
+from scripts.game_state import GameState
+from scripts.game_state import GameState
 from scripts.data import TERMINAL_VELOCITY,GRAVITY
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
-from scripts.components import PhysicsComponent,RenderComponent, StateInfoComponent
+from scripts.components import PhysicsComponent,RenderComponent, StateInfoComponent,InputComponent
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
+import pygame
 from moderngl import NEAREST,LINEAR,BLEND
 from math import sqrt
 import numpy as np
@@ -429,15 +432,14 @@ class RenderSystem(esper.Processor):
         self._view_transform[0][2] = -camera_offset[0]
         self._view_transform[1][2] = -camera_offset[1]
 
-        instance = 0
+        instance = 0 
 
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
-            instance += 1
             if state_info_comp.type == 'player':
                 animation_data_collection = render_comp.animation_data_collection
-                aniimation = animation_data_collection.get_animation(state_info_comp.curr_state)
+                animation = animation_data_collection.get_animation(state_info_comp.curr_state)
 
-                texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,state_info_comp.has_weapon,state_info_comp.curr_state,aniimation.curr_frame())]
+                texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,state_info_comp.has_weapon,state_info_comp.curr_state,animation.curr_frame())]
                 entity_local_vertices = render_comp.vertices    
 
                 clip_transform = self._projection_transform @ self._view_transform @ physics_comp.transform 
@@ -446,9 +448,11 @@ class RenderSystem(esper.Processor):
                 entity_texcoords.extend(texcoords)
 
                 column_major_clip_transform = clip_transform.T.flatten()
-
                 entity_matrices.extend(column_major_clip_transform)
-                
+
+            else: 
+                pass
+            instance += 1
 
         self._entity_default_vertices_vbo.write(np.array(entity_vertices,dtype=np.float32).tobytes())
         self._entity_texcoords_vbo.write(np.array(entity_texcoords,dtype=np.float32).tobytes())
@@ -463,6 +467,42 @@ class RenderSystem(esper.Processor):
         self._vao_to_screen_draw.render()
 
 
+
+class InputHandler(esper.Processor):
+
+    def __init__(self,game_context,scroll:list[int,int])->None: 
+        self._ref_game_conetxt = game_context
+
+        # temporary scroll reference 
+        self._scroll = scroll
+
+
+    def _handle_common_events(self,event:pygame.Event)->None:
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.quit_game() 
+            if event.key == pygame.K_F12:
+                pygame.display.toggle_fullscreen()
+
+
+    def process(self)->None: 
+        player, (player_input_comp,player_physics_comp,player_state_comp) = esper.get_components(InputComponent,PhysicsComponent,StateInfoComponent)[0]
+
+        if self._ref_game_conetxt['gamestate'] == GameState.GameLoop: 
+            for event in pygame.event.get():
+                self._handle_common_events(event)
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_w: 
+                        self._scroll[1] -= 100
+                    if event.key == pygame.K_s: 
+                        self._scroll[1] += 100
+                    if event.key == pygame.K_a: 
+                        self._scroll[0] -= 100
+                    if event.key == pygame.K_d: 
+                        self._scroll[0] += 100
+ 
+        
 
 
 

@@ -1,26 +1,15 @@
 import pygame 
 import platform
 from os import environ
-from enum import Enum
 from moderngl import create_context
 from screeninfo import get_monitors
 
+from scripts.game_state import GameState
 from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager
-from scripts.systems import PhysicsSystem,RenderSystem
+from scripts.systems import PhysicsSystem,RenderSystem,InputHandler
 from scripts.new_tilemap import Tilemap
-
-
-
-class GameState(Enum): 
-    StartSequence = 0
-    MainMenu = 1
-    MainMenuSettings =2
-    GameLoop = 3
-    PauseMenu = 4 
-    PauseMenuSettings =5
-
 
 class Noel():
     def __init__(self):
@@ -48,10 +37,7 @@ class Noel():
         
         self._resource_manager = ResourceManager.get_instance(self._ctx,self._game_context['true_res'])
         self._tilemap = Tilemap(self._resource_manager.tilemap_jsons['test1.json'])
-        #self._particle_system = ParticleSystem.get_instance()
-        #self._entities_manager = EntitiesManager.get_instance()
         self._entities_manager = EntitiesManager.get_instance()
-        #self._entities_manager.attatch_tilemap_to_physics_system(self._tilemap)
 
 
         self._physics_system = PhysicsSystem()
@@ -60,7 +46,10 @@ class Noel():
 
         self._render_system = RenderSystem(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res'],\
                                            self._game_context['true_res'])
+        
+        self._input_handler = InputHandler(self._game_context,self._scroll)
 
+ 
         self._render_system.attatch_tilemap(self._tilemap)
         self._render_system.attatch_background(self._resource_manager.backgrounds['start'])
 
@@ -236,7 +225,6 @@ class Noel():
             self._game_context["screen_res"], pygame.HWSURFACE | pygame.OPENGL | pygame.DOUBLEBUF)
 
     
-    def _handle_common_events(self,event):
 
         """
         
@@ -262,29 +250,8 @@ class Noel():
             elif event.button == 3:
                 self._hud.cursor.pressed[1] = False 
         """
-        if event.type == pygame.QUIT:
-                self.quit_game() 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                self.quit_game() 
-
-
-    def _handle_events(self):
-        if self._game_context['gamestate']== GameState.GameLoop:
-            for event in pygame.event.get():
-                self._handle_common_events(event)
-                
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_w: 
-                        self._scroll[1] -= 100
-                    if event.key == pygame.K_s: 
-                        self._scroll[1] += 100
-                    if event.key == pygame.K_a: 
-                        self._scroll[0] -= 100
-                    if event.key == pygame.K_d: 
-                        self._scroll[0] += 100
-                    
-            """
+                          
+        """
             if self._hud.cursor.pressed[0]:
                 if not self._hud.cursor.interacting:
                     self.player.shoot_weapon(self.render_engine.lights,self.entities_manager,self.particle_system)
@@ -353,13 +320,12 @@ class Noel():
 
     def _update_render(self):
         self._frame_count = (self._frame_count+1) %360
-        #self.render_engine.set_ambient(255,255,255, 25)
-        #self.render_engine.clear(0,0,0,255)
         self._render_system.clear(0,0,0,255)
         self._dt = min(self._clock.tick() / 1000.0,0.1)
         self._time_accumulator += self._dt
-        self._grass_rotation_function_time += self._dt * 100
+
         if self._game_context['gamestate']== GameState.GameLoop:  
+
             
             while self._time_accumulator >= TIME_FOR_ONE_LOGICAL_STEP:
                 self._physics_system.process(TIME_FOR_ONE_LOGICAL_STEP)
@@ -436,7 +402,7 @@ class Noel():
         self._dt = self._clock.tick() / 1000.0
         self._time_accumulator += self._dt 
         while(True):
-            self._handle_events()
+            self._input_handler.process()
             self._update_render() 
 
         

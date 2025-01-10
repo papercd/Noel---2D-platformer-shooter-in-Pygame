@@ -49,6 +49,17 @@ class StateInfoComponent:
 
 
 @component 
+class InputComponent: 
+    left: bool = False
+    right: bool = False 
+    up : bool = False 
+    down : bool = False 
+    open_inventory: bool = False 
+    interact : bool  = False
+    shoot: bool = False
+
+
+@component 
 class RenderComponent:
     animation_data_collection : AnimationDataCollection
     vertices : np.array = field(default_factory= lambda: np.zeros(6))
