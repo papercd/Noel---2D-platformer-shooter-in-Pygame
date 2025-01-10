@@ -143,8 +143,8 @@ class AnimationDataCollection:
 
 """ Animation Data """
 
-GRAVITY = 0.965
-TERMINAL_VELOCITY = 6 
+GRAVITY = 20 * 60
+TERMINAL_VELOCITY = 40 * 60
 
 ENTITY_ANIMATION_DATA = {
     'player' : (

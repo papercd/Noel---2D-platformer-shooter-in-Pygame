@@ -1,5 +1,6 @@
 from dataclasses import dataclass as component 
 from dataclasses import field
+from pygame.rect import Rect
 from scripts.frect import FRect
 from pygame.math import Vector2 as vec2
 from scripts.data import GRAVITY, AnimationDataCollection
@@ -17,15 +18,16 @@ class PhysicsComponent:
     velocity:  vec2  = field(default_factory= lambda:vec2(0,0))
     acceleration: vec2 = field(default_factory= lambda:vec2(0,GRAVITY))
     
-    collision_rect : FRect = field(default_factory= lambda:FRect(0,0,1,1))
+    collision_rect : Rect = field(default_factory= lambda: Rect(0,0,1,1))
+    floating_point_rect_position_buffer : vec2 = field(default_factory= lambda: vec2(0,0))
 
     @property 
     def transform(self)->np.array: 
         cos_a = np.cos(self.rotation)
         sin_a = np.sin(self.rotation)
 
-        tx = (self.position[0] - self.origin[0] * self.scale[0]) / 640
-        ty = (self.position[1] - self.origin[1] * self.scale[1]) / 360
+        tx = self.position[0] - self.origin[0] * self.scale[0] 
+        ty = self.position[1] - self.origin[1] * self.scale[1] 
 
         return np.array([
             [cos_a * self.scale[0], -sin_a * self.scale[1], tx],
@@ -46,6 +48,17 @@ class StateInfoComponent:
     collide_top : bool = False
     collide_bottom : bool = False
 
+
+
+@component 
+class InputComponent: 
+    left: bool = False
+    right: bool = False 
+    up : bool = False 
+    down : bool = False 
+    open_inventory: bool = False 
+    interact : bool  = False
+    shoot: bool = False
 
 
 @component 

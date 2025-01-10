@@ -1,4 +1,4 @@
-# version 430 
+#version 430 
 
 in vec2 frag_texcoord;
 uniform sampler2D imageTexture; 

@@ -1,12 +1,15 @@
 import esper
+from scripts.game_state import GameState
+from scripts.game_state import GameState
 from scripts.data import TERMINAL_VELOCITY,GRAVITY
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
-from scripts.components import PhysicsComponent,RenderComponent, StateInfoComponent
+from scripts.components import PhysicsComponent,RenderComponent, StateInfoComponent,InputComponent
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
+import pygame
 from moderngl import NEAREST,LINEAR,BLEND
-from math import sqrt
+from math import sqrt,ceil
 import numpy as np
 
 from typing import TYPE_CHECKING 
@@ -37,13 +40,16 @@ class PhysicsSystem(esper.Processor):
                     pass
 
                 if physics_comp.velocity[1] >0 :
-                    physics_comp.velocity[1] = GRAVITY * dt
+                    #print("check1")
+                    physics_comp.position[1] = rect_tile[0].top - physics_comp.size[1] // 2
                     physics_comp.collision_rect.bottom = rect_tile[0].top 
-                elif physics_comp.velocity[1] < 0 :
                     physics_comp.velocity[1] = 0
-                    physics_comp.collision_rect.top = rect_tile[0].bottom
-                
-                physics_comp.position[1] = physics_comp.collision_rect.y
+                elif physics_comp.velocity[1] < 0:
+                    #print("check2")
+                    physics_comp.position[1] = rect_tile[0].bottom + physics_comp.size[1] // 2
+                    physics_comp.collision_rect.top = rect_tile[0].bottom 
+                    physics_comp.velocity[1] = 0
+
 
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
@@ -51,28 +57,65 @@ class PhysicsSystem(esper.Processor):
 
     def process(self,dt:float)->None: 
         for entity, physics_comp in esper.get_component(PhysicsComponent):
-            physics_comp.flip = physics_comp.velocity[0] < 0
             
+
+            print(physics_comp)
+            physics_comp.flip = physics_comp.velocity[0] < 0 
+
             physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt
             physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt)
-            
-            physics_comp.position[0] += physics_comp.velocity[0] * dt
-            physics_comp.collision_rect.move(physics_comp.velocity[0] * dt,0)
+
+            physics_comp.floating_point_rect_position_buffer[0] += physics_comp.velocity[0] * dt
+            physics_comp.floating_point_rect_position_buffer[1] += physics_comp.velocity[1] * dt
+
+            if physics_comp.floating_point_rect_position_buffer[0] >= 1.0:
+                displacement = int(physics_comp.floating_point_rect_position_buffer[0])
+                physics_comp.position[0] +=  displacement
+                physics_comp.collision_rect[0] += displacement
+                physics_comp.floating_point_rect_position_buffer[0] -= displacement
 
             for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
-                                                                               physics_comp.collision_rect.size):
+                                                                            physics_comp.collision_rect.size):
+                if physics_comp.collision_rect.colliderect(rect_tile[0]):
+                    self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
+
+            if physics_comp.floating_point_rect_position_buffer[1] >= 1.0:
+                displacement = int(physics_comp.floating_point_rect_position_buffer[1])
+                physics_comp.position[1] +=  displacement
+                physics_comp.collision_rect[1] += displacement
+                physics_comp.floating_point_rect_position_buffer[1] -= displacement
+
+            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
+                                                                            physics_comp.collision_rect.size):
+                if physics_comp.collision_rect.colliderect(rect_tile[0]):
+                    self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = True)
+
+            """
+            physics_comp.flip = physics_comp.velocity[0] < 0
+            
+
+            physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt  
+            physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt )
+            
+            
+            physics_comp.position[0] += physics_comp.velocity[0] * dt
+            physics_comp.collision_rect.x += physics_comp.velocity[0] * dt
+
+            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
+                                                                            physics_comp.collision_rect.size):
                 if physics_comp.collision_rect.colliderect(rect_tile[0]):
                     self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
             
 
+
             physics_comp.position[1] += physics_comp.velocity[1] * dt 
-            physics_comp.collision_rect.move(0,physics_comp.velocity[1] * dt)
+            physics_comp.collision_rect.y += physics_comp.velocity[1] * dt
 
             for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
-                                                                               physics_comp.collision_rect.size):
+                                                                            physics_comp.collision_rect.size):
                 if physics_comp.collision_rect.colliderect(rect_tile[0]):
                     self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = True)
- 
+            """
 
 
 
@@ -109,6 +152,20 @@ class RenderSystem(esper.Processor):
         self.hulls:list["Hull"] = []
 
         self.shadow_blur_radious = 5
+
+        self._projection_transform = np.array( 
+            [
+            [2. / self._true_res[0] , 0 , -1.],
+            [0, -2. / self._true_res[1]  ,  1.],
+            [0,0,1.]
+        ],dtype=np.float32)
+
+        self._view_transform = np.array([
+            [1,0,0],
+            [0,1,0],
+            [0,0,1]
+        ],dtype=np.float32)
+
 
         self._create_programs()
         self._create_frame_buffers()
@@ -204,34 +261,28 @@ class RenderSystem(esper.Processor):
 
 
     def _create_entity_vertex_buffers(self)->None:
-        default_vertex_size = 2 * 4
-        default_vertices_buffer_size = default_vertex_size * 6 * EntitiesManager.max_entities
+        local_space_vertex_size = 2 * 4
+        local_space_vertices_buffer_size = local_space_vertex_size * 6 * EntitiesManager.max_entities
 
         texcoords_vertex_size = 2 * 4
         texcoords_buffer_size = texcoords_vertex_size * 6 * EntitiesManager.max_entities
 
         transform_matrix_col_size  = 3 * 4 
-        transform_column_buffer_size = transform_matrix_col_size  * EntitiesManager.max_entities 
+        transform_column_buffer_size = transform_matrix_col_size *  3  * EntitiesManager.max_entities 
 
-        self._entity_default_vertices_vbo = self._ctx.buffer(reserve=default_vertices_buffer_size, dynamic=True)
+        self._entity_local_vertices_vbo= self._ctx.buffer(reserve=local_space_vertices_buffer_size, dynamic=True)
         self._entity_texcoords_vbo = self._ctx.buffer(reserve = texcoords_buffer_size, dynamic=True)
         
         
-        self._entity_first_column_vbo = self._ctx.buffer(reserve=transform_column_buffer_size, dynamic=True)
-        self._entity_second_column_vbo = self._ctx.buffer(reserve=transform_column_buffer_size, dynamic=True)
-        self._entity_third_column_vbo = self._ctx.buffer(reserve=transform_column_buffer_size, dynamic=True)
+        self._entity_transform_matrices_vbo = self._ctx.buffer(reserve = transform_column_buffer_size, dynamic=True)
 
 
         self._vao_entity_draw = self._ctx.vertex_array(
             self._entity_draw_prog,
             [
-                (self._entity_default_vertices_vbo, '2f', 'in_position'),
-                (self._entity_texcoords_vbo, '2f', 'texcoord'),
-                (self._entity_first_column_vbo, '3f', 'col1'),
-                (self._entity_second_column_vbo, '3f', 'col2'),
-                (self._entity_third_column_vbo, '3f', 'col3')
-
-
+                (self._entity_local_vertices_vbo, '12f/i', 'in_position'),
+                (self._entity_texcoords_vbo, '12f/i', 'texcoord'),
+                (self._entity_transform_matrices_vbo, '3f 3f 3f/i', 'col1', 'col2' ,'col3')
             ]
         )
 
@@ -275,7 +326,7 @@ class RenderSystem(esper.Processor):
                     physical_tiles_texcoords_array.append(self._ref_tilemap.tile_texcoords[(tile_general_info.type,relative_position_index,variant)])
                     physical_tiles_positions_array.append(self._tile_position_to_ndc(coor,camera_offset))
 
-
+        """
         if non_physical_tiles_render_bit:
             buffer_data = np.array(non_physical_tiles_texcoords_array).astype(np.float32)
             self._ref_tilemap.write_to_non_physical_tiles_texcoords_vbo(buffer_data)
@@ -287,7 +338,7 @@ class RenderSystem(esper.Processor):
             self._ref_tilemap.ref_texture_atlas.use()
 
             self._vao_non_physical_tiles_draw.render(vertices = 6, instances= non_physical_tile_instances)
-
+        """
         if physical_tiles_render_bit:
             buffer_data = np.array(physical_tiles_texcoords_array).astype(np.float32)
             self._ref_tilemap.write_to_physical_tiles_texcoords_vbo(buffer_data)
@@ -307,8 +358,6 @@ class RenderSystem(esper.Processor):
 
         return (2. * (position[0] *self._ref_tilemap.regular_tile_size -camera_offset[0]) / fbo_w -1.
                 , 1. - 2. * (position[1] * self._ref_tilemap.regular_tile_size - camera_offset[1]) / fbo_h)
-
-
 
 
 
@@ -367,7 +416,7 @@ class RenderSystem(esper.Processor):
     def attatch_tilemap(self,tilemap:"Tilemap")->None:
         self._ref_tilemap = tilemap
 
-        self._tile_draw_prog['NDCVertices'] = self._ref_tilemap.default_tile_vertices
+        self._tile_draw_prog['NDCVertices'] = self._ref_tilemap.NDC_tile_vertices
 
         self._vao_physical_tiles_draw = self._ctx.vertex_array(
             self._tile_draw_prog,
@@ -414,79 +463,101 @@ class RenderSystem(esper.Processor):
         self._render_background_to_bg_fbo(camera_offset)
         self._render_tilemap_to_bg_fbo(camera_offset)
 
-       
-
         entity_vertices = []
         entity_texcoords = []
-        entity_matrices_first = []
-        entity_matrices_second= []
-        entity_matrices_third = []
+        entity_matrices = []
 
-        instance = 0
+        self._view_transform[0][2] = -camera_offset[0]
+        self._view_transform[1][2] = -camera_offset[1]
 
-        camera_offset_transform = np.array([
-            [1,0,-camera_offset[0]],
-            [0,1.,camera_offset[1]],
-            [0,0,1]
-        ],dtype=np.float32)
-
-        test = np.array((-16,16,1),dtype=np.float32)
+        instance = 0 
 
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
-            instance +=1            
             if state_info_comp.type == 'player':
                 animation_data_collection = render_comp.animation_data_collection
                 animation = animation_data_collection.get_animation(state_info_comp.curr_state)
 
-                texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,state_info_comp.has_weapon,state_info_comp.curr_state,animation.curr_frame())] 
-                default_entity_vertices = render_comp.vertices
+                texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,state_info_comp.has_weapon,state_info_comp.curr_state,animation.curr_frame())]
+                entity_local_vertices = render_comp.vertices    
 
-                transform = physics_comp.transform # transform matrix transforms the default entity vertices to the world space.
+                clip_transform = self._projection_transform @ self._view_transform @ physics_comp.transform 
 
-                to_ndc_transform = self._ref_rm.projection_matrix 
-
-                
-                #  to_ndc_transform @ transform @ vertices 
-
-                tf =  transform @ camera_offset_transform 
-
-                entity_vertices.extend(default_entity_vertices)
+                entity_vertices.extend(entity_local_vertices)
                 entity_texcoords.extend(texcoords)
 
-                column_major = tf.T.flatten()
+                column_major_clip_transform = clip_transform.T.flatten()
+                entity_matrices.extend(column_major_clip_transform)
 
+            else: 
+                pass
+            instance += 1
 
-                entity_matrices_first.extend(column_major[:3])
-                entity_matrices_second.extend(column_major[3:6])
-                entity_matrices_third.extend(column_major[6:])
+        self._entity_local_vertices_vbo.write(np.array(entity_vertices,dtype=np.float32).tobytes())
+        self._entity_texcoords_vbo.write(np.array(entity_texcoords,dtype=np.float32).tobytes())
+        self._entity_transform_matrices_vbo.write(np.array(entity_matrices,dtype=np.float32).tobytes())
 
-        """
-        print(entity_matrices_first)
-        print(entity_matrices_second)
-        print(entity_matrices_third)
-
-        print()
-        print(tf)
-        """
-
-        if instance > 0:
-            self._entity_default_vertices_vbo.write(np.array(entity_vertices,dtype=np.float32).tobytes())
-            self._entity_texcoords_vbo.write(np.array(entity_texcoords,dtype=np.float32).tobytes())
-
-            self._entity_first_column_vbo.write(np.array(entity_matrices_first,dtype=np.float32).tobytes())
-            self._entity_second_column_vbo.write(np.array(entity_matrices_second,dtype=np.float32).tobytes())
-            self._entity_third_column_vbo.write(np.array(entity_matrices_third,dtype=np.float32).tobytes())
-
-        
-        self._ref_rm.texture_atlasses['entities'].use()
         self._fbo_bg.use()
-        self._vao_entity_draw.render()
+        self._ref_rm.texture_atlasses['entities'].use()
+        self._vao_entity_draw.render(vertices= 6, instances= instance)
 
         self._ctx.screen.use()
         self._tex_bg.use()
         self._vao_to_screen_draw.render()
 
 
+
+class InputHandler(esper.Processor):
+
+    def __init__(self,game_context,scroll:list[int,int])->None: 
+        self._ref_game_conetxt = game_context
+
+        # temporary scroll reference 
+        self._scroll = scroll
+
+
+    def _handle_common_events(self,event:pygame.Event)->None:
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                pygame.quit()
+                quit()
+            if event.key == pygame.K_F12:
+                pygame.display.toggle_fullscreen()
+
+
+    def process(self)->None: 
+        player, (player_input_comp,player_physics_comp,player_state_comp) = esper.get_components(InputComponent,PhysicsComponent,StateInfoComponent)[0]
+
+        if self._ref_game_conetxt['gamestate'] == GameState.GameLoop: 
+            for event in pygame.event.get():
+                self._handle_common_events(event)
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_w:
+                        player_input_comp.up = True
+                        # move player up by 1 pixel to avoid collision with the ground
+                        
+                        player_physics_comp.position[1] -= 1
+                        player_physics_comp.collision_rect.y -= 1
+
+                        player_physics_comp.velocity[1] = -400
+
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_w:
+                        player_input_comp.up = False
+
+
+                    """
+                    if event.key == pygame.K_w: 
+                        self._scroll[1] -= 100
+                    if event.key == pygame.K_s: 
+                        self._scroll[1] += 100
+                    if event.key == pygame.K_a: 
+                        self._scroll[0] -= 100
+                    if event.key == pygame.K_d: 
+                        self._scroll[0] += 100
+                    """
+ 
+        
 
 
 
