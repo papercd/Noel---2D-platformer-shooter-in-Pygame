@@ -43,7 +43,7 @@ class PhysicsSystem(esper.Processor):
                     physics_comp.velocity[1] = 0
                     physics_comp.collision_rect.top = rect_tile[0].bottom
                 
-                physics_comp.position[1] = physics_comp.collision_rect.y
+                physics_comp.position[1] = physics_comp.collision_rect.y + physics_comp.position[1] - physics_comp.collision_rect.y
 
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
@@ -51,7 +51,6 @@ class PhysicsSystem(esper.Processor):
 
     def process(self,dt:float)->None: 
         for entity, physics_comp in esper.get_component(PhysicsComponent):
-            print(physics_comp)
             physics_comp.flip = physics_comp.velocity[0] < 0
             
             physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt
@@ -110,6 +109,20 @@ class RenderSystem(esper.Processor):
         self.hulls:list["Hull"] = []
 
         self.shadow_blur_radious = 5
+
+        self._projection_transform = np.array( 
+            [
+            [2. / self._true_res[0] , 0 , -1.],
+            [0, -2. / self._true_res[1]  ,  1.],
+            [0,0,1.]
+        ],dtype=np.float32)
+
+        self._view_transform = np.array([
+            [1,0,0],
+            [0,1,0],
+            [0,0,1]
+        ],dtype=np.float32)
+
 
         self._create_programs()
         self._create_frame_buffers()
@@ -212,15 +225,13 @@ class RenderSystem(esper.Processor):
         texcoords_buffer_size = texcoords_vertex_size * 6 * EntitiesManager.max_entities
 
         transform_matrix_col_size  = 3 * 4 
-        transform_column_buffer_size = transform_matrix_col_size  * EntitiesManager.max_entities 
+        transform_column_buffer_size = transform_matrix_col_size *  3  * EntitiesManager.max_entities 
 
         self._entity_default_vertices_vbo = self._ctx.buffer(reserve=default_vertices_buffer_size, dynamic=True)
         self._entity_texcoords_vbo = self._ctx.buffer(reserve = texcoords_buffer_size, dynamic=True)
         
         
-        self._entity_first_column_vbo = self._ctx.buffer(reserve=transform_column_buffer_size, dynamic=True)
-        self._entity_second_column_vbo = self._ctx.buffer(reserve=transform_column_buffer_size, dynamic=True)
-        self._entity_third_column_vbo = self._ctx.buffer(reserve=transform_column_buffer_size, dynamic=True)
+        self._entity_transform_matrices_vbo = self._ctx.buffer(reserve = transform_column_buffer_size, dynamic=True)
 
 
         self._vao_entity_draw = self._ctx.vertex_array(
@@ -228,9 +239,7 @@ class RenderSystem(esper.Processor):
             [
                 (self._entity_default_vertices_vbo, '12f/i', 'in_position'),
                 (self._entity_texcoords_vbo, '12f/i', 'texcoord'),
-                (self._entity_first_column_vbo, '3f/i', 'col1'),
-                (self._entity_second_column_vbo, '3f/i', 'col2'),
-                (self._entity_third_column_vbo, '3f/i', 'col3')
+                (self._entity_transform_matrices_vbo, '3f 3f 3f/i', 'col1', 'col2' ,'col3')
             ]
         )
 
@@ -415,17 +424,10 @@ class RenderSystem(esper.Processor):
 
         entity_vertices = []
         entity_texcoords = []
+        entity_matrices = []
 
-        entity_matrices_first = []
-        entity_matrices_second = []
-        entity_matrices_third = []
-
-        view_transform = np.array([
-            [1,0,-camera_offset[0]],
-            [0,1,-camera_offset[1]],
-            [0,0,1]
-        ],dtype=np.float32)
-
+        self._view_transform[0][2] = -camera_offset[0]
+        self._view_transform[1][2] = -camera_offset[1]
 
         instance = 0
 
@@ -438,29 +440,19 @@ class RenderSystem(esper.Processor):
                 texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,state_info_comp.has_weapon,state_info_comp.curr_state,aniimation.curr_frame())]
                 entity_local_vertices = render_comp.vertices    
 
-                model_transform = physics_comp.transform        
-
-                projection_transform = self._ref_rm.projection_matrix
-
-                clip_transform = projection_transform @ view_transform @ model_transform 
+                clip_transform = self._projection_transform @ self._view_transform @ physics_comp.transform 
 
                 entity_vertices.extend(entity_local_vertices)
                 entity_texcoords.extend(texcoords)
 
                 column_major_clip_transform = clip_transform.T.flatten()
-                
-                entity_matrices_first.extend(column_major_clip_transform[:3])
-                entity_matrices_second.extend(column_major_clip_transform[3:6])
-                entity_matrices_third.extend(column_major_clip_transform[6:])
 
+                entity_matrices.extend(column_major_clip_transform)
+                
 
         self._entity_default_vertices_vbo.write(np.array(entity_vertices,dtype=np.float32).tobytes())
         self._entity_texcoords_vbo.write(np.array(entity_texcoords,dtype=np.float32).tobytes())
-
-        self._entity_first_column_vbo.write(np.array(entity_matrices_first,dtype=np.float32).tobytes())
-        self._entity_second_column_vbo.write(np.array(entity_matrices_second,dtype=np.float32).tobytes())
-        self._entity_third_column_vbo.write(np.array(entity_matrices_third,dtype=np.float32).tobytes())
-
+        self._entity_transform_matrices_vbo.write(np.array(entity_matrices,dtype=np.float32).tobytes())
 
         self._fbo_bg.use()
         self._ref_rm.texture_atlasses['entities'].use()

@@ -132,15 +132,15 @@ class ResourceManager:
         p3 = (x, y)
         p4 = (x + w, y)
 
-        return np.array([p1, p2, p3,
-                        p3, p2, p4], dtype=np.float32)
+        return np.array([p3, p4, p1,
+                        p1, p4, p2], dtype=np.float32)
 
     def _create_entity_local_vertices(self,entity_size:tuple[int,int])->np.array:
 
         x =  -entity_size[0]//2
         y = entity_size[1]//2
         w = entity_size[0]
-        h = -entity_size[1]
+        h = entity_size[1]
 
         return np.array([(x, y), (x + w, y), (x, y - h),
                 (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)
