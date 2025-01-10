@@ -24,8 +24,8 @@ class PhysicsComponent:
         cos_a = np.cos(self.rotation)
         sin_a = np.sin(self.rotation)
 
-        tx = (self.position[0] - self.origin[0] * self.scale[0]) / 640
-        ty = (self.position[1] - self.origin[1] * self.scale[1]) / 360
+        tx = self.position[0] - self.origin[0] * self.scale[0] 
+        ty = self.position[1] - self.origin[1] * self.scale[1] 
 
         return np.array([
             [cos_a * self.scale[0], -sin_a * self.scale[1], tx],

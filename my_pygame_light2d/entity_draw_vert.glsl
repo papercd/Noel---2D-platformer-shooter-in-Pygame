@@ -1,21 +1,21 @@
 #version 430 
 
-layout (location = 0) in vec2 in_position; 
-layout (location = 1) in vec2 texcoord;
+in vec2 in_position[6]; 
+in vec2 texcoord[6];
 
-layout (location = 2) in vec3 col1; 
-layout (location = 3) in vec3 col2; 
-layout (location = 4) in vec3 col3; 
+in vec3 col1; 
+in vec3 col2; 
+in vec3 col3; 
 
 
 out vec2 frag_texcoord; 
 
 void main() {
     mat3 transform = mat3(col1,col2,col3);
-    vec3 worldVertex = vec3(in_position,1.0);
+    vec3 localVertex = vec3(in_position[gl_VertexID],1.0);
 
-    vec3 ndcVertex = transform * worldVertex; 
+    vec3 ndcVertex = transform * localVertex; 
 
     gl_Position = vec4(ndcVertex.xy,0.0,1.0);
-    frag_texcoord = texcoord; 
+    frag_texcoord = texcoord[gl_VertexID]; 
 }

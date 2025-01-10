@@ -40,12 +40,11 @@ class ResourceManager:
         self.identity_texcoords = np.array([(0.,1.),(1.,1.),(0.,0.),
                                             (0.,0.),(1.,1.),(1.,0.)],dtype=np.float32)
         
-
         self.projection_matrix = np.array( 
             [
-            [2 / self._true_res[0] , 0 , -1],
-            [0, -2 / self._true_res[1]  ,  1],
-            [0,0,1]
+            [2. / self._true_res[0] , 0 , -1.],
+            [0, -2. / self._true_res[1]  ,  1.],
+            [0,0,1.]
         ],dtype=np.float32)
 
 
@@ -67,7 +66,7 @@ class ResourceManager:
 
 
         # load entity texcoords 
-        self._load_entity_texcoords_and_default_vertices()
+        self._load_entity_texcoords_and_local_vertices()
 
     def _create_animation_data_collections(self)->None: 
         self.animation_data_collections = {}
@@ -99,9 +98,9 @@ class ResourceManager:
             self.texture_atlasses[atlas_name] = load_texture(TEXTURE_ATLAS_NAMES_TO_PATH[atlas_name],self._ctx)
 
 
-    def _load_entity_texcoords_and_default_vertices(self)->None:
+    def _load_entity_texcoords_and_local_vertices(self)->None:
         self.entity_texcoords = {}
-        self.entity_default_vertices = {}
+        self.entity_local_vertices = {}
 
         for entity_type in ENTITIES_ATLAS_POSITIONS: 
             if entity_type == 'player':
@@ -116,7 +115,7 @@ class ResourceManager:
             else: 
                 pass
             
-            self.entity_default_vertices[entity_type] = self._create_entity_default_vertices(ENTITY_SIZES[entity_type])
+            self.entity_local_vertices[entity_type] = self._create_entity_local_vertices(ENTITY_SIZES[entity_type])
         # load the player entity texcoords for now
 
         pass
@@ -136,16 +135,17 @@ class ResourceManager:
         return np.array([p1, p2, p3,
                         p3, p2, p4], dtype=np.float32)
 
-    def _create_entity_default_vertices(self,entity_size:tuple[int,int])->np.array:
-        x =  2. * (entity_size[0]//2) / self._true_res[0] -1.
-        y = 1. + 2 * (-entity_size[1]//2) /self._true_res[1] 
-        w = 2 * entity_size[0] / self._true_res[0]   
-        h = 2 * entity_size[1]  / self._true_res[1]
+    def _create_entity_local_vertices(self,entity_size:tuple[int,int])->np.array:
+
+        x =  -entity_size[0]//2
+        y = entity_size[1]//2
+        w = entity_size[0]
+        h = -entity_size[1]
 
         return np.array([(x, y), (x + w, y), (x, y - h),
                 (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)
 
-        # return the default vertices in world coordinates for the entity type
+        # return the local vertices for the entity type
 
 
 
