@@ -55,7 +55,10 @@ class PhysicsSystem(esper.Processor):
 
     def _process_physics_updates(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,dt:float,input_comp: InputComponent =None)->None:
         if input_comp is not None:  # for entities the physics updates of which are dependent on input.
+ 
             direction_bit = input_comp.right - input_comp.left
+            if direction_bit != 0:
+                physics_comp.flip = direction_bit == -1
             physics_comp.acceleration[0] = ENTITIES_ACCELERATION[state_info_comp.type] * direction_bit
             if input_comp.up and state_info_comp.jump_count < state_info_comp.max_jump_count:
                 physics_comp.velocity[1] = -ENTITIES_JUMP_SPEED[state_info_comp.type]
@@ -65,7 +68,6 @@ class PhysicsSystem(esper.Processor):
             state_info_comp.jump_count += 1
 
         physics_comp.prev_transform = physics_comp.transform
-        physics_comp.flip = physics_comp.velocity[0] < 0
 
         physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt
         
