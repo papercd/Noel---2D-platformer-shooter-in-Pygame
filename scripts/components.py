@@ -20,6 +20,13 @@ class PhysicsComponent:
     
     collision_rect : Rect = field(default_factory= lambda: Rect(0,0,1,1))
     displacement_buffer : vec2 = field(default_factory= lambda: vec2(0,0))
+    
+    prev_transform : np.array = field(default_factory= lambda: np.array([
+        [1,0,0],                        
+        [0,1,0],
+        [0,0,1]
+    ])) # previous transform matrix to integrate interpolation for rendering.
+
 
     @property 
     def transform(self)->np.array: 

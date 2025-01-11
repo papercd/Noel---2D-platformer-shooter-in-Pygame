@@ -57,6 +57,8 @@ class PhysicsSystem(esper.Processor):
 
     def process(self,dt:float)->None: 
         for entity, physics_comp in esper.get_component(PhysicsComponent):
+            
+            physics_comp.prev_transform = physics_comp.transform
             physics_comp.flip = physics_comp.velocity[0] < 0
 
             physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt
@@ -102,76 +104,6 @@ class PhysicsSystem(esper.Processor):
                     physics_comp.position[1] += displacement
                     physics_comp.collision_rect.y += displacement
                     physics_comp.displacement_buffer[1] -= displacement
-
-
-            
-            """
-            physics_comp.flip = physics_comp.velocity[0] < 0 
-
-            physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt
-            physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt)
-
-            physics_comp.floating_point_rect_position_buffer[0] += physics_comp.velocity[0] * dt
-            physics_comp.floating_point_rect_position_buffer[1] += physics_comp.velocity[1] * dt
-
-            if physics_comp.floating_point_rect_position_buffer[0] >= 1.0:
-                displacement = int(physics_comp.floating_point_rect_position_buffer[0])
-                #physics_comp.position[0] +=  displacement
-                #physics_comp.collision_rect[0] += displacement
-                collided = False 
-                for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((physics_comp.collision_rect.x+displacement,physics_comp.collision_rect.y),
-                                                                                physics_comp.collision_rect.size):
-                    if physics_comp.collision_rect.colliderect(rect_tile[0]):
-                        collided = True
-                        self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
-                if not collided:
-                    physics_comp.position[0] += displacement
-                    physics_comp.collision_rect.x += displacement
-                    physics_comp.floating_point_rect_position_buffer[0] -= displacement
-
-            if physics_comp.floating_point_rect_position_buffer[1] >= 1.0:
-                displacement = int(physics_comp.floating_point_rect_position_buffer[1])
-                # physics_comp.position[1] +=  displacement
-                #physics_comp.collision_rect[1] += displacement
-                collided = False
-
-                for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((physics_comp.collision_rect.x,physics_comp.collision_rect.y+displacement),
-                                                                                physics_comp.collision_rect.size):
-                    if physics_comp.collision_rect.colliderect(rect_tile[0]):
-                        collided = True
-                        self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = True)
-                if not collided:
-                    physics_comp.position[1] += displacement
-                    physics_comp.collision_rect.y += displacement
-                    physics_comp.floating_point_rect_position_buffer[1] -= displacement
-            """
-            """
-            physics_comp.flip = physics_comp.velocity[0] < 0
-            
-
-            physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt  
-            physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt )
-            
-            
-            physics_comp.position[0] += physics_comp.velocity[0] * dt
-            physics_comp.collision_rect.x += physics_comp.velocity[0] * dt
-
-            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
-                                                                            physics_comp.collision_rect.size):
-                if physics_comp.collision_rect.colliderect(rect_tile[0]):
-                    self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
-            
-
-
-            physics_comp.position[1] += physics_comp.velocity[1] * dt 
-            physics_comp.collision_rect.y += physics_comp.velocity[1] * dt
-
-            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
-                                                                            physics_comp.collision_rect.size):
-                if physics_comp.collision_rect.colliderect(rect_tile[0]):
-                    self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = True)
-            """
-
 
 
 
@@ -377,11 +309,9 @@ class RenderSystem(esper.Processor):
                     tile_general_info = tile_data.info 
                     relative_position_index, variant = tile_general_info.relative_pos_ind, tile_general_info.variant 
 
-                    
                     physical_tiles_texcoords_array.append(self._ref_tilemap.tile_texcoords[(tile_general_info.type,relative_position_index,variant)])
                     physical_tiles_positions_array.append(self._tile_position_to_ndc(coor,camera_offset))
 
-        """
         if non_physical_tiles_render_bit:
             buffer_data = np.array(non_physical_tiles_texcoords_array).astype(np.float32)
             self._ref_tilemap.write_to_non_physical_tiles_texcoords_vbo(buffer_data)
@@ -393,7 +323,7 @@ class RenderSystem(esper.Processor):
             self._ref_tilemap.ref_texture_atlas.use()
 
             self._vao_non_physical_tiles_draw.render(vertices = 6, instances= non_physical_tile_instances)
-        """
+
         if physical_tiles_render_bit:
             buffer_data = np.array(physical_tiles_texcoords_array).astype(np.float32)
             self._ref_tilemap.write_to_physical_tiles_texcoords_vbo(buffer_data)
@@ -534,8 +464,10 @@ class RenderSystem(esper.Processor):
 
                 texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,state_info_comp.has_weapon,state_info_comp.curr_state,animation.curr_frame())]
                 entity_local_vertices = render_comp.vertices    
+                
+                interpolated_model_transform = physics_comp.prev_transform * (1.0 - interpolation_delta) + physics_comp.transform * interpolation_delta
 
-                clip_transform = self._projection_transform @ self._view_transform @ physics_comp.transform 
+                clip_transform = self._projection_transform @ self._view_transform @ interpolated_model_transform
 
                 entity_vertices.extend(entity_local_vertices)
                 entity_texcoords.extend(texcoords)
@@ -589,11 +521,6 @@ class InputHandler(esper.Processor):
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_w:
                         player_input_comp.up = True
-                        # move player up by 1 pixel to avoid collision with the ground
-                        
-                        player_physics_comp.position[1] -= 1
-                        player_physics_comp.collision_rect.y -= 1
-
                         player_physics_comp.velocity[1] = -400
 
                 if event.type == pygame.KEYUP:
