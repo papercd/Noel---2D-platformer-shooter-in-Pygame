@@ -32,16 +32,38 @@ class PhysicsSystem(esper.Processor):
     def _handle_tile_collision(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,rect_tile:tuple["Rect","TileInfoDataClass"],
                           tile_size:int,dt:float,axis_bit:bool)->None: 
         if axis_bit == False: # x_axis
-            pass
-        else:  # y_axis: 
             if rect_tile[1].info.type.endswith('stairs'):
                 pass
+        else:  # y_axis: 
+            if rect_tile[1].info.type.endswith('stairs'):
+                stair_variant = rect_tile[1].info.variant
+                relative_height_from_stair_base = 0
+                relative_x_from_collision_side = rect_tile[0].left - (physics_comp.position[0]+physics_comp.size[0] // 2) if stair_variant in (0,2) \
+                                                    else rect_tile[0].right - (physics_comp.position[0]- physics_comp.size[0] //2)
+                
+                if stair_variant == 0:
+                    if -tile_size <= relative_x_from_collision_side < 0:
+                        relative_height_from_stair_base = max(0,-relative_x_from_collision_side - physics_comp.size[0] // 4)
+                elif stair_variant == 2:
+                    if relative_x_from_collision_side < 0:
+                        relative_height_from_stair_base = min(tile_size, -relative_x_from_collision_side +(tile_size - physics_comp.size[0] //4))
+                elif stair_variant == 1:
+                    if relative_x_from_collision_side>0:
+                        relative_height_from_stair_base = max(0,relative_x_from_collision_side - physics_comp.size[0] // 4)
+                elif stair_variant == 3:
+                    if 0 < relative_x_from_collision_side <= tile_size: 
+                        relative_height_from_stair_base = min(tile_size, relative_x_from_collision_side + (tile_size - physics_comp.size[0] // 4))
+                
+                target_y_position = rect_tile[0].y + tile_size - relative_height_from_stair_base
+                if physics_comp.position[1] + physics_comp.size[1] > target_y_position:
+                    physics_comp.collision_rect.bottom = target_y_position
+                    physics_comp.position[1] = physics_comp.collision_rect.y + physics_comp.size[1] // 2 
+                physics_comp.displacement_buffer[1] =0
             else: 
                 if rect_tile[1].info.type.endswith('door'):
                     pass
                 
                 if physics_comp.velocity[1] > 0:
-                    
                     physics_comp.position[1] = rect_tile[0].top - physics_comp.size[1] // 2
                     physics_comp.collision_rect.bottom = rect_tile[0].top 
                     physics_comp.velocity[1] =GRAVITY * dt 
