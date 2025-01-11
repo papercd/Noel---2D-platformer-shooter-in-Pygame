@@ -22,6 +22,7 @@ class Noel():
         # the readability of the code. Refactor. 
 
         self._frame_count:int = 0
+        self._camera_offset:list[int,int] = [0,0]
         self._dt :float = 0
         self._grass_rotation_function_time:float = 0
         self._time_accumulator:float = 0
@@ -47,7 +48,7 @@ class Noel():
         self._render_system = RenderSystem(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res'],\
                                            self._game_context['true_res'])
         
-        self._input_handler = InputHandler(self._game_context,self._scroll)
+        self._input_handler = InputHandler(self._game_context)
 
  
         self._render_system.attatch_tilemap(self._tilemap)
@@ -325,15 +326,19 @@ class Noel():
         self._time_accumulator += self._dt
 
         if self._game_context['gamestate']== GameState.GameLoop:  
+           
+            self._camera_offset[0] += 2.5*self._dt*(self._entities_manager.player_position[0] - self._game_context["true_res"][0] /2 - self._camera_offset[0])
+            self._camera_offset[1] += 2.5*self._dt*(self._entities_manager.player_position[1] - self._game_context["true_res"][1] /2 - self._camera_offset[1])
 
-            
+            integer_camera_offset = (int(self._camera_offset[0]), int(self._camera_offset[1]))
+
             while self._time_accumulator >= TIME_FOR_ONE_LOGICAL_STEP:
                 self._physics_system.process(TIME_FOR_ONE_LOGICAL_STEP)
                 self._time_accumulator -= TIME_FOR_ONE_LOGICAL_STEP
             
             interpolation_delta = self._time_accumulator / TIME_FOR_ONE_LOGICAL_STEP
 
-            self._render_system.process(self._scroll,interpolation_delta)
+            self._render_system.process(integer_camera_offset,interpolation_delta)
 
             """
            

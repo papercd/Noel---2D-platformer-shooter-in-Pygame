@@ -524,11 +524,9 @@ class RenderSystem(esper.Processor):
 
 class InputHandler(esper.Processor):
 
-    def __init__(self,game_context,scroll:list[int,int])->None: 
+    def __init__(self,game_context)->None: 
         self._ref_game_conetxt = game_context
 
-        # temporary scroll reference 
-        self._scroll = scroll
 
 
     def _handle_common_events(self,event:pygame.Event)->None:
@@ -585,20 +583,6 @@ class InputHandler(esper.Processor):
                     if event.key == pygame.K_SPACE:
                         player_input_comp.interact = False
                     
-
-                    """
-                    if event.key == pygame.K_w: 
-                        self._scroll[1] -= 100
-                    if event.key == pygame.K_s: 
-                        self._scroll[1] += 100
-                    if event.key == pygame.K_a: 
-                        self._scroll[0] -= 100
-                    if event.key == pygame.K_d: 
-                        self._scroll[0] += 100
-                    """
- 
-        
-
 
 
 
