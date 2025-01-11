@@ -1,7 +1,9 @@
 import esper
 from scripts.game_state import GameState
 from scripts.game_state import GameState
-from scripts.data import TERMINAL_VELOCITY,GRAVITY
+from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION
+
+from pygame.rect import Rect
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
 from scripts.components import PhysicsComponent,RenderComponent, StateInfoComponent,InputComponent
@@ -18,7 +20,6 @@ if TYPE_CHECKING:
     from my_pygame_light2d.light import PointLight
     from my_pygame_light2d.hull import Hull
     from scripts.background import Background
-    from pygame.rect import Rect
     from scripts.data import TileInfo, TileInfoDataClass
     from moderngl import Context
     from scripts.new_tilemap import Tilemap
@@ -26,29 +27,99 @@ if TYPE_CHECKING:
 class PhysicsSystem(esper.Processor):
     def __init__(self)->None: 
         self._ref_tilemap:"Tilemap" = None
+        self._collision_rect_buffer = Rect(0,0,1,1)
 
-    def _handle_collision(self,physics_comp:PhysicsComponent,rect_tile: tuple["Rect","TileInfoDataClass"],
-                          tile_size:int, dt:float,axis_bit:bool)->None: 
-
-        if axis_bit == True: # x_axis
-            pass 
-        else: 
+    def _handle_tile_collision(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,rect_tile:tuple["Rect","TileInfoDataClass"],
+                          tile_size:int,dt:float,axis_bit:bool)->None: 
+        if axis_bit == False: # x_axis
+            pass
+        else:  # y_axis: 
             if rect_tile[1].info.type.endswith('stairs'):
-                pass 
+                pass
             else: 
                 if rect_tile[1].info.type.endswith('door'):
                     pass
-
-                if physics_comp.velocity[1] >0 :
-                    #print("check1")
+                
+                if physics_comp.velocity[1] > 0:
+                    
                     physics_comp.position[1] = rect_tile[0].top - physics_comp.size[1] // 2
                     physics_comp.collision_rect.bottom = rect_tile[0].top 
-                    physics_comp.velocity[1] = 0
+                    physics_comp.velocity[1] =GRAVITY * dt 
+                    state_info_comp.jump_count = 0
                 elif physics_comp.velocity[1] < 0:
-                    #print("check2")
                     physics_comp.position[1] = rect_tile[0].bottom + physics_comp.size[1] // 2
-                    physics_comp.collision_rect.top = rect_tile[0].bottom 
+                    physics_comp.collision_rect.top = rect_tile[0].bottom
                     physics_comp.velocity[1] = 0
+                physics_comp.displacement_buffer[1] = 0
+
+
+    def _process_physics_updates(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,dt:float,input_comp: InputComponent =None)->None:
+        if input_comp is not None:  # for entities the physics updates of which are dependent on input.
+            direction_bit = input_comp.right - input_comp.left
+            physics_comp.acceleration[0] = ENTITIES_ACCELERATION[state_info_comp.type] * direction_bit
+            if input_comp.up and state_info_comp.jump_count < state_info_comp.max_jump_count:
+                physics_comp.velocity[1] = -ENTITIES_JUMP_SPEED[state_info_comp.type]
+            
+            # to stop the player from jumping infinitely
+            input_comp.up = False
+            state_info_comp.jump_count += 1
+
+        physics_comp.prev_transform = physics_comp.transform
+        physics_comp.flip = physics_comp.velocity[0] < 0
+
+        physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt
+        
+        # apply deceleration to horizontal velocity
+        if physics_comp.velocity[0] > 0:
+            physics_comp.velocity[0] = max(0,physics_comp.velocity[0] - HORIZONTAL_DECELERATION * dt)
+        elif physics_comp.velocity[0] < 0:
+            physics_comp.velocity[0] = min(0,physics_comp.velocity[0] + HORIZONTAL_DECELERATION * dt)
+
+
+        # clamp velocity to maximums
+        physics_comp.velocity[0] = max(-ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type], min(ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type],physics_comp.velocity[0]))
+        physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt)
+
+        physics_comp.displacement_buffer[0] += physics_comp.velocity[0] * dt
+        physics_comp.displacement_buffer[1] += physics_comp.velocity[1] * dt
+
+        if physics_comp.displacement_buffer[0] >= 1.0 or physics_comp.displacement_buffer[0] <= -1.0:
+            displacement = int(physics_comp.displacement_buffer[0])
+            would_to_be_position = (physics_comp.position[0]+displacement,physics_comp.position[1])
+            self._collision_rect_buffer.x = physics_comp.collision_rect.x + displacement
+            self._collision_rect_buffer.y = physics_comp.collision_rect.y
+            self._collision_rect_buffer.size = physics_comp.collision_rect.size
+
+            collision_lookahead = False
+
+            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(would_to_be_position,physics_comp.collision_rect.size):
+                tile_collision = self._collision_rect_buffer.colliderect(rect_tile[0])
+                collision_lookahead = collision_lookahead or tile_collision
+                if tile_collision: 
+                    self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
+            if  collision_lookahead == False:
+                physics_comp.position[0] += displacement
+                physics_comp.collision_rect.x += displacement
+                physics_comp.displacement_buffer[0] -= displacement
+
+        if physics_comp.displacement_buffer[1] >= 1.0 or physics_comp.displacement_buffer[1] <= -1.0:
+            displacement = int(physics_comp.displacement_buffer[1])
+            would_to_be_position = (physics_comp.position[0],physics_comp.position[1]+displacement)
+            self._collision_rect_buffer.x = physics_comp.collision_rect.x
+            self._collision_rect_buffer.y = physics_comp.collision_rect.y + displacement
+            self._collision_rect_buffer.size = physics_comp.collision_rect.size
+
+            collision_lookahead = False
+
+            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(would_to_be_position,physics_comp.collision_rect.size):
+                tile_collision =  self._collision_rect_buffer.colliderect(rect_tile[0])
+                collision_lookahead = collision_lookahead or tile_collision
+                if tile_collision:
+                    self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = True)
+            if collision_lookahead == False:
+                physics_comp.position[1] += displacement
+                physics_comp.collision_rect.y += displacement
+                physics_comp.displacement_buffer[1] -= displacement
 
 
 
@@ -56,69 +127,14 @@ class PhysicsSystem(esper.Processor):
         self._ref_tilemap =tilemap
 
     def process(self,dt:float)->None: 
-        for entity, physics_comp in esper.get_component(PhysicsComponent):
-            
+        # process physics for player entity, which has an input component while the rest of the entities don't.
+        player,(player_input_comp,state_info_comp,player_physics_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent)[0]
 
-            print(physics_comp)
-            physics_comp.flip = physics_comp.velocity[0] < 0 
-
-            physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt
-            physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt)
-
-            physics_comp.floating_point_rect_position_buffer[0] += physics_comp.velocity[0] * dt
-            physics_comp.floating_point_rect_position_buffer[1] += physics_comp.velocity[1] * dt
-
-            if physics_comp.floating_point_rect_position_buffer[0] >= 1.0:
-                displacement = int(physics_comp.floating_point_rect_position_buffer[0])
-                physics_comp.position[0] +=  displacement
-                physics_comp.collision_rect[0] += displacement
-                physics_comp.floating_point_rect_position_buffer[0] -= displacement
-
-            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
-                                                                            physics_comp.collision_rect.size):
-                if physics_comp.collision_rect.colliderect(rect_tile[0]):
-                    self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
-
-            if physics_comp.floating_point_rect_position_buffer[1] >= 1.0:
-                displacement = int(physics_comp.floating_point_rect_position_buffer[1])
-                physics_comp.position[1] +=  displacement
-                physics_comp.collision_rect[1] += displacement
-                physics_comp.floating_point_rect_position_buffer[1] -= displacement
-
-            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
-                                                                            physics_comp.collision_rect.size):
-                if physics_comp.collision_rect.colliderect(rect_tile[0]):
-                    self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = True)
-
-            """
-            physics_comp.flip = physics_comp.velocity[0] < 0
-            
-
-            physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt  
-            physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt )
-            
-            
-            physics_comp.position[0] += physics_comp.velocity[0] * dt
-            physics_comp.collision_rect.x += physics_comp.velocity[0] * dt
-
-            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
-                                                                            physics_comp.collision_rect.size):
-                if physics_comp.collision_rect.colliderect(rect_tile[0]):
-                    self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
-            
+        self._process_physics_updates(player_physics_comp,state_info_comp,dt,player_input_comp)
 
 
-            physics_comp.position[1] += physics_comp.velocity[1] * dt 
-            physics_comp.collision_rect.y += physics_comp.velocity[1] * dt
-
-            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
-                                                                            physics_comp.collision_rect.size):
-                if physics_comp.collision_rect.colliderect(rect_tile[0]):
-                    self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = True)
-            """
-
-
-
+        for entity, (state_info_comp,physics_comp) in esper.get_components(StateInfoComponent,PhysicsComponent):
+            self._process_physics_updates(physics_comp,state_info_comp,dt)
 
 
 
@@ -322,11 +338,9 @@ class RenderSystem(esper.Processor):
                     tile_general_info = tile_data.info 
                     relative_position_index, variant = tile_general_info.relative_pos_ind, tile_general_info.variant 
 
-                    
                     physical_tiles_texcoords_array.append(self._ref_tilemap.tile_texcoords[(tile_general_info.type,relative_position_index,variant)])
                     physical_tiles_positions_array.append(self._tile_position_to_ndc(coor,camera_offset))
 
-        """
         if non_physical_tiles_render_bit:
             buffer_data = np.array(non_physical_tiles_texcoords_array).astype(np.float32)
             self._ref_tilemap.write_to_non_physical_tiles_texcoords_vbo(buffer_data)
@@ -338,7 +352,7 @@ class RenderSystem(esper.Processor):
             self._ref_tilemap.ref_texture_atlas.use()
 
             self._vao_non_physical_tiles_draw.render(vertices = 6, instances= non_physical_tile_instances)
-        """
+
         if physical_tiles_render_bit:
             buffer_data = np.array(physical_tiles_texcoords_array).astype(np.float32)
             self._ref_tilemap.write_to_physical_tiles_texcoords_vbo(buffer_data)
@@ -479,8 +493,10 @@ class RenderSystem(esper.Processor):
 
                 texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,state_info_comp.has_weapon,state_info_comp.curr_state,animation.curr_frame())]
                 entity_local_vertices = render_comp.vertices    
+                
+                interpolated_model_transform = physics_comp.prev_transform * (1.0 - interpolation_delta) + physics_comp.transform * interpolation_delta
 
-                clip_transform = self._projection_transform @ self._view_transform @ physics_comp.transform 
+                clip_transform = self._projection_transform @ self._view_transform @ interpolated_model_transform
 
                 entity_vertices.extend(entity_local_vertices)
                 entity_texcoords.extend(texcoords)
@@ -508,11 +524,9 @@ class RenderSystem(esper.Processor):
 
 class InputHandler(esper.Processor):
 
-    def __init__(self,game_context,scroll:list[int,int])->None: 
+    def __init__(self,game_context)->None: 
         self._ref_game_conetxt = game_context
 
-        # temporary scroll reference 
-        self._scroll = scroll
 
 
     def _handle_common_events(self,event:pygame.Event)->None:
@@ -524,7 +538,7 @@ class InputHandler(esper.Processor):
                 pygame.display.toggle_fullscreen()
 
 
-    def process(self)->None: 
+    def process(self,dt:float)->None: 
         player, (player_input_comp,player_physics_comp,player_state_comp) = esper.get_components(InputComponent,PhysicsComponent,StateInfoComponent)[0]
 
         if self._ref_game_conetxt['gamestate'] == GameState.GameLoop: 
@@ -534,31 +548,41 @@ class InputHandler(esper.Processor):
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_w:
                         player_input_comp.up = True
-                        # move player up by 1 pixel to avoid collision with the ground
+                        #player_physics_comp.velocity[1] = -PLAYER_JUMP_SPEED
+                    if event.key == pygame.K_a:
+                        player_input_comp.left = True
+                        #player_physics_comp.acceleration[0] = -PLAYER_ACCELERATION
                         
-                        player_physics_comp.position[1] -= 1
-                        player_physics_comp.collision_rect.y -= 1
+                    if event.key == pygame.K_d:
+                        player_input_comp.right = True 
+                        #player_physics_comp.acceleration[0] = PLAYER_ACCELERATION
 
-                        player_physics_comp.velocity[1] = -400
+                    if event.key == pygame.K_s:
+                        player_input_comp.down = True
+                        # crouch maybe?
+                    if event.key == pygame.K_SPACE:
+                        player_input_comp.interact = True
+                        # interact with interactable objects
+                    if event.key == pygame.K_e:
+                        player_input_comp.open_inventory = not player_input_comp.open_inventory
+                        # toggle inventory
 
                 if event.type == pygame.KEYUP:
                     if event.key == pygame.K_w:
                         player_input_comp.up = False
+                    if event.key == pygame.K_a:
+                        player_input_comp.left = False
+                        #player_physics_comp.acceleration[0] = 0
 
+                    if event.key == pygame.K_d:
+                        player_input_comp.right = False
+                        #player_physics_comp.acceleration[0] = 0
 
-                    """
-                    if event.key == pygame.K_w: 
-                        self._scroll[1] -= 100
-                    if event.key == pygame.K_s: 
-                        self._scroll[1] += 100
-                    if event.key == pygame.K_a: 
-                        self._scroll[0] -= 100
-                    if event.key == pygame.K_d: 
-                        self._scroll[0] += 100
-                    """
- 
-        
-
+                    if event.key == pygame.K_s:
+                        player_input_comp.down = False
+                    if event.key == pygame.K_SPACE:
+                        player_input_comp.interact = False
+                    
 
 
 

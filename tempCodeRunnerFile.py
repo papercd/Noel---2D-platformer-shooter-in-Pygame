@@ -1,1 +1,1 @@
-e
+_accumulator / TIME_FOR_ONE_LOGICAL_STEP

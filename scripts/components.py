@@ -19,7 +19,14 @@ class PhysicsComponent:
     acceleration: vec2 = field(default_factory= lambda:vec2(0,GRAVITY))
     
     collision_rect : Rect = field(default_factory= lambda: Rect(0,0,1,1))
-    floating_point_rect_position_buffer : vec2 = field(default_factory= lambda: vec2(0,0))
+    displacement_buffer : vec2 = field(default_factory= lambda: vec2(0,0))
+    
+    prev_transform : np.array = field(default_factory= lambda: np.array([
+        [1,0,0],                        
+        [0,1,0],
+        [0,0,1]
+    ])) # previous transform matrix to integrate interpolation for rendering.
+
 
     @property 
     def transform(self)->np.array: 
@@ -42,7 +49,8 @@ class StateInfoComponent:
     type : str = "default"
     curr_state : str = "idle"
     has_weapon : bool = False
-    
+    max_jump_count : int = 0
+    jump_count : int = 0
     collide_left : bool = False
     collide_right : bool = False
     collide_top : bool = False

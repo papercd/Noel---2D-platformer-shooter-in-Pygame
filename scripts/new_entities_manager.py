@@ -19,14 +19,20 @@ class EntitiesManager:
     def __init__(self)->None:
         self._ref_rm =  ResourceManager.get_instance()
         self._create_player_entity()
-        #self.physics_system = PhysicsSystem()
-
 
     def _create_player_entity(self)->None: 
-        self._player = esper.create_entity(StateInfoComponent(type='player'),PhysicsComponent(size=(16,16),position= vec2(1186,0),collision_rect=Rect(1180,0,12,16),floating_point_rect_position_buffer=vec2(0,0)),
-                                           RenderComponent(self._ref_rm.animation_data_collections['player'],self._ref_rm.entity_local_vertices['player']),InputComponent())
-                                           
+        self._player_state = StateInfoComponent(type='player',max_jump_count=2)
+        self._player_physics = PhysicsComponent(size=(16,16),position= vec2(1186,0),collision_rect=Rect(1180,0,12,16),displacement_buffer=vec2(0,0))
+        self._player_render = RenderComponent(self._ref_rm.animation_data_collections['player'],self._ref_rm.entity_local_vertices['player'])
+        self._player_input = InputComponent()
 
-    def attatch_tilemap_to_physics_system(self,tilemap:Tilemap)->None: 
-        self.physics_system.attatch_tilemap(tilemap)
+        self._player = esper.create_entity(self._player_state,self._player_physics,self._player_render,self._player_input)
+
+        
+
+    @property
+    def player_position(self)->vec2:
+        return self._player_physics.position
+
+
 
