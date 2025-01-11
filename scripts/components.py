@@ -19,7 +19,7 @@ class PhysicsComponent:
     acceleration: vec2 = field(default_factory= lambda:vec2(0,GRAVITY))
     
     collision_rect : Rect = field(default_factory= lambda: Rect(0,0,1,1))
-    floating_point_rect_position_buffer : vec2 = field(default_factory= lambda: vec2(0,0))
+    displacement_buffer : vec2 = field(default_factory= lambda: vec2(0,0))
 
     @property 
     def transform(self)->np.array: 

@@ -2,6 +2,8 @@ import esper
 from scripts.game_state import GameState
 from scripts.game_state import GameState
 from scripts.data import TERMINAL_VELOCITY,GRAVITY
+
+from pygame.rect import Rect
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
 from scripts.components import PhysicsComponent,RenderComponent, StateInfoComponent,InputComponent
@@ -18,7 +20,6 @@ if TYPE_CHECKING:
     from my_pygame_light2d.light import PointLight
     from my_pygame_light2d.hull import Hull
     from scripts.background import Background
-    from pygame.rect import Rect
     from scripts.data import TileInfo, TileInfoDataClass
     from moderngl import Context
     from scripts.new_tilemap import Tilemap
@@ -26,29 +27,28 @@ if TYPE_CHECKING:
 class PhysicsSystem(esper.Processor):
     def __init__(self)->None: 
         self._ref_tilemap:"Tilemap" = None
+        self._collision_rect_buffer = Rect(0,0,1,1)
 
-    def _handle_collision(self,physics_comp:PhysicsComponent,rect_tile: tuple["Rect","TileInfoDataClass"],
-                          tile_size:int, dt:float,axis_bit:bool)->None: 
-
-        if axis_bit == True: # x_axis
-            pass 
-        else: 
+    def _handle_tile_collision(self,physics_comp:PhysicsComponent,rect_tile:tuple["Rect","TileInfoDataClass"],
+                          tile_size:int,dt:float,axis_bit:bool)->None: 
+        if axis_bit == False: # x_axis
+            pass
+        else:  # y_axis: 
             if rect_tile[1].info.type.endswith('stairs'):
-                pass 
+                pass
             else: 
                 if rect_tile[1].info.type.endswith('door'):
                     pass
-
-                if physics_comp.velocity[1] >0 :
-                    #print("check1")
+                
+                if physics_comp.velocity[1] > 0:
+                    
                     physics_comp.position[1] = rect_tile[0].top - physics_comp.size[1] // 2
                     physics_comp.collision_rect.bottom = rect_tile[0].top 
-                    physics_comp.velocity[1] = 0
                 elif physics_comp.velocity[1] < 0:
-                    #print("check2")
                     physics_comp.position[1] = rect_tile[0].bottom + physics_comp.size[1] // 2
-                    physics_comp.collision_rect.top = rect_tile[0].bottom 
-                    physics_comp.velocity[1] = 0
+                    physics_comp.collision_rect.top = rect_tile[0].bottom
+                physics_comp.velocity[1] = 0
+                physics_comp.displacement_buffer[1] = 0
 
 
 
@@ -57,9 +57,55 @@ class PhysicsSystem(esper.Processor):
 
     def process(self,dt:float)->None: 
         for entity, physics_comp in esper.get_component(PhysicsComponent):
-            
+            physics_comp.flip = physics_comp.velocity[0] < 0
 
-            print(physics_comp)
+            physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt
+            physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt)
+
+            physics_comp.displacement_buffer[0] += physics_comp.velocity[0] * dt
+            physics_comp.displacement_buffer[1] += physics_comp.velocity[1] * dt
+
+            if physics_comp.displacement_buffer[0] >= 1.0 or physics_comp.displacement_buffer[0] <= -1.0:
+                displacement = int(physics_comp.displacement_buffer[0])
+                would_to_be_position = (physics_comp.position[0]+displacement,physics_comp.position[1])
+                self._collision_rect_buffer.x = physics_comp.collision_rect.x + displacement
+                self._collision_rect_buffer.y = physics_comp.collision_rect.y
+                self._collision_rect_buffer.size = physics_comp.collision_rect.size
+ 
+                collision_lookahead = False
+
+                for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(would_to_be_position,physics_comp.collision_rect.size):
+                    tile_collision = self._collision_rect_buffer.colliderect(rect_tile[0])
+                    collision_lookahead = collision_lookahead or tile_collision
+                    if tile_collision: 
+                        self._handle_tile_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
+                if  collision_lookahead == False:
+                    physics_comp.position[0] += displacement
+                    physics_comp.collision_rect.x += displacement
+                    physics_comp.displacement_buffer[0] -= displacement
+
+            if physics_comp.displacement_buffer[1] >= 1.0 or physics_comp.displacement_buffer[1] <= -1.0:
+                displacement = int(physics_comp.displacement_buffer[1])
+                would_to_be_position = (physics_comp.position[0],physics_comp.position[1]+displacement)
+                self._collision_rect_buffer.x = physics_comp.collision_rect.x
+                self._collision_rect_buffer.y = physics_comp.collision_rect.y + displacement
+                self._collision_rect_buffer.size = physics_comp.collision_rect.size
+
+                collision_lookahead = False
+
+                for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(would_to_be_position,physics_comp.collision_rect.size):
+                    tile_collision =  self._collision_rect_buffer.colliderect(rect_tile[0])
+                    collision_lookahead = collision_lookahead or tile_collision
+                    if tile_collision:
+                        self._handle_tile_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = True)
+                if collision_lookahead == False:
+                    physics_comp.position[1] += displacement
+                    physics_comp.collision_rect.y += displacement
+                    physics_comp.displacement_buffer[1] -= displacement
+
+
+            
+            """
             physics_comp.flip = physics_comp.velocity[0] < 0 
 
             physics_comp.velocity[0] = physics_comp.velocity[0] + physics_comp.acceleration[0] * dt
@@ -70,26 +116,35 @@ class PhysicsSystem(esper.Processor):
 
             if physics_comp.floating_point_rect_position_buffer[0] >= 1.0:
                 displacement = int(physics_comp.floating_point_rect_position_buffer[0])
-                physics_comp.position[0] +=  displacement
-                physics_comp.collision_rect[0] += displacement
-                physics_comp.floating_point_rect_position_buffer[0] -= displacement
-
-            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
-                                                                            physics_comp.collision_rect.size):
-                if physics_comp.collision_rect.colliderect(rect_tile[0]):
-                    self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
+                #physics_comp.position[0] +=  displacement
+                #physics_comp.collision_rect[0] += displacement
+                collided = False 
+                for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((physics_comp.collision_rect.x+displacement,physics_comp.collision_rect.y),
+                                                                                physics_comp.collision_rect.size):
+                    if physics_comp.collision_rect.colliderect(rect_tile[0]):
+                        collided = True
+                        self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = False)
+                if not collided:
+                    physics_comp.position[0] += displacement
+                    physics_comp.collision_rect.x += displacement
+                    physics_comp.floating_point_rect_position_buffer[0] -= displacement
 
             if physics_comp.floating_point_rect_position_buffer[1] >= 1.0:
                 displacement = int(physics_comp.floating_point_rect_position_buffer[1])
-                physics_comp.position[1] +=  displacement
-                physics_comp.collision_rect[1] += displacement
-                physics_comp.floating_point_rect_position_buffer[1] -= displacement
+                # physics_comp.position[1] +=  displacement
+                #physics_comp.collision_rect[1] += displacement
+                collided = False
 
-            for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent(physics_comp.collision_rect.topleft,
-                                                                            physics_comp.collision_rect.size):
-                if physics_comp.collision_rect.colliderect(rect_tile[0]):
-                    self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = True)
-
+                for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((physics_comp.collision_rect.x,physics_comp.collision_rect.y+displacement),
+                                                                                physics_comp.collision_rect.size):
+                    if physics_comp.collision_rect.colliderect(rect_tile[0]):
+                        collided = True
+                        self._handle_collision(physics_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,axis_bit = True)
+                if not collided:
+                    physics_comp.position[1] += displacement
+                    physics_comp.collision_rect.y += displacement
+                    physics_comp.floating_point_rect_position_buffer[1] -= displacement
+            """
             """
             physics_comp.flip = physics_comp.velocity[0] < 0
             
