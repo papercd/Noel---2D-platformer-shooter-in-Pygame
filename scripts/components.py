@@ -49,7 +49,8 @@ class StateInfoComponent:
     type : str = "default"
     curr_state : str = "idle"
     has_weapon : bool = False
-    
+    max_jump_count : int = 0
+    jump_count : int = 0
     collide_left : bool = False
     collide_right : bool = False
     collide_top : bool = False

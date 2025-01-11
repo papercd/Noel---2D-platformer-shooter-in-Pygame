@@ -384,8 +384,6 @@ class Noel():
             self.render_engine.render_scene_with_lighting(camera_scroll,interpolation_alpha, screenshake_offset)
             """
             pygame.display.flip()
-            fps = self._clock.get_fps()
-            print(fps)
            
             
             
@@ -395,7 +393,7 @@ class Noel():
         self._dt = self._clock.tick() / 1000.0
         self._time_accumulator += self._dt 
         while(True):
-            self._input_handler.process()
+            self._input_handler.process(self._dt)
             self._update_render() 
 
         
