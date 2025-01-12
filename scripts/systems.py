@@ -27,12 +27,13 @@ if TYPE_CHECKING:
 class PhysicsSystem(esper.Processor):
     def __init__(self)->None: 
         self._ref_tilemap:"Tilemap" = None
+        self._stair_tile_depression = 4
         self._collision_rect_buffer = Rect(0,0,1,1)
 
     def _handle_tile_collision(self,displacement:int,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,rect_tile:tuple["Rect","TileInfoDataClass"],
                           tile_size:int,dt:float,axis_bit:bool)->None: 
         if axis_bit == False: # x_axis
-            if rect_tile[1].info.type.endswith('stairs'):
+            if rect_tile[1].info.type.endswith('stairs') :
                 physics_comp.position[0] += displacement
                 physics_comp.collision_rect.x += displacement
                 physics_comp.displacement_buffer[0] -= displacement
@@ -60,11 +61,38 @@ class PhysicsSystem(esper.Processor):
 
         else:  # y_axis: 
             if rect_tile[1].info.type.endswith('stairs'):
-                if physics_comp.velocity[1] > 0:
                     stair_variant = rect_tile[1].info.relative_pos_ind
                     relative_height_from_stair_base = 0
-                    relative_x_from_collision_side = rect_tile[0].left - (physics_comp.position[0]+physics_comp.size[0] // 2) if stair_variant in (0,2) \
-                                                        else rect_tile[0].right - (physics_comp.position[0]- physics_comp.size[0] //2)
+
+
+                    if stair_variant == 0:
+                        relative_x_from_collision_side = rect_tile[0].left - physics_comp.collision_rect.centerx
+                        if relative_x_from_collision_side < 0:
+                            relative_height_from_stair_base = 0
+                        elif 0 <= relative_x_from_collision_side <= tile_size :
+                            relative_height_from_stair_base = relative_x_from_collision_side
+                        else: 
+                            relative_height_from_stair_base = tile_size 
+                    elif stair_variant == 1:
+                        relative_x_from_collision_side = physics_comp.collision_rect.centerx - rect_tile[0].left
+                        if relative_x_from_collision_side < 0 :
+                            relative_height_from_stair_base = tile_size 
+                        elif 0 <= relative_x_from_collision_side <= tile_size: 
+                            relative_height_from_stair_base = -relative_x_from_collision_side + tile_size
+                        else: 
+                            relative_height_from_stair_base = 0
+
+                    collision_rect_bottom_pos  = rect_tile[0].bottom - relative_height_from_stair_base 
+
+                    if physics_comp.collision_rect.bottom > collision_rect_bottom_pos:
+                        physics_comp.velocity[1] = GRAVITY * dt
+                        physics_comp.collision_rect.bottom = collision_rect_bottom_pos
+                        physics_comp.position[1] = physics_comp.collision_rect.bottom - physics_comp.size[1] // 2 
+                        physics_comp.displacement_buffer[1] = 0
+
+                    """
+                    relative_x_from_collision_side = rect_tile[0].left - physics_comp.collision_rect.right if stair_variant in (0,2) \
+                                                        else rect_tile[0].right - physics_comp.collision_rect.left 
                     
                     if stair_variant == 0:
                         if -tile_size <= relative_x_from_collision_side < 0:
@@ -85,6 +113,7 @@ class PhysicsSystem(esper.Processor):
                         physics_comp.collision_rect.bottom = target_y_position
                         physics_comp.position[1] = physics_comp.collision_rect.y + physics_comp.size[1] // 2 
                         physics_comp.displacement_buffer[1] =0
+                    """
             else: 
                 if rect_tile[1].info.type.endswith('door'):
                     pass

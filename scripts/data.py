@@ -146,19 +146,19 @@ class AnimationDataCollection:
 # physics updates are done every 1/60 seconds, the 60 is multiplied to the physics calculations 
 # so the number in front of the * corresponds to the unit of distance in pixels.
 
-GRAVITY = 40 * 60   # 20 pixels per second squared
+GRAVITY = 10 * 60   # 20 pixels per second squared
 TERMINAL_VELOCITY = 40 * 60     # 20 pixels per second
 HORIZONTAL_DECELERATION = 15 * 60    #15 pixels per second squared
 ENTITIES_ACCELERATION = {
-    'player' : 20 * 60 
+    'player' : 34 * 60 
 }
 
 ENTITIES_JUMP_SPEED = {
-    'player' : 400
+    'player' : 250
 }
 
 ENTITIES_MAX_HORIZONTAL_SPEED = {
-    'player' : 240
+    'player' : 175
 }
 
 
