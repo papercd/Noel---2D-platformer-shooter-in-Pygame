@@ -1,2 +1,2 @@
-t.key == pygame.K_LSHIFT:
-                        se
+
+        self._movement_input:list[bool,bool] = [False,False]
