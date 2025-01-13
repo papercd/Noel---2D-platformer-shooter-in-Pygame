@@ -11,7 +11,7 @@ from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
 import pygame
 from moderngl import NEAREST,LINEAR,BLEND
-from math import sqrt,ceil
+from math import sqrt,ceil,floor
 import numpy as np
 
 from typing import TYPE_CHECKING 
@@ -36,7 +36,9 @@ class PhysicsSystem(esper.Processor):
         if physics_comp.velocity[1] > 0:
             physics_comp.position[1] = rect_tile[0].top - physics_comp.size[1] // 2
             physics_comp.collision_rect.bottom = rect_tile[0].top 
+
             physics_comp.velocity[1] =GRAVITY * dt 
+            #physics_comp.velocity[1] =GRAVITY * dt 
             state_info_comp.jump_count = 0
         elif physics_comp.velocity[1] < 0:
             physics_comp.position[1] = rect_tile[0].bottom + physics_comp.size[1] // 2
@@ -123,7 +125,6 @@ class PhysicsSystem(esper.Processor):
         elif physics_comp.velocity[0] < 0:
             physics_comp.velocity[0] = min(0,physics_comp.velocity[0] + HORIZONTAL_DECELERATION * dt)
 
-
         # clamp velocity to maximums
         physics_comp.velocity[0] = max(-ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type], min(ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type],physics_comp.velocity[0]))
         physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt)
@@ -132,7 +133,7 @@ class PhysicsSystem(esper.Processor):
         physics_comp.displacement_buffer[1] += physics_comp.velocity[1] * dt
 
         if physics_comp.displacement_buffer[0] >= 1.0 or physics_comp.displacement_buffer[0] <= -1.0:
-            displacement = int(physics_comp.displacement_buffer[0])
+            displacement = floor(physics_comp.displacement_buffer[0])
             would_to_be_position = (physics_comp.position[0]+displacement,physics_comp.position[1])
             self._collision_rect_buffer.x = physics_comp.collision_rect.x + displacement
             self._collision_rect_buffer.y = physics_comp.collision_rect.y
@@ -151,7 +152,7 @@ class PhysicsSystem(esper.Processor):
                 physics_comp.displacement_buffer[0] -= displacement
 
         if physics_comp.displacement_buffer[1] >= 1.0 or physics_comp.displacement_buffer[1] <= -1.0:
-            displacement = int(physics_comp.displacement_buffer[1])
+            displacement = floor(physics_comp.displacement_buffer[1])
             would_to_be_position = (physics_comp.position[0],physics_comp.position[1]+displacement)
             self._collision_rect_buffer.x = physics_comp.collision_rect.x
             self._collision_rect_buffer.y = physics_comp.collision_rect.y + displacement
@@ -169,6 +170,7 @@ class PhysicsSystem(esper.Processor):
                 physics_comp.collision_rect.y += displacement
                 physics_comp.displacement_buffer[1] -= displacement
 
+        print(physics_comp)
 
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
@@ -182,7 +184,8 @@ class PhysicsSystem(esper.Processor):
 
 
         for entity, (state_info_comp,physics_comp) in esper.get_components(StateInfoComponent,PhysicsComponent):
-            self._process_physics_updates(physics_comp,state_info_comp,dt)
+            if state_info_comp.type != "player":
+                self._process_physics_updates(physics_comp,state_info_comp,dt)
 
 
 
@@ -545,7 +548,7 @@ class RenderSystem(esper.Processor):
                 
                 interpolated_model_transform = physics_comp.prev_transform * (1.0 - interpolation_delta) + physics_comp.transform * interpolation_delta
 
-                clip_transform = self._projection_transform @ self._view_transform @ interpolated_model_transform
+                clip_transform = self._projection_transform @ self._view_transform @ interpolated_model_transform 
 
                 entity_vertices.extend(entity_local_vertices)
                 entity_texcoords.extend(texcoords)

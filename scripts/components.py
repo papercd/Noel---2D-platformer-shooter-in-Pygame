@@ -35,12 +35,15 @@ class PhysicsComponent:
 
         tx = self.position[0] - self.origin[0] * self.scale[0] 
         ty = self.position[1] - self.origin[1] * self.scale[1] 
-
+        
         return np.array([
             [(-2*self.flip +1) *cos_a * self.scale[0], -sin_a * self.scale[1], tx],
             [sin_a * self.scale[0], cos_a  * self.scale[1], ty],
             [0,0,1]
         ])
+
+    
+        
 
 
 @component

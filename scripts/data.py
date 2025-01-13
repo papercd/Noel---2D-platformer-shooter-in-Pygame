@@ -150,7 +150,7 @@ GRAVITY = 10 * 60   # 20 pixels per second squared
 TERMINAL_VELOCITY = 10 * 60     # 20 pixels per second
 HORIZONTAL_DECELERATION = 15 * 60    #15 pixels per second squared
 ENTITIES_ACCELERATION = {
-    'player' : 34 * 60 
+    'player' : 50 * 60 
 }
 
 ENTITIES_JUMP_SPEED = {
@@ -158,7 +158,7 @@ ENTITIES_JUMP_SPEED = {
 }
 
 ENTITIES_MAX_HORIZONTAL_SPEED = {
-    'player' : 175
+    'player' : 196
 }
 
 

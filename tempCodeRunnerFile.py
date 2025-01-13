@@ -1,1 +1,2 @@
-ke'
+
+                        self.player.crouch = True
