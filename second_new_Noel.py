@@ -165,7 +165,7 @@ class Noel():
     def _get_system_display_info(self):
         system_info = {}
         # primary monitor set to second monitor for hot reloading
-        primary_monitor = get_monitors()[0]
+        primary_monitor = get_monitors()[1]
         system_info["resolution"] = (primary_monitor.width, primary_monitor.height)
 
         if platform.system() == "Windows":
@@ -327,8 +327,8 @@ class Noel():
 
         if self._game_context['gamestate']== GameState.GameLoop:  
            
-            self._camera_offset[0] += 2.5*self._dt*(self._entities_manager.player_position[0] - self._game_context["true_res"][0] /2 - self._camera_offset[0])
-            self._camera_offset[1] += 2.5*self._dt*(self._entities_manager.player_position[1] - self._game_context["true_res"][1] /2 - self._camera_offset[1])
+            self._camera_offset[0] += 3*self._dt*(self._entities_manager.player_position[0] - self._game_context["true_res"][0] /2 - self._camera_offset[0])
+            self._camera_offset[1] += 3*self._dt*(self._entities_manager.player_position[1] - self._game_context["true_res"][1] /2 - self._camera_offset[1])
 
             integer_camera_offset = (int(self._camera_offset[0]), int(self._camera_offset[1]))
 
@@ -345,7 +345,7 @@ class Noel():
             self._game_context['screen_shake'] = max(0,self._game_context['screen_shake'] -self._dt*60)
             screen_shake_buffer = self._game_context['screen_shake']
 
-            self._scroll[0] += 2.5*self._dt*(self.player.pos[0]+ self.player.size[0]/2 - self._game_context["true_res"][0] /2 - self._scroll[0])
+            
             self._scroll[1] += 2.5*self._dt*(self.player.pos[1] +self.player.size[1]/2 - self._game_context["true_res"][1] /2 - self._scroll[1])
 
             camera_scroll = (int(self._scroll[0]), int(self._scroll[1]))

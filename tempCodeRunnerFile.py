@@ -1,1 +1,2 @@
-_accumulator / TIME_FOR_ONE_LOGICAL_STEP
+
+                        self.player.crouch = True

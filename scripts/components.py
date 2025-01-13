@@ -10,7 +10,7 @@ import numpy as np
 @component 
 class PhysicsComponent: 
     size :     tuple[int,int] 
-    flip :     bool = False
+    flip :     bool = False 
     position : vec2  = field(default_factory= lambda:vec2(0,0))         # world coordinates of entity. 
     rotation : float = 0                                                # rotation angle in radians 
     scale :    vec2  = field(default_factory= lambda:vec2(1.0,1.0))     #  (1.0,1.0)
@@ -35,12 +35,15 @@ class PhysicsComponent:
 
         tx = self.position[0] - self.origin[0] * self.scale[0] 
         ty = self.position[1] - self.origin[1] * self.scale[1] 
-
+        
         return np.array([
-            [cos_a * self.scale[0], -sin_a * self.scale[1], tx],
+            [(-2*self.flip +1) *cos_a * self.scale[0], -sin_a * self.scale[1], tx],
             [sin_a * self.scale[0], cos_a  * self.scale[1], ty],
             [0,0,1]
         ])
+
+    
+        
 
 
 @component
