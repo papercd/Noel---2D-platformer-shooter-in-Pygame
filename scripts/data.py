@@ -147,7 +147,7 @@ class AnimationDataCollection:
 # so the number in front of the * corresponds to the unit of distance in pixels.
 
 GRAVITY = 10 * 60   # 20 pixels per second squared
-TERMINAL_VELOCITY = 40 * 60     # 20 pixels per second
+TERMINAL_VELOCITY = 10 * 60     # 20 pixels per second
 HORIZONTAL_DECELERATION = 15 * 60    #15 pixels per second squared
 ENTITIES_ACCELERATION = {
     'player' : 34 * 60 

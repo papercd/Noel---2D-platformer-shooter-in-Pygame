@@ -365,6 +365,7 @@ class RenderSystem(esper.Processor):
         tile_size = self._ref_tilemap.regular_tile_size
         physical_tile_instances = 0
         non_physical_tile_instances= 0
+        
 
         for x in range(camera_offset[0] // tile_size- 1, (camera_offset[0] + self._true_res[0]) // tile_size+ 1):
             for y in range(camera_offset[1] // tile_size- 1, (camera_offset[1] + self._true_res[1]) // tile_size+1):
