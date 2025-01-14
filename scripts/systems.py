@@ -129,11 +129,12 @@ class PhysicsSystem(esper.Processor):
         physics_comp.velocity[0] = max(-ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type], min(ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type],physics_comp.velocity[0]))
         physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt)
 
+
         physics_comp.displacement_buffer[0] += physics_comp.velocity[0] * dt
         physics_comp.displacement_buffer[1] += physics_comp.velocity[1] * dt
 
         if physics_comp.displacement_buffer[0] >= 1.0 or physics_comp.displacement_buffer[0] <= -1.0:
-            displacement = floor(physics_comp.displacement_buffer[0])
+            displacement = int(physics_comp.displacement_buffer[0])
             would_to_be_position = (physics_comp.position[0]+displacement,physics_comp.position[1])
             self._collision_rect_buffer.x = physics_comp.collision_rect.x + displacement
             self._collision_rect_buffer.y = physics_comp.collision_rect.y
@@ -152,7 +153,7 @@ class PhysicsSystem(esper.Processor):
                 physics_comp.displacement_buffer[0] -= displacement
 
         if physics_comp.displacement_buffer[1] >= 1.0 or physics_comp.displacement_buffer[1] <= -1.0:
-            displacement = floor(physics_comp.displacement_buffer[1])
+            displacement = int(physics_comp.displacement_buffer[1])
             would_to_be_position = (physics_comp.position[0],physics_comp.position[1]+displacement)
             self._collision_rect_buffer.x = physics_comp.collision_rect.x
             self._collision_rect_buffer.y = physics_comp.collision_rect.y + displacement
@@ -170,7 +171,6 @@ class PhysicsSystem(esper.Processor):
                 physics_comp.collision_rect.y += displacement
                 physics_comp.displacement_buffer[1] -= displacement
 
-        print(physics_comp)
 
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
