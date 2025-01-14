@@ -308,7 +308,7 @@ class Noel():
                     if event.key == pygame.K_a:
                         self.movement_input[0] = False 
                     if event.key == pygame.K_d: 
-                        self.movement_input[1] = False
+                        self.movement_input[1] = Fals
                     if event.key == pygame.K_w:
                         self.player.jump_cut()
                     if event.key == pygame.K_s: 

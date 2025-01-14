@@ -1,2 +1,2 @@
 
-                        self.player.crouch = True
+    def _update_render(self):

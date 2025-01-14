@@ -21,7 +21,7 @@ AnimationParticleData = namedtuple('AnimationParticleData',['type','pos','veloci
 
 
 TEXTURE_BASE_PATH = 'data/images/'
-TIME_FOR_ONE_LOGICAL_STEP= 0.016666666666
+TIME_FOR_ONE_LOGICAL_STEP= 1/60
 
 
 class Animation: 
@@ -146,19 +146,19 @@ class AnimationDataCollection:
 # physics updates are done every 1/60 seconds, the 60 is multiplied to the physics calculations 
 # so the number in front of the * corresponds to the unit of distance in pixels.
 
-GRAVITY = 10 * 60   # 20 pixels per second squared
+GRAVITY = 20 * 60   # 20 pixels per second squared
 TERMINAL_VELOCITY = 10 * 60     # 20 pixels per second
 HORIZONTAL_DECELERATION = 15 * 60    #15 pixels per second squared
 ENTITIES_ACCELERATION = {
-    'player' : 50 * 60 
+    'player' : 60 * 60 
 }
 
 ENTITIES_JUMP_SPEED = {
-    'player' : 250
+    'player' : 240
 }
 
 ENTITIES_MAX_HORIZONTAL_SPEED = {
-    'player' : 196
+    'player' : 240
 }
 
 
