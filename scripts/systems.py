@@ -36,9 +36,7 @@ class PhysicsSystem(esper.Processor):
         if physics_comp.velocity[1] > 0:
             physics_comp.position[1] = rect_tile[0].top - physics_comp.size[1] // 2
             physics_comp.collision_rect.bottom = rect_tile[0].top 
-
             physics_comp.velocity[1] =GRAVITY * dt 
-            #physics_comp.velocity[1] =GRAVITY * dt 
             state_info_comp.jump_count = 0
         elif physics_comp.velocity[1] < 0:
             physics_comp.position[1] = rect_tile[0].bottom + physics_comp.size[1] // 2
@@ -47,38 +45,66 @@ class PhysicsSystem(esper.Processor):
         physics_comp.displacement_buffer[1] = 0
 
 
+    def _process_regular_tile_x_collision(self,physics_comp:PhysicsComponent,
+                                          rect_tile:tuple["Rect","TileInfoDataClass"])->None: 
+        if physics_comp.velocity[0] > 0:
+            physics_comp.collision_rect.right = rect_tile[0].left 
+            physics_comp.position[0]  = physics_comp.collision_rect.centerx 
+        elif physics_comp.velocity[0] < 0 :
+            physics_comp.collision_rect.left = rect_tile[0].right 
+            physics_comp.position[0] = physics_comp.collision_rect.centerx 
+        else: 
+            if physics_comp.position[0] > rect_tile[0].centerx:
+                physics_comp.collision_rect.left = rect_tile[0].right
+                physics_comp.position[0] = physics_comp.collision_rect.centerx
+            else: 
+                physics_comp.collision_rect.right = rect_tile[0].left
+                physics_comp.position[0] = physics_comp.collision_rect.centerx
+        physics_comp.displacement_buffer[0] = 0
+
+
+        
+
+    def _handle_stair_y_collision(self,tile_size:int,rect_tile:tuple["Rect","TileInfoDataClass"],physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,dt:float)->None:
+        relative_pos_ind = rect_tile[1].info.relative_pos_ind
+        if rect_tile[1].info.type.endswith('stairs') and relative_pos_ind in (0,1):
+            relative_height_from_stair_base = 0
+            if relative_pos_ind == 0 :
+                relative_x_from_stair_left = physics_comp.collision_rect.right - rect_tile[0].left 
+                if 0 <= relative_x_from_stair_left <= tile_size:
+                    relative_height_from_stair_base =relative_x_from_stair_left 
+            else:
+                relative_x_from_stair_right =rect_tile[0].right - physics_comp.collision_rect.left 
+                if 0 <= relative_x_from_stair_right <= tile_size:
+                    relative_height_from_stair_base = relative_x_from_stair_right
+            
+            new_collision_rect_bottom = rect_tile[0].bottom - relative_height_from_stair_base
+
+            if physics_comp.collision_rect.bottom > new_collision_rect_bottom:
+                physics_comp.collision_rect.bottom = new_collision_rect_bottom
+                physics_comp.position[1] = physics_comp.collision_rect.bottom - physics_comp.size[1] // 2 
+                physics_comp.velocity[1] = GRAVITY * dt
+                physics_comp.displacement_buffer[1] = 0
+        else: 
+            self._process_regular_tile_y_collision(physics_comp,state_info_comp,rect_tile,dt)
 
     def _handle_tile_collision(self,displacement:int,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,rect_tile:tuple["Rect","TileInfoDataClass"],
                           tile_size:int,dt:float,axis_bit:bool)->None: 
 
-        rel_pos_ind,variant = rect_tile[1].info.relative_pos_ind,rect_tile[1].info.variant 
+        rel_pos_ind= rect_tile[1].info.relative_pos_ind 
 
         if axis_bit == False: # x_axis
             
-                """
                 if rect_tile[1].info.type.endswith('stairs'): 
-                    pass
+                    if rel_pos_ind in (2,3):
+                        self._process_regular_tile_x_collision(physics_comp,rect_tile)
                 else: 
-                """
-                if rect_tile[1].info.type.endswith('door'):
-                    # TODO: add collision for doors when you have them 
-                    pass
-                else: 
-                    # TODO: add collision for trapdoors when you have them 
-                    if physics_comp.velocity[0] > 0:
-                        physics_comp.collision_rect.right = rect_tile[0].left 
-                        physics_comp.position[0]  = physics_comp.collision_rect.centerx 
-                    elif physics_comp.velocity[0] < 0 :
-                        physics_comp.collision_rect.left = rect_tile[0].right 
-                        physics_comp.position[0] = physics_comp.collision_rect.centerx 
+                    if rect_tile[1].info.type.endswith('door'):
+                        # TODO: add collision for doors when you have them 
+                        pass
                     else: 
-                        if physics_comp.position[0] > rect_tile[0].centerx:
-                            physics_comp.collision_rect.left = rect_tile[0].right
-                            physics_comp.position[0] = physics_comp.collision_rect.centerx
-                        else: 
-                            physics_comp.collision_rect.right = rect_tile.left
-                            physics_comp.position[0] = physics_comp.collision_rect.centerx
-                    physics_comp.displacement_buffer[0] = 0
+                        self._process_regular_tile_x_collision(physics_comp,rect_tile)
+                        # TODO: add collision for trapdoors when you have them 
 
         else:  # y_axis: 
                 """
@@ -86,10 +112,30 @@ class PhysicsSystem(esper.Processor):
                     pass
                 else: 
                 """
-                if rect_tile[1].info.type.endswith('door'):
-                    pass
-                
-                self._process_regular_tile_y_collision(physics_comp,state_info_comp,rect_tile,dt)
+                if rect_tile[1].info.type.endswith('stairs') and rel_pos_ind in (0,1):
+                    relative_height_from_stair_base = 0
+                    if rel_pos_ind == 0 :
+                        relative_x_from_stair_left = physics_comp.collision_rect.right - rect_tile[0].left 
+                        if 0 <= relative_x_from_stair_left <= tile_size:
+                            relative_height_from_stair_base =relative_x_from_stair_left 
+                    else:
+                        relative_x_from_stair_right =rect_tile[0].right - physics_comp.collision_rect.left 
+                        if 0 <= relative_x_from_stair_right <= tile_size:
+                            relative_height_from_stair_base = relative_x_from_stair_right
+                    
+                    new_collision_rect_bottom = rect_tile[0].bottom - relative_height_from_stair_base
+
+                    if physics_comp.collision_rect.bottom > new_collision_rect_bottom:
+                        physics_comp.collision_rect.bottom = new_collision_rect_bottom
+                        physics_comp.position[1] = physics_comp.collision_rect.bottom - physics_comp.size[1] // 2 
+                        physics_comp.velocity[1] = GRAVITY * dt
+                        physics_comp.displacement_buffer[1] = 0
+
+                else: 
+                    if rect_tile[1].info.type.endswith('door'):
+                        pass
+                    
+                    self._process_regular_tile_y_collision(physics_comp,state_info_comp,rect_tile,dt)
                 """
                 else: 
                     if physics_comp.position[1] > rect_tile[0].centery: 
@@ -130,9 +176,43 @@ class PhysicsSystem(esper.Processor):
         physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt)
 
 
+
         physics_comp.displacement_buffer[0] += physics_comp.velocity[0] * dt
         physics_comp.displacement_buffer[1] += physics_comp.velocity[1] * dt
 
+
+        displacement = 0
+
+        # instead of a lookahead system, you need to make it so that the movement happens. dude. 
+
+        if physics_comp.displacement_buffer[0] >= 1.0 or physics_comp.displacement_buffer[0] <= -1.0:
+            displacement = int(physics_comp.displacement_buffer[0]) 
+
+            physics_comp.collision_rect.x += displacement
+            physics_comp.position[0] += displacement 
+
+            physics_comp.displacement_buffer[0] -= displacement
+
+        for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((physics_comp.position[0]- physics_comp.size[0] //2 ,physics_comp.position[1] - physics_comp.size[1] //2),\
+                                                                           physics_comp.size):
+            if physics_comp.collision_rect.colliderect(rect_tile[0]):
+                self._handle_tile_collision(displacement,physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,False)
+
+        if physics_comp.displacement_buffer[1] >= 1.0 or physics_comp.displacement_buffer[1] <= -1.0:
+            displacement = int(physics_comp.displacement_buffer[1]) 
+            physics_comp.collision_rect.y += displacement
+            physics_comp.position[1] += displacement 
+
+            physics_comp.displacement_buffer[1] -= displacement
+
+        for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((physics_comp.position[0]- physics_comp.size[0] //2 ,physics_comp.position[1] - physics_comp.size[1] //2),\
+                                                                           physics_comp.size):
+            if physics_comp.collision_rect.colliderect(rect_tile[0]):
+                self._handle_tile_collision(displacement,physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,True)
+
+        
+
+        """
         if physics_comp.displacement_buffer[0] >= 1.0 or physics_comp.displacement_buffer[0] <= -1.0:
             displacement = int(physics_comp.displacement_buffer[0])
             would_to_be_position = (physics_comp.position[0]+displacement,physics_comp.position[1])
@@ -170,6 +250,7 @@ class PhysicsSystem(esper.Processor):
                 physics_comp.position[1] += displacement
                 physics_comp.collision_rect.y += displacement
                 physics_comp.displacement_buffer[1] -= displacement
+        """
 
 
 
@@ -191,6 +272,7 @@ class PhysicsSystem(esper.Processor):
 
 # I guess refactor the engine code to become a Render System?
 class RenderSystem(esper.Processor):
+
 
     def __init__(self,ctx:"Context",true_to_screen_res_ratio:int=1,screen_res:tuple[int,int] = (500,500),\
                  true_res :tuple[int,int] = (500,500))->None: 
