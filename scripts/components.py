@@ -60,7 +60,6 @@ class StateInfoComponent:
     collide_bottom : bool = False
 
 
-
 @component 
 class InputComponent: 
     left: bool = False
