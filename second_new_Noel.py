@@ -1,8 +1,12 @@
 import pygame 
 import platform
+import importlib
 from os import environ
 from moderngl import create_context
 from screeninfo import get_monitors
+
+import scripts.data
+import scripts.systems
 
 from scripts.game_state import GameState
 from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
@@ -58,13 +62,27 @@ class Noel():
 
        
 
-        
-        
+    def _hot_reload(self)->None: 
+        # reload systems module
+        importlib.reload(scripts.data)
+        importlib.reload(scripts.systems)
 
+        from scripts.systems import PhysicsSystem, StateSystem,RenderSystem, InputHandler 
+        # reinitialize systems
+        self._physics_system = PhysicsSystem()
+        self._physics_system.attatch_tilemap(self._tilemap)
+        
+        self._state_system = StateSystem()
+        self._render_system = RenderSystem(self._ctx,self._game_context['display_scale_ratio'],self._game_context['screen_res'],\
+                                           self._game_context['true_res'])
+        self._input_handler = InputHandler(self._game_context)
+        
+        self._render_system.attatch_background(self._resource_manager.backgrounds['start'])
+        self._render_system.attatch_tilemap(self._tilemap)
         """
         self.resource_manager = ResourceManager.get_instance(self._ctx)
         self.particle_system = ParticleSystem.get_instance(self._ctx) 
-        self.entities_manager = EntitiesManager.get_instance()
+        self.entities_manager = EntitiesManager.get_instance(
 
         self._tilemap = Tilemap()
         self._tilemap.load_map('test1.json')  
@@ -400,9 +418,12 @@ class Noel():
         self._dt = self._clock.tick() / 1000.0
         self._time_accumulator += self._dt 
         while(True):
-            self._input_handler.process(self._dt)
+            # hot reload
+            hot_reload = self._input_handler.process(self._dt)
             self._update_render() 
 
+            if hot_reload: 
+                self._hot_reload()
         
 
 

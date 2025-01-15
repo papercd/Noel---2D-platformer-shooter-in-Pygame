@@ -1,8 +1,8 @@
 import esper
+
 from scripts.game_state import GameState
 from scripts.game_state import GameState
 from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION
-
 from pygame.rect import Rect
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
@@ -15,6 +15,7 @@ from math import sqrt,ceil,floor
 import numpy as np
 
 from typing import TYPE_CHECKING 
+
 
 if TYPE_CHECKING: 
     from my_pygame_light2d.light import PointLight
@@ -632,14 +633,24 @@ class InputHandler(esper.Processor):
             pygame.quit()
             quit()
 
+    def _hot_reload(self)->None:
+        importlib.reload(scripts.data)
+        from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION
+        
+
+
     def process(self,dt:float)->None: 
         player, (player_input_comp,player_physics_comp,player_state_comp) = esper.get_components(InputComponent,PhysicsComponent,StateInfoComponent)[0]
+
+        hot_reload = False
 
         if self._ref_game_conetxt['gamestate'] == GameState.GameLoop: 
             for event in pygame.event.get():
                 self._handle_common_events(event)
 
                 if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_F5: 
+                        hot_reload = True 
                     if event.key == pygame.K_LSHIFT:
                         player_input_comp.shift = True 
                     if event.key == pygame.K_w:
@@ -664,6 +675,7 @@ class InputHandler(esper.Processor):
                         # toggle inventory
 
                 if event.type == pygame.KEYUP:
+                    
                     if event.key == pygame.K_LSHIFT:
                         player_input_comp.shift = False
 
@@ -681,8 +693,9 @@ class InputHandler(esper.Processor):
                         player_input_comp.down = False
                     if event.key == pygame.K_SPACE:
                         player_input_comp.interact = False
-                    
 
+
+        return hot_reload
 
 
 class StateMachine:
@@ -707,10 +720,13 @@ class PlayerStateMachine(StateMachine):
                         else: 
                             new_state = 'idle'
                 else: 
-                    if input_comp.shift:
-                        new_state = 'sprint'
-                    else:
-                        new_state = 'run' 
+                    if not (state_info_comp.collide_left or state_info_comp.collide_right):
+                        if input_comp.shift:
+                            new_state = 'sprint'
+                        else:
+                            new_state = 'run' 
+                    else: 
+                        new_state = 'idle'
             else: 
                 if state_info_comp.collide_left or state_info_comp.collide_right:
                     new_state = 'wall_slide'
