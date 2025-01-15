@@ -1,20 +1,23 @@
 import esper
+
 from scripts.game_state import GameState
 from scripts.game_state import GameState
 from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION
-
 from pygame.rect import Rect
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
 from scripts.components import PhysicsComponent,RenderComponent, StateInfoComponent,InputComponent
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
+from scripts.lists import interpolatedLightNode
 import pygame
 from moderngl import NEAREST,LINEAR,BLEND
-from math import sqrt,ceil,floor
+from OpenGL.GL import glUniformBlockBinding,glGetUniformBlockIndex
+from math import sqrt,ceil,floor,dist
 import numpy as np
 
 from typing import TYPE_CHECKING 
+
 
 if TYPE_CHECKING: 
     from my_pygame_light2d.light import PointLight
@@ -132,9 +135,9 @@ class PhysicsSystem(esper.Processor):
             if input_comp.up and state_info_comp.jump_count < state_info_comp.max_jump_count:
                 physics_comp.velocity[1] = -ENTITIES_JUMP_SPEED[state_info_comp.type]
             
-            # to stop the player from jumping infinitely
-            input_comp.up = False
-            state_info_comp.jump_count += 1
+                # to stop the player from jumping infinitely
+                input_comp.up = False
+                state_info_comp.jump_count += 1
 
     
         physics_comp.prev_transform = physics_comp.transform
@@ -191,7 +194,7 @@ class PhysicsSystem(esper.Processor):
             state_info_comp.collide_bottom = False 
             state_info_comp.collide_top = False
 
-        print(state_info_comp.collide_left,state_info_comp.collide_right,state_info_comp.collide_top,state_info_comp.collide_bottom)
+        #print(state_info_comp.collide_left,state_info_comp.collide_right,state_info_comp.collide_top,state_info_comp.collide_bottom)
 
         
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
@@ -240,7 +243,8 @@ class RenderSystem(esper.Processor):
         self.lights:list["PointLight"] = []
         self.hulls:list["Hull"] = []
 
-        self.shadow_blur_radious = 5
+        self._shadow_blur_radius = 5
+        self._max_hull_count = 512
 
         self._projection_transform = np.array( 
             [
@@ -257,6 +261,7 @@ class RenderSystem(esper.Processor):
 
 
         self._create_programs()
+        self._create_ssbos()
         self._create_frame_buffers()
         self._create_screen_vertex_buffers()
         self._create_entity_vertex_buffers()
@@ -274,11 +279,21 @@ class RenderSystem(esper.Processor):
             print("vertex shader source file could not be opened.")
 
         return (vertex_src,fragment_src)
+    
 
+    def _load_shader_src(self,shader_src_path:str)->str: 
+        try: 
+            with open(shader_src_path,encoding='utf-8') as file: 
+                src = file.read()
+        except:
+            print("shader source file could not be opened.")
+
+        return src
 
     def _create_programs(self)->None: 
         vertex_src,fragment_src = self._load_shader_srcs('my_pygame_light2d/vertex.glsl',
                                                          'my_pygame_light2d/fragment_draw.glsl')
+    
 
         tile_draw_vert_src,tile_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/tile_vert.glsl',
                                                                        'my_pygame_light2d/tile_frag.glsl')
@@ -287,15 +302,48 @@ class RenderSystem(esper.Processor):
         entities_draw_vert_src,entities_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/entity_draw_vert.glsl',
                                                                                  'my_pygame_light2d/entity_draw_frag.glsl')
         
+        light_frag_src = self._load_shader_src('my_pygame_light2d/fragment_light.glsl')
+
+        blur_frag_src = self._load_shader_src('my_pygame_light2d/fragment_blur.glsl')
+
+        mask_frag_src =  self._load_shader_src('my_pygame_light2d/fragment_mask.glsl')
 
         self._entity_draw_prog = self._ctx.program(vertex_shader = entities_draw_vert_src,
                                                     fragment_shader = entities_draw_frag_src)
-
 
         self._to_screen_draw_prog = self._ctx.program(vertex_shader =vertex_src,
                                                                  fragment_shader= fragment_src)
         self._tile_draw_prog = self._ctx.program(vertex_shader=tile_draw_vert_src,
                                                          fragment_shader= tile_draw_frag_src)
+        
+        self._prog_mask = self._ctx.program(vertex_shader= vertex_src,
+                                            fragment_shader=mask_frag_src)
+
+
+        self._prog_light = self._ctx.program(vertex_shader= vertex_src,
+                                             fragment_shader= light_frag_src )
+        
+        self._prog_blur = self._ctx.program(vertex_shader= vertex_src,
+                                            fragment_shader= blur_frag_src)
+        
+    
+    def _create_ssbos(self)->None: 
+        prog_glo = self._prog_light.glo
+
+        blockIndex = glGetUniformBlockIndex(prog_glo, 'hullVSSBO')
+        glUniformBlockBinding(prog_glo, blockIndex, 1)
+
+        blockIndex = glGetUniformBlockIndex(prog_glo, 'hullIndSSBO')
+        glUniformBlockBinding(prog_glo, blockIndex, 2)
+
+
+        # Create SSBOs
+        self._ssbo_v = self._ctx.buffer(reserve=4*8*self._max_hull_count)
+        self._ssbo_v.bind_to_uniform_block(1)
+        self._ssbo_ind = self._ctx.buffer(reserve=4*self._max_hull_count)
+        self._ssbo_ind.bind_to_uniform_block(2)
+
+
         
 
     def _create_frame_buffers(self)->None: 
@@ -340,6 +388,27 @@ class RenderSystem(esper.Processor):
         screen_vertex_data = np.hstack([screen_vertices, screen_tex_coords])
 
         screen_vbo = self._ctx.buffer(screen_vertex_data) 
+
+        self._vao_light = self._ctx.vertex_array(
+            self._prog_light,
+            [
+                (screen_vbo, '2f 2f', 'vertexPos', 'vertexTexCoord')
+            ]
+        )
+
+        self._vao_blur = self._ctx.vertex_array(
+            self._prog_blur,
+            [
+                (screen_vbo, '2f 2f' , 'vertexPos' , 'vertexTexCoord')
+            ]
+        )
+
+        self._vao_mask = self._ctx.vertex_array(
+            self._prog_mask,
+            [
+                (screen_vbo, '2f 2f' ,'vertexPos','vertexTexCoord')
+            ]
+        )
 
         self._vao_to_screen_draw = self._ctx.vertex_array(
             self._to_screen_draw_prog,
@@ -500,6 +569,140 @@ class RenderSystem(esper.Processor):
                          (x,y-h),(x+w,y),(x+w,y-h)],dtype= np.float32)
 
 
+    def _point_to_uv(self, p: tuple[float, float]):
+        return [p[0]/self._true_res[0], 1 - (p[1]/self._true_res[1])]
+
+    
+    def _send_hull_data_to_lighting_program(self,render_offset:tuple[int,int] = (0,0))->None: 
+        vertices = []
+        indices = []
+
+        for hull in self.hulls:
+            if not hull.enabled:
+                continue
+            vertices_buffer = [ ]
+
+            #the vertices of the hulls are adjusted by the offset, then added to the list. 
+
+            for vertice in hull.vertices:
+                vertices_buffer.append((vertice[0]- render_offset[0], vertice[1]-render_offset[1]))
+            vertices += vertices_buffer
+            indices.append(len(vertices))
+
+        # Store hull vertex data in SSBO
+        vertices = [self._point_to_uv(v) for v in vertices]
+        data_v = np.array(vertices, dtype=np.float32).flatten().tobytes()
+        self._ssbo_v.write(data_v)
+
+        # Store hull vertex indices in SSBO
+        data_ind = np.array(indices, dtype=np.int32).flatten().tobytes()
+        self._ssbo_ind.write(data_ind)
+
+
+    def _render_to_light_buffer(self,interpolation_delta: float, dt, render_offset :tuple[int,int] = (0,0))->None:
+        # Disable alpha blending to render lights
+        ambient_lighting_range = self._ref_tilemap._ambient_node_ptr.range
+
+        self._ctx.disable(BLEND)
+
+        for i in range(len(self._ref_tilemap.lights) -1, -1,-1):
+            light = self._ref_tilemap.lights[i]
+            if light.popped:
+                del self._ref_tilemap.lights[i]
+                continue 
+            if light.illuminator and light.illuminator.dead:
+                del self._ref_tilemap.lights[i]
+                continue 
+
+            if not light.illuminator and (light.position[0] < ambient_lighting_range[0] or light.position[0] > ambient_lighting_range[1]):
+                light.cur_power = max(0.0,light.cur_power - light.power / 10)
+            else: 
+                light.cur_power = min(light.power,light.cur_power + light.power/10)
+
+            if light.life == 0: 
+                del self._ref_tilemap.lights[i]
+                continue 
+            elif light.life > 0: 
+                light.life -= dt
+            
+            if not light.enabled:
+                continue 
+
+            self._buf_lt.tex.use()
+            self._buf_lt.fbo.use()
+            if light.radius_decay: 
+                light.radius = max(1,light.radius * (light.life/light.maxlife))
+
+            if light.illuminator: 
+                
+                #light.cur_power = max(0,light.power * (light.life/light.maxlife))
+                light.position = (int(light.illuminator.center[0]+light.illuminator.velocity[0]*interpolation_delta) ,\
+                                   int(light.illuminator.center[1]+light.illuminator.velocity[1]*interpolation_delta))    
+                
+            elif light.life > 0: 
+                if light.maxlife-1 == light.life: 
+                    light.position = (int(light.position[0]) , int(light.position[1]))
+                
+             
+            # Send light uniforms
+            self._prog_light['lightPos'] = self._point_to_uv((light.position[0]-render_offset[0] ,light.position[1]-render_offset[1]))
+            self._prog_light['lightCol'] = light._color
+            self._prog_light['lightPower'] = light.cur_power
+            self._prog_light['radius'] = light.radius
+            self._prog_light['castShadows'] = light.cast_shadows
+            self._prog_light['native_width'] = self._true_res[0]
+            self._prog_light['native_height'] = self._true_res[1]
+
+            # Send number of hulls
+            self._prog_light['numHulls'] = len(self.hulls)
+
+            # Render onto lightmap
+            self._vao_light.render()
+
+            # Flip double buffer
+            self._buf_lt.flip()
+
+
+    def _render_aomap(self)->None:
+        self._fbo_ao.use()
+        self._buf_lt.tex.use()
+
+        self._prog_blur['blurRadius'] = self._shadow_blur_radius
+        self._vao_blur.render()
+
+
+    def _render_background_layer(self)->None: 
+        self._ctx.screen.use()
+        self._tex_bg.use()
+        self._tex_ao.use(1)
+
+        self._prog_mask['lightmap'].value = 1
+        self._prog_mask['ambient'].value = self._ambient_light_RGBA
+
+        self._vao_mask.render()
+
+
+    def _set_ambient(self, R: (int | tuple[int]) = 0, G: int = 0, B: int = 0, A: int = 255) -> None:
+        self._ambient_light_RGBA = normalize_color_arguments(R, G, B, A)
+
+
+    def _render_fbos_to_screen_with_lighting(self,camera_scroll:tuple[int,int],interpolation_delta:float,dt:float,screen_shake:tuple[int,int] = (0,0))->None: 
+        
+        self._fbo_ao.clear(0,0,0,0)
+        self._buf_lt.clear(0,0,0,0)
+
+        render_offset = (camera_scroll[0] - screen_shake[0],camera_scroll[1] - screen_shake[1])
+
+        self._send_hull_data_to_lighting_program(render_offset)
+ 
+        self._render_to_light_buffer(interpolation_delta,dt,render_offset)
+
+        self._render_aomap()
+
+        self._render_background_layer()
+        
+
+
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None:
         self._ref_tilemap = tilemap
@@ -546,7 +749,7 @@ class RenderSystem(esper.Processor):
 
 
 
-    def process(self,camera_offset:tuple[int,int],interpolation_delta:float)->None: 
+    def process(self,camera_offset:tuple[int,int],interpolation_delta:float,dt:float)->None: 
         self._ctx.enable(BLEND)
         self._render_background_to_bg_fbo(camera_offset)
         self._render_tilemap_to_bg_fbo(camera_offset)
@@ -562,6 +765,14 @@ class RenderSystem(esper.Processor):
 
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
+
+                self._ref_tilemap.update_ambient_node_ptr(physics_comp.position[0])
+
+                if isinstance(self._ref_tilemap._ambient_node_ptr,interpolatedLightNode):
+                    self._set_ambient(self._ref_tilemap._ambient_node_ptr.get_interpolated_RGBA(physics_comp.position[0]))
+                else: 
+                    self._set_ambient(*self._ref_tilemap._ambient_node_ptr.colorValue)
+
                 animation_data_collection = render_comp.animation_data_collection
                 animation = animation_data_collection.get_animation(state_info_comp.curr_state)
 
@@ -590,10 +801,14 @@ class RenderSystem(esper.Processor):
         self._ref_rm.texture_atlasses['entities'].use()
         self._vao_entity_draw.render(vertices= 6, instances= instance)
 
+        self._render_fbos_to_screen_with_lighting(camera_offset,interpolation_delta,dt)
+
+        # final render to the screen from the bg fbo 
+        """
         self._ctx.screen.use()
         self._tex_bg.use()
         self._vao_to_screen_draw.render()
-
+        """
 
 class StateSystem(esper.Processor):
 
@@ -602,16 +817,17 @@ class StateSystem(esper.Processor):
         self._player_state_machine = PlayerStateMachine()
         self._enemy_state_machine = EnemyStateMachine()
 
-    def process(self)->None: 
+    def process(self,dt:float)->None: 
         
-        for entity, (state_info_comp,physics_comp) in esper.get_components(StateInfoComponent,PhysicsComponent):
+        player, (input_comp,state_info_comp,physics_comp,render_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent,RenderComponent)[0]
+
+        new_state = self._player_state_machine.change_state(input_comp,state_info_comp,physics_comp,render_comp,dt)
+                
+
+        for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
-                new_state = self._player_state_machine.change_state(state_info_comp.curr_state,physics_comp)
-                if new_state != state_info_comp.curr_state:
-                    state_info_comp.curr_state = new_state
-            else: 
-                # TODO: state handling for other entities 
-                pass
+                continue
+
 class InputHandler(esper.Processor):
 
     def __init__(self,game_context)->None: 
@@ -627,15 +843,25 @@ class InputHandler(esper.Processor):
             if event.key == pygame.K_F12:
                 pygame.display.toggle_fullscreen()
 
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            quit()
+
 
     def process(self,dt:float)->None: 
         player, (player_input_comp,player_physics_comp,player_state_comp) = esper.get_components(InputComponent,PhysicsComponent,StateInfoComponent)[0]
+
+        hot_reload = False
 
         if self._ref_game_conetxt['gamestate'] == GameState.GameLoop: 
             for event in pygame.event.get():
                 self._handle_common_events(event)
 
                 if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_F5: 
+                        hot_reload = True 
+                    if event.key == pygame.K_LSHIFT:
+                        player_input_comp.shift = True 
                     if event.key == pygame.K_w:
                         player_input_comp.up = True
                         #player_physics_comp.velocity[1] = -PLAYER_JUMP_SPEED
@@ -658,6 +884,10 @@ class InputHandler(esper.Processor):
                         # toggle inventory
 
                 if event.type == pygame.KEYUP:
+                    
+                    if event.key == pygame.K_LSHIFT:
+                        player_input_comp.shift = False
+
                     if event.key == pygame.K_w:
                         player_input_comp.up = False
                     if event.key == pygame.K_a:
@@ -672,8 +902,9 @@ class InputHandler(esper.Processor):
                         player_input_comp.down = False
                     if event.key == pygame.K_SPACE:
                         player_input_comp.interact = False
-                    
 
+
+        return hot_reload
 
 
 class StateMachine:
@@ -686,11 +917,48 @@ class StateMachine:
 
 
 class PlayerStateMachine(StateMachine):
-    def change_state(self,curr_state:str,physics_comp:PhysicsComponent):
-        pass
+    def change_state(self,input_comp:InputComponent,state_info_comp:StateInfoComponent,physics_comp:PhysicsComponent,render_comp:RenderComponent,dt:float):
+        if state_info_comp.curr_state == 'land':
+            pass
+        else:
+            if state_info_comp.collide_bottom:
+                if physics_comp.velocity[0] == 0:
+                    if state_info_comp.collide_bottom:
+                        if input_comp.down: 
+                            new_state = 'slide'
+                        else: 
+                            new_state = 'idle'
+                else: 
+                    if not (state_info_comp.collide_left or state_info_comp.collide_right):
+                        if input_comp.shift:
+                            new_state = 'sprint'
+                        else:
+                            new_state = 'run' 
+                    else: 
+                        new_state = 'idle'
+            else: 
+                if state_info_comp.collide_left or state_info_comp.collide_right:
+                    new_state = 'wall_slide'
+                else: 
+                    if physics_comp.velocity[1] > 0:
+                        new_state = 'jump_down'
+                    else: 
+                        new_state = 'jump_up'
 
+    
+        if new_state != state_info_comp.curr_state:
+            render_comp.animation_data_collection.get_animation(state_info_comp.curr_state).reset()
+            state_info_comp.curr_state = new_state
+        else: 
+            render_comp.animation_data_collection.get_animation(state_info_comp.curr_state).update(dt)
+
+        """
+        animation_data_collection = render_comp.animation_data_collection
+        immediate_animation = animation_data_collection.get_animation(curr_state)
+
+        immediate_animation.reset()
+        """
 
 class EnemyStateMachine(StateMachine):
-    
     def change_state(self, physics_comp):
         return super().change_state(physics_comp)

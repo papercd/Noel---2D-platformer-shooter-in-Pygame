@@ -51,6 +51,7 @@ class Animation:
         return Animation(self.count,self._img_dur,self._halt,self._loop)
     
     def update(self,dt):
+
         dt = min(dt, 2 * TIME_FOR_ONE_LOGICAL_STEP)
 
         self.accum_time += dt 
@@ -142,19 +143,17 @@ class AnimationDataCollection:
 
 
 """ Animation Data """
-
 # physics updates are done every 1/60 seconds, the 60 is multiplied to the physics calculations 
 # so the number in front of the * corresponds to the unit of distance in pixels.
-
-GRAVITY = 20 * 60   # 20 pixels per second squared
+GRAVITY = 35 * 60   # 20 pixels per second squared
 TERMINAL_VELOCITY = 10 * 60     # 20 pixels per second
-HORIZONTAL_DECELERATION = 15 * 60    #15 pixels per second squared
+HORIZONTAL_DECELERATION = 35 * 60    #15 pixels per second squared
 ENTITIES_ACCELERATION = {
-    'player' : 60 * 60 
+    'player' : 70 * 60 
 }
 
 ENTITIES_JUMP_SPEED = {
-    'player' : 240
+    'player' : 350
 }
 
 ENTITIES_MAX_HORIZONTAL_SPEED = {

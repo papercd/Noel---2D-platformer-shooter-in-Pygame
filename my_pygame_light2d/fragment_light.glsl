@@ -9,11 +9,11 @@ uniform int native_height;
 uniform vec2 lightPos;
 
 uniform hullVSSBO{
-    float hullV[2048];
+    float hullV[4096];
 };
 
 uniform hullIndSSBO{
-    int hullInd[256];
+    int hullInd[512];
 };
 uniform int numHulls;
 
