@@ -213,14 +213,14 @@ class Tilemap:
 
 
 
-    def update_ambient_node_ptr(self,pos)->None:
+    def update_ambient_node_ptr(self,pos:float)->None:
         if self._ambient_node_ptr is None: 
-            self._ambient_node_ptr = self.ambientNodes.set_ptr(pos[0])
+            self._ambient_node_ptr = self.ambientNodes.set_ptr(pos)
         else: 
-            if pos[0] < self._ambient_node_ptr.range[0]:
+            if pos < self._ambient_node_ptr.range[0]:
                 if self._ambient_node_ptr.prev: 
                     self._ambient_node_ptr = self._ambient_node_ptr.prev
-            elif pos[0] > self._ambient_node_ptr.range[1]:
+            elif pos > self._ambient_node_ptr.range[1]:
                 if self._ambient_node_ptr.next: 
                     self._ambient_node_ptr = self._ambient_node_ptr.next
 

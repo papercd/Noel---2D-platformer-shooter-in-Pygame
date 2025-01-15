@@ -245,6 +245,7 @@ class RenderEngine:
         # Create SSBOs
         self._ssbo_v = self.ctx.buffer(reserve=20*2048)
         self._ssbo_v.bind_to_uniform_block(1)
+
         self._ssbo_ind = self.ctx.buffer(reserve=20*256)
         self._ssbo_ind.bind_to_uniform_block(2)
 

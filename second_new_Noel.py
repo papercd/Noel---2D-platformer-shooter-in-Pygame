@@ -358,7 +358,7 @@ class Noel():
             
             interpolation_delta = self._time_accumulator / TIME_FOR_ONE_LOGICAL_STEP
 
-            self._render_system.process(integer_camera_offset,interpolation_delta)
+            self._render_system.process(integer_camera_offset,interpolation_delta,self._dt)
 
             """
            
@@ -409,7 +409,8 @@ class Noel():
             self.render_engine.render_scene_with_lighting(camera_scroll,interpolation_alpha, screenshake_offset)
             """
             pygame.display.flip()
-           
+            fps = self._clock.get_fps()
+            print(fps)
             
             
 
