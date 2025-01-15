@@ -615,9 +615,9 @@ class RenderSystem(esper.Processor):
                 continue 
 
             if not light.illuminator and (light.position[0] < ambient_lighting_range[0] or light.position[0] > ambient_lighting_range[1]):
-                light.cur_power = max(0.0,light.cur_power - light.power / 10)
+                light.cur_power = max(0.0,light.cur_power - 8*dt*light.power)
             else: 
-                light.cur_power = min(light.power,light.cur_power + light.power/10)
+                light.cur_power = min(light.power,light.cur_power + 8*dt*light.power)
 
             if light.life == 0: 
                 del self._ref_tilemap.lights[i]
@@ -661,6 +661,8 @@ class RenderSystem(esper.Processor):
 
             # Flip double buffer
             self._buf_lt.flip()
+
+        self._ctx.enable(BLEND)
 
 
     def _render_aomap(self)->None:
