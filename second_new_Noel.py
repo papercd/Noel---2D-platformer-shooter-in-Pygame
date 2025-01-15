@@ -8,7 +8,7 @@ from scripts.game_state import GameState
 from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager
-from scripts.systems import PhysicsSystem,RenderSystem,InputHandler
+from scripts.systems import PhysicsSystem,RenderSystem,InputHandler,StateSystem
 from scripts.new_tilemap import Tilemap
 
 class Noel():
@@ -44,6 +44,7 @@ class Noel():
         self._physics_system = PhysicsSystem()
         self._physics_system.attatch_tilemap(self._tilemap)
 
+        self._state_system = StateSystem()  
 
         self._render_system = RenderSystem(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res'],\
                                            self._game_context['true_res'])
@@ -334,6 +335,7 @@ class Noel():
 
             while self._time_accumulator >= TIME_FOR_ONE_LOGICAL_STEP:
                 self._physics_system.process(TIME_FOR_ONE_LOGICAL_STEP)
+                self._state_system.process(TIME_FOR_ONE_LOGICAL_STEP)
                 self._time_accumulator -= TIME_FOR_ONE_LOGICAL_STEP
             
             interpolation_delta = self._time_accumulator / TIME_FOR_ONE_LOGICAL_STEP

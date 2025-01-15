@@ -51,6 +51,7 @@ class Animation:
         return Animation(self.count,self._img_dur,self._halt,self._loop)
     
     def update(self,dt):
+
         dt = min(dt, 2 * TIME_FOR_ONE_LOGICAL_STEP)
 
         self.accum_time += dt 

@@ -602,16 +602,17 @@ class StateSystem(esper.Processor):
         self._player_state_machine = PlayerStateMachine()
         self._enemy_state_machine = EnemyStateMachine()
 
-    def process(self)->None: 
+    def process(self,dt:float)->None: 
         
-        for entity, (state_info_comp,physics_comp) in esper.get_components(StateInfoComponent,PhysicsComponent):
+        player, (input_comp,state_info_comp,physics_comp,render_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent,RenderComponent)[0]
+
+        new_state = self._player_state_machine.change_state(input_comp,state_info_comp,physics_comp,render_comp,dt)
+                
+
+        for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
-                new_state = self._player_state_machine.change_state(state_info_comp.curr_state,physics_comp)
-                if new_state != state_info_comp.curr_state:
-                    state_info_comp.curr_state = new_state
-            else: 
-                # TODO: state handling for other entities 
-                pass
+                continue
+
 class InputHandler(esper.Processor):
 
     def __init__(self,game_context)->None: 
@@ -627,6 +628,9 @@ class InputHandler(esper.Processor):
             if event.key == pygame.K_F12:
                 pygame.display.toggle_fullscreen()
 
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            quit()
 
     def process(self,dt:float)->None: 
         player, (player_input_comp,player_physics_comp,player_state_comp) = esper.get_components(InputComponent,PhysicsComponent,StateInfoComponent)[0]
@@ -636,6 +640,8 @@ class InputHandler(esper.Processor):
                 self._handle_common_events(event)
 
                 if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_LSHIFT:
+                        player_input_comp.shift = True 
                     if event.key == pygame.K_w:
                         player_input_comp.up = True
                         #player_physics_comp.velocity[1] = -PLAYER_JUMP_SPEED
@@ -658,6 +664,9 @@ class InputHandler(esper.Processor):
                         # toggle inventory
 
                 if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_LSHIFT:
+                        player_input_comp.shift = False
+
                     if event.key == pygame.K_w:
                         player_input_comp.up = False
                     if event.key == pygame.K_a:
@@ -686,11 +695,45 @@ class StateMachine:
 
 
 class PlayerStateMachine(StateMachine):
-    def change_state(self,curr_state:str,physics_comp:PhysicsComponent):
-        pass
+    def change_state(self,input_comp:InputComponent,state_info_comp:StateInfoComponent,physics_comp:PhysicsComponent,render_comp:RenderComponent,dt:float):
+        if state_info_comp.curr_state == 'land':
+            pass
+        else:
+            if state_info_comp.collide_bottom:
+                if physics_comp.velocity[0] == 0:
+                    if state_info_comp.collide_bottom:
+                        if input_comp.down: 
+                            new_state = 'slide'
+                        else: 
+                            new_state = 'idle'
+                else: 
+                    if input_comp.shift:
+                        new_state = 'sprint'
+                    else:
+                        new_state = 'run' 
+            else: 
+                if state_info_comp.collide_left or state_info_comp.collide_right:
+                    new_state = 'wall_slide'
+                else: 
+                    if physics_comp.velocity[1] > 0:
+                        new_state = 'jump_down'
+                    else: 
+                        new_state = 'jump_up'
 
+    
+        if new_state != state_info_comp.curr_state:
+            render_comp.animation_data_collection.get_animation(state_info_comp.curr_state).reset()
+            state_info_comp.curr_state = new_state
+        else: 
+            render_comp.animation_data_collection.get_animation(state_info_comp.curr_state).update(dt)
+
+        """
+        animation_data_collection = render_comp.animation_data_collection
+        immediate_animation = animation_data_collection.get_animation(curr_state)
+
+        immediate_animation.reset()
+        """
 
 class EnemyStateMachine(StateMachine):
-    
     def change_state(self, physics_comp):
         return super().change_state(physics_comp)
