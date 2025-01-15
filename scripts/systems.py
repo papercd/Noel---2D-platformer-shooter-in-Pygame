@@ -191,7 +191,7 @@ class PhysicsSystem(esper.Processor):
             state_info_comp.collide_bottom = False 
             state_info_comp.collide_top = False
 
-        print(state_info_comp.collide_left,state_info_comp.collide_right,state_info_comp.collide_top,state_info_comp.collide_bottom)
+        #print(state_info_comp.collide_left,state_info_comp.collide_right,state_info_comp.collide_top,state_info_comp.collide_bottom)
 
         
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
