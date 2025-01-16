@@ -9,9 +9,11 @@ from scripts.new_entities_manager import EntitiesManager
 from scripts.components import PhysicsComponent,RenderComponent, StateInfoComponent,InputComponent
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
+from scripts.layer import Layer_
+
 from scripts.lists import interpolatedLightNode
 import pygame
-from moderngl import NEAREST,LINEAR,BLEND
+from moderngl import NEAREST,LINEAR,BLEND,Texture,Framebuffer
 from OpenGL.GL import glUniformBlockBinding,glGetUniformBlockIndex
 from math import sqrt,ceil,floor,dist
 import numpy as np
@@ -243,6 +245,8 @@ class RenderSystem(esper.Processor):
         self.lights:list["PointLight"] = []
         self.hulls:list["Hull"] = []
 
+        self._prev_query_camera_scroll= (0,0)
+        self._camera_displacement_buffer = [0,0]
         self._shadow_blur_radius = 5
         self._max_hull_count = 512
 
@@ -688,12 +692,164 @@ class RenderSystem(esper.Processor):
         self._ambient_light_RGBA = normalize_color_arguments(R, G, B, A)
 
 
+    def _update_hulls(self,camera_scroll:tuple[int,int] = (0,0))->None: 
+        if dist(self._prev_query_camera_scroll,camera_scroll) >= 16: 
+            self.hulls = self._ref_tilemap.hull_grid.query(camera_scroll[0]-self._ref_tilemap.regular_tile_size * 10, camera_scroll[1] - self._ref_tilemap.regular_tile_size * 10,\
+                                                           camera_scroll[0] + self._true_res[0] + self._ref_tilemap.regular_tile_size * 10, camera_scroll[1] + self._true_res[1] + self._ref_tilemap.regular_tile_size * 10)
+            
+            self._prev_query_camera_scroll = camera_scroll
+    
+
+
+
+    def surface_to_texture(self, sfc: pygame.Surface) -> Texture:
+        """
+        Convert a pygame.Surface to a moderngl.Texture.
+
+        Args:
+            sfc (pygame.Surface): Surface to convert.
+
+        Returns:
+            moderngl.Texture: Converted texture.
+        """
+
+        img_flip = pygame.transform.flip(sfc, False, True)
+        img_data = pygame.image.tostring(img_flip, "RGBA")
+
+        tex = self._ctx.texture(sfc.get_size(), components=4, data=img_data)
+        tex.filter = (NEAREST, NEAREST)
+        return tex
+
+
+    # temporary helper debugging method 
+
+    def render_texture(self, tex: Texture, layer: Layer_, dest: pygame.Rect, source: pygame.Rect,angle:float=0.0,flip : tuple[bool,bool]= (False,False)):
+        """
+        Render a texture onto a specified Layer_'s framebuffer using the draw shader.
+
+        Args:
+            tex (moderngl.Texture): Texture to render.
+            Layer_ (Layer_): Layer_ to render the texture onto.
+            dest (pygame.Rect): Destination rectangle.
+            source (pygame.Rect): Source rectangle from the texture.
+            angle (float) : angle to rotate around center in radians 
+            flip (tuple[bool,bool]) : values to indicate flip vertically and horizontally 
+        """
+
+        # Render texture onto Layer_ with the draw shader
+        fbo = self._get_fbo(layer)
+        self._render_tex_to_fbo(tex, fbo, dest, source )
+
+
+
+    def _get_fbo(self, Layer_: Layer_):
+        if Layer_ == Layer_.BACKGROUND:
+            return self._fbo_bg
+        elif Layer_ == Layer_.FOREGROUND:
+            return self._fbo_fg
+        return None
+
+    def _render_tex_to_fbo(self, tex: Texture, fbo: Framebuffer, dest: pygame.Rect, source: pygame.Rect,flip:bool = False):
+        # Mesh for destination rect on screen
+        width, height = fbo.size
+        x = 2. * dest.x / width - 1.
+        y = 1. - 2. * dest.y / height
+        w = 2. * dest.w / width
+        h = 2. * dest.h / height
+        vertices = np.array([(x, y), (x + w, y), (x, y - h),
+                            (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
+
+        # Mesh for source within the texture
+        x = source.x / tex.width
+        y = source.y / tex.height
+        w = source.w / tex.width
+        h = source.h / tex.height
+
+        if flip: 
+            p1 = (x + w, y + h)  # Top-right becomes top-left
+            p2 = (x, y + h)      # Top-left becomes top-right
+            p3 = (x + w, y)      # Bottom-right becomes bottom-left
+            p4 = (x, y)          # Bottom-left becomes bottom-right
+        else: 
+                
+            p1 = (x, y + h) 
+            p2 = (x + w, y + h) 
+            p3 = (x, y) 
+            p4 = (x + w, y) 
+        tex_coords = np.array([p1, p2, p3,
+                               p3, p2, p4], dtype=np.float32)
+
+        # Create VBO and VAO
+        buffer_data = np.hstack([vertices, tex_coords])
+
+        vbo = self._ctx.buffer(buffer_data)
+        vao = self._ctx.vertex_array(self._to_screen_draw_prog, [
+            (vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
+        ])
+
+        # Use buffers and render
+        tex.use()
+        fbo.use()
+        vao.render()
+
+        # Free vertex data
+        vbo.release()
+        vao.release()
+
+
+
+    def _render_rectangles(self,camera_scroll:tuple[int,int])->None: 
+        buffer_surf = pygame.Surface(self._true_res).convert_alpha()
+        buffer_surf.fill((0, 0, 0, 0))
+
+        # Iterate over rectangles
+        for rectangle in self._ref_tilemap._rectangles:
+            # Rectangle properties
+            rect_x, rect_y, rect_x2, rect_y2 = rectangle
+            rect_w = rect_x2 - rect_x
+            rect_h = rect_y2 - rect_y
+
+
+            # Calculate screen position relative to the offset
+            screen_x = rect_x - camera_scroll[0]
+            screen_y = rect_y - camera_scroll[1]
+
+            # Check if the rectangle is within the visible screen
+            if 0 <= screen_x < self._true_res[0] and 0 <= screen_y < self._true_res[1]:
+                # Draw the rectangle directly onto the buffer surface
+                pygame.draw.rect(
+                    buffer_surf,
+                    (244, 244, 244, 244),  # Color with alpha
+                    pygame.Rect(screen_x, screen_y, rect_w, rect_h),  # Position and size
+                    width=1,  # Line width
+                )
+
+        # Convert the buffer surface to a texture
+        tex = self.surface_to_texture(buffer_surf)
+
+        # Render the texture
+        self.render_texture(
+            tex,
+            Layer_.BACKGROUND,
+            dest=pygame.Rect(0, 0, tex.width, tex.height),
+            source=pygame.Rect(0, 0, tex.width, tex.height),
+        )
+
+        # Release the texture
+        tex.release()
+
+
+
     def _render_fbos_to_screen_with_lighting(self,camera_scroll:tuple[int,int],interpolation_delta:float,dt:float,screen_shake:tuple[int,int] = (0,0))->None: 
         
         self._fbo_ao.clear(0,0,0,0)
         self._buf_lt.clear(0,0,0,0)
 
         render_offset = (camera_scroll[0] - screen_shake[0],camera_scroll[1] - screen_shake[1])
+
+        self._update_hulls(camera_scroll)
+
+        self._render_rectangles(camera_scroll)
 
         self._send_hull_data_to_lighting_program(render_offset)
  
