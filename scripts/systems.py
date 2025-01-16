@@ -248,7 +248,7 @@ class RenderSystem(esper.Processor):
         self._prev_query_camera_scroll= (0,0)
         self._camera_displacement_buffer = [0,0]
         self._shadow_blur_radius = 5
-        self._max_hull_count = 512
+        self._max_hull_count = 256 
 
         self._projection_transform = np.array( 
             [
