@@ -248,7 +248,7 @@ class RenderSystem(esper.Processor):
         self._prev_query_camera_scroll= (0,0)
         self._camera_displacement_buffer = [0,0]
         self._shadow_blur_radius = 5
-        self._max_hull_count = 256 
+        self._max_hull_count = 512 
 
         self._projection_transform = np.array( 
             [
@@ -693,9 +693,10 @@ class RenderSystem(esper.Processor):
 
 
     def _update_hulls(self,camera_scroll:tuple[int,int] = (0,0))->None: 
-        if dist(self._prev_query_camera_scroll,camera_scroll) >= 16: 
-            self.hulls = self._ref_tilemap.hull_grid.query(camera_scroll[0], camera_scroll[1] ,\
-                                                           camera_scroll[0] + self._true_res[0], camera_scroll[1] + self._true_res[1])
+        tile_size = self._ref_tilemap.regular_tile_size
+        if dist(self._prev_query_camera_scroll,camera_scroll) >= 90: 
+            self.hulls = self._ref_tilemap.hull_grid.query(camera_scroll[0] - 10 * tile_size, camera_scroll[1] - 10 * tile_size,\
+                                                           camera_scroll[0] + self._true_res[0] + 10 * tile_size, camera_scroll[1] + self._true_res[1] + 10 * tile_size)
             
             self._prev_query_camera_scroll = camera_scroll
     
@@ -849,7 +850,7 @@ class RenderSystem(esper.Processor):
 
         self._update_hulls(camera_scroll)
 
-        self._render_rectangles(camera_scroll)
+        #self._render_rectangles(camera_scroll)
 
         self._send_hull_data_to_lighting_program(render_offset)
  
