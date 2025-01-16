@@ -694,8 +694,8 @@ class RenderSystem(esper.Processor):
 
     def _update_hulls(self,camera_scroll:tuple[int,int] = (0,0))->None: 
         if dist(self._prev_query_camera_scroll,camera_scroll) >= 16: 
-            self.hulls = self._ref_tilemap.hull_grid.query(camera_scroll[0]-self._ref_tilemap.regular_tile_size * 10, camera_scroll[1] - self._ref_tilemap.regular_tile_size * 10,\
-                                                           camera_scroll[0] + self._true_res[0] + self._ref_tilemap.regular_tile_size * 10, camera_scroll[1] + self._true_res[1] + self._ref_tilemap.regular_tile_size * 10)
+            self.hulls = self._ref_tilemap.hull_grid.query(camera_scroll[0], camera_scroll[1] ,\
+                                                           camera_scroll[0] + self._true_res[0], camera_scroll[1] + self._true_res[1])
             
             self._prev_query_camera_scroll = camera_scroll
     
