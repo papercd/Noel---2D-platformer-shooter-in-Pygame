@@ -409,9 +409,6 @@ class Noel():
             self.render_engine.render_scene_with_lighting(camera_scroll,interpolation_alpha, screenshake_offset)
             """
             pygame.display.flip()
-            fps = self._clock.get_fps()
-            print(fps)
-            
             
 
 

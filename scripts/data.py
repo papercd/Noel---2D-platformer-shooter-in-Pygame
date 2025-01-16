@@ -450,6 +450,7 @@ def get_tile_rectangle(tile_info:TileInfo,tile_size:int,physical_tiles:"Tilemap.
     """
 
     rel_pos,variant = tile_info.relative_pos_ind,tile_info.variant
+
     x1 = tile_info.tile_pos[0] * tile_size
     x2 = (tile_info.tile_pos[0] + 1 ) * tile_size
     y1 = tile_info.tile_pos[1] * tile_size

@@ -305,9 +305,8 @@ class Tilemap:
 
          
         for rectangle in self._rectangles:
-
             x1, y1, x2, y2 = rectangle
-            self._hulls.append(Hull( vertices=[(x2, y1), (x2, y1), (x2, y2), (x1, y2)]))
+            self._hulls.append(Hull( vertices=[(x1, y1), (x2, y1), (x2, y2), (x1, y2)]))
         
 
 

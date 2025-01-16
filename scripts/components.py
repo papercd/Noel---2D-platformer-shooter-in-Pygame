@@ -43,7 +43,10 @@ class PhysicsComponent:
         ])
 
     
-        
+
+@component 
+class HUDComponent: 
+    pass
 
 
 @component
