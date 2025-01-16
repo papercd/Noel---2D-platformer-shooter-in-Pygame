@@ -688,6 +688,11 @@ class RenderSystem(esper.Processor):
         self._vao_mask.render()
 
 
+    def _render_hud_to_fg_fbo(self)->None: 
+        pass
+
+
+
     def _set_ambient(self, R: (int | tuple[int]) = 0, G: int = 0, B: int = 0, A: int = 255) -> None:
         self._ambient_light_RGBA = normalize_color_arguments(R, G, B, A)
 
@@ -862,7 +867,6 @@ class RenderSystem(esper.Processor):
         
 
 
-
     def attatch_tilemap(self,tilemap:"Tilemap")->None:
         self._ref_tilemap = tilemap
 
@@ -920,7 +924,7 @@ class RenderSystem(esper.Processor):
         self._view_transform[0][2] = -camera_offset[0]
         self._view_transform[1][2] = -camera_offset[1]
 
-        instance = 0 
+        instances = 0 
 
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
@@ -950,7 +954,7 @@ class RenderSystem(esper.Processor):
 
             else: 
                 pass
-            instance += 1
+            instances += 1
 
         self._entity_local_vertices_vbo.write(np.array(entity_vertices,dtype=np.float32).tobytes())
         self._entity_texcoords_vbo.write(np.array(entity_texcoords,dtype=np.float32).tobytes())
@@ -958,9 +962,14 @@ class RenderSystem(esper.Processor):
 
         self._fbo_bg.use()
         self._ref_rm.texture_atlasses['entities'].use()
-        self._vao_entity_draw.render(vertices= 6, instances= instance)
+        self._vao_entity_draw.render(vertices= 6, instances= instances)
+
+        self._render_hud_to_fg_fbo()
+        
 
         self._render_fbos_to_screen_with_lighting(camera_offset,interpolation_delta,dt)
+
+
 
         # final render to the screen from the bg fbo 
         """
