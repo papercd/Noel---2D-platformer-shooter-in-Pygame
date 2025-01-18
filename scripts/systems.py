@@ -328,6 +328,9 @@ class RenderSystem(esper.Processor):
         entities_draw_vert_src,entities_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/entity_draw_vert.glsl',
                                                                                  'my_pygame_light2d/entity_draw_frag.glsl')
         
+        cursor_draw_vert_src,cursor_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/cursor_draw_vert.glsl',
+                                                                           'my_pygame_light2d/cursor_draw_frag.glsl')
+        
         light_frag_src = self._load_shader_src('my_pygame_light2d/fragment_light.glsl')
 
         blur_frag_src = self._load_shader_src('my_pygame_light2d/fragment_blur.glsl')
@@ -344,13 +347,27 @@ class RenderSystem(esper.Processor):
         
         self._prog_mask = self._ctx.program(vertex_shader= vertex_src,
                                             fragment_shader=mask_frag_src)
-
+        
+        self._prog_cursor_draw = self._ctx.program(vertex_shader =cursor_draw_vert_src,
+                                                   fragment_shader= cursor_draw_frag_src )
 
         self._prog_light = self._ctx.program(vertex_shader= vertex_src,
                                              fragment_shader= light_frag_src )
         
         self._prog_blur = self._ctx.program(vertex_shader= vertex_src,
                                             fragment_shader= blur_frag_src)
+        
+
+        self._prog_cursor_draw['vertices'] = self._ref_rm.cursor_ndc_vertices
+        self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords['cursor']['default']
+
+        self._vao_cursor_draw = self._ctx.vertex_array(
+            self._prog_cursor_draw,
+            [
+                (self._ref_rm.cursor_position_buffer, '2f' , 'in_position')
+            ]
+        )
+
         
     
     def _create_ssbos(self)->None: 
@@ -470,6 +487,9 @@ class RenderSystem(esper.Processor):
             ]
         )
 
+
+
+
     def _render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
         
 
@@ -534,13 +554,32 @@ class RenderSystem(esper.Processor):
 
             self._vao_physical_tiles_draw.render(vertices=6,instances= physical_tile_instances)
 
+    def _render_HUD_to_fg_fbo(self,dt:float)->None: 
+        
+        
+        # TODO: render the inventory 
+        
+        # render the cursor 
+        self._hud.cursor.update(self._true_to_native_ratio,dt,self.cursor_state_change_callback)
+        self._ref_rm.cursor_position_buffer.write(self._hud.cursor.topleft.tobytes())
+
+        self._fbo_fg.use()
+        self._ref_rm.texture_atlasses['ui'].use()
+
+        self._vao_cursor_draw.render()
+
+    
+
+    def cursor_state_change_callback(self,new_cursor_state:str)->None: 
+        # change the texcoords uniform in the cursor draw program according to the new cursor state 
+        self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords['cursor'][new_cursor_state]
 
 
     def _tile_position_to_ndc(self,position:tuple[int,int],camera_offset:tuple[int,int])->tuple[float,float]:
         fbo_w,fbo_h = self._fbo_bg.size
-
         return (2. * (position[0] *self._ref_tilemap.regular_tile_size -camera_offset[0]) / fbo_w -1.
                 , 1. - 2. * (position[1] * self._ref_tilemap.regular_tile_size - camera_offset[1]) / fbo_h)
+
 
 
 
@@ -710,9 +749,10 @@ class RenderSystem(esper.Processor):
         self._vao_mask.render()
 
 
-    def _render_hud_to_fg_fbo(self)->None: 
-        pass
-
+    def _render_foreground_layer(self)->None:
+        self._ctx.screen.use()
+        self._tex_fg.use()
+        self._vao_to_screen_draw.render()
 
 
     def _set_ambient(self, R: (int | tuple[int]) = 0, G: int = 0, B: int = 0, A: int = 255) -> None:
@@ -870,22 +910,24 @@ class RenderSystem(esper.Processor):
 
     def _render_fbos_to_screen_with_lighting(self,camera_scroll:tuple[int,int],interpolation_delta:float,dt:float,screen_shake:tuple[int,int] = (0,0))->None: 
         
-        self._fbo_ao.clear(0,0,0,255)
-        self._buf_lt.clear(0,0,0,255)
+        self._fbo_ao.clear(0,0,0,0)
+        self._buf_lt.clear(0,0,0,0)
 
         render_offset = (camera_scroll[0] - screen_shake[0],camera_scroll[1] - screen_shake[1])
 
-        #self._update_hulls(camera_scroll)
+        self._update_hulls(camera_scroll)
 
-        self._render_rectangles(camera_scroll)
+        #self._render_rectangles(camera_scroll)
 
-        #self._send_hull_data_to_lighting_program(render_offset)
+        self._send_hull_data_to_lighting_program(render_offset)
  
-        #self._render_to_light_buffer(interpolation_delta,dt,render_offset)
+        self._render_to_light_buffer(interpolation_delta,dt,render_offset)
 
-        #self._render_aomap()
+        self._render_aomap()
 
         self._render_background_layer()
+
+        self._render_foreground_layer()
         
 
 
@@ -938,6 +980,7 @@ class RenderSystem(esper.Processor):
         self._ctx.enable(BLEND)
         self._render_background_to_bg_fbo(camera_offset)
         self._render_tilemap_to_bg_fbo(camera_offset)
+        self._render_HUD_to_fg_fbo(dt)
 
         entity_vertices = []
         entity_texcoords = []
@@ -985,9 +1028,6 @@ class RenderSystem(esper.Processor):
         self._fbo_bg.use()
         self._ref_rm.texture_atlasses['entities'].use()
         self._vao_entity_draw.render(vertices= 6, instances= instances)
-
-        self._render_hud_to_fg_fbo()
-        
 
         self._render_fbos_to_screen_with_lighting(camera_offset,interpolation_delta,dt)
 

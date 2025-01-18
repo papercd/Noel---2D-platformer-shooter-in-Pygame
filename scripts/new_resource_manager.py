@@ -3,7 +3,8 @@ from scripts.background import Background
 from scripts.utils import load_texture
 from os import listdir
 from json import load as jsLoad
-from scripts.data import TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TileInfo,TileInfoDataClass,AnimationDataCollection
+from scripts.data import TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,\
+                    DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TileInfo,TileInfoDataClass,AnimationDataCollection,UI_ATLAS_POSITIONS_AND_SIZES
 import numpy as np
 
 if TYPE_CHECKING: 
@@ -13,7 +14,8 @@ if TYPE_CHECKING:
 
 TEXTURE_ATLAS_NAMES_TO_PATH = {
     'tiles' : TEXTURE_BASE_PATH + 'tiles/tile_atlas.png',
-    'entities' :   TEXTURE_BASE_PATH + 'entities/entities_atlas.png'
+    'entities' :   TEXTURE_BASE_PATH + 'entities/entities_atlas.png',
+    'ui' : TEXTURE_BASE_PATH + 'ui/ui_atlas.png'
 }
 
 
@@ -61,6 +63,9 @@ class ResourceManager:
         # load entity texcoords 
         self._load_entity_texcoords_and_local_vertices()
 
+        # load ui texcoords 
+        self._create_ui_element_resources()
+
     def _create_animation_data_collections(self)->None: 
         self.animation_data_collections = {}
         self.animation_data_collections['player'] = AnimationDataCollection(ENTITY_ANIMATION_DATA['player'])  
@@ -91,6 +96,34 @@ class ResourceManager:
             self.texture_atlasses[atlas_name] = load_texture(TEXTURE_ATLAS_NAMES_TO_PATH[atlas_name],self._ctx)
 
 
+
+    def _create_ui_element_resources(self)->None: 
+        self.ui_element_texcoords = {}
+
+        # cursor ndc vertices
+
+        x = 0. 
+        y = 0. 
+        w = 2. * 9 / self._true_res[0]
+        h = 2. * 10 / self._true_res[1] 
+        self.cursor_ndc_vertices = np.array([(x, y), (x + w, y), (x, y - h),
+                            (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
+        
+        self.cursor_position_buffer = self._ctx.buffer(reserve=2 * 4,dynamic=True)
+
+
+        for ui_element in UI_ATLAS_POSITIONS_AND_SIZES: 
+            if ui_element.endswith('slot'):
+                pass
+            elif ui_element == 'cursor':
+                self.ui_element_texcoords['cursor'] = {}
+                for cursor_state in UI_ATLAS_POSITIONS_AND_SIZES['cursor']:
+                    atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES['cursor'][cursor_state]
+                    self.ui_element_texcoords['cursor'][cursor_state] = self._create_ui_element_texcoords(atlas_position,texture_size)
+            else: 
+                pass
+
+
     def _load_entity_texcoords_and_local_vertices(self)->None:
         self.entity_texcoords = {}
         self.entity_local_vertices = {}
@@ -104,14 +137,29 @@ class ResourceManager:
                         for frame in range(animation.count): 
                             self.entity_texcoords[(entity_type,gun_holding_state,animation_state,frame)] = self._create_entity_texcoords(player_texture_atlas_positions[gun_holding_state][animation_state],ENTITY_SIZES[entity_type],frame)
                         
-                        pass
             else: 
                 pass
             
             self.entity_local_vertices[entity_type] = self._create_entity_local_vertices(ENTITY_SIZES[entity_type])
         # load the player entity texcoords for now
 
-        pass
+
+
+    def _create_ui_element_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int])->np.array: 
+        x =  (texture_atlas_position[0]) / self.texture_atlasses['ui'].size[0]
+        y = (texture_atlas_position[1]) / self.texture_atlasses['ui'].size[1]
+        w = texture_size[0] / self.texture_atlasses['ui'].size[0]
+        h = texture_size[1] / self.texture_atlasses['ui'].size[1]
+
+        p1 = (x, y + h)
+        p2 = (x + w, y + h)
+        p3 = (x, y)
+        p4 = (x + w, y)
+
+        return np.array([p3, p4, p1,
+                        p1, p4, p2], dtype=np.float32)
+       
+
 
 
     def _create_entity_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int],animation_frame:int)->np.array:
