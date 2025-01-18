@@ -45,7 +45,7 @@ class PhysicsComponent:
     
 
 @component 
-class HUDComponent: 
+class WeaponHolderComponent: 
     pass
 
 

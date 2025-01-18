@@ -1,8 +1,8 @@
 import esper
-
+from scripts.second_HUD import HUD
 from scripts.game_state import GameState
 from scripts.game_state import GameState
-from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY
+from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR
 from pygame.rect import Rect
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
@@ -126,7 +126,8 @@ class PhysicsSystem(esper.Processor):
                     self._process_regular_tile_y_collision(physics_comp,state_info_comp,rect_tile,dt)
 
 
-    def _process_common_physics_updates(self,physics_comp: PhysicsComponent,state_info_comp:StateInfoComponent,dt:float,)->None: 
+    def _process_common_physics_updates(self,physics_comp: PhysicsComponent,state_info_comp:StateInfoComponent,dt:float,sprinting:bool = False)->None: 
+
         physics_comp.prev_transform = physics_comp.transform
 
         # apply deceleration to horizontal velocity
@@ -135,9 +136,10 @@ class PhysicsSystem(esper.Processor):
         elif physics_comp.velocity[0] < 0:
             physics_comp.velocity[0] = min(0,physics_comp.velocity[0] + HORIZONTAL_DECELERATION * dt)
 
+        sprint_factor = SPRINT_FACTOR if sprinting else 1
 
         # clamp velocity to maximums
-        physics_comp.velocity[0] = max(-ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type], min(ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type],physics_comp.velocity[0] + physics_comp.acceleration[0] * dt))
+        physics_comp.velocity[0] = max(-ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type]*sprint_factor, min(ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type]*sprint_factor,physics_comp.velocity[0] + physics_comp.acceleration[0] * dt * sprint_factor))
         physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1]   * dt ) 
 
         physics_comp.displacement_buffer[0] += physics_comp.velocity[0] * dt
@@ -160,7 +162,7 @@ class PhysicsSystem(esper.Processor):
                 collided = True 
                 self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,False)
         
-        if not collided and (displacement >= 1.0 or displacement <= -1.0):
+        if not collided :
             state_info_comp.collide_left = False
             state_info_comp.collide_right = False 
 
@@ -179,7 +181,7 @@ class PhysicsSystem(esper.Processor):
                 collided = True
                 self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,True)
 
-        if not collided and (displacement >= 1.0 or displacement <= -1.0):
+        if not collided :
             state_info_comp.collide_bottom = False 
             state_info_comp.collide_top = False
 
@@ -189,7 +191,8 @@ class PhysicsSystem(esper.Processor):
         direction_bit = input_comp.right - input_comp.left
         if direction_bit != 0:
             physics_comp.flip = direction_bit == -1
-        physics_comp.acceleration[0] = ENTITIES_ACCELERATION[state_info_comp.type] * direction_bit
+        
+        physics_comp.acceleration[0] = ENTITIES_ACCELERATION[state_info_comp.type] * direction_bit 
         if input_comp.up and state_info_comp.jump_count < state_info_comp.max_jump_count:
             physics_comp.velocity[1] = -ENTITIES_JUMP_SPEED[state_info_comp.type]
         
@@ -197,7 +200,7 @@ class PhysicsSystem(esper.Processor):
             input_comp.up = False
             state_info_comp.jump_count += 1
 
-        self._process_common_physics_updates(physics_comp, state_info_comp,dt)
+        self._process_common_physics_updates(physics_comp, state_info_comp,dt,sprinting = input_comp.shift)
 
         if (state_info_comp.collide_left or state_info_comp.collide_right) and not state_info_comp.collide_bottom:
             physics_comp.velocity[1] = min(physics_comp.velocity[1] , WALL_SLIDE_CAP_VELOCITY)
@@ -262,6 +265,9 @@ class RenderSystem(esper.Processor):
         self._camera_displacement_buffer = [0,0]
         self._shadow_blur_radius = 5
         self._max_hull_count = 512 
+
+        
+        self._hud = HUD(self._true_res)
 
         self._projection_transform = np.array( 
             [
@@ -868,7 +874,7 @@ class RenderSystem(esper.Processor):
 
         self._update_hulls(camera_scroll)
 
-        #self._render_rectangles(camera_scroll)
+        self._render_rectangles(camera_scroll)
 
         self._send_hull_data_to_lighting_program(render_offset)
  
