@@ -1,12 +1,13 @@
 from scripts.data import TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO,TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO,TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO,SPACE_BETWEEN_INVENTORY_ELEMENTS
-
+from scripts.new_cursor import Cursor
 
 class HUD: 
     def __init__(self,true_res:tuple[int,int])->None: 
+        
+        self.cursor = Cursor()
 
         self._true_res = true_res
         self._inven_open_state = False
-
 
         self._create_diplay_elements()
         
