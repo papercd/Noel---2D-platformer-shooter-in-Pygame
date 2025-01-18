@@ -2,7 +2,7 @@ import esper
 
 from scripts.game_state import GameState
 from scripts.game_state import GameState
-from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION
+from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY
 from pygame.rect import Rect
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
@@ -126,22 +126,7 @@ class PhysicsSystem(esper.Processor):
                     self._process_regular_tile_y_collision(physics_comp,state_info_comp,rect_tile,dt)
 
 
-    def _process_physics_updates(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,dt:float,input_comp: InputComponent =None)->None:
-
-
-        if input_comp is not None:  # for entities the physics updates of which are dependent on input.
-            direction_bit = input_comp.right - input_comp.left
-            if direction_bit != 0:
-                physics_comp.flip = direction_bit == -1
-            physics_comp.acceleration[0] = ENTITIES_ACCELERATION[state_info_comp.type] * direction_bit
-            if input_comp.up and state_info_comp.jump_count < state_info_comp.max_jump_count:
-                physics_comp.velocity[1] = -ENTITIES_JUMP_SPEED[state_info_comp.type]
-            
-                # to stop the player from jumping infinitely
-                input_comp.up = False
-                state_info_comp.jump_count += 1
-
-    
+    def _process_common_physics_updates(self,physics_comp: PhysicsComponent,state_info_comp:StateInfoComponent,dt:float,)->None: 
         physics_comp.prev_transform = physics_comp.transform
 
         # apply deceleration to horizontal velocity
@@ -150,9 +135,10 @@ class PhysicsSystem(esper.Processor):
         elif physics_comp.velocity[0] < 0:
             physics_comp.velocity[0] = min(0,physics_comp.velocity[0] + HORIZONTAL_DECELERATION * dt)
 
+
         # clamp velocity to maximums
         physics_comp.velocity[0] = max(-ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type], min(ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type],physics_comp.velocity[0] + physics_comp.acceleration[0] * dt))
-        physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1] * dt) 
+        physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1]   * dt ) 
 
         physics_comp.displacement_buffer[0] += physics_comp.velocity[0] * dt
         physics_comp.displacement_buffer[1] += physics_comp.velocity[1] * dt
@@ -192,30 +178,57 @@ class PhysicsSystem(esper.Processor):
             if physics_comp.collision_rect.colliderect(rect_tile[0]):
                 collided = True
                 self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,True)
+
         if not collided and (displacement >= 1.0 or displacement <= -1.0):
             state_info_comp.collide_bottom = False 
             state_info_comp.collide_top = False
 
-        #print(state_info_comp.collide_left,state_info_comp.collide_right,state_info_comp.collide_top,state_info_comp.collide_bottom)
 
+
+    def _process_physics_updates_for_player(self,physics_comp: PhysicsComponent,state_info_comp:StateInfoComponent,dt:float,input_comp:InputComponent)->None: 
+        direction_bit = input_comp.right - input_comp.left
+        if direction_bit != 0:
+            physics_comp.flip = direction_bit == -1
+        physics_comp.acceleration[0] = ENTITIES_ACCELERATION[state_info_comp.type] * direction_bit
+        if input_comp.up and state_info_comp.jump_count < state_info_comp.max_jump_count:
+            physics_comp.velocity[1] = -ENTITIES_JUMP_SPEED[state_info_comp.type]
         
+            # to stop the player from jumping infinitely
+            input_comp.up = False
+            state_info_comp.jump_count += 1
+
+        self._process_common_physics_updates(physics_comp, state_info_comp,dt)
+
+        if (state_info_comp.collide_left or state_info_comp.collide_right) and not state_info_comp.collide_bottom:
+            physics_comp.velocity[1] = min(physics_comp.velocity[1] , WALL_SLIDE_CAP_VELOCITY)
+        
+
+
+
+    def _process_non_player_physics_updates(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,dt:float)->None:
+        self._process_common_physics_updates(physics_comp,state_info_comp,dt)
+
+
+
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
         self._ref_tilemap =tilemap
 
     def process(self,dt:float)->None: 
         # process physics for player entity, which has an input component while the rest of the entities don't.
-        player,(player_input_comp,state_info_comp,player_physics_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent)[0]
+        player,(player_input_comp,player_state_info_comp,player_physics_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent)[0]
 
-        self._process_physics_updates(player_physics_comp,state_info_comp,dt,player_input_comp)
-
+        self._process_physics_updates_for_player(player_physics_comp,player_state_info_comp,dt,player_input_comp)
 
         for entity, (state_info_comp,physics_comp) in esper.get_components(StateInfoComponent,PhysicsComponent):
             if state_info_comp.type != "player":
-                self._process_physics_updates(physics_comp,state_info_comp,dt)
+                self._process_non_player_physics_updates(physics_comp,state_info_comp,dt)
 
 
 
-# I guess refactor the engine code to become a Render System?
+class ParticleSystem(esper.Processor):
+    pass
+
+
 class RenderSystem(esper.Processor):
 
 
