@@ -870,20 +870,20 @@ class RenderSystem(esper.Processor):
 
     def _render_fbos_to_screen_with_lighting(self,camera_scroll:tuple[int,int],interpolation_delta:float,dt:float,screen_shake:tuple[int,int] = (0,0))->None: 
         
-        self._fbo_ao.clear(0,0,0,255)
-        self._buf_lt.clear(0,0,0,255)
+        self._fbo_ao.clear(0,0,0,0)
+        self._buf_lt.clear(0,0,0,0)
 
         render_offset = (camera_scroll[0] - screen_shake[0],camera_scroll[1] - screen_shake[1])
 
-        #self._update_hulls(camera_scroll)
+        self._update_hulls(camera_scroll)
 
-        self._render_rectangles(camera_scroll)
+        #self._render_rectangles(camera_scroll)
 
-        #self._send_hull_data_to_lighting_program(render_offset)
+        self._send_hull_data_to_lighting_program(render_offset)
  
-        #self._render_to_light_buffer(interpolation_delta,dt,render_offset)
+        self._render_to_light_buffer(interpolation_delta,dt,render_offset)
 
-        #self._render_aomap()
+        self._render_aomap()
 
         self._render_background_layer()
         
