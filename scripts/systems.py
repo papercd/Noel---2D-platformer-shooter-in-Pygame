@@ -58,6 +58,7 @@ class PhysicsSystem(esper.Processor):
             state_info_comp.collide_right = True
             physics_comp.collision_rect.right = rect_tile[0].left 
             physics_comp.position[0]  = physics_comp.collision_rect.centerx 
+            
         elif physics_comp.velocity[0] < 0 :
             state_info_comp.collide_left = True 
             physics_comp.collision_rect.left = rect_tile[0].right 
@@ -157,7 +158,7 @@ class PhysicsSystem(esper.Processor):
             physics_comp.displacement_buffer[0] -= displacement
 
         for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((physics_comp.position[0]- physics_comp.size[0] //2 ,physics_comp.position[1] - physics_comp.size[1] //2),\
-                                                                           physics_comp.size):
+                                                                           physics_comp.size,dir = physics_comp.flip):
             if physics_comp.collision_rect.colliderect(rect_tile[0]):
                 collided = True 
                 self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,False)
@@ -176,10 +177,11 @@ class PhysicsSystem(esper.Processor):
         collided = False
 
         for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((physics_comp.position[0]- physics_comp.size[0] //2 ,physics_comp.position[1] - physics_comp.size[1] //2),\
-                                                                           physics_comp.size):
+                                                                           physics_comp.size,dir = physics_comp.flip):
             if physics_comp.collision_rect.colliderect(rect_tile[0]):
                 collided = True
                 self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,True)
+
 
         if not collided :
             state_info_comp.collide_bottom = False 
@@ -209,6 +211,7 @@ class PhysicsSystem(esper.Processor):
 
 
     def _process_non_player_physics_updates(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,dt:float)->None:
+        physics_comp.flip = physics_comp.velocity[0] < 0
         self._process_common_physics_updates(physics_comp,state_info_comp,dt)
 
 
@@ -867,20 +870,20 @@ class RenderSystem(esper.Processor):
 
     def _render_fbos_to_screen_with_lighting(self,camera_scroll:tuple[int,int],interpolation_delta:float,dt:float,screen_shake:tuple[int,int] = (0,0))->None: 
         
-        self._fbo_ao.clear(0,0,0,0)
-        self._buf_lt.clear(0,0,0,0)
+        self._fbo_ao.clear(0,0,0,255)
+        self._buf_lt.clear(0,0,0,255)
 
         render_offset = (camera_scroll[0] - screen_shake[0],camera_scroll[1] - screen_shake[1])
 
-        self._update_hulls(camera_scroll)
+        #self._update_hulls(camera_scroll)
 
         self._render_rectangles(camera_scroll)
 
-        self._send_hull_data_to_lighting_program(render_offset)
+        #self._send_hull_data_to_lighting_program(render_offset)
  
-        self._render_to_light_buffer(interpolation_delta,dt,render_offset)
+        #self._render_to_light_buffer(interpolation_delta,dt,render_offset)
 
-        self._render_aomap()
+        #self._render_aomap()
 
         self._render_background_layer()
         

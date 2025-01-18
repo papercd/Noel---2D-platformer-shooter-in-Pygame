@@ -365,50 +365,40 @@ class Tilemap:
         
 
 
-    def tiles_around(self,pos,size) -> list["TileInfoDataClass"]:
-        
-        tiles = []
+
     
+
+    def tiles_around(self, pos, size, dir: bool = False) -> list["TileInfoDataClass"]:
+        tiles = []
+
         # Calculate the tile coordinates of the center position
         tile_center = (int(pos[0] // self._regular_tile_size), int(pos[1] // self._regular_tile_size))
-        
+
         # Calculate the boundary coordinates of the surrounding tiles
         x_start = tile_center[0] - 1
         x_end = tile_center[0] + int(size[0] // self._regular_tile_size) + 1
         y_start = tile_center[1] - 1
         y_end = tile_center[1] + int(size[1] // self._regular_tile_size) + 1
-        
+
+        # Determine the x iteration order based on the 'dir' flag
+        x_range = range(x_start, x_end + 1) if dir else range(x_end, x_start - 1, -1)
+
         # Iterate through the surrounding tiles and check if they exist in the tilemap
-        for x in range(x_start, x_end + 1):
+        for x in x_range:
             for y in range(y_start, y_end + 1):
-                tile_key = (x,y) 
+                tile_key = (x, y)
 
                 if tile_key in self._physical_tiles:
-                    tile_general_info  = self._physical_tiles[tile_key].info
+                    tile_general_info = self._physical_tiles[tile_key].info
 
-                    if isinstance(tile_general_info,DoorTileInfoWithAnimation):
-                        pass 
-                    elif isinstance(tile_general_info,TrapDoorTileInfoWithOpenState):
-                        pass 
-                    elif isinstance(tile_general_info,LightInfo):
+                    if isinstance(tile_general_info, DoorTileInfoWithAnimation):
                         pass
-                    else: 
+                    elif isinstance(tile_general_info, TrapDoorTileInfoWithOpenState):
+                        pass
+                    elif isinstance(tile_general_info, LightInfo):
+                        pass
+                    else:
                         tiles.append(self._physical_tiles[tile_key])
-
-                    # TODO : differentiate tile info objects based on tile type
-                    """
-                    if tile_general_info.type.endswith('door') and not tile.open:
-                        # Check whether there is a door tile above, and if there isn't, add it to the list. 
-                        if (x,y) in self._physical_tiles:
-                            if not self._physical_tiles[(x,y)].type.endswith('door'):
-                                tiles.append(self._physical_tiles[tile_key])
-                        else: 
-                            tiles.append(self._physical_tiles[tile_key])
-                    else: 
-                        tiles.append(self._physical_tiles[tile_key])
-                    """
-                
-                # TODO: add grass tiles later.  
 
         return tiles
 
@@ -427,9 +417,9 @@ class Tilemap:
         return coor  in self._physical_tiles\
                 and self._physical_tiles[coor][0].type in PHYSICS_APPLIED_TILE_TYPES
 
-    def query_rect_tile_pair_around_ent(self,pos,size)->list[tuple[Rect,"TileInfoDataClass"]]:
+    def query_rect_tile_pair_around_ent(self,pos,size,dir:bool = False)->list[tuple[Rect,"TileInfoDataClass"]]:
         surrounding_rects = []
-        tiles_around = self.tiles_around(pos,size)
+        tiles_around = self.tiles_around(pos,size,dir)
         
         for tile_data in tiles_around:
             if tile_data.info.type in PHYSICS_APPLIED_TILE_TYPES: 

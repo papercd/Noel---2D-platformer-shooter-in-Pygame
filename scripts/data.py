@@ -142,7 +142,7 @@ class AnimationDataCollection:
 """ Animation Data """
 # physics updates are done every 1/60 seconds, the 60 is multiplied to the physics calculations 
 # so the number in front of the * corresponds to the unit of distance in pixels.
-SPRINT_FACTOR = 1.2
+SPRINT_FACTOR = 1.5
 WALL_SLIDE_CAP_VELOCITY = 1 * 60 
 GRAVITY = 35 * 60   # 20 pixels per second squared
 TERMINAL_VELOCITY = 10 * 60     # 20 pixels per second
