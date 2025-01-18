@@ -1,10 +1,7 @@
 from collections import namedtuple
 from dataclasses import dataclass 
 from my_pygame_light2d.light import PointLight
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: 
-    from scripts.new_tilemap import Tilemap 
 
 RGBA_tuple = namedtuple('RGBA_tuple',['r','g','b','a'])
 TileTexcoordsKey = namedtuple('TileTexcoordsKey',['type','relative_pos_ind','variant'])
@@ -145,6 +142,8 @@ class AnimationDataCollection:
 """ Animation Data """
 # physics updates are done every 1/60 seconds, the 60 is multiplied to the physics calculations 
 # so the number in front of the * corresponds to the unit of distance in pixels.
+SPRINT_FACTOR = 1.5
+WALL_SLIDE_CAP_VELOCITY = 1 * 60 
 GRAVITY = 35 * 60   # 20 pixels per second squared
 TERMINAL_VELOCITY = 10 * 60     # 20 pixels per second
 HORIZONTAL_DECELERATION = 35 * 60    #15 pixels per second squared
@@ -438,68 +437,24 @@ TILE_NEIGHBOR_MAP = {
 
 
 
-def get_tile_rectangle(tile_info:TileInfo,tile_size:int,physical_tiles:"Tilemap.physical_tiles") -> tuple[int,int,int,int]:
-    """
-    Get the rectangle (not pygame.Rect nor Hull) for a tile.
+"""  HUD positioning numbers  """
 
-    :param tile_info (TileInfo) -the tile information.
-    :param tile_size (int) - the regular tile dimensions of the tilemap. 
+SPACE_BETWEEN_INVENTORY_ELEMENTS = 5
 
-    :return rectangle (tuple[int,int,int,int])
+ITEM_TRUE_DIMENSIONS = (16,16)
+TEXT_TRUE_DIMENSIONS = (16,16)
 
-    """
+HEALTH_BAR_TRUE_DIMENSIONS = (1,1)
+STAMINA_BAR_TRUE_DIMENSIONS = (1,1)
 
-    rel_pos,variant = tile_info.relative_pos_ind,tile_info.variant
+TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO = 1 / 3
+TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO =  1 / 4
 
-    x1 = tile_info.tile_pos[0] * tile_size
-    x2 = (tile_info.tile_pos[0] + 1 ) * tile_size
-    y1 = tile_info.tile_pos[1] * tile_size
-    y2 = (tile_info.tile_pos[1] +1 ) * tile_size
+TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO = 1 / 40
 
-    if tile_info.type.endswith('stairs') :
-        if rel_pos == 0:
-            return  [
-                (x1+2,y2-2,x2,y2),
-                (x1+6,y2-6,x2,y2-2),
-                (x2-5,y1+5,x2,y1+10)
-            ]
-        elif rel_pos == 1:
-            return  [
-                (x1,y2-2,x2-2,y2),
-                (x1,y2-6,x2-6,y2-2),
-                (x1,y1+5,x1+5,y1+10)
-            ]
-        else:
-            if variant == 0:
-                return [(x1,y1,x2,y2)]
-            else: 
-                return [(x1,y1+HULL_OUTER_EDGE_OFFSET,x2,y2)]
-    elif tile_info.type.endswith('door'):
-        pass 
-    else: 
+# closed items rows, cols (2,5)
+# showing items rows, cols (1,5)
+# weapon rows, cols (1,4)
 
-        open_side_offsets = [(1, 0), (-1, 0), (0, 1), (0, -1)]
-        neighbor_offsets = TILE_NEIGHBOR_MAP[tile_info.type][rel_pos]
-
-        # Create a new list with only the offsets not in neighbor_offsets
-        open_side_offsets = [offset for offset in open_side_offsets if offset not in neighbor_offsets]
-
-        axis =[x1,x2,y1,y2]
-        for offset in open_side_offsets:
-            if (tile_info.tile_pos[0] +offset[0],tile_info.tile_pos[1] + offset[1]) in physical_tiles:
-                neightbor_tile_data = physical_tiles [ (tile_info.tile_pos[0] +offset[0],tile_info.tile_pos[1] + offset[1])]
-                neighbor_tile_general_info = neightbor_tile_data.info
-                if neighbor_tile_general_info.type == 'lights' or neighbor_tile_general_info.type.endswith('stairs'):
-                    axis_ind = OPEN_SIDE_OFFSET_TO_AXIS_NUM[offset]
-                    dir = -offset[0] if offset[1] == 0 else -offset[1]
-                    axis[axis_ind] += dir * HULL_OUTER_EDGE_OFFSET
-
-                
-            else: 
-                axis_ind = OPEN_SIDE_OFFSET_TO_AXIS_NUM[offset]
-                dir = -offset[0] if offset[1] == 0 else -offset[1]
-                axis[axis_ind] += dir * HULL_OUTER_EDGE_OFFSET
-
-        return [(axis[0],axis[2],axis[1],axis[3])]
 
 

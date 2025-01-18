@@ -17,7 +17,7 @@ class PhysicsComponent:
     origin :   vec2  = field(default_factory= lambda:vec2(0,0))         # local origin coordinates (0,0) is topleft. 
     velocity:  vec2  = field(default_factory= lambda:vec2(0,0))
     acceleration: vec2 = field(default_factory= lambda:vec2(0,GRAVITY))
-    
+
     collision_rect : Rect = field(default_factory= lambda: Rect(0,0,1,1))
     displacement_buffer : vec2 = field(default_factory= lambda: vec2(0,0))
     
@@ -45,7 +45,7 @@ class PhysicsComponent:
     
 
 @component 
-class HUDComponent: 
+class WeaponHolderComponent: 
     pass
 
 
@@ -78,4 +78,10 @@ class InputComponent:
 class RenderComponent:
     animation_data_collection : AnimationDataCollection
     vertices : np.array = field(default_factory= lambda: np.zeros(6))
+
+
+
+@component 
+class ParticleEmiiterComponent: 
+    pass 
 

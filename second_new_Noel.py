@@ -421,6 +421,7 @@ class Noel():
             self._update_render() 
 
             if hot_reload: 
+                print("check")
                 self._hot_reload()
         
 

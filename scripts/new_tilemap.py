@@ -1,5 +1,5 @@
-from scripts.data import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES,TileInfo,LightInfo,DoorInfo,DoorAnimation,\
-                            DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,RegularTileInfo,LightTileInfo,get_tile_rectangle, PHYSICS_APPLIED_TILE_TYPES
+from scripts.data import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES,TileInfo,LightInfo,DoorInfo,DoorAnimation,HULL_OUTER_EDGE_OFFSET,TILE_NEIGHBOR_MAP,OPEN_SIDE_OFFSET_TO_AXIS_NUM,\
+                            DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,RegularTileInfo,LightTileInfo, PHYSICS_APPLIED_TILE_TYPES
 
 from scripts.spatial_grid import SpatialGrid
 from scripts.lists import ambientNodeList,ambientNode
@@ -231,7 +231,62 @@ class Tilemap:
 
 
     def _create_rectangles(self,tile_general_info: TileInfo) -> tuple[int,int,int,int]:
-        return get_tile_rectangle(tile_general_info,self._regular_tile_size,self._physical_tiles)
+
+        rel_pos,variant = tile_general_info.relative_pos_ind,tile_general_info.variant
+        tile_size = self.regular_tile_size
+
+        x1 = tile_general_info.tile_pos[0] * tile_size
+        x2 = (tile_general_info.tile_pos[0] + 1 ) * tile_size
+        y1 = tile_general_info.tile_pos[1] * tile_size
+        y2 = (tile_general_info.tile_pos[1] +1 ) * tile_size
+
+        if tile_general_info.type.endswith('stairs') :
+            if rel_pos == 0:
+                return  [
+                    (x1+2,y2-2,x2,y2),
+                    (x1+6,y2-6,x2,y2-2),
+                    (x2-5,y1+5,x2,y1+10)
+                ]
+            elif rel_pos == 1:
+                return  [
+                    (x1,y2-2,x2-2,y2),
+                    (x1,y2-6,x2-6,y2-2),
+                    (x1,y1+5,x1+5,y1+10)
+                ]
+            else:
+                if variant == 0:
+                    return [(x1,y1,x2,y2)]
+                else: 
+                    return [(x1,y1+HULL_OUTER_EDGE_OFFSET,x2,y2)]
+        elif tile_general_info.type.endswith('door'):
+            pass 
+        else: 
+
+            open_side_offsets = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+            neighbor_offsets = TILE_NEIGHBOR_MAP[tile_general_info.type][rel_pos]
+
+            # Create a new list with only the offsets not in neighbor_offsets
+            open_side_offsets = [offset for offset in open_side_offsets if offset not in neighbor_offsets]
+
+            axis =[x1,x2,y1,y2]
+            for offset in open_side_offsets:
+                if (tile_general_info.tile_pos[0] +offset[0],tile_general_info.tile_pos[1] + offset[1]) in self._physical_tiles:
+                    neightbor_tile_data = self._physical_tiles[ (tile_general_info.tile_pos[0] +offset[0],tile_general_info.tile_pos[1] + offset[1])]
+                    neighbor_tile_general_info = neightbor_tile_data.info
+                    if neighbor_tile_general_info.type == 'lights' or neighbor_tile_general_info.type.endswith('stairs'):
+                        axis_ind = OPEN_SIDE_OFFSET_TO_AXIS_NUM[offset]
+                        dir = -offset[0] if offset[1] == 0 else -offset[1]
+                        axis[axis_ind] += dir * HULL_OUTER_EDGE_OFFSET
+
+                    
+                else: 
+                    axis_ind = OPEN_SIDE_OFFSET_TO_AXIS_NUM[offset]
+                    dir = -offset[0] if offset[1] == 0 else -offset[1]
+                    axis[axis_ind] += dir * HULL_OUTER_EDGE_OFFSET
+
+            return [(axis[0],axis[2],axis[1],axis[3])]
+
+
         
           
     def _create_hulls(self)->None:
@@ -310,50 +365,40 @@ class Tilemap:
         
 
 
-    def tiles_around(self,pos,size) -> list["TileInfoDataClass"]:
-        
-        tiles = []
+
     
+
+    def tiles_around(self, pos, size, dir: bool = False) -> list["TileInfoDataClass"]:
+        tiles = []
+
         # Calculate the tile coordinates of the center position
         tile_center = (int(pos[0] // self._regular_tile_size), int(pos[1] // self._regular_tile_size))
-        
+
         # Calculate the boundary coordinates of the surrounding tiles
         x_start = tile_center[0] - 1
         x_end = tile_center[0] + int(size[0] // self._regular_tile_size) + 1
         y_start = tile_center[1] - 1
         y_end = tile_center[1] + int(size[1] // self._regular_tile_size) + 1
-        
+
+        # Determine the x iteration order based on the 'dir' flag
+        x_range = range(x_start, x_end + 1) if dir else range(x_end, x_start - 1, -1)
+
         # Iterate through the surrounding tiles and check if they exist in the tilemap
-        for x in range(x_start, x_end + 1):
+        for x in x_range:
             for y in range(y_start, y_end + 1):
-                tile_key = (x,y) 
+                tile_key = (x, y)
 
                 if tile_key in self._physical_tiles:
-                    tile_general_info  = self._physical_tiles[tile_key].info
+                    tile_general_info = self._physical_tiles[tile_key].info
 
-                    if isinstance(tile_general_info,DoorTileInfoWithAnimation):
-                        pass 
-                    elif isinstance(tile_general_info,TrapDoorTileInfoWithOpenState):
-                        pass 
-                    elif isinstance(tile_general_info,LightInfo):
+                    if isinstance(tile_general_info, DoorTileInfoWithAnimation):
                         pass
-                    else: 
+                    elif isinstance(tile_general_info, TrapDoorTileInfoWithOpenState):
+                        pass
+                    elif isinstance(tile_general_info, LightInfo):
+                        pass
+                    else:
                         tiles.append(self._physical_tiles[tile_key])
-
-                    # TODO : differentiate tile info objects based on tile type
-                    """
-                    if tile_general_info.type.endswith('door') and not tile.open:
-                        # Check whether there is a door tile above, and if there isn't, add it to the list. 
-                        if (x,y) in self._physical_tiles:
-                            if not self._physical_tiles[(x,y)].type.endswith('door'):
-                                tiles.append(self._physical_tiles[tile_key])
-                        else: 
-                            tiles.append(self._physical_tiles[tile_key])
-                    else: 
-                        tiles.append(self._physical_tiles[tile_key])
-                    """
-                
-                # TODO: add grass tiles later.  
 
         return tiles
 
@@ -372,9 +417,9 @@ class Tilemap:
         return coor  in self._physical_tiles\
                 and self._physical_tiles[coor][0].type in PHYSICS_APPLIED_TILE_TYPES
 
-    def query_rect_tile_pair_around_ent(self,pos,size)->list[tuple[Rect,"TileInfoDataClass"]]:
+    def query_rect_tile_pair_around_ent(self,pos,size,dir:bool = False)->list[tuple[Rect,"TileInfoDataClass"]]:
         surrounding_rects = []
-        tiles_around = self.tiles_around(pos,size)
+        tiles_around = self.tiles_around(pos,size,dir)
         
         for tile_data in tiles_around:
             if tile_data.info.type in PHYSICS_APPLIED_TILE_TYPES: 
