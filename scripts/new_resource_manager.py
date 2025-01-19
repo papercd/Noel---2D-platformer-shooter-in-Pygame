@@ -96,25 +96,21 @@ class ResourceManager:
             self.texture_atlasses[atlas_name] = load_texture(TEXTURE_ATLAS_NAMES_TO_PATH[atlas_name],self._ctx)
 
 
-
-    def _create_ui_element_resources(self)->None: 
-        self.ui_element_texcoords = {}
-
-        # cursor ndc vertices
-
+    def get_cursor_ndc_vertices_and_buffer(self)->list[np.array,"Context.buffer"]: 
         x = 0. 
         y = 0. 
         w = 2. * 9 / self._true_res[0]
         h = 2. * 10 / self._true_res[1] 
 
-        self.cursor_ndc_vertices = np.array([(x, y-h), (x + w, y-h), (x, y),
+        cursor_ndc_vertices = np.array([(x, y-h), (x + w, y-h), (x, y),
                             (x, y), (x + w, y - h), (x + w, y)], dtype=np.float32)
 
-        #self.cursor_ndc_vertices = np.array([(x, y), (x + w, y), (x, y - h),
-        #                    (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
-        
-    
-        self.cursor_ndc_vertices_buffer = self._ctx.buffer(data= self.cursor_ndc_vertices,dynamic=True)
+        return [np.array([(x, y-h), (x + w, y-h), (x, y), (x, y), (x + w, y - h), (x + w, y)], dtype=np.float32), 
+                    self._ctx.buffer(data= cursor_ndc_vertices,dynamic=True)]
+                           
+
+    def _create_ui_element_resources(self)->None: 
+        self.ui_element_texcoords = {}
 
 
         for ui_element in UI_ATLAS_POSITIONS_AND_SIZES: 
@@ -149,7 +145,6 @@ class ResourceManager:
         # load the player entity texcoords for now
 
 
-
     def _create_ui_element_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int])->np.array: 
         x =  (texture_atlas_position[0]) / self.texture_atlasses['ui'].size[0]
         y = (texture_atlas_position[1]) / self.texture_atlasses['ui'].size[1]
@@ -164,8 +159,6 @@ class ResourceManager:
         return np.array([p3, p4, p1,
                         p1, p4, p2], dtype=np.float32)
        
-
-
 
     def _create_entity_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int],animation_frame:int)->np.array:
         x =  (texture_atlas_position[0] + animation_frame * texture_size[0]) / self.texture_atlasses['entities'].size[0]
@@ -251,11 +244,6 @@ class ResourceManager:
 
 
 
-
-
-
-
-
     def get_tile_colors(self,physical_tiles:"Tilemap.physical_tiles")->dict["TileColorKey","RGBA_tuple"]:
 
         tile_atlas_byte_data = self.texture_atlasses["tiles"].read(alignment=4)
@@ -333,3 +321,12 @@ class ResourceManager:
 
         return np.array([(x, y), (x + w, y), (x, y - h),
                 (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)
+    
+
+    def precompute_hud_display_elements_vertices(self,hp_bar_dim:tuple[int,int],sp_bar_dim:tuple[int,int],
+                                                 wp_inv_cell_dim:tuple[int,int],op_itm_inv_cell_dim:tuple[int,int],
+                                                 hidden_itm_inv_cell_dim:tuple[int,int],curr_wpn_display_cell_dim:tuple[int,int])->None:
+
+        # create the ndc vertices for all the different cell types. 
+
+        pass

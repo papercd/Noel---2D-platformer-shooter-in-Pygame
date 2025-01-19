@@ -1,9 +1,14 @@
 from pygame import Rect
 from pygame.mouse import get_pos
 from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
+from scripts.new_resource_manager import ResourceManager
 import numpy as np
 class Cursor: 
     def __init__(self,in_editor :bool = False)-> None:
+
+        self._ref_rm = ResourceManager.get_instance()
+
+        self.ndc_vertices,self.ndc_vertices_buffer = self._ref_rm.get_cursor_ndc_vertices_and_buffer()
 
         self.in_editor = in_editor 
         self.topleft = [0,0]  
