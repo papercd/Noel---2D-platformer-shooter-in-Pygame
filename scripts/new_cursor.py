@@ -1,19 +1,24 @@
 from pygame import Rect
 from pygame.mouse import get_pos
 from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
+from scripts.new_resource_manager import ResourceManager
 import numpy as np
 class Cursor: 
     def __init__(self,in_editor :bool = False)-> None:
 
+        self._ref_rm = ResourceManager.get_instance()
+
+        self.ndc_vertices,self.ndc_vertices_buffer = self._ref_rm.get_cursor_ndc_vertices_and_buffer()
+
         self.in_editor = in_editor 
-        self.topleft = np.zeros(shape=(2,),dtype=np.float32)  
+        self.topleft = [0,0]  
         self.text = None 
         self.size = (9,10)
         self.interacting = False 
         self.item = None
         self.state = "default"
         self.prev_state = "default"
-        self.box = Rect(0,0,1,1)
+        self.box = Rect(*self.topleft,1,1)
         self.cooldown = 10 * TIME_FOR_ONE_LOGICAL_STEP
         self.pressed=  0 
         self.magnet = False 
@@ -30,9 +35,6 @@ class Cursor:
         new_topleft = get_pos()
         self.topleft[0] = new_topleft[0] // display_scale_ratio
         self.topleft[1] = new_topleft[1] // display_scale_ratio
-
-        self.box.x += int(self.topleft[0])
-        self.box.y += int(self.topleft[1])         
 
 
         if not self.in_editor:

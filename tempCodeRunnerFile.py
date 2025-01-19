@@ -1,1 +1,1 @@
-
+screen_res
