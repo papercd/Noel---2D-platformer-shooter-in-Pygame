@@ -586,9 +586,6 @@ class RenderSystem(esper.Processor):
 
 
 
-
-
-
     def cursor_state_change_callback(self,new_cursor_state:str)->None: 
         # change the texcoords uniform in the cursor draw program according to the new cursor state 
         self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords['cursor'][new_cursor_state]
@@ -936,7 +933,7 @@ class RenderSystem(esper.Processor):
 
         self._update_hulls(camera_scroll)
 
-        #self._render_rectangles(camera_scroll)
+        self._render_rectangles(camera_scroll)
 
         self._send_hull_data_to_lighting_program(render_offset)
  
