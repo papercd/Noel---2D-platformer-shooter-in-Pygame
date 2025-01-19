@@ -106,10 +106,15 @@ class ResourceManager:
         y = 0. 
         w = 2. * 9 / self._true_res[0]
         h = 2. * 10 / self._true_res[1] 
-        self.cursor_ndc_vertices = np.array([(x, y), (x + w, y), (x, y - h),
-                            (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
+
+        self.cursor_ndc_vertices = np.array([(x, y-h), (x + w, y-h), (x, y),
+                            (x, y), (x + w, y - h), (x + w, y)], dtype=np.float32)
+
+        #self.cursor_ndc_vertices = np.array([(x, y), (x + w, y), (x, y - h),
+        #                    (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
         
-        self.cursor_position_buffer = self._ctx.buffer(reserve=2 * 4,dynamic=True)
+    
+        self.cursor_ndc_vertices_buffer = self._ctx.buffer(data= self.cursor_ndc_vertices,dynamic=True)
 
 
         for ui_element in UI_ATLAS_POSITIONS_AND_SIZES: 

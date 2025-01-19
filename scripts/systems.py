@@ -358,13 +358,12 @@ class RenderSystem(esper.Processor):
                                             fragment_shader= blur_frag_src)
         
 
-        self._prog_cursor_draw['vertices'] = self._ref_rm.cursor_ndc_vertices
         self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords['cursor']['default']
 
         self._vao_cursor_draw = self._ctx.vertex_array(
             self._prog_cursor_draw,
             [
-                (self._ref_rm.cursor_position_buffer, '2f' , 'in_position')
+                (self._ref_rm.cursor_ndc_vertices_buffer, '2f' , 'in_position')
             ]
         )
 
@@ -561,7 +560,8 @@ class RenderSystem(esper.Processor):
         
         # render the cursor 
         self._hud.cursor.update(self._true_to_native_ratio,dt,self.cursor_state_change_callback)
-        self._ref_rm.cursor_position_buffer.write(self._hud.cursor.topleft.tobytes())
+
+        self._write_cursor_position_to_buffer()
 
         self._fbo_fg.use()
         self._ref_rm.texture_atlasses['ui'].use()
@@ -569,6 +569,25 @@ class RenderSystem(esper.Processor):
         self._vao_cursor_draw.render()
 
     
+    def _write_cursor_position_to_buffer(self)->None: 
+        x = 2. * (self._hud.cursor.topleft[0] )/ self._true_res[0]- 1.
+        y = 1. - 2. * (self._hud.cursor.topleft[1] )/ self._true_res[1]
+        w = 2. * 9 / self._true_res[0]
+        h = 2. * 10 / self._true_res[1]
+
+        self._ref_rm.cursor_ndc_vertices[0] = (x,y-h)
+        self._ref_rm.cursor_ndc_vertices[1] = (x+w,y-h)
+        self._ref_rm.cursor_ndc_vertices[2] = (x,y)
+        self._ref_rm.cursor_ndc_vertices[3] = (x,y)
+        self._ref_rm.cursor_ndc_vertices[4] = (x+w,y-h)
+        self._ref_rm.cursor_ndc_vertices[5] = (x+w,y)
+
+        self._ref_rm.cursor_ndc_vertices_buffer.write(self._ref_rm.cursor_ndc_vertices.tobytes())
+
+
+
+
+
 
     def cursor_state_change_callback(self,new_cursor_state:str)->None: 
         # change the texcoords uniform in the cursor draw program according to the new cursor state 
@@ -973,6 +992,8 @@ class RenderSystem(esper.Processor):
         R,G,B,A =   normalize_color_arguments(R,G,B,A,)
         self._ctx.screen.clear(0,0,0,255)
         self._fbo_bg.clear(R,G,B,A)
+        self._fbo_fg.clear(R,G,B,A)
+        
 
 
 

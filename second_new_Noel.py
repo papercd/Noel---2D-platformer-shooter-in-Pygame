@@ -340,7 +340,7 @@ class Noel():
 
     def _update_render(self):
         self._frame_count = (self._frame_count+1) %360
-        self._render_system.clear(0,0,0,255)
+        self._render_system.clear(0,0,0,0)
         self._dt = min(self._clock.tick() / 1000.0,0.1)
         self._time_accumulator += self._dt
 
