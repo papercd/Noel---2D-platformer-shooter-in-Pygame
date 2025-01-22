@@ -345,6 +345,10 @@ class RenderSystem(esper.Processor):
         self._tile_draw_prog = self._ctx.program(vertex_shader=tile_draw_vert_src,
                                                          fragment_shader= tile_draw_frag_src)
         
+        self._opaque_ui_draw_prog = self._ctx.program(vertex_shader=vertex_src,
+                                                      fragment_shader= fragment_src)
+
+        
         self._prog_mask = self._ctx.program(vertex_shader= vertex_src,
                                             fragment_shader=mask_frag_src)
         
@@ -367,13 +371,13 @@ class RenderSystem(esper.Processor):
             ]
         )
 
-        """
         self._vao_opaque_ui_draw = self._ctx.vertex_array(
-            self._to_screen_draw_prog,
+            self._opaque_ui_draw_prog,
             [
-                ()
+                (self._hud.opqaue_vertices_buffer, '2f' ,'vertexPos'),
+                (self._hud.opaque_texcoords_buffer, '2f', 'vertexTexCoord')
             ]
-        )"""
+        )
 
         
     
@@ -562,11 +566,10 @@ class RenderSystem(esper.Processor):
             self._vao_physical_tiles_draw.render(vertices=6,instances= physical_tile_instances)
 
     def _render_HUD_to_fg_fbo(self,dt:float)->None: 
-        
-        
-        # TODO: render the inventory 
-
-
+        # TODO: render the opaque hud elements
+        self._ref_rm.texture_atlasses['ui'].use()
+        self._fbo_fg.use()
+        self._vao_opaque_ui_draw.render()  
 
 
         # render the cursor 
@@ -942,7 +945,7 @@ class RenderSystem(esper.Processor):
 
         self._update_hulls(camera_scroll)
 
-        self._render_rectangles(camera_scroll)
+        #self._render_rectangles(camera_scroll)
 
         self._send_hull_data_to_lighting_program(render_offset)
  

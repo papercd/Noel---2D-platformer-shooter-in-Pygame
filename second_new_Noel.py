@@ -6,6 +6,7 @@ from moderngl import create_context
 from screeninfo import get_monitors
 
 import scripts.data
+import scripts.second_HUD
 import scripts.systems
 
 from scripts.game_state import GameState
@@ -65,8 +66,10 @@ class Noel():
     def _hot_reload(self)->None: 
         # reload systems module
         importlib.reload(scripts.data)
+        importlib.reload(scripts.second_HUD)
         importlib.reload(scripts.systems)
 
+    
         from scripts.systems import PhysicsSystem, StateSystem,RenderSystem, InputHandler 
         # reinitialize systems
         self._physics_system = PhysicsSystem()
@@ -421,7 +424,6 @@ class Noel():
             self._update_render() 
 
             if hot_reload: 
-                print("check")
                 self._hot_reload()
         
 
