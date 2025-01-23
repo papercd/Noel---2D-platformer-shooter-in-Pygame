@@ -9,8 +9,10 @@ class Cursor:
         self._ref_rm = ResourceManager.get_instance()
 
         self.ndc_vertices,self.ndc_vertices_buffer = self._ref_rm.get_cursor_ndc_vertices_and_buffer()
-
+        
+        self.ref_prev_hovered_cell = None
         self.ref_hovered_cell = None
+
         self.in_editor = in_editor 
         self.topleft = [0,0]  
         self.text = None 
@@ -31,7 +33,7 @@ class Cursor:
     def set_cooldown(self) -> None:
         self.cooldown = 10 * TIME_FOR_ONE_LOGICAL_STEP
 
-    def update(self,display_scale_ratio:int,dt:float,cursor_state_change_callback)-> None:
+    def update(self,display_scale_ratio:int,dt:float,cursor_state_change_callback:"function")-> None:
  
         new_topleft = get_pos()
         self.topleft[0] = new_topleft[0] // display_scale_ratio

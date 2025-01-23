@@ -157,14 +157,16 @@ class HUD:
                 opaque_texcoords_write_offset += 6*4*2
 
 
+    def cursor_cell_hover_state_change_callback(self)->None: 
+        pass
 
-    def update(self,dt:float,cursor_state_change_callback,cursor_cell_hover_callback)->None:
+
+
+    def update(self,dt:float,cursor_state_change_callback:"function",cursor_cell_hover_callback:"function")->None:
         # cursor update 
         self.cursor.update(self._true_to_native_ratio,dt,cursor_state_change_callback)
 
         # TODO: stamina, health bar updates
 
         # inventory updates 
-        self._items_engine.update(self.cursor,self.inven_open_state)
-
-        pass
+        self._items_engine.update(self.cursor,self.inven_open_state,cursor_cell_hover_callback)

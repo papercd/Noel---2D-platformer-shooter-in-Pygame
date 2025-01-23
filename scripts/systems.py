@@ -559,7 +559,7 @@ class RenderSystem(esper.Processor):
             self._vao_physical_tiles_draw.render(vertices=6,instances= physical_tile_instances)
 
     def _render_HUD_to_fg_fbo(self,dt:float)->None: 
-        self._ref_hud.update(dt,self.cursor_state_change_callback,self._cursor_cell_hover_state_change_callback)
+        self._ref_hud.update(dt,self.cursor_state_change_callback,self._ref_hud.cursor_cell_hover_state_change_callback)
         
         # TODO: render the opaque hud elements
         self._ref_rm.texture_atlasses['ui'].use()
@@ -588,10 +588,6 @@ class RenderSystem(esper.Processor):
         self._ref_hud.cursor.ndc_vertices[5] = (x+w,y)
 
         self._ref_hud.cursor.ndc_vertices_buffer.write(self._ref_hud.cursor.ndc_vertices.tobytes())
-
-
-    def _cursor_cell_hover_state_change_callback(self)->None:
-        pass
 
 
     def cursor_state_change_callback(self,new_cursor_state:str)->None: 

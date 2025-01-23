@@ -120,7 +120,7 @@ class Inventory:
                             self.add_item(item.copy())
                         return False
 
-    def update(self, inventory_list, cursor:"Cursor",inven_open_state:bool)->bool:
+    def update(self, inventory_list, cursor:"Cursor",inven_open_state:bool,cursor_hover_state_change_callback:"function")->bool:
         inven_active = ( not self._expandable ) or (self._expandable and inven_open_state)
 
         interacting = False
@@ -137,8 +137,11 @@ class Inventory:
         for i, row in enumerate(self._cells):
             for j, cell in enumerate(row):
                 cell_interact =cell.update(self._stack_limit,inventory_list,cursor,self._cur_opacity)
-                interacting = cell_interact or interacting   
+                interacting = cell_interact or interacting  
 
+        if cursor.ref_hovered_cell != cursor.ref_prev_hovered_cell:
+            print("check")
+            cursor.ref_prev_hovered_cell = cursor.ref_hovered_cell
             
         return interacting
         
@@ -185,7 +188,7 @@ class WeaponInventory(Inventory):
 
             return weapon 
 
-    def update(self,cursor:"Cursor",inven_open_state:bool)->bool:
+    def update(self,cursor:"Cursor",inven_open_state:bool,cursor_hover_state_change_callback:"function")->bool:
         inven_active = ( not self._expandable ) or (self._expandable and inven_open_state)
         
         interacting = False
@@ -210,15 +213,15 @@ class InventoryEngine:
         for i, inventory in enumerate(self._inventory_list):
             inventory.set_ind(i)
 
-    def update(self,cursor:"Cursor",inven_open_state:bool)->None:
+    def update(self,cursor:"Cursor",inven_open_state:bool,cursor_hover_state_change_callback:"function")->None:
 
         interacting = False 
 
         for inventory in self._inventory_list:
             if inventory._name == 'item':
-                interact_check = inventory.update(self._inventory_list,cursor,inven_open_state)
+                interact_check = inventory.update(self._inventory_list,cursor,inven_open_state,cursor_hover_state_change_callback)
             else: 
-                interact_check =inventory.update(cursor,inven_open_state)
+                interact_check =inventory.update(cursor,inven_open_state,cursor_hover_state_change_callback)
             interacting = interact_check or interacting 
 
         if not interacting: cursor.ref_hovered_cell = None
