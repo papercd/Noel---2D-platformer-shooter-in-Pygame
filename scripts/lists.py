@@ -169,11 +169,11 @@ class WeaponInvenList(DoublyLinkedList):
                     break 
 
 
-    def update(self,stack_limit:int,cursor:"Cursor",opacity:int,player:"Player")->None:
+    def update(self,stack_limit:int,cursor:"Cursor",opacity:int)->None:
         current = self.head
 
         while current:
-            current.update(stack_limit,cursor,opacity,player)
+            current.update(stack_limit,cursor,opacity)
             current = current.next
 
 class WeaponNode:
@@ -224,7 +224,7 @@ class WeaponNode:
         return (left_node,right_node)
     
 
-    def update(self,stack_limit:int,cursor:"Cursor",opacity:int,player:"Player")->None:
+    def update(self,stack_limit:int,cursor:"Cursor",opacity:int)->None:
             if cursor.box.colliderect(self._rect):
                 self._offset = (-1,-1)
                 self._hovered = True 

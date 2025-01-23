@@ -7,10 +7,11 @@ from scripts.new_inventory import Inventory,InventoryEngine,WeaponInventory
 import numpy as np 
 class HUD:
 
-    def __init__(self,true_res:tuple[int,int])->None: 
+    def __init__(self,true_res:tuple[int,int],true_to_native_ratio:int)->None: 
         self._ref_rm = ResourceManager.get_instance()
         self._true_res = true_res
- 
+        self._true_to_native_ratio = true_to_native_ratio
+
         self.inven_open_state = False
         self.cursor = Cursor()
 
@@ -68,10 +69,10 @@ class HUD:
         self._inven_list= [
             Inventory('item',*self.open_item_inventory_rows_cols,self.open_item_inventory_topleft,(self.open_item_inventory_cell_length,self.open_item_inventory_cell_length),SPACE_BETWEEN_INVENTORY_CELLS,
                       16,expandable = False),
-            Inventory('item',*self.hidden_item_inventory_rows_cols,self.hidden_item_inventory_topleft,(self.hidden_item_inventory_cell_length,self.hidden_item_inventory_cell_length),SPACE_BETWEEN_INVENTORY_CELLS,
-                      16, expandable= True),
-            WeaponInventory(*self.weapon_inventory_rows_cols,self.weapon_inventory_topleft,self.weapon_inventory_cell_dim,SPACE_BETWEEN_INVENTORY_CELLS,
-                            1,expandable= True)
+            #Inventory('item',*self.hidden_item_inventory_rows_cols,self.hidden_item_inventory_topleft,(self.hidden_item_inventory_cell_length,self.hidden_item_inventory_cell_length),SPACE_BETWEEN_INVENTORY_CELLS,
+            #          16, expandable= True),
+            #WeaponInventory(*self.weapon_inventory_rows_cols,self.weapon_inventory_topleft,self.weapon_inventory_cell_dim,SPACE_BETWEEN_INVENTORY_CELLS,
+            #                1,expandable= True)
         ]
 
         self._items_engine = InventoryEngine(self._inven_list)
@@ -157,7 +158,10 @@ class HUD:
 
 
 
-    def update_inventories(self)->None:
+    def update(self,dt:float,cursor_state_change_callback,cursor_cell_hover_callback)->None:
+        # cursor update 
+        self.cursor.update(self._true_to_native_ratio,dt,cursor_state_change_callback)
+
         # TODO: stamina, health bar updates
 
         # inventory updates 

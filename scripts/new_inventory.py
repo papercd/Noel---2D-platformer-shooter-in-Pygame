@@ -126,9 +126,6 @@ class Inventory:
         interacting = False
 
         if inven_active:
-
-            interacting  = self._rect.colliderect(cursor.box)
-
             self._done_open = min(5,self._done_open +1)
         else:
             self._done_open = max(0,self._done_open -1)
@@ -139,8 +136,8 @@ class Inventory:
 
         for i, row in enumerate(self._cells):
             for j, cell in enumerate(row):
-                cell.update(self._stack_limit,inventory_list,cursor,self._cur_opacity)
-                                 
+                cell_interact =cell.update(self._stack_limit,inventory_list,cursor,self._cur_opacity)
+                interacting = cell_interact or interacting   
 
             
         return interacting
@@ -188,7 +185,7 @@ class WeaponInventory(Inventory):
 
             return weapon 
 
-    def update(self,cursor:"Cursor",inven_open_state:bool,player:"Player")->bool:
+    def update(self,cursor:"Cursor",inven_open_state:bool)->bool:
         inven_active = ( not self._expandable ) or (self._expandable and inven_open_state)
         
         interacting = False
@@ -202,8 +199,8 @@ class WeaponInventory(Inventory):
         self._cur_opacity= 255 * (self._done_open /5)
         self._offset = self._cell_dim[1] * (self._done_open/5)
         
-        self._weapons_list.update(self._stack_limit,cursor,self._cur_opacity,player)
-        player.curr_weapon_node = self._weapons_list.curr_node
+        self._weapons_list.update(self._stack_limit,cursor,self._cur_opacity)
+        #player.curr_weapon_node = self._weapons_list.curr_node
         return interacting
 
 
@@ -221,9 +218,10 @@ class InventoryEngine:
             if inventory._name == 'item':
                 interact_check = inventory.update(self._inventory_list,cursor,inven_open_state)
             else: 
-                interact_check =inventory.update(cursor,inven_open_state,self._player)
+                interact_check =inventory.update(cursor,inven_open_state)
             interacting = interact_check or interacting 
 
+        if not interacting: cursor.ref_hovered_cell = None
         cursor.interacting = interacting 
 
 
@@ -254,7 +252,7 @@ class Cell:
         if cursor.box.colliderect(self._rect):
             self._offset = (-1,-1)
             self._hovered = True 
-        
+            cursor.ref_hovered_cell = self
         else: 
             self._offset = (0,0)
             self._hovered = False 
@@ -375,6 +373,8 @@ class Cell:
                         self._item = cursor.item 
                         cursor.item = None 
                     cursor.set_cooldown 
+        
+        return self.hovered
                         
                         
                 

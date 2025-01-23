@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from scripts.data import TileInfo, TileInfoDataClass
     from moderngl import Context
     from scripts.new_tilemap import Tilemap
+    from scripts.second_HUD import HUD 
 
 class PhysicsSystem(esper.Processor):
     def __init__(self)->None: 
@@ -251,6 +252,7 @@ class RenderSystem(esper.Processor):
         self._ref_tilemap: "Tilemap" = None
         self._ref_background: "Background" = None
         self._ref_background_vertices_buffer : "Context.buffer" = None 
+        self._ref_hud : "HUD" =None
         
         # Initialize members 
         self._background_panels:int = 3
@@ -271,8 +273,7 @@ class RenderSystem(esper.Processor):
         self._shadow_blur_radius = 5
         self._max_hull_count = 512 
 
-        
-        self._hud = HUD(self._true_res)
+
 
         self._projection_transform = np.array( 
             [
@@ -366,24 +367,7 @@ class RenderSystem(esper.Processor):
 
         self._prog_blur['iResolution'] = self._true_res
 
-        self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords['cursor']['default']
-
-        self._vao_cursor_draw = self._ctx.vertex_array(
-            self._prog_cursor_draw,
-            [
-                (self._hud.cursor.ndc_vertices_buffer, '2f' , 'in_position')
-            ]
-        )
-
-        self._vao_opaque_ui_draw = self._ctx.vertex_array(
-            self._opaque_ui_draw_prog,
-            [
-                (self._hud.opqaue_vertices_buffer, '2f' ,'vertexPos'),
-                (self._hud.opaque_texcoords_buffer, '2f', 'vertexTexCoord')
-            ]
-        )
-
-        
+               
     
     def _create_ssbos(self)->None: 
         prog_glo = self._prog_light.glo
@@ -575,14 +559,13 @@ class RenderSystem(esper.Processor):
             self._vao_physical_tiles_draw.render(vertices=6,instances= physical_tile_instances)
 
     def _render_HUD_to_fg_fbo(self,dt:float)->None: 
+        self._ref_hud.update(dt,self.cursor_state_change_callback,self._cursor_cell_hover_state_change_callback)
+        
         # TODO: render the opaque hud elements
         self._ref_rm.texture_atlasses['ui'].use()
         self._fbo_fg.use()
         self._vao_opaque_ui_draw.render()  
 
-
-        # render the cursor 
-        self._hud.cursor.update(self._true_to_native_ratio,dt,self.cursor_state_change_callback)
 
         self._write_cursor_position_to_buffer()
 
@@ -592,20 +575,23 @@ class RenderSystem(esper.Processor):
 
     
     def _write_cursor_position_to_buffer(self)->None: 
-        x = 2. * (self._hud.cursor.topleft[0] )/ self._true_res[0]- 1.
-        y = 1. - 2. * (self._hud.cursor.topleft[1] )/ self._true_res[1]
-        w = 2. * self._hud.cursor.size[0] / self._true_res[0]
-        h = 2. * self._hud.cursor.size[1] / self._true_res[1]
+        x = 2. * (self._ref_hud.cursor.topleft[0] )/ self._true_res[0]- 1.
+        y = 1. - 2. * (self._ref_hud.cursor.topleft[1] )/ self._true_res[1]
+        w = 2. * self._ref_hud.cursor.size[0] / self._true_res[0]
+        h = 2. * self._ref_hud.cursor.size[1] / self._true_res[1]
 
-        self._hud.cursor.ndc_vertices[0] = (x,y-h)
-        self._hud.cursor.ndc_vertices[1] = (x+w,y-h)
-        self._hud.cursor.ndc_vertices[2] = (x,y)
-        self._hud.cursor.ndc_vertices[3]  = (x,y)
-        self._hud.cursor.ndc_vertices[4] = (x+w,y-h)
-        self._hud.cursor.ndc_vertices[5] = (x+w,y)
+        self._ref_hud.cursor.ndc_vertices[0] = (x,y-h)
+        self._ref_hud.cursor.ndc_vertices[1] = (x+w,y-h)
+        self._ref_hud.cursor.ndc_vertices[2] = (x,y)
+        self._ref_hud.cursor.ndc_vertices[3]  = (x,y)
+        self._ref_hud.cursor.ndc_vertices[4] = (x+w,y-h)
+        self._ref_hud.cursor.ndc_vertices[5] = (x+w,y)
 
-        self._hud.cursor.ndc_vertices_buffer.write(self._hud.cursor.ndc_vertices.tobytes())
+        self._ref_hud.cursor.ndc_vertices_buffer.write(self._ref_hud.cursor.ndc_vertices.tobytes())
 
+
+    def _cursor_cell_hover_state_change_callback(self)->None:
+        pass
 
 
     def cursor_state_change_callback(self,new_cursor_state:str)->None: 
@@ -1026,6 +1012,31 @@ class RenderSystem(esper.Processor):
             
         self._active_static_lights = active_static_lights
 
+    def attatch_hud(self,hud:"HUD")->None:
+        self._ref_hud = hud
+
+        self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords['cursor']['default']
+
+        self._vao_cursor_draw = self._ctx.vertex_array(
+            self._prog_cursor_draw,
+            [
+                (self._ref_hud.cursor.ndc_vertices_buffer, '2f' , 'in_position')
+            ]
+        )
+
+        self._vao_opaque_ui_draw = self._ctx.vertex_array(
+            self._opaque_ui_draw_prog,
+            [
+                (self._ref_hud.opqaue_vertices_buffer, '2f' ,'vertexPos'),
+                (self._ref_hud.opaque_texcoords_buffer, '2f', 'vertexTexCoord')
+            ]
+        )
+
+
+
+
+
+
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None:
         self._ref_tilemap = tilemap
@@ -1181,8 +1192,9 @@ class StateSystem(esper.Processor):
 class InputHandler(esper.Processor):
 
     def __init__(self,game_context)->None: 
-        self._ref_game_conetxt = game_context
-
+        self._ref_game_context = game_context
+        self._ref_hud: "HUD" = None
+        
 
 
     def _handle_common_events(self,event:pygame.Event)->None:
@@ -1197,20 +1209,22 @@ class InputHandler(esper.Processor):
             pygame.quit()
             quit()
 
+    def attatch_hud(self,hud:"HUD")->None:
+        self._ref_hud = hud
 
-    def process(self,dt:float)->None: 
+
+    def process(self,dt:float,on_hot_reload_callback)->None: 
         player, (player_input_comp,player_physics_comp,player_state_comp) = esper.get_components(InputComponent,PhysicsComponent,StateInfoComponent)[0]
 
-        hot_reload = False
-
-        if self._ref_game_conetxt['gamestate'] == GameState.GameLoop: 
+        if self._ref_game_context['gamestate'] == GameState.GameLoop: 
             for event in pygame.event.get():
                 self._handle_common_events(event)
 
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_F5: 
-                        hot_reload = True 
+                        on_hot_reload_callback()
                     if event.key == pygame.K_LSHIFT:
+                        self._ref_hud.cursor.special_actions = True
                         player_input_comp.shift = True 
                     if event.key == pygame.K_w:
                         player_input_comp.up = True
@@ -1236,6 +1250,7 @@ class InputHandler(esper.Processor):
                 if event.type == pygame.KEYUP:
                     
                     if event.key == pygame.K_LSHIFT:
+                        self._ref_hud.cursor.special_actions = False
                         player_input_comp.shift = False
 
                     if event.key == pygame.K_w:
@@ -1254,7 +1269,6 @@ class InputHandler(esper.Processor):
                         player_input_comp.interact = False
 
 
-        return hot_reload
 
 
 class StateMachine:
