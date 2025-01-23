@@ -31,23 +31,19 @@ class HUD:
                                            int(self._true_res[1] * TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO[1]) // self.weapon_inventory_rows_cols[0])
 
         self.open_item_inventory_rows_cols = (1,5)
-        self.open_item_inventory_cell_dim = (int(self._true_res[0] * TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1] ,
-                                              int(self._true_res[1] * TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO[1]) // self.open_item_inventory_rows_cols[0])
+        self.open_item_inventory_cell_length =int(self._true_res[0] * TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1]  
 
         self.hidden_item_inventory_rows_cols = [3,5]
-        self.hidden_item_inventory_cell_dim = (int(self._true_res[0] * TRUE_RES_TO_HIDDEN_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1] ,
-                                              int(self._true_res[1] * TRUE_RES_TO_HIDDEN_ITEM_INVEN_DIM_RATIO[1]) // self.open_item_inventory_rows_cols[0])
+        self.hidden_item_inventory_cell_length = int(self._true_res[0] * TRUE_RES_TO_HIDDEN_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1] 
 
         self.current_weapon_display_cell_dim = (int(self._true_res[0] * TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO[0]),
                                                  int(self._true_res[1] * TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO[1]))
         
 
-        print(self.open_item_inventory_cell_dim)
-
         # TODO: COMPUTE THIS: 
         self.hidden_item_inventory_max_rows = 0
 
-        self._clamp_inventory_cell_dims()
+        self._clamp_dimensions()
 
         self.weapon_inventory_topleft = (self.health_bar_topleft[0],
                                           self.health_bar_topleft[1] -self.weapon_inventory_rows_cols[0] * (self.weapon_inventory_cell_dim[1] + 1))
@@ -55,10 +51,10 @@ class HUD:
         self.current_weapon_display_topleft = (self.health_bar_topleft[0] + self.health_bar_dimensions[0]+SPACE_BETWEEN_INVENTORY_ELEMENTS,
                                                 self.health_bar_topleft[1] -2)
 
-        self.open_item_inventory_topleft = (self.health_bar_topleft[0]+self.health_bar_dimensions[0]+self.current_weapon_display_cell_dim[0]+SPACE_BETWEEN_INVENTORY_ELEMENTS,
-                                             self.health_bar_topleft[1] - 1)
+        self.open_item_inventory_topleft = (self.health_bar_topleft[0]+self.health_bar_dimensions[0]+self.current_weapon_display_cell_dim[0]+SPACE_BETWEEN_INVENTORY_ELEMENTS,\
+                                             self.health_bar_topleft[1] - int(0.5 * self.open_item_inventory_cell_length) + self.health_bar_dimensions[1])
 
-        self.hidden_item_inventory_topleft = (self.open_item_inventory_topleft[0],self.open_item_inventory_topleft[1] -self.hidden_item_inventory_rows_cols[0] * (self.hidden_item_inventory_cell_dim[1] + 1))
+        self.hidden_item_inventory_topleft = (self.open_item_inventory_topleft[0],self.open_item_inventory_topleft[1] -self.hidden_item_inventory_rows_cols[0] * (self.hidden_item_inventory_cell_length + 1))
 
         self._precompute_hud_display_elements_vertices()
 
@@ -68,11 +64,13 @@ class HUD:
 
         self._write_to_buffers()
 
-    def _clamp_inventory_cell_dims(self)->None: 
+    def _clamp_dimensions(self)->None: 
         # clamp the dimensions of the health and stamina bars 
         # clamp the height of the health and stamina bars to 9 maximum
         self.health_bar_dimensions  = (self.health_bar_dimensions[0],min(9,self.health_bar_dimensions[1])) 
         self.stamina_bar_dimensions = (self.stamina_bar_dimensions[0],min(9,self.stamina_bar_dimensions[1])) 
+
+        self.open_item_inventory_cell_length= min(28,self.open_item_inventory_cell_length)
 
     def _precompute_hud_display_elements_vertices(self)->None:
         # health bar 
@@ -88,20 +86,19 @@ class HUD:
 
         for row in range(self.open_item_inventory_rows_cols[0]):
             for col in range(self.open_item_inventory_rows_cols[1]):
-                idle_x = self.open_item_inventory_topleft[0] + col * (self.open_item_inventory_cell_dim[0] + SPACE_BETWEEN_INVENTORY_CELLS) 
-                idle_y = self.open_item_inventory_topleft[1] + row * (self.open_item_inventory_cell_dim[1] + SPACE_BETWEEN_INVENTORY_CELLS)
+                idle_x = self.open_item_inventory_topleft[0] + col * (self.open_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS) 
+                idle_y = self.open_item_inventory_topleft[1] + row * (self.open_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS)
 
-                hovered_x = self.open_item_inventory_topleft[0] + col * (self.open_item_inventory_cell_dim[0] + SPACE_BETWEEN_INVENTORY_CELLS)\
-                                -int(INVENTORY_CELL_EXPANSION_RATIO * self.open_item_inventory_cell_dim[0])
+                hovered_x = self.open_item_inventory_topleft[0] + col * (self.open_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS)\
+                                -int(INVENTORY_CELL_EXPANSION_RATIO * self.open_item_inventory_cell_length)
 
-                hovered_y = self.open_item_inventory_topleft[1]+ row * (self.open_item_inventory_cell_dim[1] + SPACE_BETWEEN_INVENTORY_CELLS)\
-                                -int(INVENTORY_CELL_EXPANSION_RATIO * self.open_item_inventory_cell_dim[1])
+                hovered_y = self.open_item_inventory_topleft[1]+ row * (self.open_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS)\
+                                -int(INVENTORY_CELL_EXPANSION_RATIO * self.open_item_inventory_cell_length)
 
-                hovered_dimensions = (int(self.open_item_inventory_cell_dim[0]*(1+2*INVENTORY_CELL_EXPANSION_RATIO)),
-                                        int(self.open_item_inventory_cell_dim[1]*(1+2*INVENTORY_CELL_EXPANSION_RATIO)),)
+                hovered_length = int(self.open_item_inventory_cell_length*(1+2*INVENTORY_CELL_EXPANSION_RATIO))
 
-                self.open_item_inven_vertices[False][(row,col)] = self._create_ui_element_vertices((idle_x,idle_y),self.open_item_inventory_cell_dim)
-                self.open_item_inven_vertices[True][(row,col)] = self._create_ui_element_vertices((hovered_x,hovered_y),hovered_dimensions)
+                self.open_item_inven_vertices[False][(row,col)] = self._create_ui_element_vertices((idle_x,idle_y),(self.open_item_inventory_cell_length,self.open_item_inventory_cell_length))
+                self.open_item_inven_vertices[True][(row,col)] = self._create_ui_element_vertices((hovered_x,hovered_y),(hovered_length,hovered_length))
 
         # open inventory cells 
 

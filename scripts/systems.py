@@ -261,7 +261,7 @@ class RenderSystem(esper.Processor):
         self._ambient_light_RGBA = (.25, .25, .25, .25)
 
 
-        self.lights:list["PointLight"] = []
+        self.dynamic_lights:list["PointLight"] = []
         self.hulls:list["Hull"] = []
 
         self._prev_query_camera_scroll= (0,0)
@@ -693,7 +693,7 @@ class RenderSystem(esper.Processor):
         self._ssbo_ind.write(data_ind)
 
 
-    def _render_to_light_buffer(self,interpolation_delta: float, dt, render_offset :tuple[int,int] = (0,0))->None:
+    def _render_to_light_buffer(self,interpolation_delta: float, dt,render_offset )->None:
         # Disable alpha blending to render lights
         ambient_lighting_range = self._ref_tilemap._ambient_node_ptr.range
 
@@ -739,7 +739,7 @@ class RenderSystem(esper.Processor):
                 
              
             # Send light uniforms
-            self._prog_light['lightPos'] = self._point_to_uv((light.position[0]-render_offset[0] ,light.position[1]-render_offset[1]))
+            self._prog_light['lightPos'] = self._point_to_uv((light.position[0]-render_offset[0],light.position[1] - render_offset[1]))
             self._prog_light['lightCol'] = light._color
             self._prog_light['lightPower'] = light.cur_power
             self._prog_light['radius'] = light.radius
@@ -759,9 +759,12 @@ class RenderSystem(esper.Processor):
         self._ctx.enable(BLEND)
 
 
-    def _render_aomap(self)->None:
+    def _render_aomap(self,render_offset:tuple[int,int])->None:
         self._fbo_ao.use()
         self._buf_lt.tex.use()
+
+        self._prog_blur['renderOffset'] = (self._prev_query_camera_scroll[0] - render_offset[0],
+                                           -self._prev_query_camera_scroll[1] + render_offset[1]) 
 
         self._prog_blur['blurRadius'] = self._shadow_blur_radius
         self._vao_blur.render()
@@ -771,6 +774,7 @@ class RenderSystem(esper.Processor):
         self._ctx.screen.use()
         self._tex_bg.use()
         self._tex_ao.use(1)
+
 
         self._prog_mask['lightmap'].value = 1
         self._prog_mask['ambient'].value = self._ambient_light_RGBA
@@ -788,13 +792,16 @@ class RenderSystem(esper.Processor):
         self._ambient_light_RGBA = normalize_color_arguments(R, G, B, A)
 
 
-    def _update_hulls(self,camera_scroll:tuple[int,int] = (0,0))->None: 
+    def _update_hulls(self,camera_scroll:tuple[int,int] = (0,0))->bool: 
         tile_size = self._ref_tilemap.regular_tile_size
         if dist(self._prev_query_camera_scroll,camera_scroll) >= 90: 
             self.hulls = self._ref_tilemap.hull_grid.query(camera_scroll[0] - 10 * tile_size, camera_scroll[1] - 10 * tile_size,\
                                                            camera_scroll[0] + self._true_res[0] + 10 * tile_size, camera_scroll[1] + self._true_res[1] + 10 * tile_size)
             
             self._prev_query_camera_scroll = camera_scroll
+            return True
+
+        return False
 
 
 
@@ -938,20 +945,18 @@ class RenderSystem(esper.Processor):
 
     def _render_fbos_to_screen_with_lighting(self,camera_scroll:tuple[int,int],interpolation_delta:float,dt:float,screen_shake:tuple[int,int] = (0,0))->None: 
         
-        self._fbo_ao.clear(0,0,0,0)
-        self._buf_lt.clear(0,0,0,0)
-
+        
         render_offset = (camera_scroll[0] - screen_shake[0],camera_scroll[1] - screen_shake[1])
+        hulls_updated = self._update_hulls(camera_scroll)
+        
 
-        self._update_hulls(camera_scroll)
+        if hulls_updated:
+            self._fbo_ao.clear(0,0,0,0)
+            self._buf_lt.clear(0,0,0,0)
+            self._send_hull_data_to_lighting_program(render_offset)
+            self._render_to_light_buffer(interpolation_delta,dt,render_offset)
 
-        #self._render_rectangles(camera_scroll)
-
-        self._send_hull_data_to_lighting_program(render_offset)
- 
-        self._render_to_light_buffer(interpolation_delta,dt,render_offset)
-
-        self._render_aomap()
+        self._render_aomap(render_offset)
 
         self._render_background_layer()
 

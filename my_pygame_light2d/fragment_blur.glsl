@@ -3,6 +3,8 @@
 in vec2 fragmentTexCoord;// holds the Vertex position <-1,+1> !!!
 uniform sampler2D imageTexture;// used texture unit
 
+uniform vec2 renderOffset;
+
 uniform float blurRadius;
 
 out vec4 color;
@@ -31,7 +33,9 @@ void main()
         for(int y=-int(blurRadius);y<=int(blurRadius);++y){
             vec2 offset=vec2(float(x),float(y))*texelSize;
             float w=weights[x+int(blurRadius)]*weights[y+int(blurRadius)];
-            blurredColor+=texture(imageTexture,fragmentTexCoord+offset)*w;
+
+
+            blurredColor+=texture(imageTexture,fragmentTexCoord+offset-renderOffset * texelSize)*w;
         }
     }
     
