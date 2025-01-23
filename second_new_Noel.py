@@ -400,7 +400,7 @@ class Noel():
             interpolation_alpha = self._accumulator / TIME_FOR_ONE_LOGICAL_STEP
 
             self.render_engine.bind_player(self.player)
-            self.render_engine.bind_hud(self._hud)
+            sef.render_engine.bind_hud(self._hud)
 
 
             self.render_engine.render_background_scene_to_fbo(camera_scroll,interpolation_alpha,infinite=False)

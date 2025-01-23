@@ -262,7 +262,7 @@ class RenderSystem(esper.Processor):
         self._diagonal = sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
         self._ambient_light_RGBA = (.25, .25, .25, .25)
 
-
+        self._active_static_lights : list["PointLight"] = []
         self.dynamic_lights:list["PointLight"] = []
         self.hulls:list["Hull"] = []
 
@@ -702,7 +702,38 @@ class RenderSystem(esper.Processor):
         self._ssbo_ind.write(data_ind)
 
 
-    def _render_to_light_buffer(self,interpolation_delta: float, dt,render_offset )->None:
+    def _render_static_lights_to_light_buffer(self,render_offset:tuple[int,int])->None:
+
+        self._ctx.disable(BLEND)
+
+        for i in range(len(self._active_static_lights)-1,-1,-1):
+            light = self._active_static_lights[i]
+            self._buf_lt.tex.use()
+            self._buf_lt.fbo.use()
+            # Send light uniforms
+            self._prog_light['lightPos'] = self._point_to_uv((light.position[0]-render_offset[0],light.position[1] - render_offset[1]))
+            self._prog_light['lightCol'] = light._color
+            self._prog_light['lightPower'] = light.cur_power
+            self._prog_light['radius'] = light.radius
+            self._prog_light['castShadows'] = light.cast_shadows
+            self._prog_light['native_width'] = self._true_res[0]
+            self._prog_light['native_height'] = self._true_res[1]
+
+            # Send number of hulls
+            self._prog_light['numHulls'] = len(self.hulls)
+
+            # Render onto lightmap
+            self._vao_light.render()
+
+            # Flip double buffer
+            self._buf_lt.flip()
+
+        self._ctx.enable(BLEND)
+
+
+
+
+    def _render_to_light_buffer(self,interpolation_delta: float, dt,render_offset:tuple[int,int])->None:
         # Disable alpha blending to render lights
         ambient_lighting_range = self._ref_tilemap._ambient_node_ptr.range
 
@@ -804,7 +835,7 @@ class RenderSystem(esper.Processor):
 
     def _update_hulls(self,camera_scroll:tuple[int,int] = (0,0))->bool: 
         tile_size = self._ref_tilemap.regular_tile_size
-        if dist(self._prev_query_camera_scroll,camera_scroll) >= 16: 
+        if dist(self._prev_query_camera_scroll,camera_scroll) >= 3: 
             self.hulls = self._ref_tilemap.hull_grid.query(camera_scroll[0] - 10 * tile_size, camera_scroll[1] - 10 * tile_size,\
                                                            camera_scroll[0] + self._true_res[0] + 10 * tile_size, camera_scroll[1] + self._true_res[1] + 10 * tile_size)
             
@@ -955,19 +986,18 @@ class RenderSystem(esper.Processor):
 
     def _render_fbos_to_screen_with_lighting(self,camera_scroll:tuple[int,int],interpolation_delta:float,dt:float,screen_shake:tuple[int,int] = (0,0))->None: 
         
-
         render_offset = (camera_scroll[0] - screen_shake[0],camera_scroll[1] - screen_shake[1])
         hulls_updated = self._update_hulls(camera_scroll)
         
         self._fbo_ao.clear(0,0,0,0)
 
-        self._update_active_static_lights()
+        self._update_active_static_lights(dt)
 
 
         if hulls_updated:
             self._buf_lt.clear(0,0,0,0)
             self._send_hull_data_to_lighting_program(render_offset)
-            self._render_to_light_buffer(interpolation_delta,dt,render_offset)
+            self._render_static_lights_to_light_buffer(render_offset)
 
         self._render_aomap(render_offset)
 
@@ -976,11 +1006,25 @@ class RenderSystem(esper.Processor):
         self._render_foreground_layer()
         
 
-    def _update_active_static_lights(self)->None: 
+    def _update_active_static_lights(self,dt:float)->None: 
+        active_static_lights = []
+
+        ambient_lighting_range = self._ref_tilemap._ambient_node_ptr.range
+
         # update the list of active static lights depending on player position 
+        for i in range(len(self._ref_tilemap.lights) -1,-1,-1):
+            light = self._ref_tilemap.lights[i]
+            if light.popped or not light.enabled:
+                continue 
+            if light.position[0] < ambient_lighting_range[0] or light.position[0] > ambient_lighting_range[1]:
+                light.cur_power = max(0.0,light.cur_power - 8 *dt*light.power)
+                continue 
+            else: 
+                light.cur_power = min(light.power,light.cur_power + 8 * dt * light.power)
 
-
-        pass
+            active_static_lights.append(light)
+            
+        self._active_static_lights = active_static_lights
 
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None:
@@ -1050,7 +1094,6 @@ class RenderSystem(esper.Processor):
         self._fbo_bg.clear(R,G,B,A)
         self._fbo_fg.clear(R,G,B,A)
         
-
 
 
     def process(self,camera_offset:tuple[int,int],interpolation_delta:float,dt:float)->None: 
