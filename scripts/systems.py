@@ -218,6 +218,9 @@ class PhysicsSystem(esper.Processor):
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
         self._ref_tilemap =tilemap
+        
+        
+
 
     def process(self,dt:float)->None: 
         # process physics for player entity, which has an input component while the rest of the entities don't.
@@ -257,7 +260,6 @@ class RenderSystem(esper.Processor):
         self._true_res = true_res 
 
         self._diagonal = sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
-        self._lightmap_res = true_res 
         self._ambient_light_RGBA = (.25, .25, .25, .25)
 
 
@@ -362,6 +364,8 @@ class RenderSystem(esper.Processor):
                                             fragment_shader= blur_frag_src)
         
 
+        self._prog_blur['iResolution'] = self._true_res
+
         self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords['cursor']['default']
 
         self._vao_cursor_draw = self._ctx.vertex_array(
@@ -406,10 +410,12 @@ class RenderSystem(esper.Processor):
         self._tex_bg.filter = (NEAREST, NEAREST)
         self._fbo_bg = self._ctx.framebuffer([self._tex_bg])
 
+
         self._tex_fg = self._ctx.texture(self._true_res, components=4)
         self._tex_fg.filter = (NEAREST, NEAREST)
         self._fbo_fg = self._ctx.framebuffer([self._tex_fg])
 
+        """
         # Double buffer for lights
         self._buf_lt = DoubleBuffer(self._ctx, self._lightmap_res)
 
@@ -421,6 +427,7 @@ class RenderSystem(esper.Processor):
 
 
         # wrapping settings 
+
         self._buf_lt._tex1.repeat_x = False
         self._buf_lt._tex1.repeat_y = False
         self._buf_lt._tex2.repeat_x = False
@@ -428,6 +435,8 @@ class RenderSystem(esper.Processor):
 
         self._tex_ao.repeat_x = False
         self._tex_ao.repeat_y = False
+        """
+
         self._tex_bg.repeat_x = False
         self._tex_bg.repeat_y = False 
         self._tex_fg.repeat_x = False
@@ -724,6 +733,7 @@ class RenderSystem(esper.Processor):
 
             self._buf_lt.tex.use()
             self._buf_lt.fbo.use()
+
             if light.radius_decay: 
                 light.radius = max(1,light.radius * (light.life/light.maxlife))
 
@@ -794,7 +804,7 @@ class RenderSystem(esper.Processor):
 
     def _update_hulls(self,camera_scroll:tuple[int,int] = (0,0))->bool: 
         tile_size = self._ref_tilemap.regular_tile_size
-        if dist(self._prev_query_camera_scroll,camera_scroll) >= 90: 
+        if dist(self._prev_query_camera_scroll,camera_scroll) >= 16: 
             self.hulls = self._ref_tilemap.hull_grid.query(camera_scroll[0] - 10 * tile_size, camera_scroll[1] - 10 * tile_size,\
                                                            camera_scroll[0] + self._true_res[0] + 10 * tile_size, camera_scroll[1] + self._true_res[1] + 10 * tile_size)
             
@@ -945,13 +955,16 @@ class RenderSystem(esper.Processor):
 
     def _render_fbos_to_screen_with_lighting(self,camera_scroll:tuple[int,int],interpolation_delta:float,dt:float,screen_shake:tuple[int,int] = (0,0))->None: 
         
-        
+
         render_offset = (camera_scroll[0] - screen_shake[0],camera_scroll[1] - screen_shake[1])
         hulls_updated = self._update_hulls(camera_scroll)
         
+        self._fbo_ao.clear(0,0,0,0)
+
+        self._update_active_static_lights()
+
 
         if hulls_updated:
-            self._fbo_ao.clear(0,0,0,0)
             self._buf_lt.clear(0,0,0,0)
             self._send_hull_data_to_lighting_program(render_offset)
             self._render_to_light_buffer(interpolation_delta,dt,render_offset)
@@ -963,9 +976,38 @@ class RenderSystem(esper.Processor):
         self._render_foreground_layer()
         
 
+    def _update_active_static_lights(self)->None: 
+        # update the list of active static lights depending on player position 
+
+
+        pass
+
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None:
         self._ref_tilemap = tilemap
+
+        # lightmap res according to tilemap tilesize 
+        self._lightmap_res = (self._true_res[0]+ 2 * 10 * self._ref_tilemap.regular_tile_size,
+                              self._true_res[1]+ 2 * 10 * self._ref_tilemap.regular_tile_size,)
+
+        # Double buffer for lights
+        self._buf_lt = DoubleBuffer(self._ctx, self._lightmap_res)
+
+        # Ambient occlussion map
+        self._tex_ao = self._ctx.texture(
+            self._lightmap_res, components=4, dtype='f2')
+        self._tex_ao.filter = (LINEAR, LINEAR)
+        self._fbo_ao = self._ctx.framebuffer([self._tex_ao])
+
+        # wrapping settings 
+        self._buf_lt._tex1.repeat_x = False
+        self._buf_lt._tex1.repeat_y = False
+        self._buf_lt._tex2.repeat_x = False
+        self._buf_lt._tex2.repeat_y = False
+
+        self._tex_ao.repeat_x = False
+        self._tex_ao.repeat_y = False
+ 
 
         self._tile_draw_prog['NDCVertices'] = self._ref_tilemap.NDC_tile_vertices
 

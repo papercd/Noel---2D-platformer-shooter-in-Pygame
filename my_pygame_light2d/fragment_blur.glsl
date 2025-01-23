@@ -5,6 +5,8 @@ uniform sampler2D imageTexture;// used texture unit
 
 uniform vec2 renderOffset;
 
+uniform vec2 iResolution; 
+
 uniform float blurRadius;
 
 out vec4 color;
@@ -12,8 +14,10 @@ out vec4 color;
 void main()
 {
     int kernelSize=int(blurRadius)*2+1;
-    vec2 texelSize=1./textureSize(imageTexture,0);
-    
+    // vec2 texelSize=1./textureSize(imageTexture,0);
+    vec2 texelSize = 1./iResolution;    
+
+
     // Gaussian kernel weights
     float weights[64];
     float sum=0.;
