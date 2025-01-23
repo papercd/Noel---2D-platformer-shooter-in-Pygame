@@ -3,10 +3,11 @@ from scripts.data import TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO,TRUE_RES_TO_STAMINA_
                         TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO, SPACE_BETWEEN_INVENTORY_CELLS,INVENTORY_CELL_EXPANSION_RATIO
 from scripts.new_cursor import Cursor
 from scripts.new_resource_manager import ResourceManager
+from scripts.new_inventory import Inventory,InventoryEngine,WeaponInventory
 import numpy as np 
-class HUD: 
+class HUD:
+
     def __init__(self,true_res:tuple[int,int])->None: 
-        
         self._ref_rm = ResourceManager.get_instance()
         self._true_res = true_res
  
@@ -63,6 +64,19 @@ class HUD:
             self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1]+ self.weapon_inventory_rows_cols[0] * self.weapon_inventory_rows_cols[1])
 
         self._write_to_buffers()
+
+        self._inven_list= [
+            Inventory('item',*self.open_item_inventory_rows_cols,self.open_item_inventory_topleft,(self.open_item_inventory_cell_length,self.open_item_inventory_cell_length),SPACE_BETWEEN_INVENTORY_CELLS,
+                      16,expandable = False),
+            Inventory('item',*self.hidden_item_inventory_rows_cols,self.hidden_item_inventory_topleft,(self.hidden_item_inventory_cell_length,self.hidden_item_inventory_cell_length),SPACE_BETWEEN_INVENTORY_CELLS,
+                      16, expandable= True),
+            WeaponInventory(*self.weapon_inventory_rows_cols,self.weapon_inventory_topleft,self.weapon_inventory_cell_dim,SPACE_BETWEEN_INVENTORY_CELLS,
+                            1,expandable= True)
+        ]
+
+        self._items_engine = InventoryEngine(self._inven_list)
+
+
 
     def _clamp_dimensions(self)->None: 
         # clamp the dimensions of the health and stamina bars 
@@ -143,3 +157,10 @@ class HUD:
 
 
 
+    def update_inventories(self)->None:
+        # TODO: stamina, health bar updates
+
+        # inventory updates 
+        self._items_engine.update(self.cursor,self.inven_open_state)
+
+        pass
