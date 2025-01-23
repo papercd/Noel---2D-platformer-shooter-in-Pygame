@@ -22,6 +22,7 @@ uniform float lightPower;
 uniform float radius;
 uniform bool castShadows;
 
+
 out vec4 color;
 
 vec2 uv_to_world(vec2 v){

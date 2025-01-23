@@ -130,6 +130,7 @@ class HUD:
         self._weapon_rows_cols = (1,4)
 
         self._item_inventory_cell_side = (self._true_res[0]*5//12) // self._closed_items_rows_cols[1]
+
         self._weapon_inventory_cell_length = (self._true_res[0]*5//12) // self._weapon_rows_cols[1]
 
         self._inventory_background_padding =5

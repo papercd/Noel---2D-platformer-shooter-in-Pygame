@@ -115,14 +115,18 @@ class ResourceManager:
 
         for ui_element in UI_ATLAS_POSITIONS_AND_SIZES: 
             if ui_element.endswith('slot'):
-                pass
+                self.ui_element_texcoords[ui_element] = {}
+                for hovered_state in UI_ATLAS_POSITIONS_AND_SIZES[ui_element]:
+                    atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES[ui_element][hovered_state]
+                    self.ui_element_texcoords[ui_element][hovered_state] = self._create_ui_element_texcoords(atlas_position,texture_size)
             elif ui_element == 'cursor':
                 self.ui_element_texcoords['cursor'] = {}
                 for cursor_state in UI_ATLAS_POSITIONS_AND_SIZES['cursor']:
                     atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES['cursor'][cursor_state]
                     self.ui_element_texcoords['cursor'][cursor_state] = self._create_ui_element_texcoords(atlas_position,texture_size)
             else: 
-                pass
+                atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES[ui_element]
+                self.ui_element_texcoords[ui_element] = self._create_ui_element_texcoords(atlas_position,texture_size)
 
 
     def _load_entity_texcoords_and_local_vertices(self)->None:
@@ -323,10 +327,18 @@ class ResourceManager:
                 (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)
     
 
-    def precompute_hud_display_elements_vertices(self,hp_bar_dim:tuple[int,int],sp_bar_dim:tuple[int,int],
-                                                 wp_inv_cell_dim:tuple[int,int],op_itm_inv_cell_dim:tuple[int,int],
-                                                 hidden_itm_inv_cell_dim:tuple[int,int],curr_wpn_display_cell_dim:tuple[int,int])->None:
+    def create_hud_vbos(self,opaque_ui_element_quads:int,hidden_ui_element_quads:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]: 
+        opqaue_ui_element_vertex_size = 2 * 4
+        opaque_ui_elements_buffer_size = opqaue_ui_element_vertex_size* 6 * opaque_ui_element_quads
 
-        # create the ndc vertices for all the different cell types. 
 
-        pass
+        hidden_ui_element_vertex_size = 2 * 4
+        hidden_ui_elements_buffer_size = hidden_ui_element_vertex_size* 6 * hidden_ui_element_quads
+
+        opaque_vertex_buffer = self._ctx.buffer(reserve=opaque_ui_elements_buffer_size,dynamic=True)
+        opaque_texcoords_buffer = self._ctx.buffer(reserve=opaque_ui_elements_buffer_size,dynamic=True)
+
+        hidden_vertex_buffer = self._ctx.buffer(reserve=hidden_ui_elements_buffer_size,dynamic=True)
+        hidden_texcoords_buffer = self._ctx.buffer(reserve=hidden_ui_elements_buffer_size,dynamic=True)
+
+        return (opaque_vertex_buffer,opaque_texcoords_buffer,hidden_vertex_buffer,hidden_texcoords_buffer)

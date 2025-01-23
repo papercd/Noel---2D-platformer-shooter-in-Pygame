@@ -142,7 +142,7 @@ class AnimationDataCollection:
 """ Animation Data """
 # physics updates are done every 1/60 seconds, the 60 is multiplied to the physics calculations 
 # so the number in front of the * corresponds to the unit of distance in pixels.
-SPRINT_FACTOR = 1.5
+SPRINT_FACTOR = 1.4
 WALL_SLIDE_CAP_VELOCITY = 1 * 60 
 GRAVITY = 35 * 60   # 20 pixels per second squared
 TERMINAL_VELOCITY = 10 * 60     # 20 pixels per second
@@ -439,8 +439,10 @@ TILE_NEIGHBOR_MAP = {
 
 """  HUD positioning numbers  """
 
-SPACE_BETWEEN_INVENTORY_ELEMENTS = 5
+INVENTORY_CELL_EXPANSION_RATIO = 1/8
 
+SPACE_BETWEEN_INVENTORY_ELEMENTS = 5
+SPACE_BETWEEN_INVENTORY_CELLS = 10
 ITEM_TRUE_DIMENSIONS = (16,16)
 TEXT_TRUE_DIMENSIONS = (16,16)
 
@@ -450,7 +452,7 @@ STAMINA_BAR_TRUE_DIMENSIONS = (1,1)
 TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO = 1 / 3
 TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO =  1 / 4
 
-TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO = 1 / 40
+TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO = 1.2 / 40
 TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO = (1/12,9/10)
 TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO = (5/12,1/12)
 TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO = (5/12,1/12)

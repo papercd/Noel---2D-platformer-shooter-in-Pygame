@@ -7,6 +7,7 @@ uniform sampler2D lightmap;
 
 uniform vec4 ambient;
 
+
 uniform float maxLuminosity=2.5f;
 
 out vec4 color;

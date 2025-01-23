@@ -6,6 +6,7 @@ from moderngl import create_context
 from screeninfo import get_monitors
 
 import scripts.data
+import scripts.second_HUD
 import scripts.systems
 
 from scripts.game_state import GameState
@@ -65,8 +66,10 @@ class Noel():
     def _hot_reload(self)->None: 
         # reload systems module
         importlib.reload(scripts.data)
+        importlib.reload(scripts.second_HUD)
         importlib.reload(scripts.systems)
 
+    
         from scripts.systems import PhysicsSystem, StateSystem,RenderSystem, InputHandler 
         # reinitialize systems
         self._physics_system = PhysicsSystem()
@@ -397,7 +400,7 @@ class Noel():
             interpolation_alpha = self._accumulator / TIME_FOR_ONE_LOGICAL_STEP
 
             self.render_engine.bind_player(self.player)
-            self.render_engine.bind_hud(self._hud)
+            sef.render_engine.bind_hud(self._hud)
 
 
             self.render_engine.render_background_scene_to_fbo(camera_scroll,interpolation_alpha,infinite=False)
@@ -409,8 +412,8 @@ class Noel():
             self.render_engine.render_scene_with_lighting(camera_scroll,interpolation_alpha, screenshake_offset)
             """
             pygame.display.flip()
-            
-
+            fps = self._clock.get_fps()
+            print(fps)
 
     def start(self):
         self._dt = self._clock.tick() / 1000.0
@@ -421,7 +424,6 @@ class Noel():
             self._update_render() 
 
             if hot_reload: 
-                print("check")
                 self._hot_reload()
         
 

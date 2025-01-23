@@ -32,6 +32,13 @@ class DoubleBuffer:
             self.tex = self._tex2
             self.fbo = self._fbo1
 
+
+    def clear_render_target(self,R=0,G=0,B=0,A=0):
+        if self._ind == 1:
+            self._fbo1.clear(R,G,B,A)
+        else:
+            self._fbo2.clear(R,G,B,A) 
+
     # Clear both buffers
     def clear(self, R=0, G=0, B=0, A=0):
         self._fbo1.clear(R, G, B, A)

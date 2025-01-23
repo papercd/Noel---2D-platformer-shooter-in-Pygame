@@ -3,6 +3,10 @@
 in vec2 fragmentTexCoord;// holds the Vertex position <-1,+1> !!!
 uniform sampler2D imageTexture;// used texture unit
 
+uniform vec2 renderOffset;
+
+uniform vec2 iResolution; 
+
 uniform float blurRadius;
 
 out vec4 color;
@@ -10,8 +14,10 @@ out vec4 color;
 void main()
 {
     int kernelSize=int(blurRadius)*2+1;
-    vec2 texelSize=1./textureSize(imageTexture,0);
-    
+    // vec2 texelSize=1./textureSize(imageTexture,0);
+    vec2 texelSize = 1./iResolution;    
+
+
     // Gaussian kernel weights
     float weights[64];
     float sum=0.;
@@ -31,7 +37,9 @@ void main()
         for(int y=-int(blurRadius);y<=int(blurRadius);++y){
             vec2 offset=vec2(float(x),float(y))*texelSize;
             float w=weights[x+int(blurRadius)]*weights[y+int(blurRadius)];
-            blurredColor+=texture(imageTexture,fragmentTexCoord+offset)*w;
+
+
+            blurredColor+=texture(imageTexture,fragmentTexCoord+offset-renderOffset * texelSize)*w;
         }
     }
     

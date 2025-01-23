@@ -1,1 +1,2 @@
-screen_res
+
+        primary_monitor = get_monitors()[1]

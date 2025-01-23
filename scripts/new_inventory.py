@@ -1,6 +1,5 @@
 from pygame import Rect
 from scripts.lists import WeaponInvenList
-from scripts.new_entities import CollectableItem
 
 from typing import TYPE_CHECKING
 
@@ -208,12 +207,11 @@ class WeaponInventory(Inventory):
         return interacting
 
 
-class Inventory_Engine: 
-    def __init__(self,inven_list:list[Inventory],player:"Player"):
+class InventoryEngine: 
+    def __init__(self,inven_list:list[Inventory]):
         self._inventory_list = inven_list 
         for i, inventory in enumerate(self._inventory_list):
             inventory.set_ind(i)
-        self._player = player
 
     def update(self,cursor:"Cursor",inven_open_state:bool)->None:
 
