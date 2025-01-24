@@ -70,7 +70,6 @@ class InputComponent:
     right: bool = False 
     up : bool = False 
     down : bool = False 
-    open_inventory: bool = False 
     interact : bool  = False
     shoot: bool = False
     shift : bool = False

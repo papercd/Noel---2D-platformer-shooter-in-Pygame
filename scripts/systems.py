@@ -340,6 +340,8 @@ class RenderSystem(esper.Processor):
 
         mask_frag_src =  self._load_shader_src('my_pygame_light2d/fragment_mask.glsl')
 
+        hidden_draw_frag_src = self._load_shader_src('my_pygame_light2d/fragment_hidden_ui_draw.glsl')
+
         self._entity_draw_prog = self._ctx.program(vertex_shader = entities_draw_vert_src,
                                                     fragment_shader = entities_draw_frag_src)
 
@@ -350,6 +352,9 @@ class RenderSystem(esper.Processor):
         
         self._opaque_ui_draw_prog = self._ctx.program(vertex_shader=vertex_src,
                                                       fragment_shader= fragment_src)
+        
+        self._hidden_ui_draw_prog = self._ctx.program(vertex_shader= vertex_src,
+                                                      fragment_shader=hidden_draw_frag_src)
 
         
         self._prog_mask = self._ctx.program(vertex_shader= vertex_src,
@@ -565,6 +570,10 @@ class RenderSystem(esper.Processor):
         self._ref_rm.texture_atlasses['ui'].use()
         self._fbo_fg.use()
         self._vao_opaque_ui_draw.render()  
+
+        if self._ref_hud.inven_open_time > 0:
+            self._hidden_ui_draw_prog['alpha'] = self._ref_hud.inven_open_time/self._ref_hud.max_inven_open_time
+            self._vao_hidden_ui_draw.render()
 
 
         self._write_cursor_position_to_buffer()
@@ -1028,6 +1037,15 @@ class RenderSystem(esper.Processor):
             ]
         )
 
+        self._vao_hidden_ui_draw = self._ctx.vertex_array(
+            self._hidden_ui_draw_prog,
+            [
+                (self._ref_hud.hidden_vertices_buffer, '2f', 'vertexPos'),
+                (self._ref_hud.hidden_texcoords_buffer, '2f' ,'vertexTexCoord')
+            ]
+        )
+
+
 
 
 
@@ -1240,8 +1258,8 @@ class InputHandler(esper.Processor):
                         player_input_comp.interact = True
                         # interact with interactable objects
                     if event.key == pygame.K_e:
-                        player_input_comp.open_inventory = not player_input_comp.open_inventory
                         # toggle inventory
+                        self._ref_hud.inven_open_state = not self._ref_hud.inven_open_state
 
                 if event.type == pygame.KEYUP:
                     
