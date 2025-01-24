@@ -9,6 +9,7 @@ import scripts.data
 import scripts.second_HUD
 import scripts.systems
 
+from scripts.second_HUD import HUD
 from scripts.game_state import GameState
 from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
 from scripts.new_resource_manager import ResourceManager
@@ -51,12 +52,15 @@ class Noel():
 
         self._state_system = StateSystem()  
 
+        self._hud = HUD(self._game_context["true_res"],self._game_context["display_scale_ratio"])
+
         self._render_system = RenderSystem(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res'],\
                                            self._game_context['true_res'])
         
         self._input_handler = InputHandler(self._game_context)
 
- 
+        self._input_handler.attatch_hud(self._hud)
+        self._render_system.attatch_hud(self._hud)
         self._render_system.attatch_tilemap(self._tilemap)
         self._render_system.attatch_background(self._resource_manager.backgrounds['start'])
 
@@ -69,17 +73,22 @@ class Noel():
         importlib.reload(scripts.second_HUD)
         importlib.reload(scripts.systems)
 
-    
+        from scripts.second_HUD import HUD
         from scripts.systems import PhysicsSystem, StateSystem,RenderSystem, InputHandler 
         # reinitialize systems
         self._physics_system = PhysicsSystem()
         self._physics_system.attatch_tilemap(self._tilemap)
         
         self._state_system = StateSystem()
+
+        self._hud = HUD(self._game_context["true_res"],self._game_context["display_scale_ratio"])
+
         self._render_system = RenderSystem(self._ctx,self._game_context['display_scale_ratio'],self._game_context['screen_res'],\
                                            self._game_context['true_res'])
         self._input_handler = InputHandler(self._game_context)
         
+        self._input_handler.attatch_hud(self._hud)
+        self._render_system.attatch_hud(self._hud)
         self._render_system.attatch_background(self._resource_manager.backgrounds['start'])
         self._render_system.attatch_tilemap(self._tilemap)
         """
@@ -413,18 +422,15 @@ class Noel():
             """
             pygame.display.flip()
             fps = self._clock.get_fps()
-            print(fps)
+            #print(fps)
 
     def start(self):
         self._dt = self._clock.tick() / 1000.0
         self._time_accumulator += self._dt 
         while(True):
-            # hot reload
-            hot_reload = self._input_handler.process(self._dt)
-            self._update_render() 
 
-            if hot_reload: 
-                self._hot_reload()
+            self._input_handler.process(self._dt,self._hot_reload)
+            self._update_render() 
         
 
 

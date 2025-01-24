@@ -9,6 +9,9 @@ class Cursor:
         self._ref_rm = ResourceManager.get_instance()
 
         self.ndc_vertices,self.ndc_vertices_buffer = self._ref_rm.get_cursor_ndc_vertices_and_buffer()
+        
+        self.ref_prev_hovered_cell = None
+        self.ref_hovered_cell = None
 
         self.in_editor = in_editor 
         self.topleft = [0,0]  
@@ -18,7 +21,7 @@ class Cursor:
         self.item = None
         self.state = "default"
         self.prev_state = "default"
-        self.box = Rect(*self.topleft,1,1)
+        self.box = Rect(0,0,1,1)
         self.cooldown = 10 * TIME_FOR_ONE_LOGICAL_STEP
         self.pressed=  0 
         self.magnet = False 
@@ -30,12 +33,14 @@ class Cursor:
     def set_cooldown(self) -> None:
         self.cooldown = 10 * TIME_FOR_ONE_LOGICAL_STEP
 
-    def update(self,display_scale_ratio:int,dt:float,cursor_state_change_callback)-> None:
+    def update(self,display_scale_ratio:int,dt:float,cursor_state_change_callback:"function")-> None:
  
         new_topleft = get_pos()
         self.topleft[0] = new_topleft[0] // display_scale_ratio
         self.topleft[1] = new_topleft[1] // display_scale_ratio
 
+        self.box.x = self.topleft[0]
+        self.box.y = self.topleft[1]
 
         if not self.in_editor:
             if self.cooldown >0 :

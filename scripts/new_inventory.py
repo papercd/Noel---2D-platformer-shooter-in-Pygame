@@ -120,15 +120,12 @@ class Inventory:
                             self.add_item(item.copy())
                         return False
 
-    def update(self, inventory_list, cursor:"Cursor",inven_open_state:bool)->bool:
+    def update(self, inventory_list, cursor:"Cursor",inven_open_state:bool,cursor_hover_state_change_callback:"function")->bool:
         inven_active = ( not self._expandable ) or (self._expandable and inven_open_state)
 
         interacting = False
 
         if inven_active:
-
-            interacting  = self._rect.colliderect(cursor.box)
-
             self._done_open = min(5,self._done_open +1)
         else:
             self._done_open = max(0,self._done_open -1)
@@ -139,9 +136,12 @@ class Inventory:
 
         for i, row in enumerate(self._cells):
             for j, cell in enumerate(row):
-                cell.update(self._stack_limit,inventory_list,cursor,self._cur_opacity)
-                                 
+                cell_interact =cell.update(self._stack_limit,inventory_list,cursor,self._cur_opacity)
+                interacting = cell_interact or interacting  
 
+        if cursor.ref_hovered_cell != cursor.ref_prev_hovered_cell:
+            cursor_hover_state_change_callback()
+            cursor.ref_prev_hovered_cell = cursor.ref_hovered_cell
             
         return interacting
         
@@ -188,7 +188,7 @@ class WeaponInventory(Inventory):
 
             return weapon 
 
-    def update(self,cursor:"Cursor",inven_open_state:bool,player:"Player")->bool:
+    def update(self,cursor:"Cursor",inven_open_state:bool,cursor_hover_state_change_callback:"function")->bool:
         inven_active = ( not self._expandable ) or (self._expandable and inven_open_state)
         
         interacting = False
@@ -202,8 +202,8 @@ class WeaponInventory(Inventory):
         self._cur_opacity= 255 * (self._done_open /5)
         self._offset = self._cell_dim[1] * (self._done_open/5)
         
-        self._weapons_list.update(self._stack_limit,cursor,self._cur_opacity,player)
-        player.curr_weapon_node = self._weapons_list.curr_node
+        self._weapons_list.update(self._stack_limit,cursor,self._cur_opacity)
+        #player.curr_weapon_node = self._weapons_list.curr_node
         return interacting
 
 
@@ -213,17 +213,18 @@ class InventoryEngine:
         for i, inventory in enumerate(self._inventory_list):
             inventory.set_ind(i)
 
-    def update(self,cursor:"Cursor",inven_open_state:bool)->None:
+    def update(self,cursor:"Cursor",inven_open_state:bool,cursor_hover_state_change_callback:"function")->None:
 
         interacting = False 
 
         for inventory in self._inventory_list:
             if inventory._name == 'item':
-                interact_check = inventory.update(self._inventory_list,cursor,inven_open_state)
+                interact_check = inventory.update(self._inventory_list,cursor,inven_open_state,cursor_hover_state_change_callback)
             else: 
-                interact_check =inventory.update(cursor,inven_open_state,self._player)
+                interact_check =inventory.update(cursor,inven_open_state,cursor_hover_state_change_callback)
             interacting = interact_check or interacting 
 
+        if not interacting: cursor.ref_hovered_cell = None
         cursor.interacting = interacting 
 
 
@@ -243,6 +244,14 @@ class Cell:
         self._rect = Rect(*self._pos,*self._size)
     
     @property
+    def ind(self)->int:
+        return self._ind
+
+    @property 
+    def inventory_id(self)->int: 
+        return self._inventory_id
+
+    @property
     def item(self)->"Item": 
         return self._item
     
@@ -254,7 +263,7 @@ class Cell:
         if cursor.box.colliderect(self._rect):
             self._offset = (-1,-1)
             self._hovered = True 
-        
+            cursor.ref_hovered_cell = self
         else: 
             self._offset = (0,0)
             self._hovered = False 
@@ -375,6 +384,8 @@ class Cell:
                         self._item = cursor.item 
                         cursor.item = None 
                     cursor.set_cooldown 
+        
+        return self.hovered
                         
                         
                 

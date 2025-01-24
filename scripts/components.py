@@ -42,7 +42,8 @@ class PhysicsComponent:
             [0,0,1]
         ])
 
-    
+
+
 
 @component 
 class WeaponHolderComponent: 
@@ -69,7 +70,6 @@ class InputComponent:
     right: bool = False 
     up : bool = False 
     down : bool = False 
-    open_inventory: bool = False 
     interact : bool  = False
     shoot: bool = False
     shift : bool = False
