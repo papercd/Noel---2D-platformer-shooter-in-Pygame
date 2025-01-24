@@ -58,7 +58,7 @@ class HUD:
         self.open_item_inventory_topleft = (self.health_bar_topleft[0]+self.health_bar_dimensions[0]+self.current_weapon_display_cell_dim[0]+SPACE_BETWEEN_INVENTORY_ELEMENTS,\
                                              self.health_bar_topleft[1] - int(0.5 * self.open_item_inventory_cell_length) + self.health_bar_dimensions[1])
 
-        self.hidden_item_inventory_topleft = (self.open_item_inventory_topleft[0],self.open_item_inventory_topleft[1] -(self.hidden_item_inventory_rows_cols[0]+1) * (self.hidden_item_inventory_cell_length + 1))
+        self.hidden_item_inventory_topleft = (self.open_item_inventory_topleft[0],self.open_item_inventory_topleft[1] -(self.hidden_item_inventory_rows_cols[0]) * (self.hidden_item_inventory_cell_length+SPACE_BETWEEN_INVENTORY_CELLS))
 
         self._precompute_hud_display_elements_vertices()
 
@@ -208,32 +208,38 @@ class HUD:
         # when the cursor hover state changes, you need to overwrite the corresponding cell's vertex data 
         # in the buffers
 
+        bytes_per_element = 48 
+
         if self.cursor.ref_prev_hovered_cell:
             # write non-hover cell to buffer 
             inventory_id = self.cursor.ref_prev_hovered_cell.inventory_id
             inventory = self._inven_list[inventory_id] 
+            row = self.cursor.ref_prev_hovered_cell.ind // inventory.columns
+            col = self.cursor.ref_prev_hovered_cell.ind - row * inventory.columns
             if inventory_id == 0:
-                buffer_offset = (self.cursor.ref_prev_hovered_cell.ind + 2) * 6 * 4 * 2
-                row = self.cursor.ref_prev_hovered_cell.ind // inventory.columns
-                col = self.cursor.ref_prev_hovered_cell.ind - row * inventory.columns
+                buffer_offset = (self.cursor.ref_prev_hovered_cell.ind + 2) * bytes_per_element
                 self.opqaue_vertices_buffer.write(self.open_item_inven_vertices[False][(row,col)].tobytes(),offset = buffer_offset)
                 self.opaque_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][False].tobytes(),offset = buffer_offset)
             elif inventory_id == 1:
-                pass
+                buffer_offset = (self.cursor.ref_prev_hovered_cell.ind) * bytes_per_element
+                self.hidden_vertices_buffer.write(self.hidden_item_inven_vertices[False][(row,col)].tobytes(),offset = buffer_offset)
+                self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][False].tobytes(),offset = buffer_offset)
             else: 
                 pass
 
         if self.cursor.ref_hovered_cell: 
             inventory_id = self.cursor.ref_hovered_cell.inventory_id 
             inventory = self._inven_list[inventory_id]
+            row = self.cursor.ref_hovered_cell.ind // inventory.columns
+            col = self.cursor.ref_hovered_cell.ind - row * inventory.columns
             if inventory_id == 0:
                 buffer_offset = (self.cursor.ref_hovered_cell.ind + 2) * 6 * 4 * 2
-                row = self.cursor.ref_hovered_cell.ind // inventory.columns
-                col = self.cursor.ref_hovered_cell.ind - row * inventory.columns
                 self.opqaue_vertices_buffer.write(self.open_item_inven_vertices[True][(row,col)].tobytes(),offset = buffer_offset)
                 self.opaque_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][True].tobytes(),offset = buffer_offset)
             elif inventory_id == 1:
-                pass
+                buffer_offset = (self.cursor.ref_hovered_cell.ind) * bytes_per_element
+                self.hidden_vertices_buffer.write(self.hidden_item_inven_vertices[True][(row,col)].tobytes(),offset = buffer_offset)
+                self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][True].tobytes(),offset = buffer_offset)
             else: 
                 pass
 

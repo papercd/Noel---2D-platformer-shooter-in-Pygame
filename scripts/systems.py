@@ -1218,8 +1218,20 @@ class InputHandler(esper.Processor):
                 quit()
             if event.key == pygame.K_F12:
                 pygame.display.toggle_fullscreen()
+        
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                self._ref_hud.cursor.pressed[0] = True 
+            elif event.button==3:
+                self._ref_hud.cursor.pressed[1] = True 
 
-        if event.type == pygame.QUIT:
+        elif event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1:
+                self._ref_hud.cursor.pressed[0] = False 
+            elif event.button==3:
+                self._ref_hud.cursor.pressed[1] = False 
+
+        elif event.type == pygame.QUIT:
             pygame.quit()
             quit()
 
