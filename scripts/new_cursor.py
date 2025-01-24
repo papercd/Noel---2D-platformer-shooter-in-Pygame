@@ -43,6 +43,7 @@ class Cursor:
         self.box.y = self.topleft[1]
         
 
+
         if not self.in_editor:
             if self.cooldown >0 :
                 self.cooldown -= dt

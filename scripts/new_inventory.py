@@ -140,7 +140,7 @@ class Inventory:
                 interacting = cell_interact or interacting  
 
         if cursor.ref_hovered_cell != cursor.ref_prev_hovered_cell:
-            print("check")
+            cursor_hover_state_change_callback()
             cursor.ref_prev_hovered_cell = cursor.ref_hovered_cell
             
         return interacting
@@ -243,6 +243,14 @@ class Cell:
 
         self._rect = Rect(*self._pos,*self._size)
     
+    @property
+    def ind(self)->int:
+        return self._ind
+
+    @property 
+    def inventory_id(self)->int: 
+        return self._inventory_id
+
     @property
     def item(self)->"Item": 
         return self._item
