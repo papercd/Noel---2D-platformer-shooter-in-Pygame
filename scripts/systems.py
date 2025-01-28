@@ -356,7 +356,6 @@ class RenderSystem(esper.Processor):
         self._hidden_ui_draw_prog = self._ctx.program(vertex_shader= vertex_src,
                                                       fragment_shader=hidden_draw_frag_src)
 
-        
         self._prog_mask = self._ctx.program(vertex_shader= vertex_src,
                                             fragment_shader=mask_frag_src)
         
@@ -1272,6 +1271,9 @@ class InputHandler(esper.Processor):
                     if event.key == pygame.K_e:
                         # toggle inventory
                         self._ref_hud.inven_open_state = not self._ref_hud.inven_open_state
+                    if event.key == pygame.K_i: 
+                        # temporary key binding to add items to inventory for debugging purposes
+                        pass
 
                 if event.type == pygame.KEYUP:
                     
