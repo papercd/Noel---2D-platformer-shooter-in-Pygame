@@ -5,6 +5,12 @@ from scripts.new_cursor import Cursor
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_inventory import Inventory,InventoryEngine,WeaponInventory
 import numpy as np 
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: 
+    import Item
+
 class HUD:
 
     def __init__(self,true_res:tuple[int,int],true_to_native_ratio:int)->None: 
@@ -201,6 +207,8 @@ class HUD:
 
         # hidden weapon inventory 
 
+        # the items for the inventories also need a preallocated buffer.             
+
 
 
 
@@ -243,9 +251,12 @@ class HUD:
             else: 
                 pass
 
+    
+    # temporary helper function to add item to open item inventory
+    def add_item(self,item:"Item")->None: 
+        self._inven_list[0].add_item(item)
 
-
-
+    
 
     def update(self,dt:float,cursor_state_change_callback:"function",cursor_cell_hover_callback:"function")->None:
         # inventory open time update 
