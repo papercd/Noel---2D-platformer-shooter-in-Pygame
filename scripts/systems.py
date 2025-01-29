@@ -2,7 +2,8 @@ import esper
 from scripts.second_HUD import HUD
 from scripts.game_state import GameState
 from scripts.game_state import GameState
-from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR
+from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR,\
+                        ITEM_ATLAS_POSITIONS_AND_SIZES
 from pygame.rect import Rect
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
@@ -10,12 +11,13 @@ from scripts.components import PhysicsComponent,RenderComponent, StateInfoCompon
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
 from scripts.layer import Layer_
-
+from scripts.item import Item
 from scripts.lists import interpolatedLightNode
 import pygame
 from moderngl import NEAREST,LINEAR,BLEND,Texture,Framebuffer
 from OpenGL.GL import glUniformBlockBinding,glGetUniformBlockIndex
-from math import sqrt,ceil,floor,dist
+from math import sqrt,dist
+from random import choice
 import numpy as np
 
 from typing import TYPE_CHECKING 
@@ -260,6 +262,7 @@ class RenderSystem(esper.Processor):
         self._true_to_native_ratio = true_to_screen_res_ratio 
         self._screen_res = screen_res
         self._true_res = true_res 
+
 
         self._diagonal = sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
         self._ambient_light_RGBA = (.25, .25, .25, .25)
@@ -1211,7 +1214,7 @@ class InputHandler(esper.Processor):
         
 
 
-    def _handle_common_events(self,event:pygame.Event)->None:
+    def _handle_common_events(self,event:pygame.event)->None:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 pygame.quit()
@@ -1272,6 +1275,9 @@ class InputHandler(esper.Processor):
                     if event.key == pygame.K_e:
                         # toggle inventory
                         self._ref_hud.inven_open_state = not self._ref_hud.inven_open_state
+                    if event.key == pygame.K_i:
+                        # temporary keybinding to add items to inventory 
+                        self._ref_hud.add_item(Item(choice(list(ITEM_ATLAS_POSITIONS_AND_SIZES.keys()))))
 
                 if event.type == pygame.KEYUP:
                     
