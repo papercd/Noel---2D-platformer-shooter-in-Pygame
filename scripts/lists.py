@@ -108,11 +108,16 @@ class DoublyLinkedList:
 
 
 class WeaponInvenList(DoublyLinkedList):
-    def __init__(self, objs = None)->None:
+    def __init__(self, inven_ind:int,objs = None)->None:
         super().__init__(objs)
+        self._inventory_id = inven_ind
         self._type = 'weapon'
 
     
+    @property 
+    def inventory_id(self)->int:
+        return self._inventory_id
+
     def add_weapon(self,weapon:"Weapon")->None:
         current = self.head 
         while current:
@@ -169,16 +174,20 @@ class WeaponInvenList(DoublyLinkedList):
                     break 
 
 
-    def update(self,stack_limit:int,cursor:"Cursor",opacity:int)->None:
+    def update(self,stack_limit:int,cursor:"Cursor",inven_open_state:bool)->None:
         current = self.head
+        interacting = False
 
         while current:
-            current.update(stack_limit,cursor,opacity)
+            current_interact = current.update(stack_limit,cursor,inven_open_state)
+            interacting = current_interact or interacting
             current = current.next
+
+        return interacting
 
 class WeaponNode:
     def __init__(self,list:WeaponInvenList,cell_ind:int,pos:tuple[int,int],size:tuple[int,int])->None:
-        self._list = list 
+        self.list = list 
         self._cell_ind = cell_ind 
         self._pos = pos 
         self._hovered = False 
@@ -190,7 +199,7 @@ class WeaponNode:
         self.prev = None 
         self.weapon= None
     @property 
-    def cell_ind(self)->int: 
+    def ind(self)->int: 
         return self._cell_ind
     
     @property 
@@ -224,15 +233,16 @@ class WeaponNode:
         return (left_node,right_node)
     
 
-    def update(self,stack_limit:int,cursor:"Cursor",opacity:int)->None:
+    def update(self,stack_limit:int,cursor:"Cursor",inven_open_state:bool)->None:
             if cursor.box.colliderect(self._rect):
                 self._offset = (-1,-1)
                 self._hovered = True 
+                cursor.ref_hovered_cell = self
             else: 
                 self._offset = (0,0)
                 self._hovered = False
 
-            if opacity == 255:
+            if inven_open_state:
                 if self.weapon is not None:
                     if not self._hovered:
                         return 
@@ -312,6 +322,8 @@ class WeaponNode:
                             self.weapon = cursor.item 
                             cursor.item = None 
                         cursor.set_cooldown()
+
+            return self.hovered
 
 
 class Category(Node):
