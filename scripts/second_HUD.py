@@ -71,7 +71,7 @@ class HUD:
 
         self.opqaue_vertices_buffer,self.opaque_texcoords_buffer, self.hidden_vertices_buffer, self.hidden_texcoords_buffer = \
             self._ref_rm.create_hud_vbos(3 + self.open_item_inventory_rows_cols[0] * self.open_item_inventory_rows_cols[1],
-            self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1]+ self.weapon_inventory_rows_cols[0] * self.weapon_inventory_rows_cols[1])
+            self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1]+ self.weapon_inventory_rows_cols[0] * self.weapon_inventory_rows_cols[1] + 1)
 
         self._write_to_buffers()
 
@@ -150,6 +150,14 @@ class HUD:
                 self.hidden_item_inven_vertices[True][(row,col)] = self._create_ui_element_vertices((hovered_x,hovered_y),(hovered_length,hovered_length))
 
 
+        # hidden item inventory background 
+        self.hidden_item_inven_background_topleft = (self.hidden_item_inventory_topleft[0] - self.hidden_item_inventory_cell_length * INVENTORY_CELL_EXPANSION_RATIO,\
+                                                     self.hidden_item_inventory_topleft[1] - self.hidden_item_inventory_cell_length * INVENTORY_CELL_EXPANSION_RATIO)
+        self.hidden_item_inven_background_dim = (self.hidden_item_inventory_rows_cols[1] * (self.hidden_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS) -SPACE_BETWEEN_INVENTORY_CELLS + self.hidden_item_inventory_cell_length* INVENTORY_CELL_EXPANSION_RATIO ,\
+                                                 self.hidden_item_inventory_rows_cols[0] * (self.hidden_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS) -SPACE_BETWEEN_INVENTORY_CELLS + self.hidden_item_inventory_cell_length * INVENTORY_CELL_EXPANSION_RATIO  )
+        self.hidden_item_inven_background_vertices = self._create_ui_element_vertices(self.hidden_item_inven_background_topleft,self.hidden_item_inven_background_dim)
+
+
         # weapon inventory (hidden)
         self.weapon_inven_vertices = {}
         self.weapon_inven_vertices[False] = {}
@@ -219,6 +227,13 @@ class HUD:
         hidden_vertices_write_offset = 0
         hidden_texcoords_write_offset = 0
 
+        # hidden item inventory background 
+        self.hidden_vertices_buffer.write(self.hidden_item_inven_background_vertices.tobytes(),offset =hidden_vertices_write_offset)
+        self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['background'].tobytes(),offset =hidden_texcoords_write_offset)
+
+        hidden_vertices_write_offset += bytes_per_cell
+        hidden_texcoords_write_offset += bytes_per_cell
+
         # hidden item inventory 
         for row in range(self.hidden_item_inventory_rows_cols[0]):
             for col in range(self.hidden_item_inventory_rows_cols[1]):
@@ -275,12 +290,12 @@ class HUD:
                 self.opaque_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][False].tobytes(),offset = buffer_offset)
             elif inventory_id == 1:
 
-                buffer_offset = (self.cursor.ref_prev_hovered_cell.ind) * bytes_per_element
+                buffer_offset = (self.cursor.ref_prev_hovered_cell.ind+1) * bytes_per_element
                 self.hidden_vertices_buffer.write(self.hidden_item_inven_vertices[False][(row,col)].tobytes(),offset = buffer_offset)
                 self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][False].tobytes(),offset = buffer_offset)
             else: 
 
-                buffer_offset = (self.hidden_item_inventory_rows_cols[0]*self.hidden_item_inventory_rows_cols[1]+self.cursor.ref_prev_hovered_cell.ind) * bytes_per_element
+                buffer_offset = (self.hidden_item_inventory_rows_cols[0]*self.hidden_item_inventory_rows_cols[1]+self.cursor.ref_prev_hovered_cell.ind+1) * bytes_per_element
                 self.hidden_vertices_buffer.write(self.weapon_inven_vertices[False][(row,col)].tobytes(),offset = buffer_offset)
                 self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['weapon_slot'][False].tobytes(),offset = buffer_offset)
 
@@ -297,12 +312,12 @@ class HUD:
                 self.opaque_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][True].tobytes(),offset = buffer_offset)
             elif inventory_id == 1:
 
-                buffer_offset = (self.cursor.ref_hovered_cell.ind) * bytes_per_element
+                buffer_offset = (self.cursor.ref_hovered_cell.ind+1) * bytes_per_element
                 self.hidden_vertices_buffer.write(self.hidden_item_inven_vertices[True][(row,col)].tobytes(),offset = buffer_offset)
                 self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][True].tobytes(),offset = buffer_offset)
             else: 
 
-                buffer_offset = (self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1] + self.cursor.ref_hovered_cell.ind) * bytes_per_element
+                buffer_offset = (self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1] + self.cursor.ref_hovered_cell.ind+1) * bytes_per_element
                 self.hidden_vertices_buffer.write(self.weapon_inven_vertices[True][(row,col)].tobytes(),offset=buffer_offset)
                 self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['weapon_slot'][True].tobytes(),offset = buffer_offset)
 
