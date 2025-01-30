@@ -327,7 +327,7 @@ class Noel():
                     if event.key == pygame.K_c:
                         # testing adding items to item inventory 
                         self._hud.add_item(Item(choice(list(ITEM_ATLAS_POSITIONS_AND_SIZES.keys()))))
-                        pass 
+                         pass 
                     if event.key == pygame.K_w: 
                         self.player.jump(self.particle_system)
                     if event.key == pygame.K_s:
@@ -356,10 +356,12 @@ class Noel():
         self._dt = min(self._clock.tick() / 1000.0,0.1)
         self._time_accumulator += self._dt
 
-        if self._game_context['gamestate']== GameState.GameLoop:  
+        if self._game_context['gamestate']== GameState.GameLoop: 
+          
+            player_position = self._entities_manager.player_position
            
-            self._camera_offset[0] += 3*self._dt*(self._entities_manager.player_position[0] - self._game_context["true_res"][0] /2 - self._camera_offset[0])
-            self._camera_offset[1] += 3*self._dt*(self._entities_manager.player_position[1] - self._game_context["true_res"][1] /2 - self._camera_offset[1])
+            self._camera_offset[0] += 3*self._dt*(player_position[0] - self._game_context["true_res"][0] /2 - self._camera_offset[0])
+            self._camera_offset[1] += 3*self._dt*(player_position[1] - self._game_context["true_res"][1] /2 - self._camera_offset[1])
 
             integer_camera_offset = (int(self._camera_offset[0]), int(self._camera_offset[1]))
 
@@ -370,7 +372,7 @@ class Noel():
             
             interpolation_delta = self._time_accumulator / TIME_FOR_ONE_LOGICAL_STEP
 
-            self._render_system.process(integer_camera_offset,interpolation_delta,self._dt)
+            self._render_system.process(player_position,integer_camera_offset,interpolation_delta,self._dt)
 
             """
            
@@ -401,7 +403,7 @@ class Noel():
                 self.player.update(self._tilemap,self.particle_system,self._hud.cursor.topleft,\
                                 self.movement_input,camera_scroll,self._game_context,TIME_FOR_ONE_LOGICAL_STEP)
                 self._accumulator -= TIME_FOR_ONE_LOGICAL_STEP
-            
+            a
             self._tilemap.update_ambient_node_ptr(self.player.pos)
             self._hud.update(self._dt)
 
