@@ -20,7 +20,7 @@ class HUD:
         self._true_to_native_ratio = true_to_native_ratio
 
         self.inven_open_state = False
-        self.inven_open_time = 30 * TIME_FOR_ONE_LOGICAL_STEP
+        self.inven_open_time = 0
         self.max_inven_open_time = 30 * TIME_FOR_ONE_LOGICAL_STEP
         self.cursor = Cursor()
 
@@ -57,7 +57,8 @@ class HUD:
         self._clamp_dimensions()
 
         self.weapon_inventory_topleft = (self.health_bar_topleft[0],
-                                          self.health_bar_topleft[1] -self.weapon_inventory_rows_cols[0] * (self.weapon_inventory_cell_dim[1] + 1))
+                                          self.health_bar_topleft[1] -self.weapon_inventory_rows_cols[0] * (self.weapon_inventory_cell_dim[1] + SPACE_BETWEEN_INVENTORY_CELLS)\
+                                            +SPACE_BETWEEN_INVENTORY_CELLS -SPACE_BETWEEN_INVENTORY_ELEMENTS)
 
         self.current_weapon_display_topleft = (self.health_bar_topleft[0] + self.health_bar_dimensions[0]+SPACE_BETWEEN_INVENTORY_ELEMENTS,
                                                 self.health_bar_topleft[1] -2)
@@ -66,6 +67,12 @@ class HUD:
                                              self.health_bar_topleft[1] - int(0.5 * self.open_item_inventory_cell_length) + self.health_bar_dimensions[1])
 
         self.hidden_item_inventory_topleft = (self.open_item_inventory_topleft[0],self.open_item_inventory_topleft[1] -(self.hidden_item_inventory_rows_cols[0]) * (self.hidden_item_inventory_cell_length+SPACE_BETWEEN_INVENTORY_CELLS))
+
+        self.hidden_item_inven_background_topleft = (self.hidden_item_inventory_topleft[0] - 2*self.hidden_item_inventory_cell_length * INVENTORY_CELL_EXPANSION_RATIO,\
+                                                     self.hidden_item_inventory_topleft[1] - 2*self.hidden_item_inventory_cell_length * INVENTORY_CELL_EXPANSION_RATIO)
+        self.hidden_item_inven_background_dim = (self.hidden_item_inventory_rows_cols[1] * (self.hidden_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS) -SPACE_BETWEEN_INVENTORY_CELLS + 4 *self.hidden_item_inventory_cell_length* INVENTORY_CELL_EXPANSION_RATIO ,\
+                                                 self.hidden_item_inventory_rows_cols[0] * (self.hidden_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS) -SPACE_BETWEEN_INVENTORY_CELLS + 4 *self.hidden_item_inventory_cell_length * INVENTORY_CELL_EXPANSION_RATIO  )
+
 
         self._precompute_hud_display_elements_vertices()
 
@@ -97,6 +104,8 @@ class HUD:
         self.open_item_inventory_cell_length= min(28,self.open_item_inventory_cell_length)
         self.hidden_item_inventory_cell_length = min(28,self.hidden_item_inventory_cell_length)
 
+        #self.weapon_inventory_cell_dim = (min(self.weapon_inventory_cell_dim[0],44),max(23,min(28,self.weapon_inventory_cell_dim[1])))
+        self.weapon_inventory_cell_dim = (42,20 )
     def _precompute_hud_display_elements_vertices(self)->None:
         # health bar 
         self.health_bar_vertices = self._create_ui_element_vertices(self.health_bar_topleft,self.health_bar_dimensions) 
@@ -151,10 +160,7 @@ class HUD:
 
 
         # hidden item inventory background 
-        self.hidden_item_inven_background_topleft = (self.hidden_item_inventory_topleft[0] - self.hidden_item_inventory_cell_length * INVENTORY_CELL_EXPANSION_RATIO,\
-                                                     self.hidden_item_inventory_topleft[1] - self.hidden_item_inventory_cell_length * INVENTORY_CELL_EXPANSION_RATIO)
-        self.hidden_item_inven_background_dim = (self.hidden_item_inventory_rows_cols[1] * (self.hidden_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS) -SPACE_BETWEEN_INVENTORY_CELLS + self.hidden_item_inventory_cell_length* INVENTORY_CELL_EXPANSION_RATIO ,\
-                                                 self.hidden_item_inventory_rows_cols[0] * (self.hidden_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS) -SPACE_BETWEEN_INVENTORY_CELLS + self.hidden_item_inventory_cell_length * INVENTORY_CELL_EXPANSION_RATIO  )
+     
         self.hidden_item_inven_background_vertices = self._create_ui_element_vertices(self.hidden_item_inven_background_topleft,self.hidden_item_inven_background_dim)
 
 

@@ -363,8 +363,6 @@ class Noel():
             self._camera_offset[0] += 3*self._dt*(player_position[0] - self._game_context["true_res"][0] /2 - self._camera_offset[0])
             self._camera_offset[1] += 3*self._dt*(player_position[1] - self._game_context["true_res"][1] /2 - self._camera_offset[1])
 
-            integer_camera_offset = (int(self._camera_offset[0]), int(self._camera_offset[1]))
-
             while self._time_accumulator >= TIME_FOR_ONE_LOGICAL_STEP:
                 self._physics_system.process(TIME_FOR_ONE_LOGICAL_STEP)
                 self._state_system.process(TIME_FOR_ONE_LOGICAL_STEP)
@@ -372,7 +370,7 @@ class Noel():
             
             interpolation_delta = self._time_accumulator / TIME_FOR_ONE_LOGICAL_STEP
 
-            self._render_system.process(player_position,integer_camera_offset,interpolation_delta,self._dt)
+            self._render_system.process((int(self._camera_offset[0]),int(self._camera_offset[1])),interpolation_delta,self._dt)
 
             """
            
