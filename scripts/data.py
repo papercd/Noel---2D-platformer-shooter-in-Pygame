@@ -364,6 +364,7 @@ GRASS_ASSET_ATLAS_POS_AND_INFO = {
 PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs','building_door','trap_door',\
                               'ladder'}
 
+LIGHT_POSITION_OFFSET_FROM_TOPLEFT= (7,3)
 HULL_OUTER_EDGE_OFFSET = 4 
 HULL_AXIS_TO_OFFSET_EVEN_POS= [ ((0,2),(1,1)),((1,2),(-1,1)),((1,3),(-1,-1)),((0,3),(1,-1))]
 HULL_AXIS_TO_OFFSET_ODD_POS = [(2,1),(1,-1),(3,-1),(0,1)]

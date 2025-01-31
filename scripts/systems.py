@@ -261,14 +261,15 @@ class RenderSystem(esper.Processor):
         self._diagonal = sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
         self._ambient_light_RGBA = (.25, .25, .25, .25)
 
-        self._light_switch_time_buffer = 0
-        self._time_for_light_switch = 1/40
         self._active_static_lights : list["PointLight"] = []
         self.dynamic_lights:list["PointLight"] = []
         self.hulls:list["Hull"] = []
 
         self._prev_hull_query_player_pos = (0,0)
         self._prev_hull_query_camera_scroll = (0,0)
+
+        self._prev_lights_query_camera_scroll = (0,0)
+
         self._shadow_blur_radius = 5
         self._max_hull_count = 512 
 
@@ -534,11 +535,12 @@ class RenderSystem(esper.Processor):
         self._ref_rm.texture_atlasses['ui'].use()
         self._fbo_fg.use()
         self._vao_opaque_ui_draw.render()  
+        self._vao_opaque_items_draw.render()   
 
         if self._ref_hud.inven_open_time > 0:
             self._hidden_ui_draw_prog['alpha'] = self._ref_hud.inven_open_time/self._ref_hud.max_inven_open_time
             self._vao_hidden_ui_draw.render()
-
+     
         self._write_cursor_position_to_buffer()
 
         self._fbo_fg.use()
@@ -722,7 +724,7 @@ class RenderSystem(esper.Processor):
     def _update_hulls(self,player_position:tuple[int,int],camera_scroll:tuple[int,int])->bool: 
         tile_size = self._ref_tilemap.regular_tile_size
   
-        if dist(self._prev_hull_query_player_pos,player_position) >= 90 or self._light_switch_time_buffer < self._time_for_light_switch*1.5: 
+        if dist(self._prev_hull_query_player_pos,player_position) >= tile_size * 7: 
             self.hulls = self._ref_tilemap.hull_grid.query(camera_scroll[0] - 10 * tile_size, camera_scroll[1] - 10 * tile_size,\
                                                            camera_scroll[0] + self._true_res[0] +  10 * tile_size, camera_scroll[1] + self._true_res[1] + 10 * tile_size)
             
@@ -880,7 +882,7 @@ class RenderSystem(esper.Processor):
         
         self._fbo_ao.clear(0,0,0,0)
     
-        if hulls_updated or self._light_switch_time_buffer < self._time_for_light_switch*1.5:
+        if hulls_updated:
             self._buf_lt.clear(0,0,0,0)
             self._send_hull_data_to_lighting_program(render_offset)
             self._render_static_lights_to_light_buffer(render_offset)
@@ -892,30 +894,54 @@ class RenderSystem(esper.Processor):
         self._render_foreground_layer()
 
 
-    def _on_ambient_node_change_callback(self)->None:
-        self._light_switch_time_buffer = 0
+    def _on_ambient_node_change_callback(self,camera_offset:tuple[int,int],screen_shake:tuple[int,int],
+                                         player_position:tuple[int,int])->None:
+        
+        self._update_active_static_lights(camera_offset)
 
-    def _update_active_static_lights(self,dt:float)->None: 
-        active_static_lights = []
+        render_offset = (camera_offset[0]- screen_shake[0],camera_offset[1] -screen_shake[1])
+
+        tile_size = self._ref_tilemap.regular_tile_size
+
+        self.hulls = self._ref_tilemap.hull_grid.query(camera_offset[0] - 10 * tile_size, camera_offset[1] - 10 * tile_size,\
+                                                           camera_offset[0] + self._true_res[0] +  10 * tile_size, camera_offset[1] + self._true_res[1] + 10 * tile_size)
+        
+        self._prev_hull_query_player_pos = tuple(player_position)
+        self._prev_hull_query_camera_scroll = camera_offset
+
+
+        self._fbo_ao.clear(0,0,0,0)
+        self._buf_lt.clear(0,0,0,0)
+        self._send_hull_data_to_lighting_program(render_offset)
+        self._render_static_lights_to_light_buffer(render_offset)
+
+        self._render_aomap(camera_offset)
+
+
+
+    def _update_active_static_lights(self,camera_offset:tuple[int,int])->None: 
+     
 
         ambient_lighting_range = self._ref_tilemap._ambient_node_ptr.range
 
-        self._light_switch_time_buffer = min(self._time_for_light_switch*1.5,self._light_switch_time_buffer + dt)
+        if dist(self._prev_lights_query_camera_scroll,camera_offset) >= 16:
+            # query the lights 
+            self._active_static_lights = self._ref_tilemap.lights_grid.query(camera_offset[0]- 2 * self._lightmap_buffer_slack,
+                                                                            camera_offset[1]- 2 * self._lightmap_buffer_slack,
+                                                                             camera_offset[0] + self._true_res[0] + 2 * self._lightmap_buffer_slack,
+                                                                            camera_offset[1] +self._true_res[1] + 2 * self._lightmap_buffer_slack )
+            
+            self._prev_lights_query_camera_scroll = camera_offset
 
-        # update the list of active static lights depending on player position 
-        for i in range(len(self._ref_tilemap.lights) -1,-1,-1):
-            light = self._ref_tilemap.lights[i]
-            if light.popped or not light.enabled:
-                continue 
+        for i in range(len(self._active_static_lights)-1,-1,-1):
+            light = self._active_static_lights[i] 
+            if light.popped or not light.enabled: 
+                continue
             if light.position[0] < ambient_lighting_range[0] or light.position[0] > ambient_lighting_range[1]:
-                light.cur_power = max(0.0,light.cur_power - light.power * dt/self._time_for_light_switch)
+                light.cur_power = 0
                 continue 
             else: 
-                light.cur_power = min(light.power,light.cur_power + light.power* dt /self._time_for_light_switch)
-
-            active_static_lights.append(light)
-            
-        self._active_static_lights = active_static_lights
+                light.cur_power = light.power
 
     def attatch_hud(self,hud:"HUD")->None:
         self._ref_hud = hud
@@ -932,7 +958,7 @@ class RenderSystem(esper.Processor):
         self._vao_opaque_ui_draw = self._ctx.vertex_array(
             self._opaque_ui_draw_prog,
             [
-                (self._ref_hud.opqaue_vertices_buffer, '2f' ,'vertexPos'),
+                (self._ref_hud.opaque_vertices_buffer, '2f' ,'vertexPos'),
                 (self._ref_hud.opaque_texcoords_buffer, '2f', 'vertexTexCoord')
             ]
         )
@@ -942,6 +968,14 @@ class RenderSystem(esper.Processor):
             [
                 (self._ref_hud.hidden_vertices_buffer, '2f', 'vertexPos'),
                 (self._ref_hud.hidden_texcoords_buffer, '2f' ,'vertexTexCoord')
+            ]
+        )
+
+        self._vao_opaque_items_draw = self._ctx.vertex_array(
+            self._opaque_ui_draw_prog,
+            [
+                (self._ref_hud.opaque_items_vertices_buffer, '2f', 'vertexPos'),
+                (self._ref_hud.opaque_items_texcoords_buffer, '2f', 'vertexTexCoord')
             ]
         )
 
@@ -1045,7 +1079,7 @@ class RenderSystem(esper.Processor):
             if state_info_comp.type == 'player':
                 player_position = physics_comp.position
                 
-                self._ref_tilemap.update_ambient_node_ptr(physics_comp.position[0],self._on_ambient_node_change_callback)
+                self._ref_tilemap.update_ambient_node_ptr(physics_comp.position[0],self._on_ambient_node_change_callback,camera_offset,screen_shake,player_position)
 
                 if isinstance(self._ref_tilemap._ambient_node_ptr,interpolatedLightNode):
                     self._set_ambient(self._ref_tilemap._ambient_node_ptr.get_interpolated_RGBA(physics_comp.position[0]))
@@ -1080,7 +1114,7 @@ class RenderSystem(esper.Processor):
         self._ref_rm.texture_atlasses['entities'].use()
         self._vao_entity_draw.render(vertices= 6, instances= entity_instances)
         
-        self._update_active_static_lights(dt)
+        self._update_active_static_lights(camera_offset)
         self._render_fbos_to_screen_with_lighting(player_position,camera_offset,screen_shake,interpolation_delta)
 
 

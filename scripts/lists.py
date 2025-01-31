@@ -118,12 +118,13 @@ class WeaponInvenList(DoublyLinkedList):
     def inventory_id(self)->int:
         return self._inventory_id
 
-    def add_weapon(self,weapon:"Weapon")->None:
+    def add_weapon(self,weapon:"Weapon",on_item_add_callback:"function")->None:
         current = self.head 
         while current:
            if current.weapon is None:
                current.weapon =weapon 
                self.curr_node = current
+               on_item_add_callback(current)
                return 
            current = current.next 
         
@@ -174,12 +175,12 @@ class WeaponInvenList(DoublyLinkedList):
                     break 
 
 
-    def update(self,stack_limit:int,cursor:"Cursor",inven_open_state:bool)->None:
+    def update(self,stack_limit:int,cursor:"Cursor",inven_open_state:bool,on_item_add_callback:"function")->None:
         current = self.head
         interacting = False
 
         while current:
-            current_interact = current.update(stack_limit,cursor,inven_open_state)
+            current_interact = current.update(stack_limit,cursor,inven_open_state,on_item_add_callback)
             interacting = current_interact or interacting
             current = current.next
 
@@ -233,7 +234,7 @@ class WeaponNode:
         return (left_node,right_node)
     
 
-    def update(self,stack_limit:int,cursor:"Cursor",inven_open_state:bool)->None:
+    def update(self,stack_limit:int,cursor:"Cursor",inven_open_state:bool,on_item_add_callback:"function")->None:
             if cursor.box.colliderect(self._rect):
                 self._offset = (-1,-1)
                 self._hovered = True 
@@ -266,7 +267,7 @@ class WeaponNode:
                             temp = self.weapon 
                             self.weapon = None 
 
-                            self._list.add_weapon(temp)
+                            self._list.add_weapon(temp,on_item_add_callback)
                             cursor.set_cooldown()
 
                         elif cursor.pressed[0]:

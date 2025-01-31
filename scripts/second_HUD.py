@@ -75,9 +75,14 @@ class HUD:
 
         self._precompute_hud_display_elements_vertices()
 
-        self.opqaue_vertices_buffer,self.opaque_texcoords_buffer, self.hidden_vertices_buffer, self.hidden_texcoords_buffer = \
-            self._ref_rm.create_hud_vbos(3 + self.open_item_inventory_rows_cols[0] * self.open_item_inventory_rows_cols[1],
+        self.opaque_vertices_buffer,self.opaque_texcoords_buffer, self.hidden_vertices_buffer, self.hidden_texcoords_buffer = \
+            self._ref_rm.create_hud_inven_vbos(3 + self.open_item_inventory_rows_cols[0] * self.open_item_inventory_rows_cols[1],
             self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1]+ self.weapon_inventory_rows_cols[0] * self.weapon_inventory_rows_cols[1] + 1)
+
+        self.opaque_items_vertices_buffer, self.opaque_items_texcoords_buffer,self.hidden_items_vertices_buffer,self.hidden_items_texcoords_buffer =\
+        self._ref_rm.create_hud_item_vbos(self.open_item_inventory_rows_cols[0] * self.open_item_inventory_rows_cols[1],
+                                          self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1] +\
+                                          self.weapon_inventory_rows_cols[0] * self.weapon_inventory_rows_cols[1])
 
         self._write_to_buffers()
 
@@ -104,7 +109,8 @@ class HUD:
         self.hidden_item_inventory_cell_length = min(28,self.hidden_item_inventory_cell_length)
 
         #self.weapon_inventory_cell_dim = (min(self.weapon_inventory_cell_dim[0],44),max(23,min(28,self.weapon_inventory_cell_dim[1])))
-        self.weapon_inventory_cell_dim = (42,20 )
+        self.weapon_inventory_cell_dim = (42,20)
+    
     def _precompute_hud_display_elements_vertices(self)->None:
         # health bar 
         self.health_bar_vertices = self._create_ui_element_vertices(self.health_bar_topleft,self.health_bar_dimensions) 
@@ -117,6 +123,9 @@ class HUD:
         self.open_item_inven_vertices[False] = {}
         self.open_item_inven_vertices[True] = {}
 
+        self.open_item_vertices = {}
+        self.open_item_vertices[False] = {}
+        self.open_item_vertices[True] = {}
 
         hovered_length = int(self.open_item_inventory_cell_length*(1+2*INVENTORY_CELL_EXPANSION_RATIO))
 
@@ -130,7 +139,15 @@ class HUD:
 
                 hovered_y = self.open_item_inventory_topleft[1]+ row * (self.open_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS)\
                                 -int(INVENTORY_CELL_EXPANSION_RATIO * self.open_item_inventory_cell_length)
+                
+                item_idle_x = idle_x + self.open_item_inventory_cell_length // 4 
+                item_idle_y =  idle_y + self.open_item_inventory_cell_length // 4 
 
+                item_hovered_x =  hovered_x + hovered_length // 4
+                item_hovered_y =  hovered_y + hovered_length // 4
+
+                self.open_item_vertices[False][(row,col)] = self._create_ui_element_vertices((item_idle_x,item_idle_y),(self.open_item_inventory_cell_length // 2 , self.open_item_inventory_cell_length // 2))
+                self.open_item_vertices[True][(row,col)] = self._create_ui_element_vertices((item_hovered_x,item_hovered_y),(hovered_length// 2 , hovered_length // 2))
 
                 self.open_item_inven_vertices[False][(row,col)] = self._create_ui_element_vertices((idle_x,idle_y),(self.open_item_inventory_cell_length,self.open_item_inventory_cell_length))
                 self.open_item_inven_vertices[True][(row,col)] = self._create_ui_element_vertices((hovered_x,hovered_y),(hovered_length,hovered_length))
@@ -204,14 +221,14 @@ class HUD:
         opaque_texcoords_write_offset= 0 
 
         # health bar 
-        self.opqaue_vertices_buffer.write(self.health_bar_vertices.tobytes())
+        self.opaque_vertices_buffer.write(self.health_bar_vertices.tobytes())
         self.opaque_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['health_bar'].tobytes())
 
         opaque_vertices_write_offset += bytes_per_cell 
         opaque_texcoords_write_offset +=bytes_per_cell 
 
         # stamina bar 
-        self.opqaue_vertices_buffer.write(self.stamina_bar_vertices.tobytes(),offset = opaque_vertices_write_offset)
+        self.opaque_vertices_buffer.write(self.stamina_bar_vertices.tobytes(),offset = opaque_vertices_write_offset)
         self.opaque_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['health_bar'].tobytes(),offset = opaque_texcoords_write_offset)
 
         opaque_vertices_write_offset +=bytes_per_cell 
@@ -220,7 +237,7 @@ class HUD:
         # open item inventory cells 
         for row in range(self.open_item_inventory_rows_cols[0]):
             for col in range(self.open_item_inventory_rows_cols[1]):
-                self.opqaue_vertices_buffer.write(self.open_item_inven_vertices[False][(row,col)].tobytes(),offset = opaque_vertices_write_offset)
+                self.opaque_vertices_buffer.write(self.open_item_inven_vertices[False][(row,col)].tobytes(),offset = opaque_vertices_write_offset)
                 self.opaque_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][False].tobytes(),offset = opaque_texcoords_write_offset)
 
                 opaque_vertices_write_offset +=bytes_per_cell 
@@ -272,6 +289,34 @@ class HUD:
         return inventory_id
         
 
+    def _on_item_add_callback(self,inven_cell)->None: 
+        bytes_per_item = 48 
+        
+        inventory_id = self._get_inventory_id(inven_cell)
+        inventory = self._inven_list[inventory_id] 
+
+        row = inven_cell.ind // inventory.columns
+        col = inven_cell.ind - row * inventory.columns
+
+        if inventory_id == 0: 
+            # open item inventory : write to the open item vertices and texcoords buffer 
+            # acquire the offset of the buffer position from the cell index. 
+            buffer_offset = (inven_cell.ind * bytes_per_item)
+            self.opaque_items_vertices_buffer.write(self.open_item_vertices[False][(row,col)].tobytes(),offset = buffer_offset)
+            self.opaque_items_texcoords_buffer.write(self._ref_rm.item_texcoords[inven_cell.item.name].tobytes(),offset = buffer_offset)
+                         
+        elif inventory_id == 1:
+            # hidden item inventory
+            
+            pass
+        else:
+            # weapon inventory 
+            
+            pass 
+
+
+
+
 
     def cursor_cell_hover_state_change_callback(self)->None: 
         # when the cursor hover state changes, you need to overwrite the corresponding cell's vertex data 
@@ -291,7 +336,7 @@ class HUD:
                 inventory = self._inven_list[inventory_id] 
                 
                 buffer_offset = (self.cursor.ref_prev_hovered_cell.ind + 2) * bytes_per_element
-                self.opqaue_vertices_buffer.write(self.open_item_inven_vertices[False][(row,col)].tobytes(),offset = buffer_offset)
+                self.opaque_vertices_buffer.write(self.open_item_inven_vertices[False][(row,col)].tobytes(),offset = buffer_offset)
                 self.opaque_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][False].tobytes(),offset = buffer_offset)
             elif inventory_id == 1:
 
@@ -313,7 +358,7 @@ class HUD:
             if inventory_id == 0:
 
                 buffer_offset = (self.cursor.ref_hovered_cell.ind + 2) * 6 * 4 * 2
-                self.opqaue_vertices_buffer.write(self.open_item_inven_vertices[True][(row,col)].tobytes(),offset = buffer_offset)
+                self.opaque_vertices_buffer.write(self.open_item_inven_vertices[True][(row,col)].tobytes(),offset = buffer_offset)
                 self.opaque_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][True].tobytes(),offset = buffer_offset)
             elif inventory_id == 1:
 
@@ -329,7 +374,10 @@ class HUD:
     
     # temporary helper function to add item to open item inventory
     def add_item(self,item)->None: 
-        self._inven_list[0].add_item(item)
+        self._inven_list[0].add_item(item,self._on_item_add_callback)
+    
+
+
 
     
 
@@ -343,4 +391,4 @@ class HUD:
         # TODO: stamina, health bar updates
 
         # inventory updates 
-        self._items_engine.update(self.cursor,cursor_cell_hover_callback,self.inven_open_time == self.max_inven_open_time)
+        self._items_engine.update(self.cursor,cursor_cell_hover_callback,self._on_item_add_callback,self.inven_open_time == self.max_inven_open_time)

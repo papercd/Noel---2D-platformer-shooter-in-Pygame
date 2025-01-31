@@ -1,7 +1,7 @@
 from scripts.data import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES,TileInfo,LightInfo,DoorInfo,DoorAnimation,HULL_OUTER_EDGE_OFFSET,TILE_NEIGHBOR_MAP,OPEN_SIDE_OFFSET_TO_AXIS_NUM,\
-                            DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,RegularTileInfo,LightTileInfo, PHYSICS_APPLIED_TILE_TYPES
+                            LIGHT_POSITION_OFFSET_FROM_TOPLEFT,DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,RegularTileInfo,LightTileInfo, PHYSICS_APPLIED_TILE_TYPES
 
-from scripts.spatial_grid import SpatialGrid
+from scripts.spatial_grid import hullSpatialGrid,lightSpatialGrid 
 from scripts.lists import ambientNodeList,ambientNode
 from my_pygame_light2d.hull import Hull 
 from pygame import Rect
@@ -71,8 +71,10 @@ class Tilemap:
 
 
         self.ref_texture_atlas = rm.texture_atlasses['tiles']
-        self.hull_grid  = SpatialGrid(cell_size= self._regular_tile_size)
-        self.lights : list["PointLight"]= []
+        self.hull_grid  = hullSpatialGrid(cell_size= self._regular_tile_size)
+        
+        self.lights_grid = lightSpatialGrid(cell_size= self._regular_tile_size)
+    
         self.ambientNodes = ambientNodeList()
         self.tile_colors:dict["TileColorKey","RGBA_tuple"]= {}
         self.tile_texcoords: dict["TileTexcoordsKey","np.array"] = {}
@@ -130,20 +132,22 @@ class Tilemap:
                     # for lights that are on the tile grid 
                     #TODO: ADD LIGHTING LATER 
                     
-                    light = PointLight(position = (json_file['tilemap'][tile_key]["pos"][0]*self._regular_tile_size+7,json_file['tilemap'][tile_key]["pos"][1]*self._regular_tile_size+3),\
+                    light = PointLight(position = (json_file['tilemap'][tile_key]["pos"][0]*self._regular_tile_size+LIGHT_POSITION_OFFSET_FROM_TOPLEFT[0],
+                                                   json_file['tilemap'][tile_key]["pos"][1]*self._regular_tile_size+LIGHT_POSITION_OFFSET_FROM_TOPLEFT[1]),\
                                          power= json_file['tilemap'][tile_key]["power"],radius = json_file['tilemap'][tile_key]["radius"] )
                     light.set_color(*json_file['tilemap'][tile_key]["colorValue"])
-                    self.lights.append(light)
-                    
-                    pass 
+                    self.lights_grid.insert(light)
+   
                 else: 
                     # for lights that are not placed on the tile grid  
                     # TODO : ADD LIGHTING LATER
                   
-                    light = PointLight(position = (json_file['tilemap'][tile_key]["pos"][0]+7,json_file['tilemap'][tile_key]["pos"][1]+3),\
+                    light = PointLight(position = (json_file['tilemap'][tile_key]["pos"][0]+LIGHT_POSITION_OFFSET_FROM_TOPLEFT[0],
+                                                   json_file['tilemap'][tile_key]["pos"][1]+LIGHT_POSITION_OFFSET_FROM_TOPLEFT[1]),\
                                          power= json_file['tilemap'][tile_key]["power"],radius = json_file['tilemap'][tile_key]["radius"] )
                     light.set_color(*json_file['tilemap'][tile_key]["colorValue"])
-                    self.lights.append(light)
+                    self.lights_grid.insert(light)
+        
                     
                 rect = Rect(tile_pos[0] * self._regular_tile_size +3, tile_pos[1] * self._regular_tile_size, 10,6)
 
@@ -213,7 +217,8 @@ class Tilemap:
 
 
 
-    def update_ambient_node_ptr(self,pos:float,callback:"function")->None:
+    def update_ambient_node_ptr(self,pos:float,callback:"function",camera_offset:tuple[int,int],
+                                screen_shake:tuple[int,int],player_position:tuple[int,int])->None:
         
         if self._ambient_node_ptr is None: 
             
@@ -222,12 +227,12 @@ class Tilemap:
             if pos < self._ambient_node_ptr.range[0]:
                 if self._ambient_node_ptr.prev: 
                     self._ambient_node_ptr = self._ambient_node_ptr.prev
-                    callback()
+                    callback(camera_offset,screen_shake,player_position)
                   
             elif pos > self._ambient_node_ptr.range[1]:
                 if self._ambient_node_ptr.next: 
                     self._ambient_node_ptr = self._ambient_node_ptr.next
-                    callback()
+                    callback(camera_offset,screen_shake,player_position)
 
     
 

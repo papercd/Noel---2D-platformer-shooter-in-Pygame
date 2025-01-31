@@ -3,7 +3,7 @@ from scripts.background import Background
 from scripts.utils import load_texture
 from os import listdir
 from json import load as jsLoad
-from scripts.data import TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,\
+from scripts.data import ITEM_ATLAS_POSITIONS_AND_SIZES,TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,\
                     DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TileInfo,TileInfoDataClass,AnimationDataCollection,UI_ATLAS_POSITIONS_AND_SIZES
 import numpy as np
 
@@ -66,6 +66,9 @@ class ResourceManager:
         # load ui texcoords 
         self._create_ui_element_resources()
 
+        # load item texcoords 
+        self._create_item_texcoords()
+
     def _create_animation_data_collections(self)->None: 
         self.animation_data_collections = {}
         self.animation_data_collections['player'] = AnimationDataCollection(ENTITY_ANIMATION_DATA['player'])  
@@ -118,15 +121,22 @@ class ResourceManager:
                 self.ui_element_texcoords[ui_element] = {}
                 for hovered_state in UI_ATLAS_POSITIONS_AND_SIZES[ui_element]:
                     atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES[ui_element][hovered_state]
-                    self.ui_element_texcoords[ui_element][hovered_state] = self._create_ui_element_texcoords(atlas_position,texture_size)
+                    self.ui_element_texcoords[ui_element][hovered_state] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
             elif ui_element == 'cursor':
                 self.ui_element_texcoords['cursor'] = {}
                 for cursor_state in UI_ATLAS_POSITIONS_AND_SIZES['cursor']:
                     atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES['cursor'][cursor_state]
-                    self.ui_element_texcoords['cursor'][cursor_state] = self._create_ui_element_texcoords(atlas_position,texture_size)
+                    self.ui_element_texcoords['cursor'][cursor_state] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
             else: 
                 atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES[ui_element]
-                self.ui_element_texcoords[ui_element] = self._create_ui_element_texcoords(atlas_position,texture_size)
+                self.ui_element_texcoords[ui_element] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
+
+    
+    def _create_item_texcoords(self)->None: 
+        self.item_texcoords = {}
+        for item_name in ITEM_ATLAS_POSITIONS_AND_SIZES: 
+            atlas_pos,size = ITEM_ATLAS_POSITIONS_AND_SIZES[item_name]
+            self.item_texcoords[item_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['ui'])
 
 
     def _load_entity_texcoords_and_local_vertices(self)->None:
@@ -149,6 +159,21 @@ class ResourceManager:
         # load the player entity texcoords for now
 
 
+    def _create_texcoords(self,atlas_position:tuple[int,int],texture_size:tuple[int,int],texture_atlas:"Context.Texture"):
+        x =  (atlas_position[0]) / texture_atlas.size[0]
+        y = (atlas_position[1]) / texture_atlas.size[1]
+        w = texture_size[0] / texture_atlas.size[0]
+        h = texture_size[1] / texture_atlas.size[1]
+
+        p1 = (x, y + h)
+        p2 = (x + w, y + h)
+        p3 = (x, y)
+        p4 = (x + w, y)
+
+        return np.array([p3, p4, p1,
+                        p1, p4, p2], dtype=np.float32)
+
+       
     def _create_ui_element_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int])->np.array: 
         x =  (texture_atlas_position[0]) / self.texture_atlasses['ui'].size[0]
         y = (texture_atlas_position[1]) / self.texture_atlasses['ui'].size[1]
@@ -327,13 +352,11 @@ class ResourceManager:
                 (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)
     
 
-    def create_hud_vbos(self,opaque_ui_element_quads:int,hidden_ui_element_quads:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]: 
-        opqaue_ui_element_vertex_size = 2 * 4
-        opaque_ui_elements_buffer_size = opqaue_ui_element_vertex_size* 6 * opaque_ui_element_quads
+    def create_hud_inven_vbos(self,opaque_ui_element_quads:int,hidden_ui_element_quads:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]: 
+        ui_element_vertex_size = 2 * 4
 
-
-        hidden_ui_element_vertex_size = 2 * 4
-        hidden_ui_elements_buffer_size = hidden_ui_element_vertex_size* 6 * hidden_ui_element_quads
+        opaque_ui_elements_buffer_size = ui_element_vertex_size* 6 * opaque_ui_element_quads
+        hidden_ui_elements_buffer_size = ui_element_vertex_size* 6 * hidden_ui_element_quads
 
         opaque_vertex_buffer = self._ctx.buffer(reserve=opaque_ui_elements_buffer_size,dynamic=True)
         opaque_texcoords_buffer = self._ctx.buffer(reserve=opaque_ui_elements_buffer_size,dynamic=True)
@@ -342,3 +365,17 @@ class ResourceManager:
         hidden_texcoords_buffer = self._ctx.buffer(reserve=hidden_ui_elements_buffer_size,dynamic=True)
 
         return (opaque_vertex_buffer,opaque_texcoords_buffer,hidden_vertex_buffer,hidden_texcoords_buffer)
+    
+
+    def create_hud_item_vbos(self,opaque_item_quads:int,hidden_item_quads:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
+        item_vertex_size = 2 * 4 
+        opaque_item_buffer_size = item_vertex_size * 6 * opaque_item_quads
+        hidden_item_buffer_size = item_vertex_size * 6 * hidden_item_quads
+
+        opaque_item_vertex_buffer = self._ctx.buffer(reserve=opaque_item_buffer_size,dynamic= True)
+        opaque_item_texcoords_buffer =  self._ctx.buffer(reserve=hidden_item_buffer_size,dynamic=True)
+
+        hidden_item_vertex_buffer = self._ctx.buffer(reserve= hidden_item_buffer_size,dynamic=True)
+        hidden_item_texcoords_buffer = self._ctx.buffer(reserve= hidden_item_buffer_size,dynamic=True)
+
+        return (opaque_item_vertex_buffer,opaque_item_texcoords_buffer,hidden_item_vertex_buffer,hidden_item_texcoords_buffer)
