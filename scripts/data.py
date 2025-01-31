@@ -18,7 +18,7 @@ AnimationParticleData = namedtuple('AnimationParticleData',['type','pos','veloci
 
 
 TEXTURE_BASE_PATH = 'data/images/'
-TIME_FOR_ONE_LOGICAL_STEP= 1/60
+PHYSICS_TIMESTEP = 1/60
 
 
 class Animation: 
@@ -49,10 +49,10 @@ class Animation:
     
     def update(self,dt):
 
-        dt = min(dt, 2 * TIME_FOR_ONE_LOGICAL_STEP)
+        dt = min(dt, 2 * PHYSICS_TIMESTEP)
 
         self.accum_time += dt 
-        if self.accum_time >= TIME_FOR_ONE_LOGICAL_STEP: 
+        if self.accum_time >= PHYSICS_TIMESTEP: 
             if self._halt: 
                 self.frame = min(self.frame+1,self._img_dur * self.count -1)
                 if self.frame == self._img_dur * self.count -1 : self.finished= True 
@@ -63,7 +63,7 @@ class Animation:
                     self.frame = min(self.frame+1,self._img_dur *self.count -1)
                     if self.frame >= self._img_dur *self.count -1:
                         self.finished= True 
-            self.accum_time -= TIME_FOR_ONE_LOGICAL_STEP
+            self.accum_time -= PHYSICS_TIMESTEP
 
 
     def curr_frame(self) -> int:

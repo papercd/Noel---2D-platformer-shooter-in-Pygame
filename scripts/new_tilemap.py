@@ -213,16 +213,21 @@ class Tilemap:
 
 
 
-    def update_ambient_node_ptr(self,pos:float)->None:
+    def update_ambient_node_ptr(self,pos:float,callback:"function")->None:
+        
         if self._ambient_node_ptr is None: 
+            
             self._ambient_node_ptr = self.ambientNodes.set_ptr(pos)
-        else: 
+        else:
             if pos < self._ambient_node_ptr.range[0]:
                 if self._ambient_node_ptr.prev: 
                     self._ambient_node_ptr = self._ambient_node_ptr.prev
+                    callback()
+                  
             elif pos > self._ambient_node_ptr.range[1]:
                 if self._ambient_node_ptr.next: 
                     self._ambient_node_ptr = self._ambient_node_ptr.next
+                    callback()
 
     
 

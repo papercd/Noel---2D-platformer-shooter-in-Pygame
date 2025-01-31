@@ -1,6 +1,6 @@
 from pygame import Rect
 from pygame.mouse import get_pos
-from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
+from scripts.data import PHYSICS_TIMESTEP
 from scripts.new_resource_manager import ResourceManager
 import numpy as np
 class Cursor: 
@@ -22,7 +22,7 @@ class Cursor:
         self.state = "default"
         self.prev_state = "default"
         self.box = Rect(0,0,1,1)
-        self.cooldown = 10 * TIME_FOR_ONE_LOGICAL_STEP
+        self.cooldown = 10 * PHYSICS_TIMESTEP
         self.pressed=  0 
         self.magnet = False 
         self.move = False 
@@ -31,7 +31,7 @@ class Cursor:
         self.pressed = [0,0]
 
     def set_cooldown(self) -> None:
-        self.cooldown = 10 * TIME_FOR_ONE_LOGICAL_STEP
+        self.cooldown = 10 * PHYSICS_TIMESTEP
 
     def update(self,display_scale_ratio:int,dt:float,cursor_state_change_callback:"function")-> None:
  

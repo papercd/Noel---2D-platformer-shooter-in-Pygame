@@ -1,6 +1,6 @@
 from scripts.data import TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO,TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO,TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO,SPACE_BETWEEN_INVENTORY_ELEMENTS,\
                         TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO,TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO,TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO,TRUE_RES_TO_HIDDEN_ITEM_INVEN_DIM_RATIO,\
-                        TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO, SPACE_BETWEEN_INVENTORY_CELLS,INVENTORY_CELL_EXPANSION_RATIO,TIME_FOR_ONE_LOGICAL_STEP
+                        TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO, SPACE_BETWEEN_INVENTORY_CELLS,INVENTORY_CELL_EXPANSION_RATIO,PHYSICS_TIMESTEP
 from scripts.new_cursor import Cursor
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_inventory import Inventory,InventoryEngine,WeaponInventory
@@ -9,8 +9,7 @@ import numpy as np
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: 
-    import Item
+
 
 class HUD:
 
@@ -21,7 +20,7 @@ class HUD:
 
         self.inven_open_state = False
         self.inven_open_time = 0
-        self.max_inven_open_time = 30 * TIME_FOR_ONE_LOGICAL_STEP
+        self.max_inven_open_time = 30 * PHYSICS_TIMESTEP
         self.cursor = Cursor()
 
         self._create_diplay_elements()
@@ -329,7 +328,7 @@ class HUD:
 
     
     # temporary helper function to add item to open item inventory
-    def add_item(self,item:"Item")->None: 
+    def add_item(self,item)->None: 
         self._inven_list[0].add_item(item)
 
     
