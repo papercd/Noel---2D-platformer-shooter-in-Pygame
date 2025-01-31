@@ -34,7 +34,8 @@ class Cursor:
         self.cooldown = 10 * PHYSICS_TIMESTEP
 
     def update(self,display_scale_ratio:int,dt:float,cursor_state_change_callback:"function")-> None:
- 
+
+        print(self.item)
         new_topleft = get_pos()
         self.topleft[0] = new_topleft[0] // display_scale_ratio
         self.topleft[1] = new_topleft[1] // display_scale_ratio

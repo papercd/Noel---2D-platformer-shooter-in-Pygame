@@ -540,7 +540,8 @@ class RenderSystem(esper.Processor):
         if self._ref_hud.inven_open_time > 0:
             self._hidden_ui_draw_prog['alpha'] = self._ref_hud.inven_open_time/self._ref_hud.max_inven_open_time
             self._vao_hidden_ui_draw.render()
-     
+            self._vao_hidden_items_draw.render()
+                 
         self._write_cursor_position_to_buffer()
 
         self._fbo_fg.use()
@@ -976,6 +977,14 @@ class RenderSystem(esper.Processor):
             [
                 (self._ref_hud.opaque_items_vertices_buffer, '2f', 'vertexPos'),
                 (self._ref_hud.opaque_items_texcoords_buffer, '2f', 'vertexTexCoord')
+            ]
+        )
+        
+        self._vao_hidden_items_draw = self._ctx.vertex_array(
+            self._hidden_ui_draw_prog,
+            [
+                (self._ref_hud.hidden_items_vertices_buffer, '2f' , 'vertexPos'),
+                (self._ref_hud.hidden_items_texcoords_buffer, '2f' , 'vertexTexCoord')
             ]
         )
 
