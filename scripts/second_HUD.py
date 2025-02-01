@@ -368,11 +368,16 @@ class HUD:
                 buffer_offset = (self.cursor.ref_prev_hovered_cell.ind + 2) * bytes_per_element
                 self.opaque_vertices_buffer.write(self.open_item_inven_vertices[False][(row,col)].tobytes(),offset = buffer_offset)
                 self.opaque_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][False].tobytes(),offset = buffer_offset)
+
+                self.opaque_items_vertices_buffer.write(self.open_item_vertices[False][(row,col)].tobytes(),offset = self.cursor.ref_prev_hovered_cell.ind * bytes_per_element)
+
             elif inventory_id == 1:
 
                 buffer_offset = (self.cursor.ref_prev_hovered_cell.ind+1) * bytes_per_element
                 self.hidden_vertices_buffer.write(self.hidden_item_inven_vertices[False][(row,col)].tobytes(),offset = buffer_offset)
                 self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][False].tobytes(),offset = buffer_offset)
+
+                self.hidden_items_vertices_buffer.write(self.hidden_item_vertices[False][(row,col)].tobytes(),offset = self.cursor.ref_prev_hovered_cell.ind * bytes_per_element)
             else: 
 
                 buffer_offset = (self.hidden_item_inventory_rows_cols[0]*self.hidden_item_inventory_rows_cols[1]+self.cursor.ref_prev_hovered_cell.ind+1) * bytes_per_element
@@ -390,11 +395,15 @@ class HUD:
                 buffer_offset = (self.cursor.ref_hovered_cell.ind + 2) * 6 * 4 * 2
                 self.opaque_vertices_buffer.write(self.open_item_inven_vertices[True][(row,col)].tobytes(),offset = buffer_offset)
                 self.opaque_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][True].tobytes(),offset = buffer_offset)
+
+                self.opaque_items_vertices_buffer.write(self.open_item_vertices[True][(row,col)].tobytes(),offset = self.cursor.ref_hovered_cell.ind * bytes_per_element)
             elif inventory_id == 1:
 
                 buffer_offset = (self.cursor.ref_hovered_cell.ind+1) * bytes_per_element
                 self.hidden_vertices_buffer.write(self.hidden_item_inven_vertices[True][(row,col)].tobytes(),offset = buffer_offset)
                 self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['item_slot'][True].tobytes(),offset = buffer_offset)
+
+                self.hidden_items_vertices_buffer.write(self.hidden_item_vertices[True][(row,col)].tobytes(),offset = self.cursor.ref_hovered_cell.ind * bytes_per_element)
             else: 
 
                 buffer_offset = (self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1] + self.cursor.ref_hovered_cell.ind+1) * bytes_per_element
