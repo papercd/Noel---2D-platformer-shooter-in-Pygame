@@ -113,7 +113,7 @@ class Inventory:
                         item.count = item.count- amount
                     
                         if item.count> 0:
-                            self.add_item(item.copy())
+                            self.add_item(item.copy(),on_item_change_callback)
                         return False
 
     def update(self, inventory_list, cursor:"Cursor",inven_open_state:bool,
@@ -265,6 +265,7 @@ class Cell:
                     if self._item.count + cursor.item.count <= stack_limit:
                         cursor.item.count = cursor.item.count + self._item.count
                         self._item = None 
+                        on_item_change_callback(self)
                     else: 
                         cursor.item.count = cursor.item.count + amount 
                         self._item.count = self._item.count - amount
@@ -278,10 +279,13 @@ class Cell:
                         index = self._inventory_id
                         len_inventory = len(inventory_list)
                         for i in range(len_inventory):
-                            index = index + 1 if index < len_inventory - 1 else 0  
+                            index = (index + 1) % len_inventory
+                            #index = index + 1 if index < len_inventory - 1 else 0  
 
-                            while self._item.type != inventory_list[index].name: 
-                                index = index + 1 if index < len_inventory -1 else 0 
+                            if self._item.type != inventory_list[index].name:
+                                continue 
+                            
+                            #index = index + 1 if index < len_inventory -1 else 0 
                             if index == self._inventory_id:
                                 break 
                             if inventory_list[index].max_capacity != inventory_list[index].cur_capacity:
@@ -293,9 +297,10 @@ class Cell:
                                             if cell.item.count + self._item.count <= inventory_list[index].stack_limit:
                                                 break
                         
+                        print(index)
                         temp = self._item 
                         self._item = None 
-                        
+                        print("check1")
                         on_item_change_callback(self)
 
                         inventory_list[index].add_item(temp,on_item_change_callback)
@@ -304,6 +309,7 @@ class Cell:
                     elif cursor.pressed[0]:
                         cursor.item = self._item
                         self._item = None 
+                        print("check2")
                         on_item_change_callback(self)
                         cursor.set_cooldown()
                     elif cursor.pressed[1] and self._item.count > 1:
@@ -331,6 +337,7 @@ class Cell:
                             temp = cursor.item.copy()
                             cursor.item = self._item 
                             self._item = temp 
+                            print("check3")
                             on_item_change_callback(self)
 
                             cursor.set_cooldown()
@@ -349,6 +356,7 @@ class Cell:
                             temp = cursor.item.copy()
                             cursor.item = self._item
                             self._item = temp
+                            print("check4")
                             on_item_change_callback(self)
                         cursor.set_cooldown()
             
@@ -370,6 +378,7 @@ class Cell:
                         cursor.item.count = cursor.item.count - half 
                     else: 
                         self._item = cursor.item 
+                        print("check5")
                         on_item_change_callback(self)
                         cursor.item = None 
                     cursor.set_cooldown 

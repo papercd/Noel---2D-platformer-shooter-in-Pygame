@@ -337,7 +337,7 @@ class HUD:
                 self.hidden_items_texcoords_buffer.write(self._ref_rm.item_texcoords[inven_cell.item.name].tobytes(),offset = buffer_offset)
             else: 
                 self.hidden_items_vertices_buffer.write(self.null_vertices.tobytes(),offset = buffer_offset)
-                self.opaque_items_texcoords_buffer.write(self.null_texcoords.tobytes(),offset = buffer_offset)
+                self.hidden_items_texcoords_buffer.write(self.null_texcoords.tobytes(),offset = buffer_offset)
 
         else:
             # weapon inventory 
@@ -406,9 +406,6 @@ class HUD:
     def add_item(self,item)->None: 
         self._inven_list[0].add_item(item,self._on_item_change_callback)
     
-
-
-
     
 
     def update(self,dt:float,cursor_state_change_callback:"function",cursor_cell_hover_callback:"function")->None:
