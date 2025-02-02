@@ -371,7 +371,7 @@ class ResourceManager:
         item_vertex_size = 2 * 4 
         
         # account for the cursor item 
-        opaque_item_buffer_size = item_vertex_size * 6 * (opaque_item_quads + 1) 
+        opaque_item_buffer_size = item_vertex_size * 6 * opaque_item_quads 
         hidden_item_buffer_size = item_vertex_size * 6 * hidden_item_quads
 
         opaque_item_vertex_buffer = self._ctx.buffer(reserve=opaque_item_buffer_size,dynamic= True)

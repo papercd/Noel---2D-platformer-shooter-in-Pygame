@@ -246,7 +246,7 @@ class WeaponNode:
         if left: 
             self.list.curr_node = left 
         elif right: 
-            self.list.curr_node = left 
+            self.list.curr_node = right
         
 
 
@@ -297,7 +297,8 @@ class WeaponNode:
                             self.weapon = None 
                             cursor.set_cooldown()
 
-                            self.update_current_node()
+                            if self.list.curr_node and self.list.curr_node.ind == self.ind: 
+                                self.update_current_node()
                             
                             on_weapon_inven_weapon_select_callback(self)
                             on_inven_item_add_callback(self)
@@ -339,7 +340,7 @@ class WeaponNode:
                             cursor.item = self.weapon
                             self.weapon = temp
                             cursor.set_cooldown()
-
+                            on_weapon_inven_weapon_select_callback(self)
                             on_inven_item_add_callback(self)
                             on_cursor_item_change_callback()
 
@@ -349,9 +350,11 @@ class WeaponNode:
                     if cursor.pressed[0]:
                         self.weapon = cursor.item 
                         cursor.item = None 
+                        
                         self.list.curr_node = self
                         cursor.set_cooldown()
 
+                        on_weapon_inven_weapon_select_callback(self)
                         on_inven_item_add_callback(self)
                         on_cursor_item_change_callback()
 
@@ -365,6 +368,7 @@ class WeaponNode:
                             self.weapon = cursor.item 
                             cursor.item = None 
 
+                            on_weapon_inven_weapon_select_callback(self)
                             on_inven_item_add_callback(self)
                             on_cursor_item_change_callback()
                         cursor.set_cooldown()
