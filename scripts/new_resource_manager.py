@@ -2,7 +2,7 @@ from scripts.background import Background
 from scripts.utils import load_texture
 from os import listdir
 from json import load as jsLoad
-from scripts.data import ITEM_ATLAS_POSITIONS_AND_SIZES,TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,\
+from scripts.data import UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,\
                     DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TileInfo,TileInfoDataClass,AnimationDataCollection,UI_ATLAS_POSITIONS_AND_SIZES
 import numpy as np
 from moderngl import Context
@@ -134,6 +134,9 @@ class ResourceManager:
         for item_name in ITEM_ATLAS_POSITIONS_AND_SIZES: 
             atlas_pos,size = ITEM_ATLAS_POSITIONS_AND_SIZES[item_name]
             self.item_texcoords[item_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['ui'])
+        for weapon_name in UI_WEAPON_ATLAS_POSITIONS_AND_SIZES: 
+            atlas_pos,size = UI_WEAPON_ATLAS_POSITIONS_AND_SIZES[weapon_name]
+            self.item_texcoords[weapon_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['ui'])
 
 
     def _load_entity_texcoords_and_local_vertices(self)->None:

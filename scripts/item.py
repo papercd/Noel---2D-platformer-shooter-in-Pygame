@@ -31,3 +31,15 @@ class Item:
         return self._name
 
 
+class Weapon(Item): 
+    def __init__(self, name, count=1, stackable=False):
+        super().__init__(name, count, stackable)
+        self._type = 'weapon'
+
+    def copy(self):
+        return Weapon(self.name)
+
+
+class AK47(Weapon):
+    def __init__(self,count=1, stackable=False):
+        super().__init__('ak47', count, stackable)

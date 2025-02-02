@@ -284,8 +284,6 @@ class HUD:
                 hidden_vertices_write_offset +=bytes_per_cell 
                 hidden_texcoords_write_offset +=bytes_per_cell 
 
-
-
         # weapons inventory (hidden)
         for row in range(self.weapon_inventory_rows_cols[0]):
             for col in range(self.weapon_inventory_rows_cols[1]):
@@ -323,7 +321,7 @@ class HUD:
 
         row = inven_cell.ind // inventory.columns
         col = inven_cell.ind - row * inventory.columns
-
+    
 
         if inventory_id == 0: 
             # open item inventory : write to the open item vertices and texcoords buffer 
@@ -349,7 +347,13 @@ class HUD:
 
         else:
             # weapon inventory 
-            pass 
+            buffer_offset = (self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1]+inven_cell.ind) * bytes_per_item
+            if inven_cell.weapon: 
+                self.hidden_items_vertices_buffer.write(self.weapon_inven_vertices[False][(row,col)].tobytes(),offset = buffer_offset) 
+                self.hidden_items_texcoords_buffer.write(self._ref_rm.item_texcoords[inven_cell.weapon.name].tobytes(),offset = buffer_offset) 
+            else: 
+                self.hidden_items_vertices_buffer.write(self.null_vertices.tobytes(),offset = buffer_offset)
+                self.hidden_items_texcoords_buffer.write(self.null_texcoords.tobytes(),offset = buffer_offset)
 
     
 
@@ -418,8 +422,11 @@ class HUD:
 
     
     # temporary helper function to add item to open item inventory
-    def add_item(self,item)->None: 
-        self._inven_list[0].add_item(item,self._on_inven_item_change_callback)
+    def add_item(self,item,inven_ind:int)->None: 
+        if inven_ind == 2 :
+            self._inven_list[2].add_weapon(item,self._on_inven_item_change_callback)
+        else: 
+            self._inven_list[inven_ind].add_item(item,self._on_inven_item_change_callback)
     
     
 

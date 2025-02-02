@@ -123,7 +123,7 @@ class Inventory:
 
         for i, row in enumerate(self._cells):
             for j, cell in enumerate(row):
-                cell_interact =cell.update(self._stack_limit,inventory_list,cursor,inven_open_state,
+                cell_interact =cell.update(self._stack_limit,inventory_list,cursor,inven_open_state or not self.expandable,
                                            on_inven_item_change_callback,on_cursor_item_change_callback)
                 
                 interacting = cell_interact or interacting  
@@ -159,8 +159,8 @@ class WeaponInventory(Inventory):
         self._weapons_list.change_weapon(scroll)
 
 
-    def add_weapon(self,weapon:"Weapon") -> None:
-        self._weapons_list.add_weapon(weapon)
+    def add_weapon(self,weapon:"Weapon",on_item_change_callback:"function") -> None:
+        self._weapons_list.add_weapon(weapon,on_item_change_callback)
 
     def remove_current_weapon(self,em:"EntitiesManager")->"Item": 
         if self._weapons_list.curr_node.weapon: 
