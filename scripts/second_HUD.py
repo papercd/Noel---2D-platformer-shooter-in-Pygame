@@ -110,7 +110,9 @@ class HUD:
 
         #self.weapon_inventory_cell_dim = (min(self.weapon_inventory_cell_dim[0],44),max(23,min(28,self.weapon_inventory_cell_dim[1])))
         self.weapon_inventory_cell_dim = (42,20)
-    
+
+
+
     def _precompute_hud_display_elements_vertices(self)->None:
         
         # empty vertices and texcoords 
@@ -219,15 +221,15 @@ class HUD:
                 hovered_y = self.weapon_inventory_topleft[1]+ row * (self.weapon_inventory_rows_cols[1]+ SPACE_BETWEEN_INVENTORY_CELLS)\
                                 -int(INVENTORY_CELL_EXPANSION_RATIO * self.weapon_inventory_cell_dim[1])
                 
-                weapon_idle_x = idle_x + self.weapon_inventory_cell_dim[0] // 6
+                weapon_idle_x = idle_x + self.weapon_inventory_cell_dim[0] // 7
                 weapon_idle_y = idle_y + self.weapon_inventory_cell_dim[1] // 6
 
                 weapon_hovered_x = weapon_idle_x 
                 weapon_hovered_y = weapon_idle_y -1
 
-                self.weapon_vertices[False][(row,col)] = self._create_ui_element_vertices((weapon_idle_x,weapon_idle_y),(self.weapon_inventory_cell_dim[0] * 4// 6,
+                self.weapon_vertices[False][(row,col)] = self._create_ui_element_vertices((weapon_idle_x,weapon_idle_y),(self.weapon_inventory_cell_dim[0] * 5// 7,
                                                                                                                          self.weapon_inventory_cell_dim[1] * 4 //6))
-                self.weapon_vertices[True][(row,col)] = self._create_ui_element_vertices((weapon_hovered_x,weapon_hovered_y),(self.weapon_inventory_cell_dim[0]* 4 //6 , 
+                self.weapon_vertices[True][(row,col)] = self._create_ui_element_vertices((weapon_hovered_x,weapon_hovered_y),(self.weapon_inventory_cell_dim[0]* 5 //7 , 
                                                                                                                               self.weapon_inventory_cell_dim[1] * 4 //6))
             
                 self.weapon_inven_vertices[False][(row,col)] = self._create_ui_element_vertices((idle_x,idle_y),self.weapon_inventory_cell_dim)
@@ -370,6 +372,11 @@ class HUD:
                 self.hidden_items_texcoords_buffer.write(self.null_texcoords.tobytes(),offset = buffer_offset)
 
     
+    def _on_weapon_inven_select_callback(self,weapon_node:WeaponNode)->None: 
+        # when a new weapon is added or when you place a new weapon down
+
+
+        pass 
 
 
     def cursor_cell_hover_state_change_callback(self)->None: 
@@ -411,8 +418,6 @@ class HUD:
                 self.hidden_items_vertices_buffer.write(self.weapon_vertices[False][(row,col)].tobytes(),offset = (self.hidden_item_inventory_rows_cols[0] * 
                                                                                                                      self.hidden_item_inventory_rows_cols[1]+self.cursor.ref_prev_hovered_cell.ind) * bytes_per_element)
 
-            
-
         if self.cursor.ref_hovered_cell: 
             inventory_id = self._get_inventory_id(self.cursor.ref_hovered_cell)
             inventory = self._inven_list[inventory_id]
@@ -447,7 +452,7 @@ class HUD:
     # temporary helper function to add item to open item inventory
     def add_item(self,item,inven_ind:int)->None: 
         if inven_ind == 2 :
-            self._inven_list[2].add_weapon(item,self._on_inven_item_change_callback)
+            self._inven_list[2].add_weapon(item,self._on_inven_item_change_callback,self._on_weapon_inven_select_callback)
         else: 
             self._inven_list[inven_ind].add_item(item,self._on_inven_item_change_callback)
     
@@ -464,4 +469,6 @@ class HUD:
 
         # inventory updates 
         self._items_engine.update(self.cursor,cursor_cell_hover_callback,self._on_inven_item_change_callback,
-                                  self._on_cursor_item_change_callback,self.inven_open_time == self.max_inven_open_time)
+                                  self._on_cursor_item_change_callback,self._on_weapon_inven_select_callback,self.inven_open_time == self.max_inven_open_time)
+
+ 

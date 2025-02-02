@@ -229,7 +229,7 @@ IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
 
 UI_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
     'ak47' : ((384,92),(31,12)),
-    'flamethrower' : ((415,92),(32,11))
+    'flamethrower' : ((416,92),(31,12))
 }
 
 ITEM_ATLAS_POSITIONS_AND_SIZES={

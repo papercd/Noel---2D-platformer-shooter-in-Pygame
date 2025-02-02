@@ -34,12 +34,31 @@ class Item:
 class Weapon(Item): 
     def __init__(self, name, count=1, stackable=False):
         super().__init__(name, count, stackable)
+        self.magazine = 0
         self._type = 'weapon'
+        
 
     def copy(self):
-        return Weapon(self.name)
+        weapon = Weapon(self.name)
+        weapon.magazine = self.magazine
+        return weapon
 
 
 class AK47(Weapon):
-    def __init__(self,count=1, stackable=False):
-        super().__init__('ak47', count, stackable)
+    def __init__(self):
+        super().__init__('ak47', 1, False)
+
+    def copy(self)->"AK47": 
+        new_ak = AK47()
+        new_ak.magazine = self.magazine
+        return new_ak
+
+class FlameThrower(Weapon):
+    def __init__(self):
+        super().__init__( 'flamethrower', 1, False) 
+
+    def copy(self)->"FlameThrower":
+        new_flamethrower = FlameThrower()
+        new_flamethrower.magazine = self.magazine 
+        return new_flamethrower
+        

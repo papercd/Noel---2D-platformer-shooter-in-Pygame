@@ -11,7 +11,7 @@ from scripts.components import PhysicsComponent,RenderComponent, StateInfoCompon
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
 from scripts.layer import Layer_
-from scripts.item import Item,AK47 
+from scripts.item import Item,AK47,FlameThrower
 from scripts.lists import interpolatedLightNode
 import pygame
 from moderngl import NEAREST,LINEAR,BLEND,Texture,Framebuffer
@@ -1238,9 +1238,9 @@ class InputHandler(esper.Processor):
                         # temporary keybinding to add items to inventory 
                         self._ref_hud.add_item(Item(choice(list(ITEM_ATLAS_POSITIONS_AND_SIZES.keys()))),0)
                     if event.key == pygame.K_f: 
-                        
                         self._ref_hud.add_item(AK47(),2)
-                         
+                    if event.key == pygame.K_g: 
+                        self._ref_hud.add_item(FlameThrower(),2)
 
                 if event.type == pygame.KEYUP:
                     
