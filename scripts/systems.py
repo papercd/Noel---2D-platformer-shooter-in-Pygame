@@ -559,7 +559,8 @@ class RenderSystem(esper.Processor):
             item_dim = (self._ref_hud.open_item_inventory_cell_length//2,
                         self._ref_hud.open_item_inventory_cell_length//2)
         else: 
-            item_dim = (0,0)
+            item_dim = (self._ref_hud.weapon_inventory_cell_dim[0] * 4 // 6,
+                        self._ref_hud.weapon_inventory_cell_dim[1] * 4 // 6)
 
         x = 2. * (self._ref_hud.cursor.topleft[0]-item_dim[0] //2)/ self._true_res[0]- 1.
         y = 1. - 2. * (self._ref_hud.cursor.topleft[1]- item_dim[1]//2)/ self._true_res[1]
