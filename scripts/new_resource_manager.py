@@ -1,4 +1,3 @@
-from typing import TYPE_CHECKING
 from scripts.background import Background
 from scripts.utils import load_texture
 from os import listdir
@@ -6,9 +5,12 @@ from json import load as jsLoad
 from scripts.data import ITEM_ATLAS_POSITIONS_AND_SIZES,TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,\
                     DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TileInfo,TileInfoDataClass,AnimationDataCollection,UI_ATLAS_POSITIONS_AND_SIZES
 import numpy as np
+from moderngl import Context
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: 
-    from moderngl import Context,Texture
+    from moderngl import Texture
     from scripts.new_tilemap import Tilemap
     from scripts.data import TileColorKey,RGBA_tuple,TileTexcoordsKey
 
@@ -18,47 +20,42 @@ TEXTURE_ATLAS_NAMES_TO_PATH = {
     'ui' : TEXTURE_BASE_PATH + 'ui/ui_atlas.png'
 }
 
-
-
 class ResourceManager:
+
     _instance = None 
-    _ctx : "Context" = None
+    _ctx : Context = None
     _true_res :tuple[int,int] = None
 
-
-
     @staticmethod
-    def get_instance(ctx:"Context" = None,true_res:tuple[int,int]= None)->"ResourceManager":
+    def get_instance(ctx: Context = None,true_res:tuple[int,int]= None)->"ResourceManager":
         if ResourceManager._instance is None: 
+            
+            assert isinstance(ctx, Context), "Error: Resource Manager must be initialized with a GL context."
+            assert true_res is not None and true_res[0] > 0 and true_res[1] > 0 , "Error: Resource Manager must be initialized with a valid native resolution value."
+
             ResourceManager._ctx = ctx
             ResourceManager._true_res = true_res
             ResourceManager._instance = ResourceManager()
+
         return ResourceManager._instance
    
-
 
     def __init__(self)->None: 
         # identity texcoords that represent texcoords for textures without an atlas 
         self.identity_texcoords = np.array([(0.,1.),(1.,1.),(0.,0.),
                                             (0.,0.),(1.,1.),(1.,0.)],dtype=np.float32)
         
-    
-
         # create animation data collections for entities' animations 
         self._create_animation_data_collections()
-
 
         # load the background textures and create background objects 
         self._load_backgrounds(TEXTURE_BASE_PATH + 'backgrounds')
 
-
         # load tilemap json files 
         self._load_tilemap_json_files('map_jsons')
 
-
         # load texture atlasses 
         self._load_texture_atlasses()
-
 
         # load entity texcoords 
         self._load_entity_texcoords_and_local_vertices()
@@ -369,11 +366,13 @@ class ResourceManager:
 
     def create_hud_item_vbos(self,opaque_item_quads:int,hidden_item_quads:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
         item_vertex_size = 2 * 4 
-        opaque_item_buffer_size = item_vertex_size * 6 * opaque_item_quads
+        
+        # account for the cursor item 
+        opaque_item_buffer_size = item_vertex_size * 6 * (opaque_item_quads + 1) 
         hidden_item_buffer_size = item_vertex_size * 6 * hidden_item_quads
 
         opaque_item_vertex_buffer = self._ctx.buffer(reserve=opaque_item_buffer_size,dynamic= True)
-        opaque_item_texcoords_buffer =  self._ctx.buffer(reserve=hidden_item_buffer_size,dynamic=True)
+        opaque_item_texcoords_buffer =  self._ctx.buffer(reserve=opaque_item_buffer_size,dynamic=True)
 
         hidden_item_vertex_buffer = self._ctx.buffer(reserve= hidden_item_buffer_size,dynamic=True)
         hidden_item_texcoords_buffer = self._ctx.buffer(reserve= hidden_item_buffer_size,dynamic=True)

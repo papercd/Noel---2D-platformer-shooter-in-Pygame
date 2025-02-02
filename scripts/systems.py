@@ -534,21 +534,42 @@ class RenderSystem(esper.Processor):
         
         self._ref_rm.texture_atlasses['ui'].use()
         self._fbo_fg.use()
-        self._vao_opaque_ui_draw.render()  
-        self._vao_opaque_items_draw.render()   
 
         if self._ref_hud.inven_open_time > 0:
             self._hidden_ui_draw_prog['alpha'] = self._ref_hud.inven_open_time/self._ref_hud.max_inven_open_time
             self._vao_hidden_ui_draw.render()
             self._vao_hidden_items_draw.render()
-                 
-        self._write_cursor_position_to_buffer()
 
-        self._fbo_fg.use()
+        self._vao_opaque_ui_draw.render()  
+
+        if self._ref_hud.cursor.item:
+            self._ref_hud.opaque_items_vertices_buffer.write(self._create_cursor_item_vertices().tobytes(),
+                                                             offset = self._ref_hud.opaque_items_vertices_buffer.size - 48)
+        
+        self._vao_opaque_items_draw.render()   
+
+
+        self._write_cursor_position_to_buffer()
+        #self._fbo_fg.use()
         self._ref_rm.texture_atlasses['ui'].use()
         self._vao_cursor_draw.render()
 
-    
+    def _create_cursor_item_vertices(self)->np.array: 
+        if self._ref_hud.cursor.item.type == 'item':
+            item_dim = (self._ref_hud.open_item_inventory_cell_length//2,
+                        self._ref_hud.open_item_inventory_cell_length//2)
+        else: 
+            item_dim = (0,0)
+
+        x = 2. * (self._ref_hud.cursor.topleft[0]-item_dim[0] //2)/ self._true_res[0]- 1.
+        y = 1. - 2. * (self._ref_hud.cursor.topleft[1]- item_dim[1]//2)/ self._true_res[1]
+        w = 2. * item_dim[0] / self._true_res[0]
+        h = 2. * item_dim[1] /self._true_res[1]
+
+        return np.array([(x, y - h),(x + w, y - h),(x,y),
+                         (x,y),(x + w, y - h),(x+w,y)],dtype= np.float32)
+
+
     def _write_cursor_position_to_buffer(self)->None: 
         x = 2. * (self._ref_hud.cursor.topleft[0] )/ self._true_res[0]- 1.
         y = 1. - 2. * (self._ref_hud.cursor.topleft[1] )/ self._true_res[1]

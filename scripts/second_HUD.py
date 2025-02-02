@@ -307,8 +307,15 @@ class HUD:
 
         return inventory_id
         
+    def _on_cursor_item_change_callback(self)->None: 
 
-    def _on_item_change_callback(self,inven_cell)->None: 
+        if self.cursor.item: 
+            self.opaque_items_texcoords_buffer.write(self._ref_rm.item_texcoords[self.cursor.item.name].tobytes(),offset = self.opaque_items_texcoords_buffer.size - 48)    
+        else: 
+            self.opaque_items_texcoords_buffer.write(self.null_texcoords.tobytes(),offset = self.opaque_items_texcoords_buffer.size - 48)
+        
+
+    def _on_inven_item_change_callback(self,inven_cell)->None: 
         bytes_per_item = 48 
         
         inventory_id = self._get_inventory_id(inven_cell)
@@ -316,6 +323,7 @@ class HUD:
 
         row = inven_cell.ind // inventory.columns
         col = inven_cell.ind - row * inventory.columns
+
 
         if inventory_id == 0: 
             # open item inventory : write to the open item vertices and texcoords buffer 
@@ -341,11 +349,9 @@ class HUD:
 
         else:
             # weapon inventory 
-            
             pass 
 
-
-
+    
 
 
     def cursor_cell_hover_state_change_callback(self)->None: 
@@ -413,7 +419,7 @@ class HUD:
     
     # temporary helper function to add item to open item inventory
     def add_item(self,item)->None: 
-        self._inven_list[0].add_item(item,self._on_item_change_callback)
+        self._inven_list[0].add_item(item,self._on_inven_item_change_callback)
     
     
 
@@ -427,4 +433,5 @@ class HUD:
         # TODO: stamina, health bar updates
 
         # inventory updates 
-        self._items_engine.update(self.cursor,cursor_cell_hover_callback,self._on_item_change_callback,self.inven_open_time == self.max_inven_open_time)
+        self._items_engine.update(self.cursor,cursor_cell_hover_callback,self._on_inven_item_change_callback,
+                                  self._on_cursor_item_change_callback,self.inven_open_time == self.max_inven_open_time)

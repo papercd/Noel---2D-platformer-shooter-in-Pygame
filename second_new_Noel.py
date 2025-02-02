@@ -25,7 +25,7 @@ class Noel():
 
 
     def _initialize_game_systems(self):
-        0
+        
         self._resource_manager = ResourceManager.get_instance(self._ctx,self._game_context['true_res'])
         self._tilemap = Tilemap(self._resource_manager.tilemap_jsons['test1.json'])
         self._entities_manager = EntitiesManager.get_instance()

@@ -94,14 +94,14 @@ class Inventory:
             self._cells.append(new_row)
 
 
-    def add_item(self,item:"Item",on_item_change_callback:"function") -> None:
+    def add_item(self,item:"Item",on_inven_item_change_callback:"function") -> None:
         if self._cur_capacity == self._max_capacity: 
             return True  
         for row in self._cells:
             for cell in row:
                 if cell._item is None:
                     cell._item = item
-                    on_item_change_callback(cell)
+                    on_inven_item_change_callback(cell)
                     return False
                 elif item.stackable and cell._item.name == item.name:
                     if cell._item.count+ item.count <= self._stack_limit:
@@ -113,17 +113,19 @@ class Inventory:
                         item.count = item.count- amount
                     
                         if item.count> 0:
-                            self.add_item(item.copy(),on_item_change_callback)
+                            self.add_item(item.copy(),on_inven_item_change_callback)
                         return False
 
-    def update(self, inventory_list, cursor:"Cursor",inven_open_state:bool,
-               on_item_change_callback:"function",cursor_hover_state_change_callback:"function")->bool:
+    def update(self, inventory_list, cursor:"Cursor",inven_open_state:bool,on_inven_item_change_callback:"function",
+               on_cursor_item_change_callback:"function",cursor_hover_state_change_callback:"function")->bool:
 
         interacting = False
 
         for i, row in enumerate(self._cells):
             for j, cell in enumerate(row):
-                cell_interact =cell.update(self._stack_limit,inventory_list,cursor,inven_open_state,on_item_change_callback)
+                cell_interact =cell.update(self._stack_limit,inventory_list,cursor,inven_open_state,
+                                           on_inven_item_change_callback,on_cursor_item_change_callback)
+                
                 interacting = cell_interact or interacting  
 
         if cursor.ref_hovered_cell != cursor.ref_prev_hovered_cell:
@@ -175,10 +177,11 @@ class WeaponInventory(Inventory):
 
             return weapon 
 
-    def update(self,cursor:"Cursor",inven_open_state:bool,on_item_change_callback:"function",
-               cursor_hover_state_change_callback:"function")->bool:
+    def update(self,cursor:"Cursor",inven_open_state:bool,on_inven_item_change_callback:"function",
+               on_cursor_item_change_callback:"function",cursor_hover_state_change_callback:"function")->bool:
         
-        interacting =self._weapons_list.update(self._stack_limit,cursor,inven_open_state,on_item_change_callback)
+        interacting =self._weapons_list.update(self._stack_limit,cursor,inven_open_state,on_inven_item_change_callback,
+                                               on_cursor_item_change_callback)
 
         if cursor.ref_hovered_cell != cursor.ref_prev_hovered_cell:
             cursor_hover_state_change_callback()
@@ -195,15 +198,19 @@ class InventoryEngine:
         for i, inventory in enumerate(self._inventory_list):
             inventory.set_ind(i)
 
-    def update(self,cursor:"Cursor",cursor_hover_state_change_callback:"function",on_item_change_callback:"function",inventory_open_state:bool)->None:
+    def update(self,cursor:"Cursor",cursor_hover_state_change_callback:"function",on_inven_item_change_callback:"function",
+               on_cursor_item_change_callback:"function",inventory_open_state:bool)->None:
 
         interacting = False 
 
         for inventory in self._inventory_list:
             if inventory._name == 'item':
-                interact_check = inventory.update(self._inventory_list,cursor,inventory_open_state,on_item_change_callback,cursor_hover_state_change_callback)
+                interact_check = inventory.update(self._inventory_list,cursor,inventory_open_state,on_inven_item_change_callback,
+                                                  on_cursor_item_change_callback,cursor_hover_state_change_callback)
             else: 
-                interact_check =inventory.update(cursor,inventory_open_state,on_item_change_callback,cursor_hover_state_change_callback)
+                interact_check =inventory.update(cursor,inventory_open_state,on_inven_item_change_callback,
+                                                 on_cursor_item_change_callback,cursor_hover_state_change_callback)
+                
             interacting = interact_check or interacting 
 
         if not interacting: cursor.ref_hovered_cell = None
@@ -241,7 +248,9 @@ class Cell:
     def hovered(self)->bool: 
         return self._hovered
 
-    def update(self,stack_limit:int,inventory_list:list[Inventory],cursor:"Cursor",inven_open_state:bool,on_item_change_callback:"function")->None:
+    def update(self,stack_limit:int,inventory_list:list[Inventory],cursor:"Cursor",inven_open_state:bool,
+               on_inven_item_change_callback:"function",on_cursor_item_change_callback:"function")->None:
+        
         if cursor.box.colliderect(self._rect):
             self._offset = (-1,-1)
             self._hovered = True 
@@ -265,7 +274,7 @@ class Cell:
                     if self._item.count + cursor.item.count <= stack_limit:
                         cursor.item.count = cursor.item.count + self._item.count
                         self._item = None 
-                        on_item_change_callback(self)
+                        on_inven_item_change_callback(self)
                     else: 
                         cursor.item.count = cursor.item.count + amount 
                         self._item.count = self._item.count - amount
@@ -297,24 +306,26 @@ class Cell:
                                             if cell.item.count + self._item.count <= inventory_list[index].stack_limit:
                                                 break
                         
-                        print(index)
+       
                         temp = self._item 
                         self._item = None 
-                        print("check1")
-                        on_item_change_callback(self)
+              
+                        on_inven_item_change_callback(self)
 
-                        inventory_list[index].add_item(temp,on_item_change_callback)
+                        inventory_list[index].add_item(temp,on_inven_item_change_callback)
                         cursor.set_cooldown()
 
                     elif cursor.pressed[0]:
                         cursor.item = self._item
                         self._item = None 
-                        print("check2")
-                        on_item_change_callback(self)
+                        on_cursor_item_change_callback()
+                        on_inven_item_change_callback(self)
                         cursor.set_cooldown()
                     elif cursor.pressed[1] and self._item.count > 1:
                         half = self._item.count //2 
                         cursor.item = self._item.copy() 
+                        on_cursor_item_change_callback()
+
                         cursor.item.count = half 
                         self._item.count = self._item.count - half
 
@@ -326,6 +337,7 @@ class Cell:
                             self._item.count + cursor.item.count <= stack_limit and self._item.stackable: 
                             self._item.count = self._item.count + cursor.item.count 
                             cursor.item = None 
+                            on_cursor_item_change_callback()
                             cursor.set_cooldown()
                         elif cursor.pressed[0] and cursor.item.name == self._item.name and self._item.stackable: 
                             amount = stack_limit - self._item.count
@@ -337,8 +349,9 @@ class Cell:
                             temp = cursor.item.copy()
                             cursor.item = self._item 
                             self._item = temp 
-                            print("check3")
-                            on_item_change_callback(self)
+
+                            on_cursor_item_change_callback() 
+                            on_inven_item_change_callback(self)
 
                             cursor.set_cooldown()
                 elif cursor.item is not None and cursor.item.type == self._type \
@@ -348,6 +361,7 @@ class Cell:
                             if self._item.count + cursor.item.count <= stack_limit and self._item.stackable: 
                                 self._item.count = self._item.count + cursor.item.count 
                                 cursor.item = None 
+                                on_cursor_item_change_callback()
                             elif self._item.count + cursor.item.count > stack_limit and self._item.stackable: 
                                 amount = stack_limit - self._item.count 
                                 self._item.count += amount 
@@ -356,8 +370,9 @@ class Cell:
                             temp = cursor.item.copy()
                             cursor.item = self._item
                             self._item = temp
-                            print("check4")
-                            on_item_change_callback(self)
+
+                            on_cursor_item_change_callback()
+                            on_inven_item_change_callback(self)
                         cursor.set_cooldown()
             
             elif cursor.item is not None and self._hovered and cursor.cooldown <= 0:
@@ -365,22 +380,25 @@ class Cell:
                     return 
                 if cursor.pressed[0]:
                     self._item = cursor.item 
-                    on_item_change_callback(self)
                     cursor.item = None 
                     cursor.set_cooldown()
+
+                    on_cursor_item_change_callback()
+                    on_inven_item_change_callback(self)
 
                 elif cursor.pressed[1] and cursor.item.stackable: 
                     if cursor.item.count > 1:
                         half = cursor.item.count //2
                         self._item = cursor.item.copy() 
-                        on_item_change_callback(self)
+                        on_inven_item_change_callback(self)
                         self._item.count = half 
                         cursor.item.count = cursor.item.count - half 
                     else: 
                         self._item = cursor.item 
-                        print("check5")
-                        on_item_change_callback(self)
                         cursor.item = None 
+
+                        on_cursor_item_change_callback()
+                        on_inven_item_change_callback(self)
                     cursor.set_cooldown 
         
         return self.hovered
