@@ -156,13 +156,13 @@ class WeaponInventory(Inventory):
     def weapons_list(self) -> "WeaponInvenList":
         return self._weapons_list
 
-    def change_weapon(self,scroll:int)->None:
-        self._weapons_list.change_weapon(scroll)
+    def change_weapon(self,scroll:int,on_current_weapon_change_callback:"function")->None:
+        self._weapons_list.change_weapon(scroll,on_current_weapon_change_callback)
 
 
-    def add_weapon(self,weapon:"Weapon",on_item_change_callback:"function",
-                   on_weapon_inven_weapon_select_callback:"function") -> None:
-        self._weapons_list.add_weapon(weapon,on_item_change_callback,on_weapon_inven_weapon_select_callback)
+    def add_weapon(self,weapon:"Weapon",on_item_change_callback:"function",on_current_weapon_change_callback:"function") -> None:
+          
+        self._weapons_list.add_weapon(weapon,on_item_change_callback,on_current_weapon_change_callback)
 
     def remove_current_weapon(self,em:"EntitiesManager")->"Item": 
         if self._weapons_list.curr_node.weapon: 
@@ -179,11 +179,11 @@ class WeaponInventory(Inventory):
 
             return weapon 
 
-    def update(self,cursor:"Cursor",inven_open_state:bool,on_inven_item_change_callback:"function",on_weapon_inven_weapon_select_callback:"function",
+    def update(self,cursor:"Cursor",inven_open_state:bool,on_inven_item_change_callback:"function",on_current_weapon_change_callback:"function",
                on_cursor_item_change_callback:"function",cursor_hover_state_change_callback:"function")->bool:
         
         interacting =self._weapons_list.update(self._stack_limit,cursor,inven_open_state,on_inven_item_change_callback,
-                                               on_weapon_inven_weapon_select_callback,on_cursor_item_change_callback)
+                                               on_current_weapon_change_callback,on_cursor_item_change_callback)
 
         if cursor.ref_hovered_cell != cursor.ref_prev_hovered_cell:
             cursor_hover_state_change_callback()
@@ -201,7 +201,7 @@ class InventoryEngine:
             inventory.set_ind(i)
 
     def update(self,cursor:"Cursor",cursor_hover_state_change_callback:"function",on_inven_item_change_callback:"function",
-               on_cursor_item_change_callback:"function",on_weapon_inven_weapon_select_callback:"function",inventory_open_state:bool)->None:
+               on_current_weapon_change_callback:"function",on_cursor_item_change_callback:"function",inventory_open_state:bool)->None:
 
         interacting = False 
 
@@ -210,7 +210,7 @@ class InventoryEngine:
                 interact_check = inventory.update(self._inventory_list,cursor,inventory_open_state,on_inven_item_change_callback,
                                                   on_cursor_item_change_callback,cursor_hover_state_change_callback)
             else: 
-                interact_check =inventory.update(cursor,inventory_open_state,on_inven_item_change_callback,on_weapon_inven_weapon_select_callback,
+                interact_check =inventory.update(cursor,inventory_open_state,on_inven_item_change_callback,on_current_weapon_change_callback,
                                                  on_cursor_item_change_callback,cursor_hover_state_change_callback)
                 
             interacting = interact_check or interacting 

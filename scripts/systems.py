@@ -1241,8 +1241,11 @@ class InputHandler(esper.Processor):
                         self._ref_hud.add_item(AK47(),2)
                     if event.key == pygame.K_g: 
                         self._ref_hud.add_item(FlameThrower(),2)
+                
+                elif event.type == pygame.MOUSEWHEEL:
+                    self._ref_hud.change_weapon(event.y)
 
-                if event.type == pygame.KEYUP:
+                elif event.type == pygame.KEYUP:
                     
                     if event.key == pygame.K_LSHIFT:
                         self._ref_hud.cursor.special_actions = False

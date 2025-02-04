@@ -318,6 +318,30 @@ class HUD:
 
         return inventory_id
         
+
+    def _on_current_weapon_change_callback(self,prev_current_node:WeaponNode,new_current_node:WeaponNode)->None: 
+
+        inventory = self._inven_list[2]
+
+        if prev_current_node:
+            row = prev_current_node.ind // inventory.columns 
+            col = prev_current_node.ind - row * inventory.columns 
+
+            buffer_offset = (prev_current_node.ind + self.hidden_item_inventory_cells + 1) * self.bytes_per_quad
+
+            self.hidden_vertices_buffer.write(self.weapon_inven_vertices[False][(row,col)].tobytes(),offset = buffer_offset)
+            self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['weapon_slot'][False].tobytes(),offset = buffer_offset)
+
+
+        if new_current_node:
+            row = new_current_node.ind // inventory.columns 
+            col = new_current_node.ind - row * inventory.columns 
+
+            buffer_offset = (new_current_node.ind + self.hidden_item_inventory_cells + 1) * self.bytes_per_quad
+
+            self.hidden_vertices_buffer.write(self.weapon_inven_vertices[True][(row,col)].tobytes(),offset = buffer_offset)
+            self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['weapon_slot'][True].tobytes(),offset = buffer_offset)
+
     def _on_cursor_item_change_callback(self)->None: 
 
         if self.cursor.item: 
@@ -359,7 +383,8 @@ class HUD:
 
         else:
             # weapon inventory 
-            buffer_offset = (self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1]+inven_cell.ind) * self.bytes_per_quad
+
+            buffer_offset = (self.hidden_item_inventory_cells +inven_cell.ind) * self.bytes_per_quad
             if inven_cell.weapon: 
                 self.hidden_items_vertices_buffer.write(self.weapon_vertices[False][(row,col)].tobytes(),offset = buffer_offset) 
                 self.hidden_items_texcoords_buffer.write(self._ref_rm.item_texcoords[inven_cell.weapon.name].tobytes(),offset = buffer_offset) 
@@ -368,42 +393,6 @@ class HUD:
                 self.hidden_items_texcoords_buffer.write(self.null_texcoords.tobytes(),offset = buffer_offset)
 
     
-    def _on_weapon_inven_select_callback(self,weapon_node:WeaponNode)->None: 
-        # when a new weapon is added or when you place a new weapon down
-        # maintain the hover texcoords for the weapon corresponding weapon inven cell   
-        inventory = self._inven_list[2]
-
-        prev_cell_row = weapon_node.ind // inventory.columns
-        prev_cell_col = weapon_node.ind - prev_cell_row * inventory.columns 
-
-        other_ui_element_elements =  self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1] + 1
-
-        buffer_offset =   ( other_ui_element_elements + weapon_node.ind ) * self.bytes_per_quad 
-
-        self.hidden_vertices_buffer.write(self.weapon_inven_vertices[False][(prev_cell_row,prev_cell_col)].tobytes(),
-                                            offset = buffer_offset)
-        self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['weapon_slot'][False].tobytes(),
-                                            offset = buffer_offset)
-
-        curr_cell = self._inven_list[2].weapons_list.curr_node 
-        
-        if curr_cell:
-            curr_cell_row = curr_cell.ind // inventory.columns 
-            curr_cell_col = curr_cell.ind - curr_cell_row * inventory.columns 
-            buffer_offset = (other_ui_element_elements + curr_cell.ind) * self.bytes_per_quad 
-
-            if curr_cell.weapon: 
-                self.hidden_vertices_buffer.write(self.weapon_inven_vertices[True][(curr_cell_row,curr_cell_col)].tobytes(),
-                                          offset = buffer_offset)
-                self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['weapon_slot'][True].tobytes(),
-                                           offset = buffer_offset)
-            else: 
-                self.hidden_vertices_buffer.write(self.weapon_inven_vertices[False][(curr_cell_row,curr_cell_col)].tobytes(),
-                                            offset = buffer_offset)
-                self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['weapon_slot'][False].tobytes(),
-                                            offset = buffer_offset)
-                
-
 
 
     def cursor_cell_hover_state_change_callback(self)->None: 
@@ -437,8 +426,7 @@ class HUD:
 
                 self.hidden_items_vertices_buffer.write(self.hidden_item_vertices[False][(row,col)].tobytes(),offset = self.cursor.ref_prev_hovered_cell.ind * bytes_per_element)
             else: 
-                if not (self._inven_list[2].weapons_list.curr_node.ind == self.cursor.ref_prev_hovered_cell.ind and\
-                    self._inven_list[2].weapons_list.curr_node.weapon ): 
+                if not (inventory.weapons_list.curr_node and inventory.weapons_list.curr_node.ind == self.cursor.ref_prev_hovered_cell.ind):
                     buffer_offset = (self.hidden_item_inventory_rows_cols[0]*self.hidden_item_inventory_rows_cols[1]+self.cursor.ref_prev_hovered_cell.ind+1) * bytes_per_element
                     self.hidden_vertices_buffer.write(self.weapon_inven_vertices[False][(row,col)].tobytes(),offset = buffer_offset)
                     self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['weapon_slot'][False].tobytes(),offset = buffer_offset)
@@ -467,24 +455,28 @@ class HUD:
 
                 self.hidden_items_vertices_buffer.write(self.hidden_item_vertices[True][(row,col)].tobytes(),offset = self.cursor.ref_hovered_cell.ind * bytes_per_element)
             else: 
-            
-                buffer_offset = (self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1] + self.cursor.ref_hovered_cell.ind+1) * bytes_per_element
-                self.hidden_vertices_buffer.write(self.weapon_inven_vertices[True][(row,col)].tobytes(),offset=buffer_offset)
-                self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['weapon_slot'][True].tobytes(),offset = buffer_offset)
 
-                self.hidden_items_vertices_buffer.write(self.weapon_vertices[True][(row,col)].tobytes(),offset = (self.hidden_item_inventory_rows_cols[0] * 
-                                                                                                                    self.hidden_item_inventory_rows_cols[1]+self.cursor.ref_hovered_cell.ind) * bytes_per_element)
+                if not (inventory.weapons_list.curr_node and inventory.weapons_list.curr_node.ind == self.cursor.ref_hovered_cell.ind):
+                
+                    buffer_offset = (self.hidden_item_inventory_rows_cols[0] * self.hidden_item_inventory_rows_cols[1] + self.cursor.ref_hovered_cell.ind+1) * bytes_per_element
+                    self.hidden_vertices_buffer.write(self.weapon_inven_vertices[True][(row,col)].tobytes(),offset=buffer_offset)
+                    self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['weapon_slot'][True].tobytes(),offset = buffer_offset)
+
+                    self.hidden_items_vertices_buffer.write(self.weapon_vertices[True][(row,col)].tobytes(),offset = (self.hidden_item_inventory_rows_cols[0] * 
+                                                                                                                        self.hidden_item_inventory_rows_cols[1]+self.cursor.ref_hovered_cell.ind) * bytes_per_element)
 
 
     
     # temporary helper function to add item to open item inventory
     def add_item(self,item,inven_ind:int)->None: 
         if inven_ind == 2 :
-            self._inven_list[2].add_weapon(item,self._on_inven_item_change_callback,self._on_weapon_inven_select_callback)
+            self._inven_list[2].add_weapon(item,self._on_inven_item_change_callback,self._on_current_weapon_change_callback)
         else: 
             self._inven_list[inven_ind].add_item(item,self._on_inven_item_change_callback)
     
     
+    def change_weapon(self,direction:int)->None: 
+        self._inven_list[2].change_weapon(direction,self._on_current_weapon_change_callback)
 
     def update(self,dt:float,cursor_state_change_callback:"function",cursor_cell_hover_callback:"function")->None:
         # inventory open time update 
@@ -496,7 +488,12 @@ class HUD:
         # TODO: stamina, health bar updates
 
         # inventory updates 
-        self._items_engine.update(self.cursor,cursor_cell_hover_callback,self._on_inven_item_change_callback,
-                                  self._on_cursor_item_change_callback,self._on_weapon_inven_select_callback,self.inven_open_time == self.max_inven_open_time)
+        self._items_engine.update(self.cursor,cursor_cell_hover_callback,self._on_inven_item_change_callback,self._on_current_weapon_change_callback,
+                                  self._on_cursor_item_change_callback,self.inven_open_time == self.max_inven_open_time)
 
-        print(self._inven_list[2].weapons_list.curr_node.weapon,self._inven_list[2].weapons_list.curr_node.ind)
+        
+        if self._inven_list[2].weapons_list.curr_node:
+            print(self._inven_list[2].weapons_list.curr_node.weapon)
+        else: 
+            print("None")
+        # print(self._inven_list[2].weapons_list.curr_node.weapon)
