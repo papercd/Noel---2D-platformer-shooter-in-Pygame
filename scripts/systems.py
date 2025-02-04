@@ -1099,12 +1099,17 @@ class RenderSystem(esper.Processor):
         entity_texcoords = []
         entity_matrices = []
 
+        weapon_vertices = []
+        weapon_texcoords = []
+        weapon_matrices = []
+
         self._view_matrix[0][2] = -camera_offset[0]
         self._view_matrix[1][2] = -camera_offset[1]
 
         entity_instances = 0 
 
         player_position = (0,0)
+        weapon_equipped = self._ref_hud.weapon_equipped
 
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
@@ -1120,7 +1125,7 @@ class RenderSystem(esper.Processor):
                 animation_data_collection = render_comp.animation_data_collection
                 animation = animation_data_collection.get_animation(state_info_comp.curr_state)
 
-                texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,state_info_comp.has_weapon,state_info_comp.curr_state,animation.curr_frame())]
+                texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,weapon_equipped,state_info_comp.curr_state,animation.curr_frame())]
                 entity_local_vertices = render_comp.vertices    
                 
                 interpolated_model_transform = physics_comp.prev_transform * (1.0 - interpolation_delta) + physics_comp.transform * interpolation_delta
@@ -1133,9 +1138,15 @@ class RenderSystem(esper.Processor):
                 column_major_clip_transform = clip_transform.T.flatten()
                 entity_matrices.extend(column_major_clip_transform)
 
+
+                # writing to weapon render buffers 
+                
+
             else: 
                 pass
             entity_instances += 1
+
+        
 
         self._entity_local_vertices_vbo.write(np.array(entity_vertices,dtype=np.float32).tobytes())
         self._entity_texcoords_vbo.write(np.array(entity_texcoords,dtype=np.float32).tobytes())
@@ -1144,6 +1155,9 @@ class RenderSystem(esper.Processor):
         self._fbo_bg.use()
         self._ref_rm.texture_atlasses['entities'].use()
         self._vao_entity_draw.render(vertices= 6, instances= entity_instances)
+
+        # render the currently held weapon 
+
         
         self._update_active_static_lights(camera_offset)
         self._render_fbos_to_screen_with_lighting(player_position,camera_offset,screen_shake,interpolation_delta)

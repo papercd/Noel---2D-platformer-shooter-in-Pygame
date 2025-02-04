@@ -492,8 +492,6 @@ class HUD:
                                   self._on_cursor_item_change_callback,self.inven_open_time == self.max_inven_open_time)
 
         
-        if self._inven_list[2].weapons_list.curr_node:
-            print(self._inven_list[2].weapons_list.curr_node.weapon)
-        else: 
-            print("None")
-        # print(self._inven_list[2].weapons_list.curr_node.weapon)
+    @property 
+    def weapon_equipped(self)->bool: 
+        return self._inven_list[2].weapons_list.curr_node != None  

@@ -47,15 +47,32 @@ class PhysicsComponent:
 
 @component 
 class WeaponHolderComponent: 
-    pass
+    size: tuple[int,int] = (1,1)
+    flip: bool = False 
+    rotation: float = 0
+    scale : vec2 = field(default_factory= lambda: vec2(1.0,1.0)) 
+    origin : vec2 = field(default_factory= lambda:vec2(0,0))
 
+    @property
+    def transform(self,position:vec2)->np.array: 
+        cos_a = np.cos(self.rotation)
+        sin_a = np.sin(self.rotation)
+
+        tx = position[0] - self.origin[0] * self.scale[0]
+        ty = position[1] - self.origin[1] * self.scale[1] 
+
+
+        return np.array([
+            [(-2*self.flip +1) *cos_a * self.scale[0], -sin_a * self.scale[1], tx],
+            [sin_a * self.scale[0], cos_a  * self.scale[1], ty],
+            [0,0,1]
+        ])
 
 @component
 class StateInfoComponent:
 
     type : str = "default"
     curr_state : str = "idle"
-    has_weapon : bool = False
     max_jump_count : int = 0
     jump_count : int = 0
     collide_left : bool = False
