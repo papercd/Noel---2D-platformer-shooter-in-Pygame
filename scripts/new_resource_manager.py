@@ -2,7 +2,7 @@ from scripts.background import Background
 from scripts.utils import load_texture
 from os import listdir
 from json import load as jsLoad
-from scripts.data import UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,\
+from scripts.data import IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,\
                     DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TileInfo,TileInfoDataClass,AnimationDataCollection,UI_ATLAS_POSITIONS_AND_SIZES
 import numpy as np
 from moderngl import Context
@@ -17,7 +17,8 @@ if TYPE_CHECKING:
 TEXTURE_ATLAS_NAMES_TO_PATH = {
     'tiles' : TEXTURE_BASE_PATH + 'tiles/tile_atlas.png',
     'entities' :   TEXTURE_BASE_PATH + 'entities/entities_atlas.png',
-    'ui' : TEXTURE_BASE_PATH + 'ui/ui_atlas.png'
+    'ui' : TEXTURE_BASE_PATH + 'ui/ui_atlas.png',
+    'holding_weapons' : TEXTURE_BASE_PATH + 'weapons/weapon_atlas.png'
 }
 
 class ResourceManager:
@@ -65,6 +66,9 @@ class ResourceManager:
 
         # load item texcoords 
         self._create_item_texcoords()
+
+        # load holding weapon texcoords
+        self._create_holding_weapon_vertices_texcoords()
 
     def _create_animation_data_collections(self)->None: 
         self.animation_data_collections = {}
@@ -137,6 +141,15 @@ class ResourceManager:
         for weapon_name in UI_WEAPON_ATLAS_POSITIONS_AND_SIZES: 
             atlas_pos,size = UI_WEAPON_ATLAS_POSITIONS_AND_SIZES[weapon_name]
             self.item_texcoords[weapon_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['ui'])
+
+
+    def _create_holding_weapon_vertices_texcoords(self)->None:
+        self.holding_weapon_texcoords = {}
+        self.holding_weapon_vertices = {}
+        for weapon_name in IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES:
+            atlas_pos,size = IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES[weapon_name]['holding']
+            self.holding_weapon_texcoords[weapon_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['holding_weapons'])
+            self.holding_weapon_vertices[weapon_name] = self._create_entity_local_vertices(size)
 
 
     def _load_entity_texcoords_and_local_vertices(self)->None:
@@ -214,6 +227,8 @@ class ResourceManager:
                 (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)
 
         # return the local vertices for the entity type
+
+    
 
 
 

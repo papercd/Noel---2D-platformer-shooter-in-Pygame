@@ -36,6 +36,7 @@ class Noel():
         self._state_system = StateSystem()  
 
         self._hud = HUD(self._game_context["true_res"],self._game_context["display_scale_ratio"])
+                        
 
         self._render_system = RenderSystem(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res'],\
                                            self._game_context['true_res'])

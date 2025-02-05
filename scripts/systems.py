@@ -3,7 +3,7 @@ from scripts.second_HUD import HUD
 from scripts.game_state import GameState
 from scripts.game_state import GameState
 from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR,\
-                        ITEM_ATLAS_POSITIONS_AND_SIZES
+                        ITEM_ATLAS_POSITIONS_AND_SIZES,PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS
 from pygame.rect import Rect
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
@@ -291,6 +291,7 @@ class RenderSystem(esper.Processor):
         self._create_frame_buffers()
         self._create_screen_vertex_buffers()
         self._create_entity_vertex_buffers()
+        self._create_weapon_vertex_buffers()
 
     def _load_shader_srcs(self,vertex_src_path:str,fragment_src_path:str)->tuple[str,str]:
         try:
@@ -464,6 +465,30 @@ class RenderSystem(esper.Processor):
             ]
         )
 
+
+    def _create_weapon_vertex_buffers(self)->None:
+        local_space_vertex_size = 2* 4 
+        local_space_vertices_buffer_size = local_space_vertex_size * 6 * EntitiesManager.max_entities
+
+        texcoords_vertex_size = 2 * 4 
+        texcoords_buffer_size = texcoords_vertex_size * 6 * EntitiesManager.max_entities
+
+        transform_matrix_col_size = 3 * 4 
+        transform_column_buffer_size = transform_matrix_col_size * 3 * EntitiesManager.max_entities
+
+        self._entity_weapons_local_vertices_vbo = self._ctx.buffer(reserve=local_space_vertices_buffer_size,dynamic=True)
+        self._entity_weapons_texcoords_vbo = self._ctx.buffer(reserve=texcoords_buffer_size , dynamic= True)
+
+        self._entity_weapons_transform_matrices_vbo = self._ctx.buffer(reserve= transform_column_buffer_size , dynamic= True)
+
+        self._vao_entity_weapons_draw = self._ctx.vertex_array(
+            self._entity_draw_prog,
+            [
+                (self._entity_weapons_local_vertices_vbo, '12f/i', 'in_position'),
+                (self._entity_texcoords_vbo, '12f/i', 'texcoord'),
+                (self._entity_weapons_transform_matrices_vbo, '3f 3f 3f/i', 'col1', 'col2', 'col3')
+            ]
+        )
 
     def _render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
         
@@ -1109,7 +1134,8 @@ class RenderSystem(esper.Processor):
         entity_instances = 0 
 
         player_position = (0,0)
-        weapon_equipped = self._ref_hud.weapon_equipped
+
+        player_weapon_equipped = self._ref_hud.weapon_equipped
 
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
@@ -1125,7 +1151,7 @@ class RenderSystem(esper.Processor):
                 animation_data_collection = render_comp.animation_data_collection
                 animation = animation_data_collection.get_animation(state_info_comp.curr_state)
 
-                texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,weapon_equipped,state_info_comp.curr_state,animation.curr_frame())]
+                texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,player_weapon_equipped,state_info_comp.curr_state,animation.curr_frame())]
                 entity_local_vertices = render_comp.vertices    
                 
                 interpolated_model_transform = physics_comp.prev_transform * (1.0 - interpolation_delta) + physics_comp.transform * interpolation_delta
@@ -1140,7 +1166,20 @@ class RenderSystem(esper.Processor):
 
 
                 # writing to weapon render buffers 
-                
+                if player_weapon_equipped:
+                    weapon = self._ref_hud.curr_weapon
+                    
+                    weapon_texcoords = self._ref_rm.holding_weapon_texcoords[weapon.name] 
+                    weapon_local_vertices = self._ref_rm.holding_weapon_vertices[weapon.name] 
+
+                    anchor_position_offset_from_center = PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS[physics_comp.flip][state_info_comp.curr_state][physics_comp.position[0] < self._ref_hud.cursor.topleft[0]]
+
+                    #cos_a = np.cos(self._ref_hud.cursor.get_angle_from_point())
+
+                    weapon_model_transform = None 
+
+                    weapon_clip_transform = None 
+
 
             else: 
                 pass

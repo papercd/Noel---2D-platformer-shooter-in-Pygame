@@ -9,6 +9,10 @@ import numpy as np
 
 from typing import TYPE_CHECKING
 
+if TYPE_CHECKING: 
+    from scripts.item import Weapon
+
+
 
 
 class HUD:
@@ -23,6 +27,7 @@ class HUD:
         self.inven_open_time = 0
         self.max_inven_open_time = 30 * PHYSICS_TIMESTEP
         self.cursor = Cursor()
+
 
         self._create_diplay_elements()
         
@@ -342,6 +347,7 @@ class HUD:
             self.hidden_vertices_buffer.write(self.weapon_inven_vertices[True][(row,col)].tobytes(),offset = buffer_offset)
             self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords['weapon_slot'][True].tobytes(),offset = buffer_offset)
 
+
     def _on_cursor_item_change_callback(self)->None: 
 
         if self.cursor.item: 
@@ -478,6 +484,8 @@ class HUD:
     def change_weapon(self,direction:int)->None: 
         self._inven_list[2].change_weapon(direction,self._on_current_weapon_change_callback)
 
+
+
     def update(self,dt:float,cursor_state_change_callback:"function",cursor_cell_hover_callback:"function")->None:
         # inventory open time update 
         self.inven_open_time = max(0,min(self.max_inven_open_time,self.inven_open_time + (2*self.inven_open_state - 1) * 4 * dt))
@@ -495,3 +503,7 @@ class HUD:
     @property 
     def weapon_equipped(self)->bool: 
         return self._inven_list[2].weapons_list.curr_node != None  
+    
+    @property 
+    def curr_weapon(self)->"Weapon":
+        return self._inven_list[2].weapons_list.curr_node.weapon

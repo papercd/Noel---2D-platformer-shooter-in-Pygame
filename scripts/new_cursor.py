@@ -2,6 +2,7 @@ from pygame import Rect
 from pygame.mouse import get_pos
 from scripts.data import PHYSICS_TIMESTEP
 from scripts.new_resource_manager import ResourceManager
+from math import atan2
 import numpy as np
 class Cursor: 
     def __init__(self,in_editor :bool = False)-> None:
@@ -32,6 +33,15 @@ class Cursor:
 
     def set_cooldown(self) -> None:
         self.cooldown = 10 * PHYSICS_TIMESTEP
+
+
+    def get_angle_from_point(self,point)->float: 
+        dx = self.topleft[0] - point[0]
+        dy = self.topleft[1] - point[1]
+
+        return atan2(-dy,dx)
+
+        
 
     def update(self,display_scale_ratio:int,dt:float,cursor_state_change_callback:"function")-> None:
 

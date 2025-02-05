@@ -348,6 +348,21 @@ WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET ={
 }
 
 
+PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS = {
+
+    True: {"idle": {False: (2,6), True: (13,6)}, "walk": {False: (2,6), True: (13,6)},'run' :{False: (1,6), True: (8,5)} 
+            ,'jump_up' :{False: (0,4), True: (9,4)},'jump_down' :{False: (3,5), True: (10,4)}
+            ,'slide' :{ False : (11,9) ,True: (11,9)} , 'wall_slide' : {False: (4,5), True: (8,5)},'land' :{ False : (2,6) ,True: (8,5)} , 
+            'crouch' :{ False : (2,8) ,True: (13,8)}
+            },
+    False: {"idle": {False: (2,6), True: (13,6)},"walk": {False: (2,6), True: (13,6)}, 'run' :{False: (7,5), True: (14,6)} 
+            ,'jump_up' :{False: (6,4), True: (15,5)},'jump_down' :{False: (2,4), True: (7,5)}
+            ,'slide' :{ False: (4,9), True: (4,9) }, 'wall_slide': {False : (7,5), True : (11,5)},'land' :{ False : (6,5) ,True: (13,6)} ,
+            'crouch' :{ False : (2,8) ,True: (14,8)} 
+    }
+}
+
+
 """  Grass Data  """
 
 GRASS_ASSET_ATLAS_POS_AND_INFO = {
