@@ -198,18 +198,13 @@ class Tilemap:
         self._create_hulls()
         for hull in self._hulls:
             self.hull_grid.insert(hull)
-
         
 
         self._physical_tiles_texcoords_vbo, self._non_physical_tiles_texcoords_vbo, self._physical_tiles_position_vbo,self._non_physical_tiles_position_vbo\
         = rm.create_tilemap_vbos(self._regular_tile_size,self._non_physical_tile_layers)
 
-        #self._physical_tiles_vbo_vertices = self._physical_tiles_vbo.size // 16 
-        #self._non_physical_tiles_vbo_vertices = self._non_physical_tiles_vbo.size // 16
-        
 
-
-        self.NDC_tile_vertices = rm.get_NDC_tile_vertices(self._regular_tile_size)
+        self.NDC_tile_vertices_bytes = rm.get_NDC_tile_vertices(self._regular_tile_size)
         self.tile_colors = rm.get_tile_colors(self._physical_tiles)
         self.tile_texcoords_bytes = rm.get_tile_texcoords(self._physical_tiles,self._non_physical_tiles)
 

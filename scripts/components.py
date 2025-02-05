@@ -94,7 +94,7 @@ class InputComponent:
 @component 
 class RenderComponent:
     animation_data_collection : AnimationDataCollection
-    vertices : np.array = field(default_factory= lambda: np.zeros(6))
+    vertices_bytes : bytes = field(default_factory= lambda: np.zeros(6).tobytes())
 
 
 

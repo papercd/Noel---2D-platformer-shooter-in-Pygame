@@ -18,6 +18,7 @@ AnimationParticleData = namedtuple('AnimationParticleData',['type','pos','veloci
 
 
 TEXTURE_BASE_PATH = 'data/images/'
+BYTES_PER_TEXTURE_QUAD = 48 
 PHYSICS_TIMESTEP = 1/60
 
 

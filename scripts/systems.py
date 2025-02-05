@@ -34,7 +34,9 @@ if TYPE_CHECKING:
 
 class PhysicsSystem(esper.Processor):
     def __init__(self)->None: 
+
         self._ref_tilemap:"Tilemap" = None
+        self._ref_em : EntitiesManager = EntitiesManager.get_instance()
         self._collision_rect_buffer = Rect(0,0,1,1)
 
 
@@ -191,7 +193,9 @@ class PhysicsSystem(esper.Processor):
 
 
 
-    def _process_physics_updates_for_player(self,physics_comp: PhysicsComponent,state_info_comp:StateInfoComponent,dt:float,input_comp:InputComponent)->None: 
+    def _process_physics_updates_for_player(self,input_comp:InputComponent,physics_comp:PhysicsComponent
+                                            ,state_info_comp:StateInfoComponent,dt:float)->None:
+        
         direction_bit = input_comp.right - input_comp.left
         if direction_bit != 0:
             physics_comp.flip = direction_bit == -1
@@ -210,8 +214,6 @@ class PhysicsSystem(esper.Processor):
             physics_comp.velocity[1] = min(physics_comp.velocity[1] , WALL_SLIDE_CAP_VELOCITY)
         
 
-
-
     def _process_non_player_physics_updates(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,dt:float)->None:
         physics_comp.flip = physics_comp.velocity[0] < 0
         self._process_common_physics_updates(physics_comp,state_info_comp,dt)
@@ -224,12 +226,12 @@ class PhysicsSystem(esper.Processor):
 
     def process(self,dt:float)->None: 
         # process physics for player entity, which has an input component while the rest of the entities don't.
-        player,(player_input_comp,player_state_info_comp,player_physics_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent)[0]
-
-        self._process_physics_updates_for_player(player_physics_comp,player_state_info_comp,dt,player_input_comp)
+        #player,(player_input_comp,player_state_info_comp,player_physics_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent)[0]
 
         for entity, (state_info_comp,physics_comp) in esper.get_components(StateInfoComponent,PhysicsComponent):
-            if state_info_comp.type != "player":
+            if state_info_comp.type == "player":
+                self._process_physics_updates_for_player(self._ref_em.player_input_comp,physics_comp,state_info_comp,dt)
+            else: 
                 self._process_non_player_physics_updates(physics_comp,state_info_comp,dt)
 
 
@@ -1261,22 +1263,23 @@ class RenderSystem(esper.Processor):
 class StateSystem(esper.Processor):
 
     def __init__(self)->None: 
+        self._ref_em :EntitiesManager = EntitiesManager.get_instance()
         self._player_state_machine = PlayerStateMachine()
         self._enemy_state_machine = EnemyStateMachine()
 
     def process(self,dt:float)->None: 
         
-        player, (input_comp,state_info_comp,physics_comp,render_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent,RenderComponent)[0]
-
-        new_state = self._player_state_machine.change_state(input_comp,state_info_comp,physics_comp,render_comp,dt)
-                
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
-                continue
+                self._player_state_machine.change_state(self._ref_em.player_input_comp,state_info_comp,physics_comp,render_comp,dt)
+            else: 
+                pass
 
 class InputHandler(esper.Processor):
 
     def __init__(self,game_context)->None: 
+        
+        self._ref_em : EntitiesManager = EntitiesManager.get_instance()
         self._ref_game_context = game_context
         self._ref_hud: "HUD" = None
         
@@ -1310,8 +1313,9 @@ class InputHandler(esper.Processor):
         self._ref_hud = hud
 
 
-    def process(self,dt:float,on_hot_reload_callback)->None: 
-        player, (player_input_comp,player_physics_comp,player_state_comp) = esper.get_components(InputComponent,PhysicsComponent,StateInfoComponent)[0]
+    def process(self,dt:float,on_hot_reload_callback:"function")->None: 
+  
+        player_input_comp = self._ref_em.player_input_comp
 
         if self._ref_game_context['gamestate'] == GameState.GameLoop: 
             for event in pygame.event.get():
