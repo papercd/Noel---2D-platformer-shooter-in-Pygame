@@ -107,7 +107,6 @@ class Noel():
     def _get_system_display_info(self):
         system_info = {}
 
-        # primary monitor set to second monitor for hot reloading
         primary_monitor = get_monitors()[0]
         system_info["resolution"] = (primary_monitor.width, primary_monitor.height)
 

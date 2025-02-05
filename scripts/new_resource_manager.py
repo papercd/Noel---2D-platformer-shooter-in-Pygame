@@ -43,8 +43,8 @@ class ResourceManager:
 
     def __init__(self)->None: 
         # identity texcoords that represent texcoords for textures without an atlas 
-        self.identity_texcoords = np.array([(0.,1.),(1.,1.),(0.,0.),
-                                            (0.,0.),(1.,1.),(1.,0.)],dtype=np.float32)
+        self.identity_texcoords_bytes = np.array([(0.,1.),(1.,1.),(0.,0.),
+                                            (0.,0.),(1.,1.),(1.,0.)],dtype=np.float32).tobytes()
         
         # create animation data collections for entities' animations 
         self._create_animation_data_collections()
@@ -62,7 +62,7 @@ class ResourceManager:
         self._load_entity_texcoords_and_local_vertices()
 
         # load ui texcoords 
-        self._create_ui_element_resources()
+        self._create_ui_element_texcoords()
 
         # load item texcoords 
         self._create_item_texcoords()
@@ -82,7 +82,7 @@ class ResourceManager:
             for tex_path in listdir(path = path + '/' + folder):
                 textures.append(load_texture(path +'/'+folder+'/'+tex_path,self._ctx))
                 
-            self.backgrounds[folder] = Background(textures,self.identity_texcoords)
+            self.backgrounds[folder] = Background(textures,self.identity_texcoords_bytes)
 
 
     def _load_tilemap_json_files(self,path:str)->None: 
@@ -113,67 +113,66 @@ class ResourceManager:
                     self._ctx.buffer(data= cursor_ndc_vertices,dynamic=True)]
                            
 
-    def _create_ui_element_resources(self)->None: 
-        self.ui_element_texcoords = {}
-
+    def _create_ui_element_texcoords(self)->None: 
+        self.ui_element_texcoords_bytes = {}
 
         for ui_element in UI_ATLAS_POSITIONS_AND_SIZES: 
             if ui_element.endswith('slot'):
-                self.ui_element_texcoords[ui_element] = {}
+                self.ui_element_texcoords_bytes[ui_element] = {}
                 for hovered_state in UI_ATLAS_POSITIONS_AND_SIZES[ui_element]:
                     atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES[ui_element][hovered_state]
-                    self.ui_element_texcoords[ui_element][hovered_state] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
+                    self.ui_element_texcoords_bytes[ui_element][hovered_state] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
             elif ui_element == 'cursor':
-                self.ui_element_texcoords['cursor'] = {}
+                self.ui_element_texcoords_bytes['cursor'] = {}
                 for cursor_state in UI_ATLAS_POSITIONS_AND_SIZES['cursor']:
                     atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES['cursor'][cursor_state]
-                    self.ui_element_texcoords['cursor'][cursor_state] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
+                    self.ui_element_texcoords_bytes['cursor'][cursor_state] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
             else: 
                 atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES[ui_element]
-                self.ui_element_texcoords[ui_element] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
+                self.ui_element_texcoords_bytes[ui_element] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
 
     
     def _create_item_texcoords(self)->None: 
-        self.item_texcoords = {}
+        self.item_texcoords_bytes = {}
         for item_name in ITEM_ATLAS_POSITIONS_AND_SIZES: 
             atlas_pos,size = ITEM_ATLAS_POSITIONS_AND_SIZES[item_name]
-            self.item_texcoords[item_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['ui'])
+            self.item_texcoords_bytes[item_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['ui'])
         for weapon_name in UI_WEAPON_ATLAS_POSITIONS_AND_SIZES: 
             atlas_pos,size = UI_WEAPON_ATLAS_POSITIONS_AND_SIZES[weapon_name]
-            self.item_texcoords[weapon_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['ui'])
+            self.item_texcoords_bytes[weapon_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['ui'])
 
 
     def _create_holding_weapon_vertices_texcoords(self)->None:
-        self.holding_weapon_texcoords = {}
-        self.holding_weapon_vertices = {}
+        self.holding_weapon_texcoords_bytes = {}
+        self.holding_weapon_vertices_bytes = {}
         for weapon_name in IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES:
             atlas_pos,size = IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES[weapon_name]['holding']
 
-            self.holding_weapon_texcoords[weapon_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['holding_weapons'])
-            self.holding_weapon_vertices[weapon_name] = self._create_entity_local_vertices(size)
+            self.holding_weapon_texcoords_bytes[weapon_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['holding_weapons'])
+            self.holding_weapon_vertices_bytes[weapon_name] = self._create_entity_local_vertices(size)
 
 
     def _load_entity_texcoords_and_local_vertices(self)->None:
-        self.entity_texcoords = {}
-        self.entity_local_vertices = {}
+        self.entity_texcoords_bytes = {}
+        self.entity_local_vertices_bytes = {}
 
         for entity_type in ENTITIES_ATLAS_POSITIONS: 
             if entity_type == 'player':
                 player_texture_atlas_positions = ENTITIES_ATLAS_POSITIONS[entity_type]
                 for gun_holding_state in player_texture_atlas_positions:
                     for animation_state in player_texture_atlas_positions[gun_holding_state]:
-                        animation = self.animation_data_collections[entity_type].animations[animation_state]
+                        animation = self.animation_data_collections['player'].animations[animation_state]
                         for frame in range(animation.count): 
-                            self.entity_texcoords[(entity_type,gun_holding_state,animation_state,frame)] = self._create_entity_texcoords(player_texture_atlas_positions[gun_holding_state][animation_state],ENTITY_SIZES[entity_type],frame)
+                            self.entity_texcoords_bytes[(entity_type,gun_holding_state,animation_state,frame)] = self._create_entity_texcoords(player_texture_atlas_positions[gun_holding_state][animation_state],ENTITY_SIZES[entity_type],frame)
                         
             else: 
                 pass
             
-            self.entity_local_vertices[entity_type] = self._create_entity_local_vertices(ENTITY_SIZES[entity_type])
+            self.entity_local_vertices_bytes[entity_type] = self._create_entity_local_vertices(ENTITY_SIZES[entity_type])
         # load the player entity texcoords for now
 
 
-    def _create_texcoords(self,atlas_position:tuple[int,int],texture_size:tuple[int,int],texture_atlas:"Context.Texture"):
+    def _create_texcoords(self,atlas_position:tuple[int,int],texture_size:tuple[int,int],texture_atlas:"Context.Texture") ->bytes:
         x =  (atlas_position[0]) / texture_atlas.size[0]
         y = (atlas_position[1]) / texture_atlas.size[1]
         w = texture_size[0] / texture_atlas.size[0]
@@ -185,9 +184,10 @@ class ResourceManager:
         p4 = (x + w, y)
 
         return np.array([p3, p4, p1,
-                        p1, p4, p2], dtype=np.float32)
+                        p1, p4, p2], dtype=np.float32).tobytes()
 
-    def _create_entity_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int],animation_frame:int)->np.array:
+    def _create_entity_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int],animation_frame:int)->bytes:
+
         x =  (texture_atlas_position[0] + animation_frame * texture_size[0]) / self.texture_atlasses['entities'].size[0]
         y = (texture_atlas_position[1]) / self.texture_atlasses['entities'].size[1]
         w = texture_size[0] / self.texture_atlasses['entities'].size[0]
@@ -199,9 +199,9 @@ class ResourceManager:
         p4 = (x + w, y)
 
         return np.array([p3, p4, p1,
-                        p1, p4, p2], dtype=np.float32)
+                        p1, p4, p2], dtype=np.float32).tobytes()
 
-    def _create_entity_local_vertices(self,entity_size:tuple[int,int])->np.array:
+    def _create_entity_local_vertices(self,entity_size:tuple[int,int])->bytes:
 
         x =  -entity_size[0]//2
         y = entity_size[1]//2
@@ -209,7 +209,7 @@ class ResourceManager:
         h = entity_size[1]
 
         return np.array([(x, y), (x + w, y), (x, y - h),
-                (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)
+                (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32).tobytes()
 
         # return the local vertices for the entity type
 
@@ -217,7 +217,7 @@ class ResourceManager:
 
 
 
-    def _get_texcoords_for_tile(self,tile_info_source:TileInfoDataClass|TileInfo)->np.array:
+    def _get_texcoords_for_tile(self,tile_info_source:TileInfoDataClass|TileInfo)->bytes:
         if isinstance(tile_info_source,DoorTileInfoWithAnimation):
             pass
         elif isinstance(tile_info_source,TrapDoorTileInfoWithOpenState):
@@ -244,7 +244,7 @@ class ResourceManager:
             p4 = (x + w, y)
 
             texcoords = np.array([p1, p2, p3,
-                                p3, p2, p4], dtype=np.float32)
+                                p3, p2, p4], dtype=np.float32).tobytes()
 
         return texcoords
 
@@ -311,7 +311,8 @@ class ResourceManager:
         
         return tile_colors
 
-    def get_tile_texcoords(self,physical_tiles:"Tilemap.physical_tiles",non_physical_tiles:"Tilemap.non_physical_tiles")->dict["TileTexcoordsKey",np.array]: 
+    def get_tile_texcoords(self,physical_tiles:"Tilemap.physical_tiles",non_physical_tiles:"Tilemap.non_physical_tiles")->dict["TileTexcoordsKey",bytes]: 
+
         tile_texcoords = {}
 
         for key in physical_tiles:
@@ -342,14 +343,14 @@ class ResourceManager:
         return tile_texcoords 
 
 
-    def get_NDC_tile_vertices(self,tile_size:int)->np.array:
+    def get_NDC_tile_vertices(self,tile_size:int)->bytes:
         x = 0.
         y = 0.
         w = 2. * tile_size / self._true_res[0]
         h = 2. * tile_size / self._true_res[1]
 
         return np.array([(x, y), (x + w, y), (x, y - h),
-                (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)
+                (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32).tobytes()
     
 
     def create_hud_inven_vbos(self,opaque_ui_element_quads:int,hidden_ui_element_quads:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]: 

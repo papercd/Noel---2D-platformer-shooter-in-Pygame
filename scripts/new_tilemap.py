@@ -62,7 +62,6 @@ class Tilemap:
 
         rm = ResourceManager.get_instance()
 
-
         self._regular_tile_size:int = json_file['tile_size']
         self._non_physical_tile_layers:int= json_file['offgrid_layers']
         self._non_physical_tiles:list[dict[tuple[int,int],"TileInfo"]] = [{} for i in range(0,self._non_physical_tile_layers)]
@@ -77,7 +76,7 @@ class Tilemap:
     
         self.ambientNodes = ambientNodeList()
         self.tile_colors:dict["TileColorKey","RGBA_tuple"]= {}
-        self.tile_texcoords: dict["TileTexcoordsKey","np.array"] = {}
+        self.tile_texcoords_bytes : dict["TileTexcoordsKey",bytes] = {}
 
 
         for tile_key in json_file['tilemap']: 
@@ -212,7 +211,7 @@ class Tilemap:
 
         self.NDC_tile_vertices = rm.get_NDC_tile_vertices(self._regular_tile_size)
         self.tile_colors = rm.get_tile_colors(self._physical_tiles)
-        self.tile_texcoords = rm.get_tile_texcoords(self._physical_tiles,self._non_physical_tiles)
+        self.tile_texcoords_bytes = rm.get_tile_texcoords(self._physical_tiles,self._non_physical_tiles)
 
 
 
