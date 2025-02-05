@@ -25,7 +25,7 @@ class PhysicsComponent:
         [1,0,0],                        
         [0,1,0],
         [0,0,1]
-    ])) # previous transform matrix to integrate interpolation for rendering.
+    ],dtype=np.float32)) # previous transform matrix to integrate interpolation for rendering.
 
 
     @property 
@@ -40,7 +40,7 @@ class PhysicsComponent:
             [(-2*self.flip +1) *cos_a * self.scale[0], -sin_a * self.scale[1], tx],
             [sin_a * self.scale[0], cos_a  * self.scale[1], ty],
             [0,0,1]
-        ])
+        ],dtype= np.float32)
 
 
 

@@ -3,7 +3,7 @@ from scripts.second_HUD import HUD
 from scripts.game_state import GameState
 from scripts.game_state import GameState
 from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR,\
-                        ITEM_ATLAS_POSITIONS_AND_SIZES,PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS
+                        ITEM_ATLAS_POSITIONS_AND_SIZES,PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS,BYTES_PER_TEXTURE_QUAD
 from pygame.rect import Rect
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
@@ -549,6 +549,7 @@ class RenderSystem(esper.Processor):
             self._vao_physical_tiles_draw.render(vertices=6,instances= physical_tile_instances)
 
     def _render_HUD_to_fg_fbo(self,dt:float)->None: 
+
         self._ref_hud.update(dt,self.cursor_state_change_callback,self._ref_hud.cursor_cell_hover_state_change_callback)
         
         self._ref_rm.texture_atlasses['ui'].use()
@@ -562,18 +563,17 @@ class RenderSystem(esper.Processor):
         self._vao_opaque_ui_draw.render()  
 
         if self._ref_hud.cursor.item:
-            self._ref_hud.opaque_items_vertices_buffer.write(self._create_cursor_item_vertices().tobytes(),
-                                                             offset = self._ref_hud.opaque_items_vertices_buffer.size - 48)
+            self._ref_hud.opaque_items_vertices_buffer.write(self._create_cursor_item_vertices(),
+                                                             offset = self._ref_hud.opaque_items_vertices_buffer.size - BYTES_PER_TEXTURE_QUAD)
         
         self._vao_opaque_items_draw.render()   
-
 
         self._write_cursor_position_to_buffer()
         #self._fbo_fg.use()
         self._ref_rm.texture_atlasses['ui'].use()
         self._vao_cursor_draw.render()
 
-    def _create_cursor_item_vertices(self)->np.array: 
+    def _create_cursor_item_vertices(self)->bytes: 
         if self._ref_hud.cursor.item.type == 'item':
             item_dim = (self._ref_hud.open_item_inventory_cell_length//2,
                         self._ref_hud.open_item_inventory_cell_length//2)
@@ -587,7 +587,7 @@ class RenderSystem(esper.Processor):
         h = 2. * item_dim[1] /self._true_res[1]
 
         return np.array([(x, y - h),(x + w, y - h),(x,y),
-                         (x,y),(x + w, y - h),(x+w,y)],dtype= np.float32)
+                         (x,y),(x + w, y - h),(x+w,y)],dtype= np.float32).tobytes()
 
 
     def _write_cursor_position_to_buffer(self)->None: 
@@ -608,7 +608,7 @@ class RenderSystem(esper.Processor):
 
     def cursor_state_change_callback(self,new_cursor_state:str)->None: 
         # change the texcoords uniform in the cursor draw program according to the new cursor state 
-        self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords_bytes['cursor'][new_cursor_state]
+        self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords_array['cursor'][new_cursor_state]
 
 
     def _tile_position_to_ndc(self,position:tuple[int,int],camera_offset:tuple[int,int])->bytes:
@@ -1112,27 +1112,15 @@ class RenderSystem(esper.Processor):
         self._ctx.enable(BLEND)
         self._render_background_to_bg_fbo(camera_offset)
         self._render_tilemap_to_bg_fbo(camera_offset)
-
-        player_physics_comp = self._ref_em.player_physics_comp
-
-        self._ref_tilemap.update_ambient_node_ptr(player_physics_comp.position,self._on_ambient_node_change_callback,camera_offset,screen_shake)
-
-        if isinstance(self._ref_tilemap._ambient_node_ptr,interpolatedLightNode):
-            self._set_ambient(self._ref_tilemap._ambient_node_ptr.get_interpolated_RGBA(player_physics_comp.position[0]))
-        else: 
-            self._set_ambient(*self._ref_tilemap._ambient_node_ptr.colorValue)
-
-
-
-        """
         self._render_HUD_to_fg_fbo(dt)
-        entity_vertices = []
-        entity_texcoords = []
-        entity_matrices = []
 
-        weapon_vertices_array = []
-        weapon_texcoords_array = []
-        weapon_matrices_array  = []
+        entity_vertices_byte_array = bytearray()
+        entity_texcoords_byte_array = bytearray()
+        entity_matrices_byte_array = bytearray()
+
+        weapon_vertices_byte_array = bytearray()
+        weapon_texcoords_byte_array = bytearray() 
+        weapon_matrices_byte_array  = bytearray()
 
         self._view_matrix[0][2] = -camera_offset[0]
         self._view_matrix[1][2] = -camera_offset[1]
@@ -1140,14 +1128,13 @@ class RenderSystem(esper.Processor):
         entity_instances = 0
         weapon_instances = 0 
 
-        player_position = (0,0)
         player_weapon_equipped = self._ref_hud.weapon_equipped
 
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
-                player_position = physics_comp.position
-                
-                self._ref_tilemap.update_ambient_node_ptr(physics_comp.position[0],self._on_ambient_node_change_callback,camera_offset,screen_shake,player_position)
+
+
+                self._ref_tilemap.update_ambient_node_ptr(physics_comp.position,self._on_ambient_node_change_callback,camera_offset,screen_shake)
 
                 if isinstance(self._ref_tilemap._ambient_node_ptr,interpolatedLightNode):
                     self._set_ambient(self._ref_tilemap._ambient_node_ptr.get_interpolated_RGBA(physics_comp.position[0]))
@@ -1157,18 +1144,18 @@ class RenderSystem(esper.Processor):
                 animation_data_collection = render_comp.animation_data_collection
                 animation = animation_data_collection.get_animation(state_info_comp.curr_state)
 
-                texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,player_weapon_equipped,state_info_comp.curr_state,animation.curr_frame())]
-                entity_local_vertices = render_comp.vertices    
+                texcoords_bytes = self._ref_rm.entity_texcoords_bytes[(state_info_comp.type,player_weapon_equipped,state_info_comp.curr_state,animation.curr_frame())]
+                entity_local_vertices_bytes = render_comp.vertices_bytes
           
                 interpolated_model_transform = physics_comp.prev_transform * (1.0 - interpolation_delta) + physics_comp.transform * interpolation_delta
 
                 clip_transform = self._projection_matrix @ self._view_matrix @ interpolated_model_transform 
 
-                entity_vertices.extend(entity_local_vertices)
-                entity_texcoords.extend(texcoords)
+                entity_vertices_byte_array.extend(entity_local_vertices_bytes)
+                entity_texcoords_byte_array.extend(texcoords_bytes)
 
-                column_major_clip_transform = clip_transform.T.flatten()
-                entity_matrices.extend(column_major_clip_transform)
+                column_major_clip_transform_bytes = clip_transform.T.flatten().tobytes()
+                entity_matrices_byte_array.extend(column_major_clip_transform_bytes)
 
 
                 # writing to weapon render buffers 
@@ -1176,8 +1163,8 @@ class RenderSystem(esper.Processor):
                     weapon_instances += 1  
                     weapon = self._ref_hud.curr_weapon
                     
-                    weapon_texcoords = self._ref_rm.holding_weapon_texcoords[weapon.name] 
-                    weapon_local_vertices = self._ref_rm.holding_weapon_vertices[weapon.name] 
+                    weapon_texcoords_bytes = self._ref_rm.holding_weapon_texcoords_bytes[weapon.name] 
+                    weapon_local_vertices_bytes = self._ref_rm.holding_weapon_vertices_bytes[weapon.name] 
 
                     weapon_flip = physics_comp.position[0] > self._ref_hud.cursor.topleft[0]
 
@@ -1199,43 +1186,41 @@ class RenderSystem(esper.Processor):
                         [1,0,-weapon.origin[0]],
                         [0,1,-weapon.origin[1]],
                         [0,0,1]
-                    ])
+                    ],dtype = np.float32)
 
                     weapon_model_rotate_transform = np.array([
                         [cos_a,-sin_a,0],
                         [sin_a,cos_a,0],
                         [0,0,1]
-                    ])
+                    ],dtype = np.float32)
 
                     weapon_model_translate_transform = np.array([
                         [1,0,physics_comp.position[0]+anchor_position_offset_from_center[0]],
                         [0,1,physics_comp.position[1]+anchor_position_offset_from_center[1]],
                         [0,0,1]
-                    ])
-
+                    ],dtype= np.float32)
                     
 
                     weapon_clip_transform = self._projection_matrix @ self._view_matrix @ weapon_model_translate_transform @ weapon_model_rotate_transform @weapon_model_to_pivot_transform
 
-                    weapon_vertices_array.extend(weapon_local_vertices)
-                    weapon_texcoords_array.extend(weapon_texcoords)
+                    weapon_vertices_byte_array.extend(weapon_local_vertices_bytes)
+                    weapon_texcoords_byte_array.extend(weapon_texcoords_bytes)
 
-                    column_major_clip_transform = weapon_clip_transform.T.flatten()
-                    weapon_matrices_array.extend(column_major_clip_transform) 
-
+                    column_major_clip_transform_bytes = weapon_clip_transform.T.flatten().tobytes()
+                    weapon_matrices_byte_array.extend(column_major_clip_transform_bytes) 
 
             else: 
                 pass
             entity_instances += 1
         
 
-        self._entity_weapons_local_vertices_vbo.write(np.array(weapon_vertices_array,dtype = np.float32).tobytes())
-        self._entity_weapons_texcoords_vbo.write(np.array(weapon_texcoords_array,dtype= np.float32).tobytes())
-        self._entity_weapons_transform_matrices_vbo.write(np.array(weapon_matrices_array,dtype = np.float32).tobytes())
+        self._entity_weapons_local_vertices_vbo.write(weapon_vertices_byte_array)
+        self._entity_weapons_texcoords_vbo.write(weapon_texcoords_byte_array)
+        self._entity_weapons_transform_matrices_vbo.write(weapon_matrices_byte_array)
 
-        self._entity_local_vertices_vbo.write(np.array(entity_vertices,dtype=np.float32).tobytes())
-        self._entity_texcoords_vbo.write(np.array(entity_texcoords,dtype=np.float32).tobytes())
-        self._entity_transform_matrices_vbo.write(np.array(entity_matrices,dtype=np.float32).tobytes())
+        self._entity_local_vertices_vbo.write(entity_vertices_byte_array)
+        self._entity_texcoords_vbo.write(entity_texcoords_byte_array)
+        self._entity_transform_matrices_vbo.write(entity_matrices_byte_array)
 
         self._fbo_bg.use()
 
@@ -1243,16 +1228,10 @@ class RenderSystem(esper.Processor):
         self._ref_rm.texture_atlasses['entities'].use()
         self._vao_entity_draw.render(vertices= 6, instances= entity_instances)
 
-        # render the currently held weapon 
-
-        self._fbo_bg.use()
-
-
         self._ref_rm.texture_atlasses['holding_weapons'].use()
         self._vao_entity_weapons_draw.render(vertices= 6, instances= weapon_instances)
 
         
-        """
         self._update_active_static_lights(camera_offset)
         self._render_fbos_to_screen_with_lighting(self._ref_em.player_physics_comp.position,camera_offset,screen_shake,interpolation_delta)
 
