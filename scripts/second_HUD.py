@@ -328,6 +328,9 @@ class HUD:
             self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords_bytes['weapon_slot'][False],offset = write_to_buffer_offset)
 
 
+            self.hidden_items_vertices_buffer.write(self.weapon_vertices_bytes[False][(row,col)],offset = write_to_buffer_offset - BYTES_PER_TEXTURE_QUAD)
+
+
         if new_current_node:
             row = new_current_node.ind // weapon_inventory.columns 
             col = new_current_node.ind - row * weapon_inventory.columns 
@@ -336,6 +339,8 @@ class HUD:
 
             self.hidden_vertices_buffer.write(self.weapon_inven_vertices_bytes[True][(row,col)],offset = write_to_buffer_offset)
             self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords_bytes['weapon_slot'][True],offset = write_to_buffer_offset)
+
+            self.hidden_items_vertices_buffer.write(self.weapon_vertices_bytes[True][(row,col)],offset = write_to_buffer_offset - BYTES_PER_TEXTURE_QUAD)
 
 
     def _on_cursor_item_change_callback(self)->None: 

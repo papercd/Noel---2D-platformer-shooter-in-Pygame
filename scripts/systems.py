@@ -1166,7 +1166,8 @@ class RenderSystem(esper.Processor):
                     weapon_texcoords_bytes = self._ref_rm.holding_weapon_texcoords_bytes[weapon.name] 
                     weapon_local_vertices_bytes = self._ref_rm.holding_weapon_vertices_bytes[weapon.name] 
 
-                    weapon_flip = physics_comp.position[0] > self._ref_hud.cursor.topleft[0]
+                    weapon_flip = physics_comp.position[0] - camera_offset[0] > self._ref_hud.cursor.topleft[0]
+
 
                     anchor_position_offset_from_center = PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS[physics_comp.flip][state_info_comp.curr_state][weapon_flip]
 
@@ -1176,15 +1177,9 @@ class RenderSystem(esper.Processor):
                     sin_a = np.sin(anchor_to_cursor_angle)
                     cos_a = np.cos(anchor_to_cursor_angle)
 
-                    #sin_a = np.sin(0)
-                    #cos_a = np.cos(0)
-
-                    tx = physics_comp.position[0] + anchor_position_offset_from_center[0] - weapon.origin[0]
-                    ty = physics_comp.position[1] + anchor_position_offset_from_center[1] - weapon.origin[1]
-
                     weapon_model_to_pivot_transform = np.array([
-                        [1,0,-weapon.origin[0]],
-                        [0,1,-weapon.origin[1]],
+                        [1,0,weapon.origin_offset_from_center[0]],
+                        [0,1,weapon.origin_offset_from_center[1]],
                         [0,0,1]
                     ],dtype = np.float32)
 
