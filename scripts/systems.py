@@ -16,7 +16,7 @@ from scripts.lists import interpolatedLightNode
 import pygame
 from moderngl import NEAREST,LINEAR,BLEND,Texture,Framebuffer
 from OpenGL.GL import glUniformBlockBinding,glGetUniformBlockIndex,glViewport
-from math import sqrt,dist
+from math import sqrt,dist,degrees
 from random import choice
 import numpy as np
 
@@ -1124,17 +1124,17 @@ class RenderSystem(esper.Processor):
         entity_texcoords = []
         entity_matrices = []
 
-        weapon_vertices = []
-        weapon_texcoords = []
-        weapon_matrices = []
+        weapon_vertices_array = []
+        weapon_texcoords_array = []
+        weapon_matrices_array  = []
 
         self._view_matrix[0][2] = -camera_offset[0]
         self._view_matrix[1][2] = -camera_offset[1]
 
-        entity_instances = 0 
+        entity_instances = 0
+        weapon_instances = 0 
 
         player_position = (0,0)
-
         player_weapon_equipped = self._ref_hud.weapon_equipped
 
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
@@ -1153,7 +1153,7 @@ class RenderSystem(esper.Processor):
 
                 texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,player_weapon_equipped,state_info_comp.curr_state,animation.curr_frame())]
                 entity_local_vertices = render_comp.vertices    
-                
+          
                 interpolated_model_transform = physics_comp.prev_transform * (1.0 - interpolation_delta) + physics_comp.transform * interpolation_delta
 
                 clip_transform = self._projection_matrix @ self._view_matrix @ interpolated_model_transform 
@@ -1167,35 +1167,91 @@ class RenderSystem(esper.Processor):
 
                 # writing to weapon render buffers 
                 if player_weapon_equipped:
+                    weapon_instances += 1  
                     weapon = self._ref_hud.curr_weapon
                     
                     weapon_texcoords = self._ref_rm.holding_weapon_texcoords[weapon.name] 
                     weapon_local_vertices = self._ref_rm.holding_weapon_vertices[weapon.name] 
 
-                    anchor_position_offset_from_center = PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS[physics_comp.flip][state_info_comp.curr_state][physics_comp.position[0] < self._ref_hud.cursor.topleft[0]]
+                    weapon_flip = physics_comp.position[0] > self._ref_hud.cursor.topleft[0]
 
-                    #cos_a = np.cos(self._ref_hud.cursor.get_angle_from_point())
+                    anchor_position_offset_from_center = PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS[physics_comp.flip][state_info_comp.curr_state][weapon_flip]
 
-                    weapon_model_transform = None 
+                    anchor_to_cursor_angle = self._ref_hud.cursor.get_angle_from_point((physics_comp.position[0]-camera_offset[0] + anchor_position_offset_from_center[0],
+                                                                                        physics_comp.position[1]-camera_offset[1] + anchor_position_offset_from_center[1]))
 
-                    weapon_clip_transform = None 
+                    sin_a = np.sin(anchor_to_cursor_angle)
+                    cos_a = np.cos(anchor_to_cursor_angle)
+
+                    #sin_a = np.sin(0)
+                    #cos_a = np.cos(0)
+
+                    tx = physics_comp.position[0] + anchor_position_offset_from_center[0] - weapon.origin[0]
+                    ty = physics_comp.position[1] + anchor_position_offset_from_center[1] - weapon.origin[1]
+
+                    """
+                    weapon_model_transform = np.array([
+                        [(-2*weapon_flip +1)*cos_a,-sin_a,tx],
+                        [sin_a,cos_a,ty],
+                        [0,0,1]
+                    ])
+                    """
+
+                    weapon_model_to_pivot_transform = np.array([
+                        [1,0,-weapon.origin[0]],
+                        [0,1,-weapon.origin[1]],
+                        [0,0,1]
+                    ])
+
+                    weapon_model_rotate_transform = np.array([
+                        [cos_a,-sin_a,0],
+                        [sin_a,cos_a,0],
+                        [0,0,1]
+                    ])
+
+                    weapon_model_translate_transform = np.array([
+                        [1,0,physics_comp.position[0]+anchor_position_offset_from_center[0]],
+                        [0,1,physics_comp.position[1]+anchor_position_offset_from_center[1]],
+                        [0,0,1]
+                    ])
+
+                    
+
+                    weapon_clip_transform = self._projection_matrix @ self._view_matrix @ weapon_model_translate_transform @ weapon_model_rotate_transform @weapon_model_to_pivot_transform
+
+                    weapon_vertices_array.extend(weapon_local_vertices)
+                    weapon_texcoords_array.extend(weapon_texcoords)
+
+                    column_major_clip_transform = weapon_clip_transform.T.flatten()
+                    weapon_matrices_array.extend(column_major_clip_transform) 
 
 
             else: 
                 pass
             entity_instances += 1
-
         
+
+        self._entity_weapons_local_vertices_vbo.write(np.array(weapon_vertices_array,dtype = np.float32).tobytes())
+        self._entity_weapons_texcoords_vbo.write(np.array(weapon_texcoords_array,dtype= np.float32).tobytes())
+        self._entity_weapons_transform_matrices_vbo.write(np.array(weapon_matrices_array,dtype = np.float32).tobytes())
 
         self._entity_local_vertices_vbo.write(np.array(entity_vertices,dtype=np.float32).tobytes())
         self._entity_texcoords_vbo.write(np.array(entity_texcoords,dtype=np.float32).tobytes())
         self._entity_transform_matrices_vbo.write(np.array(entity_matrices,dtype=np.float32).tobytes())
 
         self._fbo_bg.use()
+
+
         self._ref_rm.texture_atlasses['entities'].use()
         self._vao_entity_draw.render(vertices= 6, instances= entity_instances)
 
         # render the currently held weapon 
+
+        self._fbo_bg.use()
+
+
+        self._ref_rm.texture_atlasses['holding_weapons'].use()
+        self._vao_entity_weapons_draw.render(vertices= 6, instances= weapon_instances)
 
         
         self._update_active_static_lights(camera_offset)

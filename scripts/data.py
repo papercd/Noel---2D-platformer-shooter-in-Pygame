@@ -350,15 +350,15 @@ WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET ={
 
 PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS = {
 
-    True: {"idle": {False: (2,6), True: (13,6)}, "walk": {False: (2,6), True: (13,6)},'run' :{False: (1,6), True: (8,5)} 
-            ,'jump_up' :{False: (0,4), True: (9,4)},'jump_down' :{False: (3,5), True: (10,4)}
-            ,'slide' :{ False : (11,9) ,True: (11,9)} , 'wall_slide' : {False: (4,5), True: (8,5)},'land' :{ False : (2,6) ,True: (8,5)} , 
-            'crouch' :{ False : (2,8) ,True: (13,8)}
+    True: {"idle": {False: (-6,-2), True: (5,-2)}, "walk": {False: (-6,-2), True: (5,-2)},'run' :{False: (-7,-2), True: (0,-3)} 
+            ,'jump_up' :{False: (-8,-4), True: (1,-4)},'jump_down' :{False: (-5,-3), True: (2,-4)}
+            ,'slide' :{ False : (3,1) ,True: (3,1)} , 'wall_slide' : {False: (-4,-3), True: (0,-3)},'land' :{ False : (-6,-2) ,True: (0,-3)} , 
+            'crouch' :{ False : (-6,0) ,True: (5,0)},'sprint': {False : (-6,-2),True:(-1,-3)}
             },
-    False: {"idle": {False: (2,6), True: (13,6)},"walk": {False: (2,6), True: (13,6)}, 'run' :{False: (7,5), True: (14,6)} 
-            ,'jump_up' :{False: (6,4), True: (15,5)},'jump_down' :{False: (2,4), True: (7,5)}
-            ,'slide' :{ False: (4,9), True: (4,9) }, 'wall_slide': {False : (7,5), True : (11,5)},'land' :{ False : (6,5) ,True: (13,6)} ,
-            'crouch' :{ False : (2,8) ,True: (14,8)} 
+    False: {"idle": {False: (-6,-2), True: (5,-2)},"walk": {False: (-6,-2), True: (5,-2)}, 'run' :{False: (-1,-3), True: (6,-2)} 
+            ,'jump_up' :{False: (-2,-4), True: (7,-3)},'jump_down' :{False: (-6,-4), True: (-1,-3)}
+            ,'slide' :{ False: (-4,1), True: (-4,1) }, 'wall_slide': {False : (-1,-3), True : (3,-3)},'land' :{ False : (-2,-3) ,True: (5,-2)} ,
+            'crouch' :{ False : (-6,0) ,True: (6,0)},'sprint' : {False: (-1,-3), True: (5,-2)} 
     }
 }
 

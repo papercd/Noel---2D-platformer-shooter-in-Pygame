@@ -148,6 +148,7 @@ class ResourceManager:
         self.holding_weapon_vertices = {}
         for weapon_name in IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES:
             atlas_pos,size = IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES[weapon_name]['holding']
+
             self.holding_weapon_texcoords[weapon_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['holding_weapons'])
             self.holding_weapon_vertices[weapon_name] = self._create_entity_local_vertices(size)
 
@@ -185,22 +186,6 @@ class ResourceManager:
 
         return np.array([p3, p4, p1,
                         p1, p4, p2], dtype=np.float32)
-
-       
-    def _create_ui_element_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int])->np.array: 
-        x =  (texture_atlas_position[0]) / self.texture_atlasses['ui'].size[0]
-        y = (texture_atlas_position[1]) / self.texture_atlasses['ui'].size[1]
-        w = texture_size[0] / self.texture_atlasses['ui'].size[0]
-        h = texture_size[1] / self.texture_atlasses['ui'].size[1]
-
-        p1 = (x, y + h)
-        p2 = (x + w, y + h)
-        p3 = (x, y)
-        p4 = (x + w, y)
-
-        return np.array([p3, p4, p1,
-                        p1, p4, p2], dtype=np.float32)
-       
 
     def _create_entity_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int],animation_frame:int)->np.array:
         x =  (texture_atlas_position[0] + animation_frame * texture_size[0]) / self.texture_atlasses['entities'].size[0]

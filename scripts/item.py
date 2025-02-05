@@ -48,7 +48,7 @@ class Weapon(Item):
 
 class AK47(Weapon):
     def __init__(self):
-        super().__init__((14,14),(2,2),'ak47', 1, False)
+        super().__init__((18,9),(2,2),'ak47', 1, False)
 
     def copy(self)->"AK47": 
         new_ak = AK47()
@@ -57,7 +57,7 @@ class AK47(Weapon):
 
 class FlameThrower(Weapon):
     def __init__(self):
-        super().__init__((14,14),(2,2),'flamethrower', 1, False) 
+        super().__init__((24,8),(2,2),'flamethrower', 1, False) 
 
     def copy(self)->"FlameThrower":
         new_flamethrower = FlameThrower()
