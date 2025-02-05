@@ -107,7 +107,6 @@ class Noel():
     def _get_system_display_info(self):
         system_info = {}
 
-        # primary monitor set to second monitor for hot reloading
         primary_monitor = get_monitors()[0]
         system_info["resolution"] = (primary_monitor.width, primary_monitor.height)
 
@@ -175,7 +174,7 @@ class Noel():
 
         if self._game_context['gamestate']== GameState.GameLoop: 
           
-            player_position = self._entities_manager.player_position
+            player_position = self._entities_manager.player_physics_comp.position
 
             self._float_camera_offset_buffer[0] += 3*self._dt*(player_position[0] - self._game_context["true_res"][0] /2 - self._game_context['camera_offset'][0])
             self._float_camera_offset_buffer[1] += 3*self._dt*(player_position[1] - self._game_context["true_res"][1] /2 - self._game_context['camera_offset'][1])
