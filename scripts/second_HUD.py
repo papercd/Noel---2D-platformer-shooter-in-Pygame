@@ -3,7 +3,7 @@ from scripts.data import BYTES_PER_TEXTURE_QUAD,TRUE_RES_TO_HEALTH_BAR_WIDTH_RAT
                         TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO, SPACE_BETWEEN_INVENTORY_CELLS,INVENTORY_CELL_EXPANSION_RATIO,PHYSICS_TIMESTEP
 from scripts.new_cursor import Cursor
 from scripts.new_resource_manager import ResourceManager
-from scripts.new_inventory import Inventory,InventoryEngine,WeaponInventory
+from scripts.new_inventory import Inventory,InventoryEngine,WeaponInventory,Cell
 from scripts.lists import WeaponNode
 import numpy as np 
 
@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: 
     from scripts.item import Weapon
-    from scripts.new_inventory import Cell
 
 
 
@@ -306,7 +305,7 @@ class HUD:
 
                 hidden_element_to_buffer_write_offset += BYTES_PER_TEXTURE_QUAD
 
-    def _get_inventory_id(self,inven_cell : "Cell" | WeaponNode)->int:
+    def _get_inventory_id(self,inven_cell : Cell | WeaponNode)->int:
         if isinstance(inven_cell,WeaponNode):
             inventory_id = inven_cell.list.inventory_id
         else: 
@@ -347,7 +346,7 @@ class HUD:
             self.opaque_items_texcoords_buffer.write(self.null_texcoords_bytes,offset = self.opaque_items_texcoords_buffer.size - BYTES_PER_TEXTURE_QUAD)
         
 
-    def _on_inven_item_change_callback(self,inven_cell:"Cell"|WeaponNode)->None: 
+    def _on_inven_item_change_callback(self,inven_cell:Cell|WeaponNode)->None: 
         
         inventory_id = self._get_inventory_id(inven_cell)
         inventory = self._inven_list[inventory_id] 

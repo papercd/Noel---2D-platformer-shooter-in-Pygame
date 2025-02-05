@@ -204,29 +204,29 @@ class Tilemap:
         = rm.create_tilemap_vbos(self._regular_tile_size,self._non_physical_tile_layers)
 
 
-        self.NDC_tile_vertices_bytes = rm.get_NDC_tile_vertices(self._regular_tile_size)
+        self.NDC_tile_vertices_array = rm.get_NDC_tile_vertices(self._regular_tile_size)
         self.tile_colors = rm.get_tile_colors(self._physical_tiles)
         self.tile_texcoords_bytes = rm.get_tile_texcoords(self._physical_tiles,self._non_physical_tiles)
 
 
 
 
-    def update_ambient_node_ptr(self,pos:float,callback:"function",camera_offset:tuple[int,int],
-                                screen_shake:tuple[int,int],player_position:tuple[int,int])->None:
+    def update_ambient_node_ptr(self,pos:tuple[int,int],callback:"function",camera_offset:tuple[int,int],
+                                screen_shake:tuple[int,int])->None:
         
         if self._ambient_node_ptr is None: 
             
-            self._ambient_node_ptr = self.ambientNodes.set_ptr(pos)
+            self._ambient_node_ptr = self.ambientNodes.set_ptr(pos[0])
         else:
-            if pos < self._ambient_node_ptr.range[0]:
+            if pos[0] < self._ambient_node_ptr.range[0]:
                 if self._ambient_node_ptr.prev: 
                     self._ambient_node_ptr = self._ambient_node_ptr.prev
-                    callback(camera_offset,screen_shake,player_position)
+                    callback(camera_offset,screen_shake,pos)
                   
-            elif pos > self._ambient_node_ptr.range[1]:
+            elif pos[0] > self._ambient_node_ptr.range[1]:
                 if self._ambient_node_ptr.next: 
                     self._ambient_node_ptr = self._ambient_node_ptr.next
-                    callback(camera_offset,screen_shake,player_position)
+                    callback(camera_offset,screen_shake,pos)
 
     
 
@@ -445,20 +445,20 @@ class Tilemap:
                 pass 
         return surrounding_rects
 
-    def write_to_physical_tiles_texcoords_vbo(self,buffer_data:"np.array")->None: 
-        self._physical_tiles_texcoords_vbo.write(buffer_data.tobytes())
+    def write_to_physical_tiles_texcoords_vbo(self,buffer_data:bytes|bytearray)->None: 
+        self._physical_tiles_texcoords_vbo.write(buffer_data)
 
 
-    def write_to_physical_tiles_positions_vbo(self,buffer_data:"np.array")->None: 
-        self._physical_tiles_position_vbo.write(buffer_data.tobytes())
+    def write_to_physical_tiles_positions_vbo(self,buffer_data:bytes|bytearray)->None: 
+        self._physical_tiles_position_vbo.write(buffer_data)
 
 
 
-    def write_to_non_physical_tiles_texcoords_vbo(self,buffer_data:"np.array")->None: 
-        self._non_physical_tiles_texcoords_vbo.write(buffer_data.tobytes())
+    def write_to_non_physical_tiles_texcoords_vbo(self,buffer_data:bytes|bytearray)->None: 
+        self._non_physical_tiles_texcoords_vbo.write(buffer_data)
 
 
-    def write_to_non_physical_tiles_positions_vbo(self,buffer_data:"np.array")->None: 
-        self._non_physical_tiles_position_vbo.write(buffer_data.tobytes())
+    def write_to_non_physical_tiles_positions_vbo(self,buffer_data:bytes|bytearray)->None: 
+        self._non_physical_tiles_position_vbo.write(buffer_data)
 
 

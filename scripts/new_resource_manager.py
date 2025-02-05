@@ -115,6 +115,7 @@ class ResourceManager:
 
     def _create_ui_element_texcoords(self)->None: 
         self.ui_element_texcoords_bytes = {}
+        self.ui_element_texcoords_array = {}
 
         for ui_element in UI_ATLAS_POSITIONS_AND_SIZES: 
             if ui_element.endswith('slot'):
@@ -123,10 +124,10 @@ class ResourceManager:
                     atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES[ui_element][hovered_state]
                     self.ui_element_texcoords_bytes[ui_element][hovered_state] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
             elif ui_element == 'cursor':
-                self.ui_element_texcoords_bytes['cursor'] = {}
+                self.ui_element_texcoords_array['cursor'] = {}
                 for cursor_state in UI_ATLAS_POSITIONS_AND_SIZES['cursor']:
                     atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES['cursor'][cursor_state]
-                    self.ui_element_texcoords_bytes['cursor'][cursor_state] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
+                    self.ui_element_texcoords_array['cursor'][cursor_state] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'],asbytes=False)
             else: 
                 atlas_position,texture_size = UI_ATLAS_POSITIONS_AND_SIZES[ui_element]
                 self.ui_element_texcoords_bytes[ui_element] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
@@ -172,7 +173,7 @@ class ResourceManager:
         # load the player entity texcoords for now
 
 
-    def _create_texcoords(self,atlas_position:tuple[int,int],texture_size:tuple[int,int],texture_atlas:"Context.Texture") ->bytes:
+    def _create_texcoords(self,atlas_position:tuple[int,int],texture_size:tuple[int,int],texture_atlas:"Context.Texture",asbytes = True) ->bytes:
         x =  (atlas_position[0]) / texture_atlas.size[0]
         y = (atlas_position[1]) / texture_atlas.size[1]
         w = texture_size[0] / texture_atlas.size[0]
@@ -183,8 +184,12 @@ class ResourceManager:
         p3 = (x, y)
         p4 = (x + w, y)
 
-        return np.array([p3, p4, p1,
-                        p1, p4, p2], dtype=np.float32).tobytes()
+        if asbytes:
+            return np.array([p3, p4, p1,
+                            p1, p4, p2], dtype=np.float32).tobytes()
+        else: 
+            return np.array([p3, p4, p1,
+                            p1, p4, p2], dtype=np.float32)
 
     def _create_entity_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int],animation_frame:int)->bytes:
 
@@ -343,14 +348,14 @@ class ResourceManager:
         return tile_texcoords 
 
 
-    def get_NDC_tile_vertices(self,tile_size:int)->bytes:
+    def get_NDC_tile_vertices(self,tile_size:int)->np.array:
         x = 0.
         y = 0.
         w = 2. * tile_size / self._true_res[0]
         h = 2. * tile_size / self._true_res[1]
 
         return np.array([(x, y), (x + w, y), (x, y - h),
-                (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32).tobytes()
+                (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)
     
 
     def create_hud_inven_vbos(self,opaque_ui_element_quads:int,hidden_ui_element_quads:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]: 
