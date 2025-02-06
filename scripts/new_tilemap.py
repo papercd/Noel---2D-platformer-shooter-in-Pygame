@@ -1,4 +1,4 @@
-from scripts.data import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES,TileInfo,LightInfo,DoorInfo,DoorAnimation,HULL_OUTER_EDGE_OFFSET,TILE_NEIGHBOR_MAP,OPEN_SIDE_OFFSET_TO_AXIS_NUM,\
+from scripts.data import BYTES_PER_TILE_POSITION_VEC2,BYTES_PER_TEXTURE_QUAD,TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES,TileInfo,LightInfo,DoorInfo,DoorAnimation,HULL_OUTER_EDGE_OFFSET,TILE_NEIGHBOR_MAP,OPEN_SIDE_OFFSET_TO_AXIS_NUM,\
                             LIGHT_POSITION_OFFSET_FROM_TOPLEFT,DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,RegularTileInfo,LightTileInfo, PHYSICS_APPLIED_TILE_TYPES
 
 from scripts.spatial_grid import hullSpatialGrid,lightSpatialGrid 
@@ -7,11 +7,12 @@ from my_pygame_light2d.hull import Hull
 from pygame import Rect
 from my_pygame_light2d.light import PointLight
 from scripts.new_resource_manager import ResourceManager
+from scripts.new_entities_manager import EntitiesManager
 
+import numpy as np
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import numpy as np
     from moderngl import Context
     from scripts.data import TileColorKey,RGBA_tuple,TileInfoDataClass,TileTexcoordsKey
 
@@ -19,6 +20,9 @@ if TYPE_CHECKING:
 
 class Tilemap:
     def __init__(self,json_file= None):
+
+        self._ref_em  = EntitiesManager.get_instance()
+
         if json_file:
             self.load_map(json_file)
 
@@ -203,12 +207,36 @@ class Tilemap:
         self._physical_tiles_texcoords_vbo, self._non_physical_tiles_texcoords_vbo, self._physical_tiles_position_vbo,self._non_physical_tiles_position_vbo\
         = rm.create_tilemap_vbos(self._regular_tile_size,self._non_physical_tile_layers)
 
+        
 
         self.NDC_tile_vertices_array = rm.get_NDC_tile_vertices(self._regular_tile_size)
         self.tile_colors = rm.get_tile_colors(self._physical_tiles)
         self.tile_texcoords_bytes = rm.get_tile_texcoords(self._physical_tiles,self._non_physical_tiles)
 
 
+
+    def write_initial_state_to_tilemap_vbos(self,initial_camera_offset:tuple[int,int],true_res:tuple[int,int])->None: 
+       
+        positions_write_offset = 0
+        texcoords_write_offset = 0
+
+        for x in range(initial_camera_offset[0] // self.regular_tile_size- 1, (initial_camera_offset[0] + true_res[0]) // self.regular_tile_size+ 1):
+            for y in range(initial_camera_offset[1] // self.regular_tile_size- 1, (initial_camera_offset[1] + true_res[1]) // self._regular_tile_size+1):
+                coor = (x,y)
+                # physical tiles 
+                if coor in self.physical_tiles: 
+                    # write the data 
+                    tile_data = self.physical_tiles[coor]
+                    tlie_general_info = tile_data.info 
+
+                    relative_position_index, variant = tlie_general_info.relative_pos_ind, tlie_general_info.variant
+                    self.physical_tiles_position_vbo.write(self._tile_coor_to_ndc(coor,initial_camera_offset,true_res),offset = positions_write_offset)
+                    self.physical_tiles_texcoords_vbo.write(self.tile_texcoords_bytes[(tlie_general_info.type,relative_position_index,variant)],offset = texcoords_write_offset) 
+
+                texcoords_write_offset += BYTES_PER_TEXTURE_QUAD 
+                positions_write_offset += BYTES_PER_TILE_POSITION_VEC2
+            
+   
 
 
     def update_ambient_node_ptr(self,pos:tuple[int,int],callback:"function",camera_offset:tuple[int,int],
@@ -230,6 +258,9 @@ class Tilemap:
 
     
 
+    def _tile_coor_to_ndc(self,coor:tuple[int,int],camera_offset:tuple[int,int],true_res:tuple[int,int])->bytes: 
+        return np.array([2. * (coor[0] *self.regular_tile_size -camera_offset[0]) / true_res[0] -1.
+            , 1. - 2. * (coor[1] * self.regular_tile_size - camera_offset[1]) / true_res[1]],dtype=np.float32).tobytes()
 
 
 

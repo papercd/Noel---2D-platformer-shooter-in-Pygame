@@ -1,4 +1,4 @@
-from scripts.new_tilemap import Tilemap
+
 from pygame.rect import Rect
 from pygame.math import Vector2 as vec2
 from scripts.components import * 
@@ -22,7 +22,7 @@ class EntitiesManager:
 
     def _create_player_entity(self)->None: 
         self._player_state = StateInfoComponent(type='player',max_jump_count=2)
-        self._player_physics = PhysicsComponent(size=(16,16),position= vec2(386,0),collision_rect=Rect(380,0,12,16),displacement_buffer=vec2(0,0))
+        self._player_physics = PhysicsComponent(size=(16,16),position= vec2(700,0),collision_rect=Rect(700,0,12,16),displacement_buffer=vec2(0,0))
         self._player_render = RenderComponent(self._ref_rm.animation_data_collections['player'],self._ref_rm.entity_local_vertices_bytes['player'])
         self._player_input = InputComponent()
         self._player = esper.create_entity(self._player_state,self._player_physics,self._player_render,self._player_input)
