@@ -50,7 +50,7 @@ class Noel():
         # set camera offset to center player in the screen
         initial_player_pos = self._entities_manager.player_physics_comp.position
         self._float_camera_offset_buffer[0] = initial_player_pos[0] - self._game_context['true_res'][0] / 2
-        self._float_camera_offset_buffer[1] = initial_player_pos[1] + 24 - self._game_context['true_res'][1] / 2
+        self._float_camera_offset_buffer[1] = initial_player_pos[1] - self._game_context['true_res'][1] / 2
 
         self._game_context['camera_offset'][0] = int(self._float_camera_offset_buffer[0])
         self._game_context['camera_offset'][1] = int(self._float_camera_offset_buffer[1])

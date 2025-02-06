@@ -270,8 +270,9 @@ class RenderSystem(esper.Processor):
 
         self._prev_hull_query_player_pos = (0,0)
         self._prev_hull_query_camera_scroll = (0,0)
-
         self._prev_lights_query_camera_scroll = (0,0)
+
+        self._prev_tilemap_update_camera_scroll = [0,0]
 
         self._shadow_blur_radius = 5
         self._max_hull_count = 512 
@@ -495,64 +496,27 @@ class RenderSystem(esper.Processor):
         )
 
     
-    def _update_tilemap_vbos(self)->None: 
-        pass 
+    def _update_tilemap_vbos(self,camera_offset:tuple[int,int],tilemap_update_bits:tuple[bool,bool])->None: 
+        if tilemap_update_bits[0]:
+            camera_movement_direction_bit = self._prev_tilemap_update_camera_scroll[0] < camera_offset[0]
+            self._prev_tilemap_update_camera_scroll[0] = camera_offset[0]
+            # update the tilemap vbos in the x axis 
+            self._ref_tilemap.update_tilemap_vbos(self._true_res,camera_offset,False,camera_movement_direction_bit)
+        if tilemap_update_bits[1]:
+            camera_movement_direction_bit = self._prev_tilemap_update_camera_scroll[1] < camera_offset[1]
+            self._prev_tilemap_update_camera_scroll[1] = camera_offset[1]
 
+            # update the tilemap vbos in the y axis 
+            self._ref_tilemap.update_tilemap_vbos(self._true_res,camera_offset,True,camera_movement_direction_bit)
 
     def _render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
+        self._tile_draw_prog['cameraOffset'] = self._point_to_ndc((camera_offset[0],
+                                                                   camera_offset[1]))
         
+        self._fbo_bg.use()
+        self._ref_rm.texture_atlasses['tiles'].use()
+        self._vao_physical_tiles_draw.render(vertices=6,instances = self._ref_tilemap.physical_tiles_texcoords_vbo.size // BYTES_PER_TEXTURE_QUAD)
 
-        physical_tile_texcoords_byte_array = bytearray()
-        physical_tiles_positions_byte_array = bytearray()
-
-
-        non_physical_tiles_texcoords_byte_array = bytearray()
-        non_physical_tiles_positions_byte_array = bytearray()
-
-        tile_size = self._ref_tilemap.regular_tile_size
-
-        physical_tile_instances = 0
-        non_physical_tile_instances= 0
-        
-
-        for x in range(camera_offset[0] // tile_size- 1, (camera_offset[0] + self._true_res[0]) // tile_size+ 1):
-            for y in range(camera_offset[1] // tile_size- 1, (camera_offset[1] + self._true_res[1]) // tile_size+1):
-                coor = (x,y) 
-
-                for i, dict in enumerate(self._ref_tilemap.non_physical_tiles):
-                    if coor in dict:
-                        non_physical_tile_instances += 1
-                        tile_info = self._ref_tilemap.non_physical_tiles[i][coor]
-
-                        non_physical_tiles_texcoords_byte_array.extend(self._ref_tilemap.tile_texcoords_bytes[(tile_info.type,tile_info.relative_pos_ind,tile_info.variant)])
-                        non_physical_tiles_positions_byte_array.extend(self._tile_position_to_ndc(coor,camera_offset))
-
-                if coor in self._ref_tilemap.physical_tiles:
-                    physical_tile_instances +=1
-                    tile_data = self._ref_tilemap.physical_tiles[coor]
-                    tile_general_info = tile_data.info 
-                    relative_position_index, variant = tile_general_info.relative_pos_ind, tile_general_info.variant 
-
-                    physical_tile_texcoords_byte_array.extend(self._ref_tilemap.tile_texcoords_bytes[(tile_general_info.type,relative_position_index,variant)])
-                    physical_tiles_positions_byte_array.extend(self._tile_position_to_ndc(coor,camera_offset))
-
-        if non_physical_tile_instances > 0:
-            self._ref_tilemap.write_to_non_physical_tiles_texcoords_vbo(non_physical_tiles_texcoords_byte_array)
-            self._ref_tilemap.write_to_non_physical_tiles_positions_vbo(non_physical_tiles_positions_byte_array)
-
-            self._fbo_bg.use()
-            self._ref_tilemap.ref_texture_atlas.use()
-
-            self._vao_non_physical_tiles_draw.render(vertices = 6, instances= non_physical_tile_instances)
-
-        if physical_tile_instances > 0:
-            self._ref_tilemap.write_to_physical_tiles_texcoords_vbo(physical_tile_texcoords_byte_array)
-            self._ref_tilemap.write_to_physical_tiles_positions_vbo(physical_tiles_positions_byte_array)
-
-            self._fbo_bg.use()
-            self._ref_tilemap.ref_texture_atlas.use()
-
-            self._vao_physical_tiles_draw.render(vertices=6,instances= physical_tile_instances)
 
     def _render_HUD_to_fg_fbo(self,dt:float)->None: 
 
@@ -621,6 +585,10 @@ class RenderSystem(esper.Processor):
         fbo_w,fbo_h = self._fbo_bg.size
         return np.array([2. * (position[0] *self._ref_tilemap.regular_tile_size -camera_offset[0]) / fbo_w -1.
                 , 1. - 2. * (position[1] * self._ref_tilemap.regular_tile_size - camera_offset[1]) / fbo_h],dtype=np.float32).tobytes()
+    
+    def _point_to_ndc(self,point:tuple[int,int])->np.array: 
+        return np.array([2. * point[0] / self._true_res[0] - 1.,
+                         1. - 2. * point[1] / self._true_res[1]],dtype = np.float32)
 
 
     def _render_background_to_bg_fbo(self,camera_offset:tuple[int,int],infinite:bool = False)->None: 
@@ -1117,7 +1085,21 @@ class RenderSystem(esper.Processor):
 
         self._ctx.enable(BLEND)
         self._render_background_to_bg_fbo(camera_offset)
-        #self._render_tilemap_to_bg_fbo(camera_offset)
+        
+        # bits that represent update requirements for tilemap buffers
+
+        tilemap_update_camera_offset_from_prev = ( 
+            self._prev_tilemap_update_camera_scroll[0] - camera_offset[0],
+            self._prev_tilemap_update_camera_scroll[1] - camera_offset[1] 
+        )
+
+        tilemap_update_bits = (
+            tilemap_update_camera_offset_from_prev[0] >= 16 or tilemap_update_camera_offset_from_prev[0] <= -16,
+            tilemap_update_camera_offset_from_prev[1] >= 16 or tilemap_update_camera_offset_from_prev[1] <= -16 
+        )
+
+        self._update_tilemap_vbos(camera_offset,tilemap_update_bits)
+        self._render_tilemap_to_bg_fbo(camera_offset)
         self._render_HUD_to_fg_fbo(dt)
 
         entity_vertices_byte_array = bytearray()
@@ -1181,8 +1163,8 @@ class RenderSystem(esper.Processor):
                     anchor_to_cursor_angle = self._ref_hud.cursor.get_angle_from_point((physics_comp.position[0]-camera_offset[0] + anchor_position_offset_from_center[0],
                                                                                         physics_comp.position[1]-camera_offset[1] + anchor_position_offset_from_center[1]))
 
-                    sin_a = np.sin(pi + anchor_to_cursor_angle if weapon_flip else anchor_to_cursor_angle) 
-                    cos_a = np.cos(pi + anchor_to_cursor_angle if weapon_flip else anchor_to_cursor_angle)
+                    sin_a = np.sin(pi - anchor_to_cursor_angle if weapon_flip else -anchor_to_cursor_angle) 
+                    cos_a = np.cos(pi - anchor_to_cursor_angle if weapon_flip else -anchor_to_cursor_angle)
 
                     weapon_model_to_pivot_transform = np.array([
                         [1,0,-weapon.origin_offset_from_center[0]],

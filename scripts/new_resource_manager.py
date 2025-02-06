@@ -254,9 +254,14 @@ class ResourceManager:
         return texcoords
 
 
-    def create_tilemap_vbos(self,tile_size:int,non_physical_tile_layers:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
-        max_visible_tiles_plus_extra = ((self._true_res[0]//tile_size)+ 2) * ((self._true_res[1]//tile_size)+2) 
+    def create_tilemap_vbos(self,tile_size:int,non_physical_tile_layers:int)->tuple[int,int,"Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
 
+        tiles_per_column = ( self._true_res[1] // tile_size ) + 2
+        tiles_per_row = (self._true_res[0] // tile_size ) + 2
+
+        max_visible_tiles_plus_extra = tiles_per_row * tiles_per_column
+
+        print('max_visible_tiles',max_visible_tiles_plus_extra)
 
         vertex_size = 2 * 4
         physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size
@@ -274,7 +279,7 @@ class ResourceManager:
         non_physical_tiles_position_vbo =self._ctx.buffer(reserve=non_physical_tiles_position_buffer_size,dynamic=True)
 
 
-        return (physical_tiles_vbo,non_physical_tiles_vbo,physical_tiles_position_vbo,non_physical_tiles_position_vbo)
+        return (tiles_per_row,tiles_per_column, physical_tiles_vbo,non_physical_tiles_vbo,physical_tiles_position_vbo,non_physical_tiles_position_vbo)
 
 
 
