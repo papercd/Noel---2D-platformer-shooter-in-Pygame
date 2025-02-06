@@ -226,15 +226,14 @@ class Tilemap:
                 # if the camera moved to the left, meaning a new column of tiles 
                 # appeared to the right, 
 
-
                 new_tiles_column_texcoords_write_offset = 0
                 new_tiles_column_positions_write_offset = 0
 
                 camera_offset_grid_pos = (camera_offset[0] // self.regular_tile_size,
                                           camera_offset[1] // self.regular_tile_size)
 
-                for y in range(-1,(true_res[1])//self.regular_tile_size + 1):
-                    coor = (camera_offset_grid_pos[0]+1+true_res[0] // self.regular_tile_size,camera_offset_grid_pos[1]+y)
+                for y in range(-3,(true_res[1])//self.regular_tile_size + 3):
+                    coor = (camera_offset_grid_pos[0]+3+true_res[0] // self.regular_tile_size,camera_offset_grid_pos[1]+y)
 
                     if coor in self.physical_tiles:
                         tile_data = self.physical_tiles[coor]
@@ -272,8 +271,8 @@ class Tilemap:
                 camera_offset_grid_pos = (camera_offset[0] // self.regular_tile_size,
                                           camera_offset[1] // self.regular_tile_size)
 
-                for y in range(-1,(true_res[1])//self.regular_tile_size + 1):
-                    coor = (camera_offset_grid_pos[0] -1 , camera_offset_grid_pos[1] + y)
+                for y in range(-3,(true_res[1])//self.regular_tile_size + 3):
+                    coor = (camera_offset_grid_pos[0] -3 , camera_offset_grid_pos[1] + y)
 
                     if coor in self.physical_tiles:
                         tile_data = self.physical_tiles[coor]
@@ -294,21 +293,28 @@ class Tilemap:
                     new_tiles_column_positions_write_offset += BYTES_PER_TILE_POSITION_VEC2
 
         else: 
-            # y axis: 
-            pass
+            # y axis:
+            if direction == False: 
+                pass 
+            else: 
+                pass 
 
 
-    def write_initial_state_to_tilemap_vbos(self,initial_camera_offset:tuple[int,int],true_res:tuple[int,int])->None: 
+    def write_initial_state_to_tilemap_vbos(self,initial_player_position:tuple[int,int],true_res:tuple[int,int])->None: 
        
+        # calculate the initial screen position from initial player position,
+        # assuming the player is centered. 
+
+        initial_screen_grid_topleft_coors = ((initial_player_position[0] - true_res[0] /2) // self.regular_tile_size -3,
+                                             (initial_player_position[1] - true_res[1] /2) // self.regular_tile_size -3) 
+
         positions_write_offset = 0
         texcoords_write_offset = 0
 
-        camera_offset_grid_pos = (initial_camera_offset[0] // self.regular_tile_size,
-                                  initial_camera_offset[1] // self.regular_tile_size)
-
-        for x in range(-1, (true_res[0]) // self.regular_tile_size+ 1):
-            for y in range( -1, (true_res[1]) // self.regular_tile_size+1):
-                coor = (camera_offset_grid_pos[0] + x,camera_offset_grid_pos[1]+ y)
+        for x in range(-3, (true_res[0]) // self.regular_tile_size+ 3):
+            for y in range( -3, (true_res[1]) // self.regular_tile_size+3):
+                coor = (initial_screen_grid_topleft_coors[0] + x,
+                        initial_screen_grid_topleft_coors[1] + y)
                 # physical tiles 
                 if coor in self.physical_tiles: 
                     # write the data 

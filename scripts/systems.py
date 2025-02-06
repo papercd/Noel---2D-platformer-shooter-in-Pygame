@@ -510,8 +510,8 @@ class RenderSystem(esper.Processor):
             self._ref_tilemap.update_tilemap_vbos(self._true_res,camera_offset,True,camera_movement_direction_bit)
 
     def _render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
-        self._tile_draw_prog['cameraOffset'] = self._point_to_ndc((camera_offset[0],
-                                                                   camera_offset[1]))
+        self._tile_draw_prog['cameraOffset'] = self._point_to_ndc((camera_offset[0] ,
+                                                                   camera_offset[1] ))
         
         self._fbo_bg.use()
         self._ref_rm.texture_atlasses['tiles'].use()
