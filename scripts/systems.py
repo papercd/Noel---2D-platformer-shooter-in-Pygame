@@ -16,7 +16,7 @@ from scripts.lists import interpolatedLightNode
 import pygame
 from moderngl import NEAREST,LINEAR,BLEND,Texture,Framebuffer
 from OpenGL.GL import glUniformBlockBinding,glGetUniformBlockIndex,glViewport
-from math import sqrt,dist,degrees
+from math import sqrt,dist,degrees,pi
 from random import choice
 import numpy as np
 
@@ -343,7 +343,7 @@ class RenderSystem(esper.Processor):
 
         self._entity_draw_prog = self._ctx.program(vertex_shader = entities_draw_vert_src,
                                                     fragment_shader = entities_draw_frag_src)
-
+        
         self._to_screen_draw_prog = self._ctx.program(vertex_shader =vertex_src,
                                                                  fragment_shader= fragment_src)
         self._tile_draw_prog = self._ctx.program(vertex_shader=tile_draw_vert_src,
@@ -458,15 +458,16 @@ class RenderSystem(esper.Processor):
         self._entity_texcoords_vbo = self._ctx.buffer(reserve = texcoords_buffer_size, dynamic=True)
         
         self._entity_transform_matrices_vbo = self._ctx.buffer(reserve = transform_column_buffer_size, dynamic=True)
-
+       
         self._vao_entity_draw = self._ctx.vertex_array(
             self._entity_draw_prog,
             [
-                (self._entity_local_vertices_vbo, '12f/i', 'in_position'),
-                (self._entity_texcoords_vbo, '12f/i', 'texcoord'),
+                (self._entity_local_vertices_vbo, '2f', 'in_position'),
+                (self._entity_texcoords_vbo, '2f', 'texcoord'),
                 (self._entity_transform_matrices_vbo, '3f 3f 3f/i', 'col1', 'col2' ,'col3')
             ]
         )
+        
 
 
     def _create_weapon_vertex_buffers(self)->None:
@@ -483,12 +484,12 @@ class RenderSystem(esper.Processor):
         self._entity_weapons_texcoords_vbo = self._ctx.buffer(reserve=texcoords_buffer_size , dynamic= True)
 
         self._entity_weapons_transform_matrices_vbo = self._ctx.buffer(reserve= transform_column_buffer_size , dynamic= True)
-
+        
         self._vao_entity_weapons_draw = self._ctx.vertex_array(
             self._entity_draw_prog,
             [
-                (self._entity_weapons_local_vertices_vbo, '12f/i', 'in_position'),
-                (self._entity_texcoords_vbo, '12f/i', 'texcoord'),
+                (self._entity_weapons_local_vertices_vbo, '2f', 'in_position'),
+                (self._entity_weapons_texcoords_vbo, '2f', 'texcoord'),
                 (self._entity_weapons_transform_matrices_vbo, '3f 3f 3f/i', 'col1', 'col2', 'col3')
             ]
         )
@@ -1148,6 +1149,7 @@ class RenderSystem(esper.Processor):
                 entity_local_vertices_bytes = render_comp.vertices_bytes
           
                 interpolated_model_transform = physics_comp.prev_transform * (1.0 - interpolation_delta) + physics_comp.transform * interpolation_delta
+                player_model_interpolated_translation = (interpolated_model_transform[0][2], interpolated_model_transform[1][2]) 
 
                 clip_transform = self._projection_matrix @ self._view_matrix @ interpolated_model_transform 
 
@@ -1174,12 +1176,12 @@ class RenderSystem(esper.Processor):
                     anchor_to_cursor_angle = self._ref_hud.cursor.get_angle_from_point((physics_comp.position[0]-camera_offset[0] + anchor_position_offset_from_center[0],
                                                                                         physics_comp.position[1]-camera_offset[1] + anchor_position_offset_from_center[1]))
 
-                    sin_a = np.sin(anchor_to_cursor_angle)
-                    cos_a = np.cos(anchor_to_cursor_angle)
+                    sin_a = np.sin(pi + anchor_to_cursor_angle if weapon_flip else anchor_to_cursor_angle) 
+                    cos_a = np.cos(pi + anchor_to_cursor_angle if weapon_flip else anchor_to_cursor_angle)
 
                     weapon_model_to_pivot_transform = np.array([
-                        [1,0,weapon.origin_offset_from_center[0]],
-                        [0,1,weapon.origin_offset_from_center[1]],
+                        [1,0,-weapon.origin_offset_from_center[0]],
+                        [0,1,-weapon.origin_offset_from_center[1]],
                         [0,0,1]
                     ],dtype = np.float32)
 
@@ -1189,14 +1191,29 @@ class RenderSystem(esper.Processor):
                         [0,0,1]
                     ],dtype = np.float32)
 
+                    weapon_model_flip_transform = np.array([
+                        [(-2*weapon_flip +1),0,0],
+                        [0,1,0],
+                        [0,0,1]
+                    ],dtype = np.float32)
+
+
                     weapon_model_translate_transform = np.array([
-                        [1,0,physics_comp.position[0]+anchor_position_offset_from_center[0]],
-                        [0,1,physics_comp.position[1]+anchor_position_offset_from_center[1]],
+                        [1,0,player_model_interpolated_translation[0]+anchor_position_offset_from_center[0]],
+                        [0,1,player_model_interpolated_translation[1]+anchor_position_offset_from_center[1]],
                         [0,0,1]
                     ],dtype= np.float32)
                     
 
-                    weapon_clip_transform = self._projection_matrix @ self._view_matrix @ weapon_model_translate_transform @ weapon_model_rotate_transform @weapon_model_to_pivot_transform
+                    """
+                    weapon_model_translate_transform = np.array([
+                        [1,0,physics_comp.position[0]],
+                        [0,1,physics_comp.position[1]],
+                        [0,0,1]
+                    ],dtype= np.float32)
+                    """
+
+                    weapon_clip_transform = self._projection_matrix @ self._view_matrix @ weapon_model_translate_transform @ weapon_model_rotate_transform @ weapon_model_flip_transform  @ weapon_model_to_pivot_transform
 
                     weapon_vertices_byte_array.extend(weapon_local_vertices_bytes)
                     weapon_texcoords_byte_array.extend(weapon_texcoords_bytes)
@@ -1221,10 +1238,10 @@ class RenderSystem(esper.Processor):
 
 
         self._ref_rm.texture_atlasses['entities'].use()
-        self._vao_entity_draw.render(vertices= 6, instances= entity_instances)
+        self._vao_entity_draw.render(instances= entity_instances)
 
         self._ref_rm.texture_atlasses['holding_weapons'].use()
-        self._vao_entity_weapons_draw.render(vertices= 6, instances= weapon_instances)
+        self._vao_entity_weapons_draw.render(instances= weapon_instances)
 
         
         self._update_active_static_lights(camera_offset)

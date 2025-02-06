@@ -57,7 +57,7 @@ class AK47(Weapon):
 
 class FlameThrower(Weapon):
     def __init__(self):
-        super().__init__((24,8),(-10,-3),'flamethrower', 1, False) 
+        super().__init__((24,8),(-10,-2),'flamethrower', 1, False) 
 
     def copy(self)->"FlameThrower":
         new_flamethrower = FlameThrower()
