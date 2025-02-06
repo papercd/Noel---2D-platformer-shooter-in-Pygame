@@ -510,7 +510,7 @@ class RenderSystem(esper.Processor):
             self._ref_tilemap.update_tilemap_vbos(self._true_res,camera_offset,True,camera_movement_direction_bit)
 
     def _render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
-        self._tile_draw_prog['cameraOffset'] = self._point_to_ndc((camera_offset[0],
+        self._tile_draw_prog['cameraOffset'] = self._camera_offset_to_ndc_component((camera_offset[0],
                                                                    camera_offset[1]))
         
         self._fbo_bg.use()
@@ -586,9 +586,9 @@ class RenderSystem(esper.Processor):
         return np.array([2. * (position[0] *self._ref_tilemap.regular_tile_size -camera_offset[0]) / fbo_w -1.
                 , 1. - 2. * (position[1] * self._ref_tilemap.regular_tile_size - camera_offset[1]) / fbo_h],dtype=np.float32).tobytes()
     
-    def _point_to_ndc(self,point:tuple[int,int])->np.array: 
-        return np.array([2. * point[0] / self._true_res[0] - 1.,
-                         1. - 2. * point[1] / self._true_res[1]],dtype = np.float32)
+    def _camera_offset_to_ndc_component(self,point:tuple[int,int])->np.array: 
+        return np.array([2. * point[0] / self._true_res[0],
+                         - 2. * point[1] / self._true_res[1]],dtype = np.float32)
 
 
     def _render_background_to_bg_fbo(self,camera_offset:tuple[int,int],infinite:bool = False)->None: 
