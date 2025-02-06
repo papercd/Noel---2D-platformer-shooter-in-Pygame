@@ -82,6 +82,9 @@ class Tilemap:
         self.tile_colors:dict["TileColorKey","RGBA_tuple"]= {}
         self.tile_texcoords_bytes : dict["TileTexcoordsKey",bytes] = {}
 
+        self.null_texcoords_bytes = np.zeros((6,2),dtype=np.float32).tobytes()
+        self.null_position_bytes = np.zeros((1,2),dtype= np.float32).tobytes()
+
 
         for tile_key in json_file['tilemap']: 
             tile_size = (self._regular_tile_size,self._regular_tile_size) if json_file['tilemap'][tile_key]['type'] \
@@ -204,15 +207,95 @@ class Tilemap:
             self.hull_grid.insert(hull)
         
 
-        self._physical_tiles_texcoords_vbo, self._non_physical_tiles_texcoords_vbo, self._physical_tiles_position_vbo,self._non_physical_tiles_position_vbo\
+        self._tiles_per_screen_grid_row,self._tiles_per_screen_grid_column,self._physical_tiles_texcoords_vbo, self._non_physical_tiles_texcoords_vbo, self._physical_tiles_position_vbo,self._non_physical_tiles_position_vbo\
         = rm.create_tilemap_vbos(self._regular_tile_size,self._non_physical_tile_layers)
 
-        
+        self._tilemap_texcoords_buffer_write_offsets = [0,0]
+        self._tilemap_positions_buffer_write_offsets = [0,0]
 
         self.NDC_tile_vertices_array = rm.get_NDC_tile_vertices(self._regular_tile_size)
         self.tile_colors = rm.get_tile_colors(self._physical_tiles)
         self.tile_texcoords_bytes = rm.get_tile_texcoords(self._physical_tiles,self._non_physical_tiles)
 
+
+    def update_tilemap_vbos(self,true_res:tuple[int,int],camera_offset:tuple[int,int],
+                            axis:bool,direction:bool)->None: 
+
+        if axis == False: 
+            if direction == True: 
+                # if the camera moved to the left, meaning a new column of tiles 
+                # appeared to the right, 
+
+
+                new_tiles_column_texcoords_write_offset = 0
+                new_tiles_column_positions_write_offset = 0
+
+                camera_offset_grid_pos = (camera_offset[0] // self.regular_tile_size,
+                                          camera_offset[1] // self.regular_tile_size)
+
+                for y in range(-1,(true_res[1])//self.regular_tile_size + 1):
+                    coor = (camera_offset_grid_pos[0]+1+true_res[0] // self.regular_tile_size,camera_offset_grid_pos[1]+y)
+
+                    if coor in self.physical_tiles:
+                        tile_data = self.physical_tiles[coor]
+                        tile_general_info = tile_data.info
+                        relative_position_index,variant = tile_general_info.relative_pos_ind, tile_general_info.variant
+                        self.physical_tiles_texcoords_vbo.write(self.tile_texcoords_bytes[(tile_general_info.type,relative_position_index,variant)],offset = self._tilemap_texcoords_buffer_write_offsets[0] 
+                                                                + new_tiles_column_texcoords_write_offset)
+                        self.physical_tiles_position_vbo.write(self._tile_coor_to_ndc(coor,true_res),offset = self._tilemap_positions_buffer_write_offsets[0]
+                                                               + new_tiles_column_positions_write_offset)
+                    else:
+                        self.physical_tiles_texcoords_vbo.write(self.null_texcoords_bytes,offset = self._tilemap_texcoords_buffer_write_offsets[0]+
+                                                                new_tiles_column_texcoords_write_offset)
+                        self.physical_tiles_position_vbo.write(self.null_position_bytes,offset = self._tilemap_positions_buffer_write_offsets[0]+
+                                                                new_tiles_column_positions_write_offset)
+                    
+                    new_tiles_column_texcoords_write_offset += BYTES_PER_TEXTURE_QUAD
+                    new_tiles_column_positions_write_offset += BYTES_PER_TILE_POSITION_VEC2
+                
+                self._tilemap_texcoords_buffer_write_offsets[0] = (self._tilemap_texcoords_buffer_write_offsets[0] + BYTES_PER_TEXTURE_QUAD * self._tiles_per_screen_grid_column) % \
+                                                                    self._physical_tiles_texcoords_vbo.size
+                self._tilemap_positions_buffer_write_offsets[0] = (self._tilemap_positions_buffer_write_offsets[0] + BYTES_PER_TILE_POSITION_VEC2 * self._tiles_per_screen_grid_column) % \
+                                                                    self._physical_tiles_position_vbo.size
+                
+            else:
+
+                new_tiles_column_texcoords_write_offset = 0
+                new_tiles_column_positions_write_offset = 0
+
+                self._tilemap_texcoords_buffer_write_offsets[0]= (self._tilemap_texcoords_buffer_write_offsets[0] - BYTES_PER_TEXTURE_QUAD * self._tiles_per_screen_grid_column) % \
+                                                                self.physical_tiles_texcoords_vbo.size
+                self._tilemap_positions_buffer_write_offsets[0] = (self._tilemap_positions_buffer_write_offsets[0] - BYTES_PER_TILE_POSITION_VEC2 * self._tiles_per_screen_grid_column) % \
+                                                                self.physical_tiles_position_vbo.size
+
+
+                camera_offset_grid_pos = (camera_offset[0] // self.regular_tile_size,
+                                          camera_offset[1] // self.regular_tile_size)
+
+                for y in range(-1,(true_res[1])//self.regular_tile_size + 1):
+                    coor = (camera_offset_grid_pos[0] -1 , camera_offset_grid_pos[1] + y)
+
+                    if coor in self.physical_tiles:
+                        tile_data = self.physical_tiles[coor]
+                        tile_general_info = tile_data.info 
+                        relative_position_index,variant = tile_general_info.relative_pos_ind, tile_general_info.variant
+
+                        self.physical_tiles_texcoords_vbo.write(self.tile_texcoords_bytes[(tile_general_info.type,relative_position_index,variant)],offset = self._tilemap_texcoords_buffer_write_offsets[0]
+                                                                + new_tiles_column_texcoords_write_offset)
+                        self.physical_tiles_position_vbo.write(self._tile_coor_to_ndc(coor,true_res),offset = self._tilemap_positions_buffer_write_offsets[0]
+                                                               + new_tiles_column_positions_write_offset)
+                    else: 
+                        self.physical_tiles_texcoords_vbo.write(self.null_texcoords_bytes,offset = self._tilemap_texcoords_buffer_write_offsets[0] +
+                                                                new_tiles_column_texcoords_write_offset)
+                        self.physical_tiles_position_vbo.write(self.null_position_bytes,offset = self._tilemap_positions_buffer_write_offsets[0] + 
+                                                               new_tiles_column_positions_write_offset)
+
+                    new_tiles_column_texcoords_write_offset += BYTES_PER_TEXTURE_QUAD
+                    new_tiles_column_positions_write_offset += BYTES_PER_TILE_POSITION_VEC2
+
+        else: 
+            # y axis: 
+            pass
 
 
     def write_initial_state_to_tilemap_vbos(self,initial_camera_offset:tuple[int,int],true_res:tuple[int,int])->None: 
@@ -220,18 +303,21 @@ class Tilemap:
         positions_write_offset = 0
         texcoords_write_offset = 0
 
-        for x in range(initial_camera_offset[0] // self.regular_tile_size- 1, (initial_camera_offset[0] + true_res[0]) // self.regular_tile_size+ 1):
-            for y in range(initial_camera_offset[1] // self.regular_tile_size- 1, (initial_camera_offset[1] + true_res[1]) // self._regular_tile_size+1):
-                coor = (x,y)
+        camera_offset_grid_pos = (initial_camera_offset[0] // self.regular_tile_size,
+                                  initial_camera_offset[1] // self.regular_tile_size)
+
+        for x in range(-1, (true_res[0]) // self.regular_tile_size+ 1):
+            for y in range( -1, (true_res[1]) // self.regular_tile_size+1):
+                coor = (camera_offset_grid_pos[0] + x,camera_offset_grid_pos[1]+ y)
                 # physical tiles 
                 if coor in self.physical_tiles: 
                     # write the data 
                     tile_data = self.physical_tiles[coor]
-                    tlie_general_info = tile_data.info 
+                    tile_general_info = tile_data.info 
 
-                    relative_position_index, variant = tlie_general_info.relative_pos_ind, tlie_general_info.variant
-                    self.physical_tiles_position_vbo.write(self._tile_coor_to_ndc(coor,initial_camera_offset,true_res),offset = positions_write_offset)
-                    self.physical_tiles_texcoords_vbo.write(self.tile_texcoords_bytes[(tlie_general_info.type,relative_position_index,variant)],offset = texcoords_write_offset) 
+                    relative_position_index, variant = tile_general_info.relative_pos_ind, tile_general_info.variant
+                    self.physical_tiles_position_vbo.write(self._tile_coor_to_ndc(coor,true_res),offset = positions_write_offset)
+                    self.physical_tiles_texcoords_vbo.write(self.tile_texcoords_bytes[(tile_general_info.type,relative_position_index,variant)],offset = texcoords_write_offset) 
 
                 texcoords_write_offset += BYTES_PER_TEXTURE_QUAD 
                 positions_write_offset += BYTES_PER_TILE_POSITION_VEC2
@@ -258,9 +344,9 @@ class Tilemap:
 
     
 
-    def _tile_coor_to_ndc(self,coor:tuple[int,int],camera_offset:tuple[int,int],true_res:tuple[int,int])->bytes: 
-        return np.array([2. * (coor[0] *self.regular_tile_size -camera_offset[0]) / true_res[0] -1.
-            , 1. - 2. * (coor[1] * self.regular_tile_size - camera_offset[1]) / true_res[1]],dtype=np.float32).tobytes()
+    def _tile_coor_to_ndc(self,coor:tuple[int,int],true_res:tuple[int,int])->bytes: 
+        return np.array([2. * (coor[0] *self.regular_tile_size ) / true_res[0] -1.
+            , 1. - 2. * (coor[1] * self.regular_tile_size ) / true_res[1]],dtype=np.float32).tobytes()
 
 
 
