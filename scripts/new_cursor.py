@@ -39,7 +39,7 @@ class Cursor:
         dx = self.topleft[0] - point[0]
         dy = self.topleft[1] - point[1]
 
-        return atan2(dy,dx)
+        return atan2(-dy,dx)
 
         
 
