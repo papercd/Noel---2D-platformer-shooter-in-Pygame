@@ -494,6 +494,11 @@ class RenderSystem(esper.Processor):
             ]
         )
 
+    
+    def _update_tilemap_vbos(self)->None: 
+        pass 
+
+
     def _render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
         
 
@@ -1112,7 +1117,7 @@ class RenderSystem(esper.Processor):
 
         self._ctx.enable(BLEND)
         self._render_background_to_bg_fbo(camera_offset)
-        self._render_tilemap_to_bg_fbo(camera_offset)
+        #self._render_tilemap_to_bg_fbo(camera_offset)
         self._render_HUD_to_fg_fbo(dt)
 
         entity_vertices_byte_array = bytearray()
