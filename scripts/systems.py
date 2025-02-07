@@ -1176,8 +1176,8 @@ class RenderSystem(esper.Processor):
                     anchor_to_cursor_angle = self._ref_hud.cursor.get_angle_from_point((physics_comp.position[0]-camera_offset[0] + anchor_position_offset_from_center[0],
                                                                                         physics_comp.position[1]-camera_offset[1] + anchor_position_offset_from_center[1]))
 
-                    sin_a = np.sin(pi + anchor_to_cursor_angle if weapon_flip else anchor_to_cursor_angle) 
-                    cos_a = np.cos(pi + anchor_to_cursor_angle if weapon_flip else anchor_to_cursor_angle)
+                    sin_a = np.sin(pi - anchor_to_cursor_angle if weapon_flip else - anchor_to_cursor_angle) 
+                    cos_a = np.cos(pi - anchor_to_cursor_angle if weapon_flip else  - anchor_to_cursor_angle)
 
                     weapon_model_to_pivot_transform = np.array([
                         [1,0,-weapon.origin_offset_from_center[0]],
