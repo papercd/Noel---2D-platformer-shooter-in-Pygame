@@ -26,19 +26,18 @@ class Noel():
 
     def _initialize_game_systems(self):
         
-        self._resource_manager = ResourceManager.get_instance(self._ctx,self._game_context['true_res'])
+        self._resource_manager = ResourceManager.get_instance(self._ctx,self._game_context)
         self._entities_manager = EntitiesManager.get_instance()
-        self._tilemap = Tilemap(self._resource_manager.tilemap_jsons['test1.json'])
+        self._tilemap = Tilemap(self._game_context,self._resource_manager.get_tilemap_json('test1.json'))
 
         self._physics_system = PhysicsSystem()
         self._physics_system.attatch_tilemap(self._tilemap)
 
         self._state_system = StateSystem()  
 
-        self._hud = HUD(self._game_context["true_res"],self._game_context["display_scale_ratio"])
+        self._hud = HUD(self._game_context)
 
-        self._render_system = RenderSystem(self._ctx,self._game_context["display_scale_ratio"],self._game_context['screen_res'],\
-                                           self._game_context['true_res'])
+        self._render_system = RenderSystem(self._ctx,self._game_context)
         
         self._input_handler = InputHandler(self._game_context)
 

@@ -27,6 +27,7 @@ class EntitiesManager:
         self._player_input = InputComponent()
         self._player = esper.create_entity(self._player_state,self._player_physics,self._player_render,self._player_input)
 
+
     @property 
     def player_physics_comp(self)->PhysicsComponent:
         return self._player_physics

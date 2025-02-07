@@ -594,7 +594,7 @@ class ambientNodeList:
 
 
 
-    def set_ptr(self,pos_x:int)->ambientNode: 
+    def get_node_at_pos(self,pos_x:int)->ambientNode: 
         temp = self.head
         while pos_x < temp.range[0] or pos_x > temp.range[1]:
             if pos_x <temp.range[0] :
