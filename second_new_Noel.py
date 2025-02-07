@@ -27,8 +27,8 @@ class Noel():
     def _initialize_game_systems(self):
         
         self._resource_manager = ResourceManager.get_instance(self._ctx,self._game_context['true_res'])
-        self._tilemap = Tilemap(self._resource_manager.tilemap_jsons['test1.json'])
         self._entities_manager = EntitiesManager.get_instance()
+        self._tilemap = Tilemap(self._resource_manager.tilemap_jsons['test1.json'])
 
         self._physics_system = PhysicsSystem()
         self._physics_system.attatch_tilemap(self._tilemap)
@@ -47,6 +47,7 @@ class Noel():
         self._render_system.attatch_tilemap(self._tilemap)
         self._render_system.attatch_background(self._resource_manager.backgrounds['start'])
 
+  
 
     def _hot_reload(self)->None: 
         # reload systems module
@@ -93,7 +94,6 @@ class Noel():
         self._dt :float = 0
         self._grass_rotation_function_time:float = 0
         self._time_accumulator:float = 0
-        self._prev_frame_time :float = 0
         self._movement_input:list[bool,bool] = [False,False]
 
         self._system_display_info = self._get_system_display_info()
@@ -182,6 +182,7 @@ class Noel():
             # cast the camera offset to be an integer 
             self._game_context['camera_offset'][0] = int(self._float_camera_offset_buffer[0])
             self._game_context['camera_offset'][1] = int(self._float_camera_offset_buffer[1])        
+
 
             while self._time_accumulator >= PHYSICS_TIMESTEP:
                 self._physics_system.process(PHYSICS_TIMESTEP)
