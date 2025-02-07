@@ -501,13 +501,13 @@ class RenderSystem(esper.Processor):
             camera_movement_direction_bit = self._prev_tilemap_update_camera_scroll[0] < camera_offset[0]
             self._prev_tilemap_update_camera_scroll[0] = camera_offset[0]
             # update the tilemap vbos in the x axis 
-            self._ref_tilemap.update_tilemap_vbos(self._true_res,camera_offset,False,camera_movement_direction_bit)
+            self._ref_tilemap.update_tilemap_vbos(self._true_res,self._prev_tilemap_update_camera_scroll,False,camera_movement_direction_bit)
         if tilemap_update_bits[1]:
             camera_movement_direction_bit = self._prev_tilemap_update_camera_scroll[1] < camera_offset[1]
             self._prev_tilemap_update_camera_scroll[1] = camera_offset[1]
 
             # update the tilemap vbos in the y axis 
-            self._ref_tilemap.update_tilemap_vbos(self._true_res,camera_offset,True,camera_movement_direction_bit)
+            self._ref_tilemap.update_tilemap_vbos(self._true_res,self._prev_tilemap_update_camera_scroll,True,camera_movement_direction_bit)
 
     def _render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
         self._tile_draw_prog['cameraOffset'] = self._camera_offset_to_ndc_component((camera_offset[0],
@@ -1086,19 +1086,8 @@ class RenderSystem(esper.Processor):
         self._ctx.enable(BLEND)
         self._render_background_to_bg_fbo(camera_offset)
         
-        # bits that represent update requirements for tilemap buffers
-
-        tilemap_update_camera_offset_from_prev = ( 
-            self._prev_tilemap_update_camera_scroll[0] - camera_offset[0],
-            self._prev_tilemap_update_camera_scroll[1] - camera_offset[1] 
-        )
-
-        tilemap_update_bits = (
-            tilemap_update_camera_offset_from_prev[0] >= 16 or tilemap_update_camera_offset_from_prev[0] <= -16,
-            tilemap_update_camera_offset_from_prev[1] >= 16 or tilemap_update_camera_offset_from_prev[1] <= -16 
-        )
-
-        self._update_tilemap_vbos(camera_offset,tilemap_update_bits)
+        self._ref_tilemap.update_tilemap_vbos(self._true_res,camera_offset)
+        
         self._render_tilemap_to_bg_fbo(camera_offset)
         self._render_HUD_to_fg_fbo(dt)
 
@@ -1232,7 +1221,11 @@ class RenderSystem(esper.Processor):
 
         
         self._update_active_static_lights(camera_offset)
-        self._render_fbos_to_screen_with_lighting(self._ref_em.player_physics_comp.position,camera_offset,screen_shake,interpolation_delta)
+
+        self._tex_bg.use()
+        self._ctx.screen.use()
+        self._vao_to_screen_draw.render()
+        #self._render_fbos_to_screen_with_lighting(self._ref_em.player_physics_comp.position,camera_offset,screen_shake,interpolation_delta)
 
 
 class StateSystem(esper.Processor):

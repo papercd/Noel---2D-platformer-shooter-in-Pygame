@@ -249,9 +249,8 @@ class ResourceManager:
             p4 = (x + w, y)
 
             texcoords = np.array([p1, p2, p3,
-                                p3, p2, p4], dtype=np.float32).tobytes()
-
-        return texcoords
+                                p3, p2, p4], dtype=np.float32)
+        return texcoords.tobytes()
 
 
     def create_tilemap_vbos(self,tile_size:int,non_physical_tile_layers:int)->tuple[int,int,"Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
