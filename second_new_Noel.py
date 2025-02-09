@@ -93,7 +93,7 @@ class Noel():
         self._frame_count:int = 0
         self._dt :float = 0
         self._grass_rotation_function_time:float = 0
-        self._time_accumulator:float = 0
+        self._time_accumulator:float =0
         self._movement_input:list[bool,bool] = [False,False]
 
         self._system_display_info = self._get_system_display_info()
