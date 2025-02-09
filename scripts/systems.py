@@ -166,7 +166,7 @@ class PhysicsSystem(esper.Processor):
                                                                            physics_comp.size,dir = physics_comp.flip):
             if physics_comp.collision_rect.colliderect(rect_tile[0]):
                 collided = True 
-                self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,False)
+                self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.tile_size,dt,False)
         
         if not collided :
             state_info_comp.collide_left = False
@@ -185,7 +185,7 @@ class PhysicsSystem(esper.Processor):
                                                                            physics_comp.size,dir = physics_comp.flip):
             if physics_comp.collision_rect.colliderect(rect_tile[0]):
                 collided = True
-                self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,True)
+                self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.tile_size,dt,True)
 
         if not collided :
             state_info_comp.collide_bottom = False 
@@ -242,10 +242,8 @@ class ParticleSystem(esper.Processor):
 
 class RenderSystem(esper.Processor):
 
-
-    def __init__(self,ctx:"Context",true_to_screen_res_ratio:int=1,screen_res:tuple[int,int] = (500,500),\
-                 true_res :tuple[int,int] = (500,500))->None: 
-        self._ctx = ctx
+    def __init__(self,gl_ctx:"Context",game_context)->None: 
+        self._gl_ctx = gl_ctx
 
         # references 
         self._ref_em = EntitiesManager.get_instance()
@@ -257,11 +255,10 @@ class RenderSystem(esper.Processor):
         
         # Initialize members 
         self._background_panels:int = 3
-        self._true_to_native_ratio = true_to_screen_res_ratio 
-        self._screen_res = screen_res
-        self._true_res = true_res 
 
-        self._diagonal = sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
+        self._game_ctx = game_context
+
+        self._diagonal = sqrt(self._game_ctx['true_res'][0] ** 2 + self._game_ctx['true_res'][1] ** 2)
         self._ambient_light_RGBA = (.25, .25, .25, .25)
 
         self._active_static_lights : list["PointLight"] = []
@@ -277,8 +274,8 @@ class RenderSystem(esper.Processor):
         self._max_hull_count = 512 
 
         self._projection_matrix = np.array([
-            [2. / self._true_res[0] , 0 , -1.],
-            [0, -2. / self._true_res[1]  ,  1.],
+            [2. / self._game_ctx['true_res'][0] , 0 , -1.],
+            [0, -2. / self._game_ctx['true_res'][1]  ,  1.],
             [0,0,1.]
         ],dtype=np.float32)
 
@@ -341,31 +338,31 @@ class RenderSystem(esper.Processor):
 
         hidden_draw_frag_src = self._load_shader_src('my_pygame_light2d/fragment_hidden_ui_draw.glsl')
 
-        self._entity_draw_prog = self._ctx.program(vertex_shader = entities_draw_vert_src,
+        self._entity_draw_prog = self._gl_ctx.program(vertex_shader = entities_draw_vert_src,
                                                     fragment_shader = entities_draw_frag_src)
         
-        self._to_screen_draw_prog = self._ctx.program(vertex_shader =vertex_src,
+        self._to_screen_draw_prog = self._gl_ctx.program(vertex_shader =vertex_src,
                                                                  fragment_shader= fragment_src)
-        self._tile_draw_prog = self._ctx.program(vertex_shader=tile_draw_vert_src,
+        self._tile_draw_prog = self._gl_ctx.program(vertex_shader=tile_draw_vert_src,
                                                          fragment_shader= tile_draw_frag_src)
         
-        self._opaque_ui_draw_prog = self._ctx.program(vertex_shader=vertex_src,
+        self._opaque_ui_draw_prog = self._gl_ctx.program(vertex_shader=vertex_src,
                                                       fragment_shader= fragment_src)
         
-        self._hidden_ui_draw_prog = self._ctx.program(vertex_shader= vertex_src,
+        self._hidden_ui_draw_prog = self._gl_ctx.program(vertex_shader= vertex_src,
                                                       fragment_shader=hidden_draw_frag_src)
 
         
-        self._prog_mask = self._ctx.program(vertex_shader= vertex_src,
+        self._prog_mask = self._gl_ctx.program(vertex_shader= vertex_src,
                                             fragment_shader=mask_frag_src)
         
-        self._prog_cursor_draw = self._ctx.program(vertex_shader =cursor_draw_vert_src,
+        self._prog_cursor_draw = self._gl_ctx.program(vertex_shader =cursor_draw_vert_src,
                                                    fragment_shader= cursor_draw_frag_src )
 
-        self._prog_light = self._ctx.program(vertex_shader= vertex_src,
+        self._prog_light = self._gl_ctx.program(vertex_shader= vertex_src,
                                              fragment_shader= light_frag_src )
         
-        self._prog_blur = self._ctx.program(vertex_shader= vertex_src,
+        self._prog_blur = self._gl_ctx.program(vertex_shader= vertex_src,
                                             fragment_shader= blur_frag_src)
         
     
@@ -380,23 +377,23 @@ class RenderSystem(esper.Processor):
 
 
         # Create SSBOs``
-        self._ssbo_v = self._ctx.buffer(reserve=4*8*self._max_hull_count)
+        self._ssbo_v = self._gl_ctx.buffer(reserve=4*8*self._max_hull_count)
         self._ssbo_v.bind_to_uniform_block(1)
-        self._ssbo_ind = self._ctx.buffer(reserve=4*self._max_hull_count)
+        self._ssbo_ind = self._gl_ctx.buffer(reserve=4*self._max_hull_count)
         self._ssbo_ind.bind_to_uniform_block(2)
 
 
     
     def _create_frame_buffers(self)->None: 
         # background framebufffer
-        self._tex_bg = self._ctx.texture(self._true_res, components=4)
+        self._tex_bg = self._gl_ctx.texture(self._game_ctx['true_res'], components=4)
         self._tex_bg.filter = (NEAREST, NEAREST)
-        self._fbo_bg = self._ctx.framebuffer([self._tex_bg])
+        self._fbo_bg = self._gl_ctx.framebuffer([self._tex_bg])
 
         # foreground framebuffer
-        self._tex_fg = self._ctx.texture(self._true_res, components=4)
+        self._tex_fg = self._gl_ctx.texture(self._game_ctx['true_res'], components=4)
         self._tex_fg.filter = (NEAREST, NEAREST)
-        self._fbo_fg = self._ctx.framebuffer([self._tex_fg])
+        self._fbo_fg = self._gl_ctx.framebuffer([self._tex_fg])
 
         # set wrapping settings for buffers 
         self._tex_bg.repeat_x = False
@@ -412,31 +409,31 @@ class RenderSystem(esper.Processor):
                                       (0.0, 0.0), (1.0, 1.0), (1.0, 0.0)], dtype=np.float32)
 
         screen_vertex_data = np.hstack([screen_vertices, screen_tex_coords])
-        screen_vbo = self._ctx.buffer(screen_vertex_data) 
+        screen_vbo = self._gl_ctx.buffer(screen_vertex_data) 
   
 
-        self._vao_light = self._ctx.vertex_array(
+        self._vao_light = self._gl_ctx.vertex_array(
             self._prog_light,
             [
                 (screen_vbo, '2f 2f', 'vertexPos', 'vertexTexCoord')
             ]
         )
 
-        self._vao_blur = self._ctx.vertex_array(
+        self._vao_blur = self._gl_ctx.vertex_array(
             self._prog_blur,
             [
                 (screen_vbo, '2f 2f' , 'vertexPos' , 'vertexTexCoord')
             ]
         )
 
-        self._vao_mask = self._ctx.vertex_array(
+        self._vao_mask = self._gl_ctx.vertex_array(
             self._prog_mask,
             [
                 (screen_vbo, '2f 2f' ,'vertexPos','vertexTexCoord')
             ]
         )
 
-        self._vao_to_screen_draw = self._ctx.vertex_array(
+        self._vao_to_screen_draw = self._gl_ctx.vertex_array(
             self._to_screen_draw_prog,
             [
                 (screen_vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
@@ -454,12 +451,12 @@ class RenderSystem(esper.Processor):
         transform_matrix_col_size  = 3 * 4 
         transform_column_buffer_size = transform_matrix_col_size *  3  * EntitiesManager.max_entities 
 
-        self._entity_local_vertices_vbo= self._ctx.buffer(reserve=local_space_vertices_buffer_size, dynamic=True)
-        self._entity_texcoords_vbo = self._ctx.buffer(reserve = texcoords_buffer_size, dynamic=True)
+        self._entity_local_vertices_vbo= self._gl_ctx.buffer(reserve=local_space_vertices_buffer_size, dynamic=True)
+        self._entity_texcoords_vbo = self._gl_ctx.buffer(reserve = texcoords_buffer_size, dynamic=True)
         
-        self._entity_transform_matrices_vbo = self._ctx.buffer(reserve = transform_column_buffer_size, dynamic=True)
+        self._entity_transform_matrices_vbo = self._gl_ctx.buffer(reserve = transform_column_buffer_size, dynamic=True)
        
-        self._vao_entity_draw = self._ctx.vertex_array(
+        self._vao_entity_draw = self._gl_ctx.vertex_array(
             self._entity_draw_prog,
             [
                 (self._entity_local_vertices_vbo, '2f', 'in_position'),
@@ -480,12 +477,12 @@ class RenderSystem(esper.Processor):
         transform_matrix_col_size = 3 * 4 
         transform_column_buffer_size = transform_matrix_col_size * 3 * EntitiesManager.max_entities
 
-        self._entity_weapons_local_vertices_vbo = self._ctx.buffer(reserve=local_space_vertices_buffer_size,dynamic=True)
-        self._entity_weapons_texcoords_vbo = self._ctx.buffer(reserve=texcoords_buffer_size , dynamic= True)
+        self._entity_weapons_local_vertices_vbo = self._gl_ctx.buffer(reserve=local_space_vertices_buffer_size,dynamic=True)
+        self._entity_weapons_texcoords_vbo = self._gl_ctx.buffer(reserve=texcoords_buffer_size , dynamic= True)
 
-        self._entity_weapons_transform_matrices_vbo = self._ctx.buffer(reserve= transform_column_buffer_size , dynamic= True)
+        self._entity_weapons_transform_matrices_vbo = self._gl_ctx.buffer(reserve= transform_column_buffer_size , dynamic= True)
         
-        self._vao_entity_weapons_draw = self._ctx.vertex_array(
+        self._vao_entity_weapons_draw = self._gl_ctx.vertex_array(
             self._entity_draw_prog,
             [
                 (self._entity_weapons_local_vertices_vbo, '2f', 'in_position'),
@@ -504,14 +501,14 @@ class RenderSystem(esper.Processor):
         non_physical_tiles_texcoords_byte_array = bytearray()
         non_physical_tiles_positions_byte_array = bytearray()
 
-        tile_size = self._ref_tilemap.regular_tile_size
+        tile_size = self._ref_tilemap.tile_size
 
         physical_tile_instances = 0
         non_physical_tile_instances= 0
         
 
-        for x in range(camera_offset[0] // tile_size- 1, (camera_offset[0] + self._true_res[0]) // tile_size+ 1):
-            for y in range(camera_offset[1] // tile_size- 1, (camera_offset[1] + self._true_res[1]) // tile_size+1):
+        for x in range(camera_offset[0] // tile_size- 1, (camera_offset[0] + self._game_ctx['true_res'][0]) // tile_size+ 1):
+            for y in range(camera_offset[1] // tile_size- 1, (camera_offset[1] + self._game_ctx['true_res'][1]) // tile_size+1):
                 coor = (x,y) 
 
                 for i, dict in enumerate(self._ref_tilemap.non_physical_tiles):
@@ -536,7 +533,7 @@ class RenderSystem(esper.Processor):
             self._ref_tilemap.write_to_non_physical_tiles_positions_vbo(non_physical_tiles_positions_byte_array)
 
             self._fbo_bg.use()
-            self._ref_tilemap.ref_texture_atlas.use()
+            self._ref_rm.texture_atlasses['tiles'].use()
 
             self._vao_non_physical_tiles_draw.render(vertices = 6, instances= non_physical_tile_instances)
 
@@ -545,7 +542,7 @@ class RenderSystem(esper.Processor):
             self._ref_tilemap.write_to_physical_tiles_positions_vbo(physical_tiles_positions_byte_array)
 
             self._fbo_bg.use()
-            self._ref_tilemap.ref_texture_atlas.use()
+            self._ref_rm.texture_atlasses['tiles'].use()
 
             self._vao_physical_tiles_draw.render(vertices=6,instances= physical_tile_instances)
 
@@ -582,20 +579,20 @@ class RenderSystem(esper.Processor):
             item_dim = (self._ref_hud.weapon_inventory_cell_dim[0] * 4 // 6,
                         self._ref_hud.weapon_inventory_cell_dim[1] * 4 // 6)
 
-        x = 2. * (self._ref_hud.cursor.topleft[0]-item_dim[0] //2)/ self._true_res[0]- 1.
-        y = 1. - 2. * (self._ref_hud.cursor.topleft[1]- item_dim[1]//2)/ self._true_res[1]
-        w = 2. * item_dim[0] / self._true_res[0]
-        h = 2. * item_dim[1] /self._true_res[1]
+        x = 2. * (self._ref_hud.cursor.topleft[0]-item_dim[0] //2)/ self._game_ctx['true_res'][0]- 1.
+        y = 1. - 2. * (self._ref_hud.cursor.topleft[1]- item_dim[1]//2)/ self._game_ctx['true_res'][1]
+        w = 2. * item_dim[0] / self._game_ctx['true_res'][0]
+        h = 2. * item_dim[1] /self._game_ctx['true_res'][1]
 
         return np.array([(x, y - h),(x + w, y - h),(x,y),
                          (x,y),(x + w, y - h),(x+w,y)],dtype= np.float32).tobytes()
 
 
     def _write_cursor_position_to_buffer(self)->None: 
-        x = 2. * (self._ref_hud.cursor.topleft[0] )/ self._true_res[0]- 1.
-        y = 1. - 2. * (self._ref_hud.cursor.topleft[1] )/ self._true_res[1]
-        w = 2. * self._ref_hud.cursor.size[0] / self._true_res[0]
-        h = 2. * self._ref_hud.cursor.size[1] / self._true_res[1]
+        x = 2. * (self._ref_hud.cursor.topleft[0] )/ self._game_ctx['true_res'][0]- 1.
+        y = 1. - 2. * (self._ref_hud.cursor.topleft[1] )/ self._game_ctx['true_res'][1]
+        w = 2. * self._ref_hud.cursor.size[0] / self._game_ctx['true_res'][0]
+        h = 2. * self._ref_hud.cursor.size[1] / self._game_ctx['true_res'][1]
 
         self._ref_hud.cursor.ndc_vertices[0] = (x,y-h)
         self._ref_hud.cursor.ndc_vertices[1] = (x+w,y-h)
@@ -614,8 +611,8 @@ class RenderSystem(esper.Processor):
 
     def _tile_position_to_ndc(self,position:tuple[int,int],camera_offset:tuple[int,int])->bytes:
         fbo_w,fbo_h = self._fbo_bg.size
-        return np.array([2. * (position[0] *self._ref_tilemap.regular_tile_size -camera_offset[0]) / fbo_w -1.
-                , 1. - 2. * (position[1] * self._ref_tilemap.regular_tile_size - camera_offset[1]) / fbo_h],dtype=np.float32).tobytes()
+        return np.array([2. * (position[0] *self._ref_tilemap.tile_size -camera_offset[0]) / fbo_w -1.
+                , 1. - 2. * (position[1] * self._ref_tilemap.tile_size - camera_offset[1]) / fbo_h],dtype=np.float32).tobytes()
 
 
     def _render_background_to_bg_fbo(self,camera_offset:tuple[int,int],infinite:bool = False)->None: 
@@ -623,7 +620,7 @@ class RenderSystem(esper.Processor):
         
         for tex in self._ref_background.textures:
             if infinite: 
-                num_tiles = (self._true_res[0]//tex.width) + 2
+                num_tiles = (self._game_ctx['true_res'][0]//tex.width) + 2
 
                 for panel in range(-1,num_tiles):
                     x_pos = panel*tex.width - (camera_offset[0] * 0.05 *speed) % tex.width
@@ -660,7 +657,7 @@ class RenderSystem(esper.Processor):
 
     def _create_background_texture_vertex_data(self,camera_scroll:tuple[int,int],panel_num,speed:int)->np.array:
         width,height = self._fbo_bg.size 
-        x = 2. * (panel_num*self._true_res[0]-camera_scroll[0] *0.05 * speed) / width - 1.
+        x = 2. * (panel_num*self._game_ctx['true_res'][0]-camera_scroll[0] *0.05 * speed) / width - 1.
         y = 1. -2. * (-min(0,camera_scroll[1]) * 0.05) / height
         w = 2.
         h = 2. 
@@ -699,7 +696,7 @@ class RenderSystem(esper.Processor):
 
     def _render_static_lights_to_light_buffer(self,render_offset:tuple[int,int])->None:
 
-        self._ctx.disable(BLEND)
+        self._gl_ctx.disable(BLEND)
 
         for i in range(len(self._active_static_lights)-1,-1,-1):
             light = self._active_static_lights[i]
@@ -724,7 +721,7 @@ class RenderSystem(esper.Processor):
             # Flip double buffer
             self._buf_lt.flip()
 
-        self._ctx.enable(BLEND)
+        self._gl_ctx.enable(BLEND)
 
     def _pos_to_lightmap_uv(self,world_coords)->tuple[int,int]:
         return (world_coords[0] / self._lightmap_res[0], 1 - (world_coords[1] / self._lightmap_res[1]))
@@ -744,7 +741,7 @@ class RenderSystem(esper.Processor):
 
 
     def _render_background_layer(self)->None: 
-        self._ctx.screen.use()
+        self._gl_ctx.screen.use()
         self._tex_bg.use()
         self._tex_ao.use(1)
 
@@ -755,7 +752,7 @@ class RenderSystem(esper.Processor):
 
 
     def _render_foreground_layer(self)->None:
-        self._ctx.screen.use()
+        self._gl_ctx.screen.use()
         self._tex_fg.use()
         self._vao_to_screen_draw.render()
 
@@ -765,11 +762,11 @@ class RenderSystem(esper.Processor):
 
 
     def _update_hulls(self,player_position:tuple[int,int],camera_scroll:tuple[int,int])->bool: 
-        tile_size = self._ref_tilemap.regular_tile_size
+        tile_size = self._ref_tilemap.tile_size
   
         if dist(self._prev_hull_query_player_pos,player_position) >= tile_size * 7: 
             self.hulls = self._ref_tilemap.hull_grid.query(camera_scroll[0] - 10 * tile_size, camera_scroll[1] - 10 * tile_size,\
-                                                           camera_scroll[0] + self._true_res[0] +  10 * tile_size, camera_scroll[1] + self._true_res[1] + 10 * tile_size)
+                                                           camera_scroll[0] + self._game_ctx['true_res'][0] +  10 * tile_size, camera_scroll[1] + self._game_ctx['true_res'][1] + 10 * tile_size)
             
             self._prev_hull_query_player_pos = tuple(player_position)
             self._prev_hull_query_camera_scroll = camera_scroll
@@ -793,7 +790,7 @@ class RenderSystem(esper.Processor):
         img_flip = pygame.transform.flip(sfc, False, True)
         img_data = pygame.image.tostring(img_flip, "RGBA")
 
-        tex = self._ctx.texture(sfc.get_size(), components=4, data=img_data)
+        tex = self._gl_ctx.texture(sfc.get_size(), components=4, data=img_data)
         tex.filter = (NEAREST, NEAREST)
         return tex
 
@@ -859,8 +856,8 @@ class RenderSystem(esper.Processor):
         # Create VBO and VAO
         buffer_data = np.hstack([vertices, tex_coords])
 
-        vbo = self._ctx.buffer(buffer_data)
-        vao = self._ctx.vertex_array(self._to_screen_draw_prog, [
+        vbo = self._gl_ctx.buffer(buffer_data)
+        vao = self._gl_ctx.vertex_array(self._to_screen_draw_prog, [
             (vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
         ])
 
@@ -876,7 +873,7 @@ class RenderSystem(esper.Processor):
 
 
     def _render_rectangles(self,camera_scroll:tuple[int,int])->None: 
-        buffer_surf = pygame.Surface(self._true_res).convert_alpha()
+        buffer_surf = pygame.Surface(self._game_ctx['true_res']).convert_alpha()
         buffer_surf.fill((0, 0, 0, 0))
 
         # Iterate over rectangles
@@ -892,7 +889,7 @@ class RenderSystem(esper.Processor):
             screen_y = rect_y - camera_scroll[1]
 
             # Check if the rectangle is within the visible screen
-            if 0 <= screen_x < self._true_res[0] and 0 <= screen_y < self._true_res[1]:
+            if 0 <= screen_x < self._game_ctx['true_res'][0] and 0 <= screen_y < self._game_ctx['true_res'][1]:
                 # Draw the rectangle directly onto the buffer surface
                 pygame.draw.rect(
                     buffer_surf,
@@ -944,10 +941,10 @@ class RenderSystem(esper.Processor):
 
         render_offset = (camera_offset[0]- screen_shake[0],camera_offset[1] -screen_shake[1])
 
-        tile_size = self._ref_tilemap.regular_tile_size
+        tile_size = self._ref_tilemap.tile_size
 
         self.hulls = self._ref_tilemap.hull_grid.query(camera_offset[0] - 10 * tile_size, camera_offset[1] - 10 * tile_size,\
-                                                           camera_offset[0] + self._true_res[0] +  10 * tile_size, camera_offset[1] + self._true_res[1] + 10 * tile_size)
+                                                           camera_offset[0] + self._game_ctx['true_res'][0] +  10 * tile_size, camera_offset[1] + self._game_ctx['true_res'][1] + 10 * tile_size)
         
         self._prev_hull_query_player_pos = tuple(player_position)
         self._prev_hull_query_camera_scroll = camera_offset
@@ -965,14 +962,14 @@ class RenderSystem(esper.Processor):
     def _update_active_static_lights(self,camera_offset:tuple[int,int])->None: 
      
 
-        ambient_lighting_range = self._ref_tilemap._ambient_node_ptr.range
+        ambient_lighting_range = self._ref_tilemap._ref_ambient_node.range
 
         if dist(self._prev_lights_query_camera_scroll,camera_offset) >= 16:
             # query the lights 
             self._active_static_lights = self._ref_tilemap.lights_grid.query(camera_offset[0]- 2 * self._lightmap_buffer_slack,
                                                                             camera_offset[1]- 2 * self._lightmap_buffer_slack,
-                                                                             camera_offset[0] + self._true_res[0] + 2 * self._lightmap_buffer_slack,
-                                                                            camera_offset[1] +self._true_res[1] + 2 * self._lightmap_buffer_slack )
+                                                                             camera_offset[0] + self._game_ctx['true_res'][0] + 2 * self._lightmap_buffer_slack,
+                                                                            camera_offset[1] +self._game_ctx['true_res'][1] + 2 * self._lightmap_buffer_slack )
             
             self._prev_lights_query_camera_scroll = camera_offset
 
@@ -991,14 +988,14 @@ class RenderSystem(esper.Processor):
 
         self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords_array['cursor']['default']
 
-        self._vao_cursor_draw = self._ctx.vertex_array(
+        self._vao_cursor_draw = self._gl_ctx.vertex_array(
             self._prog_cursor_draw,
             [
                 (self._ref_hud.cursor.ndc_vertices_buffer, '2f' , 'in_position')
             ]
         )
 
-        self._vao_opaque_ui_draw = self._ctx.vertex_array(
+        self._vao_opaque_ui_draw = self._gl_ctx.vertex_array(
             self._opaque_ui_draw_prog,
             [
                 (self._ref_hud.opaque_vertices_buffer, '2f' ,'vertexPos'),
@@ -1006,7 +1003,7 @@ class RenderSystem(esper.Processor):
             ]
         )
 
-        self._vao_hidden_ui_draw = self._ctx.vertex_array(
+        self._vao_hidden_ui_draw = self._gl_ctx.vertex_array(
             self._hidden_ui_draw_prog,
             [
                 (self._ref_hud.hidden_vertices_buffer, '2f', 'vertexPos'),
@@ -1014,7 +1011,7 @@ class RenderSystem(esper.Processor):
             ]
         )
 
-        self._vao_opaque_items_draw = self._ctx.vertex_array(
+        self._vao_opaque_items_draw = self._gl_ctx.vertex_array(
             self._opaque_ui_draw_prog,
             [
                 (self._ref_hud.opaque_items_vertices_buffer, '2f', 'vertexPos'),
@@ -1022,7 +1019,7 @@ class RenderSystem(esper.Processor):
             ]
         )
         
-        self._vao_hidden_items_draw = self._ctx.vertex_array(
+        self._vao_hidden_items_draw = self._gl_ctx.vertex_array(
             self._hidden_ui_draw_prog,
             [
                 (self._ref_hud.hidden_items_vertices_buffer, '2f' , 'vertexPos'),
@@ -1034,26 +1031,26 @@ class RenderSystem(esper.Processor):
     def attatch_tilemap(self,tilemap:"Tilemap")->None:
         self._ref_tilemap = tilemap
 
-        self._lightmap_buffer_slack = 10 * self._ref_tilemap.regular_tile_size
+        self._lightmap_buffer_slack = 10 * self._ref_tilemap.tile_size
 
         # lightmap res according to tilemap tilesize 
-        self._lightmap_res = (self._true_res[0]+ 2 * self._lightmap_buffer_slack,
-                              self._true_res[1]+ 2 * self._lightmap_buffer_slack)
+        self._lightmap_res = (self._game_ctx['true_res'][0]+ 2 * self._lightmap_buffer_slack,
+                              self._game_ctx['true_res'][1]+ 2 * self._lightmap_buffer_slack)
         
         # Double buffer for lights
-        self._buf_lt = DoubleBuffer(self._ctx, self._lightmap_res)
+        self._buf_lt = DoubleBuffer(self._gl_ctx, self._lightmap_res)
 
         self._prog_blur['iResolution'] = self._lightmap_res
 
 
-        self._prog_mask['nativeRes'] = self._true_res
+        self._prog_mask['nativeRes'] = self._game_ctx['true_res']
         self._prog_mask['lightmapRes'] = self._lightmap_res
 
         # Ambient occlussion map
-        self._tex_ao = self._ctx.texture(
+        self._tex_ao = self._gl_ctx.texture(
             self._lightmap_res, components=4, dtype='f2')
         self._tex_ao.filter = (LINEAR, LINEAR)
-        self._fbo_ao = self._ctx.framebuffer([self._tex_ao])
+        self._fbo_ao = self._gl_ctx.framebuffer([self._tex_ao])
 
         # wrapping settings 
         self._buf_lt._tex1.repeat_x = False
@@ -1067,7 +1064,7 @@ class RenderSystem(esper.Processor):
 
         self._tile_draw_prog['NDCVertices'] = self._ref_tilemap.NDC_tile_vertices_array
 
-        self._vao_physical_tiles_draw = self._ctx.vertex_array(
+        self._vao_physical_tiles_draw = self._gl_ctx.vertex_array(
             self._tile_draw_prog,
             [
                 (self._ref_tilemap.physical_tiles_position_vbo,'2f/i','in_position'),
@@ -1075,7 +1072,7 @@ class RenderSystem(esper.Processor):
             ]
         )
 
-        self._vao_non_physical_tiles_draw = self._ctx.vertex_array(
+        self._vao_non_physical_tiles_draw = self._gl_ctx.vertex_array(
             self._tile_draw_prog,
             [
                 (self._ref_tilemap.non_physical_tiles_position_vbo, '2f/i' , 'in_position'),
@@ -1088,10 +1085,10 @@ class RenderSystem(esper.Processor):
         self._ref_background = background 
         background_vertices = np.zeros(shape=(12,),dtype=np.float32)
 
-        self._ref_background_vertices_buffer = self._ctx.buffer(background_vertices,dynamic=True)
-        texcoords_buffer = self._ctx.buffer(self._ref_background.identity_texcoords)
+        self._ref_background_vertices_buffer = self._gl_ctx.buffer(background_vertices,dynamic=True)
+        texcoords_buffer = self._gl_ctx.buffer(self._ref_background.identity_texcoords)
 
-        self._vao_background_draw = self._ctx.vertex_array(
+        self._vao_background_draw = self._gl_ctx.vertex_array(
             self._to_screen_draw_prog,
             [
                 (self._ref_background_vertices_buffer, '2f' , 'vertexPos'),
@@ -1101,7 +1098,7 @@ class RenderSystem(esper.Processor):
 
     def clear(self,R:int = 0, G:int = 0, B:int = 0,A:int =255)->None: 
         R,G,B,A =   normalize_color_arguments(R,G,B,A,)
-        self._ctx.screen.clear(0,0,0,255)
+        self._gl_ctx.screen.clear(0,0,0,255)
         self._fbo_bg.clear(R,G,B,A)
         self._fbo_fg.clear(R,G,B,A)
         
@@ -1110,7 +1107,7 @@ class RenderSystem(esper.Processor):
         camera_offset = tuple(game_context['camera_offset'])
         screen_shake  = tuple(game_context['screen_shake'])
 
-        self._ctx.enable(BLEND)
+        self._gl_ctx.enable(BLEND)
         self._render_background_to_bg_fbo(camera_offset)
         self._render_tilemap_to_bg_fbo(camera_offset)
         self._render_HUD_to_fg_fbo(dt)
@@ -1135,12 +1132,12 @@ class RenderSystem(esper.Processor):
             if state_info_comp.type == 'player':
 
 
-                self._ref_tilemap.update_ambient_node_ptr(physics_comp.position,self._on_ambient_node_change_callback,camera_offset,screen_shake)
+                self._ref_tilemap.update_ambient_node_ref(physics_comp.position,self._on_ambient_node_change_callback,camera_offset,screen_shake)
 
-                if isinstance(self._ref_tilemap._ambient_node_ptr,interpolatedLightNode):
-                    self._set_ambient(self._ref_tilemap._ambient_node_ptr.get_interpolated_RGBA(physics_comp.position[0]))
+                if isinstance(self._ref_tilemap._ref_ambient_node,interpolatedLightNode):
+                    self._set_ambient(self._ref_tilemap._ref_ambient_node.get_interpolated_RGBA(physics_comp.position[0]))
                 else: 
-                    self._set_ambient(*self._ref_tilemap._ambient_node_ptr.colorValue)
+                    self._set_ambient(*self._ref_tilemap._ref_ambient_node.colorValue)
 
                 animation_data_collection = render_comp.animation_data_collection
                 animation = animation_data_collection.get_animation(state_info_comp.curr_state)
