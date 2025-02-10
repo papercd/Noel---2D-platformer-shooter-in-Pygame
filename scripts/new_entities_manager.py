@@ -22,11 +22,21 @@ class EntitiesManager:
 
     def _create_player_entity(self)->None: 
         self._player_state = StateInfoComponent(type='player',max_jump_count=2)
-        self._player_physics = PhysicsComponent(size=(16,16),position= vec2(386,0),collision_rect=Rect(380,0,12,16),displacement_buffer=vec2(0,0))
+        self._player_physics = PhysicsComponent(size=(16,16),collision_rect= Rect(0,0,12,16))
         self._player_render = RenderComponent(self._ref_rm.animation_data_collections['player'],self._ref_rm.entity_local_vertices_bytes['player'])
         self._player_input = InputComponent()
         self._player = esper.create_entity(self._player_state,self._player_physics,self._player_render,self._player_input)
 
+
+
+    """
+    ,position= vec2(386,0),collision_rect=Rect(380,0,12,16),displacement_buffer=vec2(0,0)
+    """
+
+    def set_initial_player_position(self,pos:tuple[int,int])->None: 
+        self._player_physics.position.x = pos[0]
+        self._player_physics.position.y = pos[1]
+        self._player_physics.collision_rect.topleft = pos
 
     @property 
     def player_physics_comp(self)->PhysicsComponent:

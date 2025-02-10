@@ -1,4 +1,4 @@
-from scripts.data import TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES,TileInfo,LightInfo,DoorInfo,DoorAnimation,HULL_OUTER_EDGE_OFFSET,TILE_NEIGHBOR_MAP,OPEN_SIDE_OFFSET_TO_AXIS_NUM,\
+from scripts.data import BYTES_PER_TEXTURE_QUAD,BYTES_PER_POSITION_VEC2, TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES,TileInfo,LightInfo,DoorInfo,DoorAnimation,HULL_OUTER_EDGE_OFFSET,TILE_NEIGHBOR_MAP,OPEN_SIDE_OFFSET_TO_AXIS_NUM,\
                             LIGHT_POSITION_OFFSET_FROM_TOPLEFT,DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,RegularTileInfo,LightTileInfo, PHYSICS_APPLIED_TILE_TYPES
 
 from scripts.spatial_grid import hullSpatialGrid,lightSpatialGrid 
@@ -7,11 +7,10 @@ from my_pygame_light2d.hull import Hull
 from pygame import Rect
 from my_pygame_light2d.light import PointLight
 from scripts.new_resource_manager import ResourceManager
-
+import numpy as np
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import numpy as np
     from moderngl import Context
     from scripts.data import TileColorKey,RGBA_tuple,TileInfoDataClass,TileTexcoordsKey
 
@@ -23,6 +22,10 @@ class Tilemap:
         self._ref_rm = ResourceManager.get_instance()
         if json_file:
             self.load_map(json_file)
+
+    @property 
+    def initial_player_pos(self)->tuple[int,int]:
+        return self._initial_player_position
 
     @property
     def tile_size(self)->int: 
@@ -51,14 +54,6 @@ class Tilemap:
     @property 
     def non_physical_tiles_position_vbo(self)->"Context.buffer":
         return self._non_physical_tiles_position_vbo
-    
-    @property 
-    def physical_tiles_vbo_vertices(self)->int: 
-        return self._physical_tiles_vbo_vertices
-
-    @property 
-    def non_physical_tiles_vbo_vertices(self)->int: 
-        return self._non_physical_tiles_vbo_vertices
        
     def load_map(self,json_file):
         self._tile_size:int = json_file['tile_size']
@@ -74,6 +69,10 @@ class Tilemap:
         self.ambientNodes = ambientNodeList()
         self.tile_colors:dict["TileColorKey","RGBA_tuple"]= {}
         self.tile_texcoords_bytes : dict["TileTexcoordsKey",bytes] = {}
+
+
+        # the player position is also quried from the json file. 
+        self._initial_player_position = (300,-10)
 
 
         for tile_key in json_file['tilemap']: 
@@ -197,15 +196,54 @@ class Tilemap:
             self.hull_grid.insert(hull)
         
 
-        self._physical_tiles_texcoords_vbo, self._non_physical_tiles_texcoords_vbo, self._physical_tiles_position_vbo,self._non_physical_tiles_position_vbo\
+        self._tilemap_buffer_padding,self._tiles_per_screen_row,self._tiles_per_screen_col,self._physical_tiles_texcoords_vbo, self._non_physical_tiles_texcoords_vbo, self._physical_tiles_position_vbo,self._non_physical_tiles_position_vbo\
         = self._ref_rm.create_tilemap_vbos(self._tile_size,self._non_physical_tile_layers)
+
+        self.null_texcoords_bytes = np.zeros((6,2),dtype = np.float32).tobytes()
+        self.null_positions_bytes = np.zeros((1,2),dtype= np.float32).tobytes()
 
 
         self.NDC_tile_vertices_array = self._ref_rm.get_NDC_tile_vertices(self._tile_size)
         self.tile_colors = self._ref_rm.get_tile_colors(self._physical_tiles)
         self.tile_texcoords_bytes = self._ref_rm.get_tile_texcoords(self._physical_tiles,self._non_physical_tiles)
 
+        self.load_initial_tilemap_buffers()
 
+
+    def load_initial_tilemap_buffers(self)->None: 
+        
+        topleft_grid_pos = ((self.initial_player_pos[0] - self._game_ctx['true_res'][0] / 2) // 16 - self._tilemap_buffer_padding,
+                            (self.initial_player_pos[1] - self._game_ctx['true_res'][1] / 2) // 16 - self._tilemap_buffer_padding)
+        
+        texcoords_buffer_write_offset = 0
+        positions_buffer_write_offset = 0
+
+        for grid_x_offset in range(0,self._tiles_per_screen_row):
+            for grid_y_offset in range(0,self._tiles_per_screen_col):
+                coor = (topleft_grid_pos[0] + grid_x_offset, topleft_grid_pos[1] + grid_y_offset)
+
+                if coor in self.physical_tiles:
+                    tile_data = self.physical_tiles[coor]
+                    tile_general_info = tile_data.info
+
+                    relative_position_index,variant = tile_general_info.relative_pos_ind, tile_general_info.variant
+
+                    self.physical_tiles_texcoords_vbo.write(self.tile_texcoords_bytes[(tile_general_info.type,relative_position_index,variant)],offset = texcoords_buffer_write_offset)
+                    self.physical_tiles_position_vbo.write(self.tile_pos_to_ndc_bytes(coor),offset = positions_buffer_write_offset)
+                else: 
+                    self.physical_tiles_texcoords_vbo.write(self.null_texcoords_bytes,offset = texcoords_buffer_write_offset)
+                    self.physical_tiles_position_vbo.write(self.null_positions_bytes,offset = positions_buffer_write_offset)
+
+
+                texcoords_buffer_write_offset += BYTES_PER_TEXTURE_QUAD
+                positions_buffer_write_offset += BYTES_PER_POSITION_VEC2
+        
+    # TODO: when rendering optimization is done, creation of tile vertices need to be precomputed.   
+    def tile_pos_to_ndc_bytes(self,tile_grid_pos:tuple[int,int])->bytes: 
+        return np.array([2. * (tile_grid_pos[0] *self._tile_size) / self._game_ctx['true_res'][0]-1.
+                , 1. - 2. * (tile_grid_pos[1] * self.tile_size) / self._game_ctx['true_res'][1]],dtype=np.float32).tobytes()
+
+        
 
 
     def update_ambient_node_ref(self,pos:tuple[int,int],callback:"function",camera_offset:tuple[int,int],
@@ -226,9 +264,6 @@ class Tilemap:
                     callback(camera_offset,screen_shake,pos)
 
     
-
-
-
 
 
     def _create_rectangles(self,tile_general_info: TileInfo) -> tuple[int,int,int,int]:
@@ -288,8 +323,6 @@ class Tilemap:
             return [(axis[0],axis[2],axis[1],axis[3])]
 
 
-        
-          
     def _create_hulls(self)->None:
         """
         Merges rectangles in a dictionary where only rectangles of type "regular" are merged.

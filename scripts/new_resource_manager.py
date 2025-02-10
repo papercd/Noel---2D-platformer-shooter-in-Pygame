@@ -255,9 +255,13 @@ class ResourceManager:
         return texcoords
 
 
-    def create_tilemap_vbos(self,tile_size:int,non_physical_tile_layers:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
-        max_visible_tiles_plus_extra = ((self._game_ctx['true_res'][0]//tile_size)+ 2) * ((self._game_ctx['true_res'][1]//tile_size)+2) 
+    def create_tilemap_vbos(self,tile_size:int,non_physical_tile_layers:int)->tuple[int,int,int,"Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
+        padding = 3
+        tiles_per_buffer_column = padding * 2 + self._game_ctx['true_res'][1] // tile_size 
+        tiles_per_buffer_row = padding * 2 + self._game_ctx['true_res'][0] // tile_size
 
+        max_visible_tiles_plus_extra = tiles_per_buffer_column * tiles_per_buffer_row
+        print(max_visible_tiles_plus_extra)
 
         vertex_size = 2 * 4
         physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size
@@ -275,7 +279,8 @@ class ResourceManager:
         non_physical_tiles_position_vbo =self._gl_ctx.buffer(reserve=non_physical_tiles_position_buffer_size,dynamic=True)
 
 
-        return (physical_tiles_vbo,non_physical_tiles_vbo,physical_tiles_position_vbo,non_physical_tiles_position_vbo)
+        return (padding,tiles_per_buffer_row,tiles_per_buffer_column,physical_tiles_vbo,non_physical_tiles_vbo,
+                physical_tiles_position_vbo,non_physical_tiles_position_vbo)
 
 
 
@@ -333,6 +338,8 @@ class ResourceManager:
                     texcoords = self._get_texcoords_for_tile(self.texture_atlasses['tiles'],tile_general_info,tile)
                 elif tile_info.type == 'building_door':
                     door_data = tile_info_list[1]
+
+
                 """
                 #texture_coords = self._get_texture_coords_for_tile(tile_texture_atlas,tile_info,door_data)
                 tile_texcoords[tile_texcoord_key] = texcoords 

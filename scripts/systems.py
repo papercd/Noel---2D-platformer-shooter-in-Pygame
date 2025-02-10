@@ -298,7 +298,7 @@ class RenderSystem(esper.Processor):
             with open(vertex_src_path,encoding= 'utf-8') as file: 
                 vertex_src = file.read()
         except:
-            print("vertex shader source file could not be opened.")
+           print("vertex shader source file could not be opened.")
         try:
             with open(fragment_src_path,encoding= 'utf-8') as file: 
                 fragment_src = file.read()
@@ -490,6 +490,22 @@ class RenderSystem(esper.Processor):
                 (self._entity_weapons_transform_matrices_vbo, '3f 3f 3f/i', 'col1', 'col2', 'col3')
             ]
         )
+
+
+    def _opt_render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
+        self._tile_draw_prog['cameraOffset'] = self._camera_offset_to_ndc_component(camera_offset) 
+
+        self._fbo_bg.use()
+        self._ref_rm.texture_atlasses['tiles'].use()
+
+        self._vao_physical_tiles_draw.render(vertices= 6 )
+
+
+    
+    def _camera_offset_to_ndc_component(self,camera_offset:tuple[int,int])->np.ndarray: 
+        return np.array([ 2. * camera_offset[0] / self._game_ctx['true_res'][0],
+                         -2. * camera_offset[1] / self._game_ctx['true_res'][1]],dtype=np.float32)
+
 
     def _render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
         
@@ -1109,7 +1125,8 @@ class RenderSystem(esper.Processor):
 
         self._gl_ctx.enable(BLEND)
         self._render_background_to_bg_fbo(camera_offset)
-        self._render_tilemap_to_bg_fbo(camera_offset)
+        self._opt_render_tilemap_to_bg_fbo(camera_offset)
+        #self._render_tilemap_to_bg_fbo(camera_offset)
         self._render_HUD_to_fg_fbo(dt)
 
         entity_vertices_byte_array = bytearray()
