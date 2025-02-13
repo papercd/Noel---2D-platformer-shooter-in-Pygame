@@ -4,7 +4,8 @@ from os import listdir
 from json import load as jsLoad
 from scripts.data import IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,\
                     DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TileInfo,TileInfoDataClass,AnimationDataCollection,UI_ATLAS_POSITIONS_AND_SIZES
-import numpy as np
+
+from numpy import uint32,uint8,uint16,int32,float32,array,zeros,frombuffer
 from moderngl import Context
 
 from typing import TYPE_CHECKING
@@ -75,8 +76,8 @@ class ResourceManager:
     def _load_backgrounds(self,path:str)->None:
 
         # identity texcoords that represent texcoords for textures without an atlas 
-        self.identity_texcoords_bytes = np.array([(0.,1.),(1.,1.),(0.,0.),
-                                            (0.,0.),(1.,1.),(1.,0.)],dtype=np.float32).tobytes()
+        self.identity_texcoords_bytes = array([(0.,1.),(1.,1.),(0.,0.),
+                                            (0.,0.),(1.,1.),(1.,0.)],dtype=float32).tobytes()
         
         self.backgrounds : dict[str,Background] = {}
         for folder in listdir(path):
@@ -102,16 +103,16 @@ class ResourceManager:
             self.texture_atlasses[atlas_name] = load_texture(TEXTURE_ATLAS_NAMES_TO_PATH[atlas_name],self._gl_ctx)
 
 
-    def get_cursor_ndc_vertices_and_buffer(self)->list[np.array,"Context.buffer"]: 
+    def get_cursor_ndc_vertices_and_buffer(self)->list[array,"Context.buffer"]: 
         x = 0. 
         y = 0. 
         w = 2. * 9 / self._game_ctx['true_res'][0]
         h = 2. * 10 / self._game_ctx['true_res'][1] 
 
-        cursor_ndc_vertices = np.array([(x, y-h), (x + w, y-h), (x, y),
-                            (x, y), (x + w, y - h), (x + w, y)], dtype=np.float32)
+        cursor_ndc_vertices = array([(x, y-h), (x + w, y-h), (x, y),
+                            (x, y), (x + w, y - h), (x + w, y)], dtype=float32)
 
-        return [np.array([(x, y-h), (x + w, y-h), (x, y), (x, y), (x + w, y - h), (x + w, y)], dtype=np.float32), 
+        return [array([(x, y-h), (x + w, y-h), (x, y), (x, y), (x + w, y - h), (x + w, y)], dtype=float32), 
                     self._gl_ctx.buffer(data= cursor_ndc_vertices,dynamic=True)]
                            
 
@@ -174,7 +175,7 @@ class ResourceManager:
             self.entity_local_vertices_bytes[entity_type] = self._create_entity_local_vertices(ENTITY_SIZES[entity_type])
 
 
-    def _create_texcoords(self,atlas_position:tuple[int,int],texture_size:tuple[int,int],texture_atlas:"Context.Texture",asbytes = True) ->bytes:
+    def _create_texcoords(self,atlas_position:tuple[uint32,uint32],texture_size:tuple[uint32,uint32],texture_atlas:"Context.Texture",asbytes = True) ->bytes:
         x =  (atlas_position[0]) / texture_atlas.size[0]
         y = (atlas_position[1]) / texture_atlas.size[1]
         w = texture_size[0] / texture_atlas.size[0]
@@ -186,36 +187,38 @@ class ResourceManager:
         p4 = (x + w, y)
 
         if asbytes:
-            return np.array([p3, p4, p1,
-                            p1, p4, p2], dtype=np.float32).tobytes()
+            return array([p3, p4, p1,
+                            p1, p4, p2], dtype=float32).tobytes()
         else: 
-            return np.array([p3, p4, p1,
-                            p1, p4, p2], dtype=np.float32)
+            return array([p3, p4, p1,
+                            p1, p4, p2], dtype=float32)
 
-    def _create_entity_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int],animation_frame:int)->bytes:
+    def _create_entity_texcoords(self,texture_atlas_position:tuple[uint32,uint32],texture_size:tuple[uint32,uint32],animation_frame:uint16)->bytes:
 
-        x =  (texture_atlas_position[0] + animation_frame * texture_size[0]) / self.texture_atlasses['entities'].size[0]
-        y = (texture_atlas_position[1]) / self.texture_atlasses['entities'].size[1]
-        w = texture_size[0] / self.texture_atlasses['entities'].size[0]
-        h = texture_size[1] / self.texture_atlasses['entities'].size[1]
+
+        uint32_texture_size = (uint32(self.texture_atlasses['entities'].width),uint32(self.texture_atlasses['entities'].height))
+        x =  (texture_atlas_position[0] + uint32(animation_frame) * texture_size[0]) / uint32_texture_size[0]
+        y = (texture_atlas_position[1]) / uint32_texture_size[1]
+        w = texture_size[0] / uint32_texture_size[0]
+        h = texture_size[1] / uint32_texture_size[1]
 
         p1 = (x, y + h)
         p2 = (x + w, y + h)
         p3 = (x, y)
         p4 = (x + w, y)
 
-        return np.array([p3, p4, p1,
-                        p1, p4, p2], dtype=np.float32).tobytes()
+        return array([p3, p4, p1,
+                        p1, p4, p2], dtype=float32).tobytes()
 
-    def _create_entity_local_vertices(self,entity_size:tuple[int,int])->bytes:
+    def _create_entity_local_vertices(self,entity_size:tuple[uint32,uint32])->bytes:
 
-        x =  -entity_size[0]//2
-        y = entity_size[1]//2
-        w = entity_size[0]
-        h = entity_size[1]
+        x =  int32(entity_size[0]) // -2
+        y = int32(entity_size[1]) //2
+        w = int32(entity_size[0])
+        h = int32(entity_size[1])
 
-        return np.array([(x, y), (x + w, y), (x, y - h),
-                (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32).tobytes()
+        return array([(x, y), (x + w, y), (x, y - h),
+                (x, y - h), (x + w, y), (x + w, y - h)],dtype=float32).tobytes()
 
         # return the local vertices for the entity type
 
@@ -249,8 +252,8 @@ class ResourceManager:
             p3 = (x, y) 
             p4 = (x + w, y)
 
-            texcoords = np.array([p1, p2, p3,
-                                p3, p2, p4], dtype=np.float32).tobytes()
+            texcoords = array([p1, p2, p3,
+                                p3, p2, p4], dtype=float32).tobytes()
 
         return texcoords
 
@@ -262,14 +265,14 @@ class ResourceManager:
 
         max_visible_tiles_plus_extra = tiles_per_buffer_column * tiles_per_buffer_row
 
-        physical_tiles_texcoords_array = np.zeros(max_visible_tiles_plus_extra *12 ,dtype= np.float32)
-        physical_tiles_positions_array = np.zeros(max_visible_tiles_plus_extra * 2, dtype= np.float32)
+        physical_tiles_texcoords_array = zeros(max_visible_tiles_plus_extra *12 ,dtype= float32)
+        physical_tiles_positions_array = zeros(max_visible_tiles_plus_extra * 2, dtype= float32)
 
         physical_tiles_vbo = self._gl_ctx.buffer(data=physical_tiles_texcoords_array.tobytes(),dynamic=True)
         physical_tiles_position_vbo = self._gl_ctx.buffer(data = physical_tiles_positions_array.tobytes(),dynamic= True)
 
-        non_physical_tiles_texcoords_array = np.zeros(max_visible_tiles_plus_extra * non_physical_tile_layers * 12,dtype=np.float32)
-        non_physical_tiles_positions_array = np.zeros(max_visible_tiles_plus_extra * non_physical_tile_layers * 2, dtype= np.float32)
+        non_physical_tiles_texcoords_array = zeros(max_visible_tiles_plus_extra * non_physical_tile_layers * 12,dtype=float32)
+        non_physical_tiles_positions_array = zeros(max_visible_tiles_plus_extra * non_physical_tile_layers * 2, dtype= float32)
 
         non_physical_tiles_vbo = self._gl_ctx.buffer(data=non_physical_tiles_texcoords_array.tobytes(),dynamic=True)
         non_physical_tiles_position_vbo = self._gl_ctx.buffer(data = non_physical_tiles_positions_array.tobytes(),dynamic= True)
@@ -283,7 +286,7 @@ class ResourceManager:
 
         tile_atlas_byte_data = self.texture_atlasses["tiles"].read(alignment=4)
         width,height = self.texture_atlasses["tiles"].size
-        image_data = np.frombuffer(tile_atlas_byte_data,dtype = np.uint8).reshape((height,width,4))
+        image_data = frombuffer(tile_atlas_byte_data,dtype = uint8).reshape((height,width,4))
 
         tile_colors = {}
 
@@ -351,14 +354,14 @@ class ResourceManager:
         return tile_texcoords 
 
 
-    def get_NDC_tile_vertices(self,tile_size:int)->np.array:
+    def get_NDC_tile_vertices(self,tile_size:int)->array:
         x = 0.
         y = 0.
         w = 2. * tile_size / self._game_ctx['true_res'][0]
         h = 2. * tile_size / self._game_ctx['true_res'][1]
 
-        return np.array([(x, y), (x + w, y), (x, y - h),
-                (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)
+        return array([(x, y), (x + w, y), (x, y - h),
+                (x, y - h), (x + w, y), (x + w, y - h)],dtype=float32)
     
 
     def create_hud_inven_vbos(self,opaque_ui_element_quads:int,hidden_ui_element_quads:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]: 

@@ -2,7 +2,7 @@ from collections import namedtuple
 from dataclasses import dataclass 
 from my_pygame_light2d.light import PointLight
 
-from numpy import uint16 ,float32,array
+from numpy import uint16 ,uint32,float32,array
 
 
 
@@ -235,8 +235,8 @@ TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES = {
 
 
 IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
-    'ak47': {"normal": ((0,0),(31,12)),"holding":((56,0),(18,9))},
-    'flamethrower': {"normal": ((0,12),(32,9)),"holding":((57,12),(24,8))}
+    'ak47': {"normal": ((uint32(0),uint32(0)),(uint32(31),uint32(12))),"holding":((uint32(56),uint32(0)),(uint32(18),uint32(9)))},
+    'flamethrower': {"normal": ((uint32(0),uint32(12)),(uint32(32),uint32(9))),"holding":((uint32(57),uint32(12)),(uint32(24),uint32(8)))}
 }
 
 UI_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
@@ -245,10 +245,10 @@ UI_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
 }
 
 ITEM_ATLAS_POSITIONS_AND_SIZES={
-    "amethyst_arrow": ((381,0),(16,16)),
-    "amethyst_clump" : ((397,0),(16,16)),
-    "arrow": ((413,0),(16,16)),
-    "string":((429,0),(16,16))
+    "amethyst_arrow": ((uint32(381),uint32(0)),(uint32(16),uint32(16))),
+    "amethyst_clump" : ((uint32(397),uint32(0)),(uint32(16),uint32(16))),
+    "arrow": ((uint32(413),uint32(0)),(uint32(16),uint32(16))),
+    "string":((uint32(429),uint32(0)),(uint32(16),uint32(16)))
 
 }
 
@@ -260,17 +260,17 @@ ITEM_ATLAS_POSITIONS_AND_SIZES={
 """
 
 UI_ATLAS_POSITIONS_AND_SIZES = {
-    "health_bar" : ((0,0),(204,8)),
-    "stamina_bar" : ((0,0),(204,8)),
-    "item_slot" : {True:((20,8),(24,24)),False:((0,8),(20,20))},
-    "weapon_slot" : {True:((82,9),(45,24)),False:((44,9),(38,18))},
-    "background" : ((204,0),(176,93)),
+    "health_bar" : ((uint32(0),uint32(0)),(uint32(204),uint32(8))),
+    "stamina_bar" : ((uint32(0),uint32(0)),(uint32(204),uint32(8))),
+    "item_slot" : {True:((uint32(20),uint32(8)),(uint32(24),uint32(24))),False:((uint32(0),uint32(8)),(uint32(20),uint32(20)))},
+    "weapon_slot" : {True:((uint32(82),uint32(9)),(uint32(45),uint32(24))),False:((uint32(44),uint32(9)),(uint32(38),uint32(18)))},
+    "background" : ((uint32(204),uint32(0)),(uint32(176),uint32(93))),
     "cursor" : {
-        "default" : ((0,32),(9,10)),
-        "grab" :  ((9,32),(9,10)),
-        "magnet" :  ((18,32),(9,10)),
-        "move" :  ((27,32),(9,10)),
-        "crosshair" :  ((36,32),(10,10))
+        "default" : ((uint32(0),uint32(32)),(uint32(9),uint32(10))),
+        "grab" :  ((uint32(9),uint32(32)),(uint32(9),uint32(10))),
+        "magnet" :  ((uint32(18),uint32(32)),(uint32(9),uint32(10))),
+        "move" :  ((uint32(27),uint32(32)),(uint32(9),uint32(10))),
+        "crosshair" :  ((uint32(36),uint32(32)),(uint32(10),uint32(10)))
     }
 }
 
@@ -284,34 +284,34 @@ PARTICLE_ATLAS_POSITIONS_AND_SIZES ={
 
 ENTITIES_ATLAS_POSITIONS ={
     "player" : {False:{
-                "idle": (0,0),
-                "crouch" : (0,16),
-                "jump_up": (0,32),
-                "jump_down": (0,48),
-                "land": (0,80),
-                "run": (0,96),
-                "slide": (0,112),
-                "wall_slide": (0,128),
-                "sprint": (0,144)
+                "idle": (uint32(0),uint32(0)),
+                "crouch" : (uint32(0),uint32(16)),
+                "jump_up": (uint32(0),uint32(32)),
+                "jump_down": (uint32(0),uint32(48)),
+                "land": (uint32(0),uint32(80)),
+                "run": (uint32(0),uint32(96)),
+                "slide": (uint32(0),uint32(112)),
+                "wall_slide": (uint32(0),uint32(128)),
+                "sprint": (uint32(0),uint32(144))
 
                 },
                 True: {
-                "idle": (96,0),
-                "crouch" : (96,16),
-                "jump_up": (96,32),
-                "jump_down": (96,48),
-                "land": (96,80),
-                "run": (96,96),
-                "slide": (96,112),
-                "wall_slide": (96,128),
-                "sprint": (96,144)
+                "idle": (uint32(96),uint32(0)),
+                "crouch" : (uint32(96),uint32(16)),
+                "jump_up": (uint32(96),uint32(32)),
+                "jump_down": (uint32(96),uint32(48)),
+                "land": (uint32(96),uint32(80)),
+                "run": (uint32(96),uint32(96)),
+                "slide": (uint32(96),uint32(112)),
+                "wall_slide": (uint32(96),uint32(128)),
+                "sprint": (uint32(96),uint32(144))
                 }                        
                 } 
 
 }
 
 ENTITY_SIZES = {
-    "player" : (16,16)
+    "player" : (uint32(16),uint32(16))
 }
 
 IRREGULAR_TILE_SIZES = {
