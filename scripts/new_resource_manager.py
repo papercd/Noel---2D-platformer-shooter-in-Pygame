@@ -256,28 +256,23 @@ class ResourceManager:
 
 
     def create_tilemap_vbos(self,tile_size:int,non_physical_tile_layers:int)->tuple[int,int,int,"Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
-        padding = 3
+        padding = 11
         tiles_per_buffer_column = padding * 2 + self._game_ctx['true_res'][1] // tile_size 
         tiles_per_buffer_row = padding * 2 + self._game_ctx['true_res'][0] // tile_size
 
         max_visible_tiles_plus_extra = tiles_per_buffer_column * tiles_per_buffer_row
-        print(max_visible_tiles_plus_extra)
 
-        vertex_size = 2 * 4
-        physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size
-        non_physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size * non_physical_tile_layers
+        physical_tiles_texcoords_array = np.zeros(max_visible_tiles_plus_extra *12 ,dtype= np.float32)
+        physical_tiles_positions_array = np.zeros(max_visible_tiles_plus_extra * 2, dtype= np.float32)
 
-        physical_tiles_vbo = self._gl_ctx.buffer(reserve=physical_tiles_buffer_size,dynamic=True)
-        non_physical_tiles_vbo = self._gl_ctx.buffer(reserve=non_physical_tiles_buffer_size,dynamic=True)
+        physical_tiles_vbo = self._gl_ctx.buffer(data=physical_tiles_texcoords_array.tobytes(),dynamic=True)
+        physical_tiles_position_vbo = self._gl_ctx.buffer(data = physical_tiles_positions_array.tobytes(),dynamic= True)
 
+        non_physical_tiles_texcoords_array = np.zeros((max_visible_tiles_plus_extra * non_physical_tile_layers * 6,2),dtype=np.float32)
+        non_physical_tiles_positions_array = np.zeros((max_visible_tiles_plus_extra * non_physical_tile_layers ,2), dtype= np.float32)
 
-        position_vertex_size = 2 * 4
-        physical_tiles_position_buffer_size = max_visible_tiles_plus_extra * position_vertex_size
-        non_physical_tiles_position_buffer_size = max_visible_tiles_plus_extra * position_vertex_size * non_physical_tile_layers
-
-        physical_tiles_position_vbo = self._gl_ctx.buffer(reserve=physical_tiles_position_buffer_size,dynamic= True)
-        non_physical_tiles_position_vbo =self._gl_ctx.buffer(reserve=non_physical_tiles_position_buffer_size,dynamic=True)
-
+        non_physical_tiles_vbo = self._gl_ctx.buffer(data=non_physical_tiles_texcoords_array.tobytes(),dynamic=True)
+        non_physical_tiles_position_vbo = self._gl_ctx.buffer(data = non_physical_tiles_positions_array.tobytes(),dynamic= True)
 
         return (padding,tiles_per_buffer_row,tiles_per_buffer_column,physical_tiles_vbo,non_physical_tiles_vbo,
                 physical_tiles_position_vbo,non_physical_tiles_position_vbo)

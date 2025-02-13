@@ -230,6 +230,7 @@ class PhysicsSystem(esper.Processor):
 
         for entity, (state_info_comp,physics_comp) in esper.get_components(StateInfoComponent,PhysicsComponent):
             if state_info_comp.type == "player":
+                # print(physics_comp.position[0]// 16, physics_comp.position[1] // 16)
                 self._process_physics_updates_for_player(self._ref_em.player_input_comp,physics_comp,state_info_comp,dt)
             else: 
                 self._process_non_player_physics_updates(physics_comp,state_info_comp,dt)
@@ -498,7 +499,7 @@ class RenderSystem(esper.Processor):
         self._fbo_bg.use()
         self._ref_rm.texture_atlasses['tiles'].use()
 
-        self._vao_physical_tiles_draw.render(vertices= 6 )
+        self._vao_physical_tiles_draw.render(vertices= 6 , instances = self._ref_tilemap.physical_tiles_texcoords_vbo.size // BYTES_PER_TEXTURE_QUAD)
 
 
     
@@ -931,6 +932,11 @@ class RenderSystem(esper.Processor):
 
     def _render_fbos_to_screen_with_lighting(self,player_position:tuple[int,int],camera_scroll:tuple[int,int],\
                                              screen_shake:tuple[int,int],interpolation_delta:float)->None: 
+        """
+        self._tex_bg.use()
+        self._gl_ctx.screen.use()
+        self._vao_to_screen_draw.render()
+        """
         
         render_offset = (camera_scroll[0] - screen_shake[0],camera_scroll[1] - screen_shake[1])
 
@@ -1127,7 +1133,7 @@ class RenderSystem(esper.Processor):
         self._render_background_to_bg_fbo(camera_offset)
         self._opt_render_tilemap_to_bg_fbo(camera_offset)
         #self._render_tilemap_to_bg_fbo(camera_offset)
-        self._render_HUD_to_fg_fbo(dt)
+        #self._render_HUD_to_fg_fbo(dt)
 
         entity_vertices_byte_array = bytearray()
         entity_texcoords_byte_array = bytearray()
@@ -1148,7 +1154,7 @@ class RenderSystem(esper.Processor):
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
 
-
+                self._ref_tilemap.update_tilemap_vbos(physics_comp.position)
                 self._ref_tilemap.update_ambient_node_ref(physics_comp.position,self._on_ambient_node_change_callback,camera_offset,screen_shake)
 
                 if isinstance(self._ref_tilemap._ref_ambient_node,interpolatedLightNode):

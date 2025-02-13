@@ -37,7 +37,7 @@ class Noel():
         self._tilemap = Tilemap(self._game_context,self._resource_manager.get_tilemap_json('test1.json'))
         self._hud = HUD(self._game_context)
 
-        self._entities_manager.set_initial_player_position(self._tilemap.initial_player_pos)
+        self._entities_manager.set_initial_player_position(self._tilemap.initial_player_position)
         self._physics_system.attatch_tilemap(self._tilemap)
         self._input_handler.attatch_hud(self._hud)
         self._render_system.attatch_hud(self._hud)

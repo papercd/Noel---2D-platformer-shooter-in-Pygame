@@ -21,7 +21,7 @@ class EntitiesManager:
         self._create_player_entity()
 
     def _create_player_entity(self)->None: 
-        self._player_state = StateInfoComponent(type='player',max_jump_count=2)
+        self._player_state = StateInfoComponent(type='player',max_jump_count=1000)
         self._player_physics = PhysicsComponent(size=(16,16),collision_rect= Rect(0,0,12,16))
         self._player_render = RenderComponent(self._ref_rm.animation_data_collections['player'],self._ref_rm.entity_local_vertices_bytes['player'])
         self._player_input = InputComponent()
