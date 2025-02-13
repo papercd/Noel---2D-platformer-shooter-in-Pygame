@@ -4,7 +4,8 @@ from os import listdir
 from json import load as jsLoad
 from scripts.data import IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,\
                     DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TileInfo,TileInfoDataClass,AnimationDataCollection,UI_ATLAS_POSITIONS_AND_SIZES
-import numpy as np
+
+from numpy import uint32,uint8,uint16,int32,float32,array,zeros,frombuffer
 from moderngl import Context
 
 from typing import TYPE_CHECKING
@@ -24,28 +25,25 @@ TEXTURE_ATLAS_NAMES_TO_PATH = {
 class ResourceManager:
 
     _instance = None 
-    _ctx : Context = None
-    _true_res :tuple[int,int] = None
+    _gl_ctx : Context = None
+    _game_ctx = None
 
     @staticmethod
-    def get_instance(ctx: Context = None,true_res:tuple[int,int]= None)->"ResourceManager":
+    def get_instance(gl_ctx: Context = None, game_context = None)->"ResourceManager":
         if ResourceManager._instance is None: 
             
-            assert isinstance(ctx, Context), "Error: Resource Manager must be initialized with a GL context."
-            assert true_res is not None and true_res[0] > 0 and true_res[1] > 0 , "Error: Resource Manager must be initialized with a valid native resolution value."
+            assert isinstance(gl_ctx, Context), "Error: Resource Manager must be initialized with an openGL context."
+            assert game_context is not None , "Error: Resource Manager must be initialized with the game context."
 
-            ResourceManager._ctx = ctx
-            ResourceManager._true_res = true_res
+            ResourceManager._gl_ctx = gl_ctx
+            ResourceManager._game_ctx = game_context
             ResourceManager._instance = ResourceManager()
 
         return ResourceManager._instance
    
 
     def __init__(self)->None: 
-        # identity texcoords that represent texcoords for textures without an atlas 
-        self.identity_texcoords_bytes = np.array([(0.,1.),(1.,1.),(0.,0.),
-                                            (0.,0.),(1.,1.),(1.,0.)],dtype=np.float32).tobytes()
-        
+   
         # create animation data collections for entities' animations 
         self._create_animation_data_collections()
 
@@ -76,11 +74,16 @@ class ResourceManager:
 
 
     def _load_backgrounds(self,path:str)->None:
+
+        # identity texcoords that represent texcoords for textures without an atlas 
+        self.identity_texcoords_bytes = array([(0.,1.),(1.,1.),(0.,0.),
+                                            (0.,0.),(1.,1.),(1.,0.)],dtype=float32).tobytes()
+        
         self.backgrounds : dict[str,Background] = {}
         for folder in listdir(path):
             textures = []
             for tex_path in listdir(path = path + '/' + folder):
-                textures.append(load_texture(path +'/'+folder+'/'+tex_path,self._ctx))
+                textures.append(load_texture(path +'/'+folder+'/'+tex_path,self._gl_ctx))
                 
             self.backgrounds[folder] = Background(textures,self.identity_texcoords_bytes)
 
@@ -97,20 +100,20 @@ class ResourceManager:
     def _load_texture_atlasses(self)->None: 
         self.texture_atlasses: dict[str,"Texture"] = {}
         for atlas_name in TEXTURE_ATLAS_NAMES_TO_PATH:
-            self.texture_atlasses[atlas_name] = load_texture(TEXTURE_ATLAS_NAMES_TO_PATH[atlas_name],self._ctx)
+            self.texture_atlasses[atlas_name] = load_texture(TEXTURE_ATLAS_NAMES_TO_PATH[atlas_name],self._gl_ctx)
 
 
-    def get_cursor_ndc_vertices_and_buffer(self)->list[np.array,"Context.buffer"]: 
+    def get_cursor_ndc_vertices_and_buffer(self)->list[array,"Context.buffer"]: 
         x = 0. 
         y = 0. 
-        w = 2. * 9 / self._true_res[0]
-        h = 2. * 10 / self._true_res[1] 
+        w = 2. * 9 / self._game_ctx['true_res'][0]
+        h = 2. * 10 / self._game_ctx['true_res'][1] 
 
-        cursor_ndc_vertices = np.array([(x, y-h), (x + w, y-h), (x, y),
-                            (x, y), (x + w, y - h), (x + w, y)], dtype=np.float32)
+        cursor_ndc_vertices = array([(x, y-h), (x + w, y-h), (x, y),
+                            (x, y), (x + w, y - h), (x + w, y)], dtype=float32)
 
-        return [np.array([(x, y-h), (x + w, y-h), (x, y), (x, y), (x + w, y - h), (x + w, y)], dtype=np.float32), 
-                    self._ctx.buffer(data= cursor_ndc_vertices,dynamic=True)]
+        return [array([(x, y-h), (x + w, y-h), (x, y), (x, y), (x + w, y - h), (x + w, y)], dtype=float32), 
+                    self._gl_ctx.buffer(data= cursor_ndc_vertices,dynamic=True)]
                            
 
     def _create_ui_element_texcoords(self)->None: 
@@ -163,17 +166,16 @@ class ResourceManager:
                 for gun_holding_state in player_texture_atlas_positions:
                     for animation_state in player_texture_atlas_positions[gun_holding_state]:
                         animation = self.animation_data_collections['player'].animations[animation_state]
-                        for frame in range(animation.count): 
+                        for frame in range(animation.n_textures): 
                             self.entity_texcoords_bytes[(entity_type,gun_holding_state,animation_state,frame)] = self._create_entity_texcoords(player_texture_atlas_positions[gun_holding_state][animation_state],ENTITY_SIZES[entity_type],frame)
                         
             else: 
                 pass
             
             self.entity_local_vertices_bytes[entity_type] = self._create_entity_local_vertices(ENTITY_SIZES[entity_type])
-        # load the player entity texcoords for now
 
 
-    def _create_texcoords(self,atlas_position:tuple[int,int],texture_size:tuple[int,int],texture_atlas:"Context.Texture",asbytes = True) ->bytes:
+    def _create_texcoords(self,atlas_position:tuple[uint32,uint32],texture_size:tuple[uint32,uint32],texture_atlas:"Context.Texture",asbytes = True) ->bytes:
         x =  (atlas_position[0]) / texture_atlas.size[0]
         y = (atlas_position[1]) / texture_atlas.size[1]
         w = texture_size[0] / texture_atlas.size[0]
@@ -185,36 +187,38 @@ class ResourceManager:
         p4 = (x + w, y)
 
         if asbytes:
-            return np.array([p3, p4, p1,
-                            p1, p4, p2], dtype=np.float32).tobytes()
+            return array([p3, p4, p1,
+                            p1, p4, p2], dtype=float32).tobytes()
         else: 
-            return np.array([p3, p4, p1,
-                            p1, p4, p2], dtype=np.float32)
+            return array([p3, p4, p1,
+                            p1, p4, p2], dtype=float32)
 
-    def _create_entity_texcoords(self,texture_atlas_position:tuple[int,int],texture_size:tuple[int,int],animation_frame:int)->bytes:
+    def _create_entity_texcoords(self,texture_atlas_position:tuple[uint32,uint32],texture_size:tuple[uint32,uint32],animation_frame:uint16)->bytes:
 
-        x =  (texture_atlas_position[0] + animation_frame * texture_size[0]) / self.texture_atlasses['entities'].size[0]
-        y = (texture_atlas_position[1]) / self.texture_atlasses['entities'].size[1]
-        w = texture_size[0] / self.texture_atlasses['entities'].size[0]
-        h = texture_size[1] / self.texture_atlasses['entities'].size[1]
+
+        uint32_texture_size = (uint32(self.texture_atlasses['entities'].width),uint32(self.texture_atlasses['entities'].height))
+        x =  (texture_atlas_position[0] + uint32(animation_frame) * texture_size[0]) / uint32_texture_size[0]
+        y = (texture_atlas_position[1]) / uint32_texture_size[1]
+        w = texture_size[0] / uint32_texture_size[0]
+        h = texture_size[1] / uint32_texture_size[1]
 
         p1 = (x, y + h)
         p2 = (x + w, y + h)
         p3 = (x, y)
         p4 = (x + w, y)
 
-        return np.array([p3, p4, p1,
-                        p1, p4, p2], dtype=np.float32).tobytes()
+        return array([p3, p4, p1,
+                        p1, p4, p2], dtype=float32).tobytes()
 
-    def _create_entity_local_vertices(self,entity_size:tuple[int,int])->bytes:
+    def _create_entity_local_vertices(self,entity_size:tuple[uint32,uint32])->bytes:
 
-        x =  -entity_size[0]//2
-        y = entity_size[1]//2
-        w = entity_size[0]
-        h = entity_size[1]
+        x =  int32(entity_size[0]) // -2
+        y = int32(entity_size[1]) //2
+        w = int32(entity_size[0])
+        h = int32(entity_size[1])
 
-        return np.array([(x, y), (x + w, y), (x, y - h),
-                (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32).tobytes()
+        return array([(x, y), (x + w, y), (x, y - h),
+                (x, y - h), (x + w, y), (x + w, y - h)],dtype=float32).tobytes()
 
         # return the local vertices for the entity type
 
@@ -248,33 +252,33 @@ class ResourceManager:
             p3 = (x, y) 
             p4 = (x + w, y)
 
-            texcoords = np.array([p1, p2, p3,
-                                p3, p2, p4], dtype=np.float32).tobytes()
+            texcoords = array([p1, p2, p3,
+                                p3, p2, p4], dtype=float32).tobytes()
 
         return texcoords
 
 
-    def create_tilemap_vbos(self,tile_size:int,non_physical_tile_layers:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
-        max_visible_tiles_plus_extra = ((self._true_res[0]//tile_size)+ 2) * ((self._true_res[1]//tile_size)+2) 
+    def create_tilemap_vbos(self,tile_size:int,non_physical_tile_layers:int)->tuple[int,int,int,"Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
+        padding = 11
+        tiles_per_buffer_column = padding * 2 + self._game_ctx['true_res'][1] // tile_size 
+        tiles_per_buffer_row = padding * 2 + self._game_ctx['true_res'][0] // tile_size
 
+        max_visible_tiles_plus_extra = tiles_per_buffer_column * tiles_per_buffer_row
 
-        vertex_size = 2 * 4
-        physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size
-        non_physical_tiles_buffer_size = max_visible_tiles_plus_extra * 6 * vertex_size * non_physical_tile_layers
+        physical_tiles_texcoords_array = zeros(max_visible_tiles_plus_extra *12 ,dtype= float32)
+        physical_tiles_positions_array = zeros(max_visible_tiles_plus_extra * 2, dtype= float32)
 
-        physical_tiles_vbo = self._ctx.buffer(reserve=physical_tiles_buffer_size,dynamic=True)
-        non_physical_tiles_vbo = self._ctx.buffer(reserve=non_physical_tiles_buffer_size,dynamic=True)
+        physical_tiles_vbo = self._gl_ctx.buffer(data=physical_tiles_texcoords_array.tobytes(),dynamic=True)
+        physical_tiles_position_vbo = self._gl_ctx.buffer(data = physical_tiles_positions_array.tobytes(),dynamic= True)
 
+        non_physical_tiles_texcoords_array = zeros(max_visible_tiles_plus_extra * non_physical_tile_layers * 12,dtype=float32)
+        non_physical_tiles_positions_array = zeros(max_visible_tiles_plus_extra * non_physical_tile_layers * 2, dtype= float32)
 
-        position_vertex_size = 2 * 4
-        physical_tiles_position_buffer_size = max_visible_tiles_plus_extra * position_vertex_size
-        non_physical_tiles_position_buffer_size = max_visible_tiles_plus_extra * position_vertex_size * non_physical_tile_layers
+        non_physical_tiles_vbo = self._gl_ctx.buffer(data=non_physical_tiles_texcoords_array.tobytes(),dynamic=True)
+        non_physical_tiles_position_vbo = self._gl_ctx.buffer(data = non_physical_tiles_positions_array.tobytes(),dynamic= True)
 
-        physical_tiles_position_vbo = self._ctx.buffer(reserve=physical_tiles_position_buffer_size,dynamic= True)
-        non_physical_tiles_position_vbo =self._ctx.buffer(reserve=non_physical_tiles_position_buffer_size,dynamic=True)
-
-
-        return (physical_tiles_vbo,non_physical_tiles_vbo,physical_tiles_position_vbo,non_physical_tiles_position_vbo)
+        return (padding,tiles_per_buffer_row,tiles_per_buffer_column,physical_tiles_vbo,non_physical_tiles_vbo,
+                physical_tiles_position_vbo,non_physical_tiles_position_vbo)
 
 
 
@@ -282,7 +286,7 @@ class ResourceManager:
 
         tile_atlas_byte_data = self.texture_atlasses["tiles"].read(alignment=4)
         width,height = self.texture_atlasses["tiles"].size
-        image_data = np.frombuffer(tile_atlas_byte_data,dtype = np.uint8).reshape((height,width,4))
+        image_data = frombuffer(tile_atlas_byte_data,dtype = uint8).reshape((height,width,4))
 
         tile_colors = {}
 
@@ -332,6 +336,8 @@ class ResourceManager:
                     texcoords = self._get_texcoords_for_tile(self.texture_atlasses['tiles'],tile_general_info,tile)
                 elif tile_info.type == 'building_door':
                     door_data = tile_info_list[1]
+
+
                 """
                 #texture_coords = self._get_texture_coords_for_tile(tile_texture_atlas,tile_info,door_data)
                 tile_texcoords[tile_texcoord_key] = texcoords 
@@ -348,14 +354,14 @@ class ResourceManager:
         return tile_texcoords 
 
 
-    def get_NDC_tile_vertices(self,tile_size:int)->np.array:
+    def get_NDC_tile_vertices(self,tile_size:int)->array:
         x = 0.
         y = 0.
-        w = 2. * tile_size / self._true_res[0]
-        h = 2. * tile_size / self._true_res[1]
+        w = 2. * tile_size / self._game_ctx['true_res'][0]
+        h = 2. * tile_size / self._game_ctx['true_res'][1]
 
-        return np.array([(x, y), (x + w, y), (x, y - h),
-                (x, y - h), (x + w, y), (x + w, y - h)],dtype=np.float32)
+        return array([(x, y), (x + w, y), (x, y - h),
+                (x, y - h), (x + w, y), (x + w, y - h)],dtype=float32)
     
 
     def create_hud_inven_vbos(self,opaque_ui_element_quads:int,hidden_ui_element_quads:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]: 
@@ -364,11 +370,11 @@ class ResourceManager:
         opaque_ui_elements_buffer_size = ui_element_vertex_size* 6 * opaque_ui_element_quads
         hidden_ui_elements_buffer_size = ui_element_vertex_size* 6 * hidden_ui_element_quads
 
-        opaque_vertex_buffer = self._ctx.buffer(reserve=opaque_ui_elements_buffer_size,dynamic=True)
-        opaque_texcoords_buffer = self._ctx.buffer(reserve=opaque_ui_elements_buffer_size,dynamic=True)
+        opaque_vertex_buffer = self._gl_ctx.buffer(reserve=opaque_ui_elements_buffer_size,dynamic=True)
+        opaque_texcoords_buffer = self._gl_ctx.buffer(reserve=opaque_ui_elements_buffer_size,dynamic=True)
 
-        hidden_vertex_buffer = self._ctx.buffer(reserve=hidden_ui_elements_buffer_size,dynamic=True)
-        hidden_texcoords_buffer = self._ctx.buffer(reserve=hidden_ui_elements_buffer_size,dynamic=True)
+        hidden_vertex_buffer = self._gl_ctx.buffer(reserve=hidden_ui_elements_buffer_size,dynamic=True)
+        hidden_texcoords_buffer = self._gl_ctx.buffer(reserve=hidden_ui_elements_buffer_size,dynamic=True)
 
         return (opaque_vertex_buffer,opaque_texcoords_buffer,hidden_vertex_buffer,hidden_texcoords_buffer)
     
@@ -380,10 +386,15 @@ class ResourceManager:
         opaque_item_buffer_size = item_vertex_size * 6 * opaque_item_quads 
         hidden_item_buffer_size = item_vertex_size * 6 * hidden_item_quads
 
-        opaque_item_vertex_buffer = self._ctx.buffer(reserve=opaque_item_buffer_size,dynamic= True)
-        opaque_item_texcoords_buffer =  self._ctx.buffer(reserve=opaque_item_buffer_size,dynamic=True)
+        opaque_item_vertex_buffer = self._gl_ctx.buffer(reserve=opaque_item_buffer_size,dynamic= True)
+        opaque_item_texcoords_buffer =  self._gl_ctx.buffer(reserve=opaque_item_buffer_size,dynamic=True)
 
-        hidden_item_vertex_buffer = self._ctx.buffer(reserve= hidden_item_buffer_size,dynamic=True)
-        hidden_item_texcoords_buffer = self._ctx.buffer(reserve= hidden_item_buffer_size,dynamic=True)
+        hidden_item_vertex_buffer = self._gl_ctx.buffer(reserve= hidden_item_buffer_size,dynamic=True)
+        hidden_item_texcoords_buffer = self._gl_ctx.buffer(reserve= hidden_item_buffer_size,dynamic=True)
 
         return (opaque_item_vertex_buffer,opaque_item_texcoords_buffer,hidden_item_vertex_buffer,hidden_item_texcoords_buffer)
+
+    def get_tilemap_json(self,name:str)->any: 
+        if name in self.tilemap_jsons: 
+            return self.tilemap_jsons[name]
+        return None 

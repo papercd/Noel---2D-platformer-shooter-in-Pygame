@@ -6,6 +6,7 @@ from scripts.new_resource_manager import ResourceManager
 from scripts.new_inventory import Inventory,InventoryEngine,WeaponInventory,Cell
 from scripts.lists import WeaponNode
 import numpy as np 
+from numpy import float32
 
 from typing import TYPE_CHECKING
 
@@ -17,11 +18,11 @@ if TYPE_CHECKING:
 
 class HUD:
 
-    def __init__(self,true_res:tuple[int,int],true_to_native_ratio:int)->None: 
+    def __init__(self,game_context)->None: 
 
         self._ref_rm = ResourceManager.get_instance()
-        self._true_res = true_res
-        self._true_to_native_ratio = true_to_native_ratio
+        
+        self._game_ctx = game_context
          
         self.inven_open_state = False
         self.inven_open_time = 0
@@ -33,30 +34,30 @@ class HUD:
 
     def _create_diplay_elements(self)->None:
  
-        self.health_bar_topleft = (int(self._true_res[0] * TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO[0]),
-                                    int(self._true_res[1] * TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO[1]))
-        self.health_bar_dimensions = (int(TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO * self._true_res[0]),
-                                       int(TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO * self._true_res[1]))
+        self.health_bar_topleft = (int(self._game_ctx['true_res'][0] * TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO[0]),
+                                    int(self._game_ctx['true_res'][1] * TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO[1]))
+        self.health_bar_dimensions = (int(TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO * self._game_ctx['true_res'][0]),
+                                       int(TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO * self._game_ctx['true_res'][1]))
 
         self.stamina_bar_topelft = (self.health_bar_topleft[0],self.health_bar_topleft[1] + self.health_bar_dimensions[1] + 1)
-        self.stamina_bar_dimensions = (int(TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO * self._true_res[0]),
-                                       int(TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO * self._true_res[1])) 
+        self.stamina_bar_dimensions = (int(TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO * self._game_ctx['true_res'][0]),
+                                       int(TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO * self._game_ctx['true_res'][1])) 
 
         self.weapon_inventory_rows_cols = (1,4)
         self.weapon_inventory_cells = self.weapon_inventory_rows_cols[0] * self.weapon_inventory_rows_cols[1]
-        self.weapon_inventory_cell_dim = (int(self._true_res[0] * TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO[0]) // self.weapon_inventory_rows_cols[1],
-                                           int(self._true_res[1] * TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO[1]) // self.weapon_inventory_rows_cols[0])
+        self.weapon_inventory_cell_dim = (int(self._game_ctx['true_res'][0] * TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO[0]) // self.weapon_inventory_rows_cols[1],
+                                           int(self._game_ctx['true_res'][1] * TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO[1]) // self.weapon_inventory_rows_cols[0])
 
         self.open_item_inventory_rows_cols = (1,5)
         self.open_item_inventory_cells = self.open_item_inventory_rows_cols[0] * self.open_item_inventory_rows_cols[1]
-        self.open_item_inventory_cell_length =int(self._true_res[0] * TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1]  
+        self.open_item_inventory_cell_length =int(self._game_ctx['true_res'][0] * TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1]  
 
         self.hidden_item_inventory_rows_cols = [2,5]
         self.hidden_item_inventory_cells = self.hidden_item_inventory_rows_cols[0] * self.open_item_inventory_rows_cols[1]
-        self.hidden_item_inventory_cell_length = int(self._true_res[0] * TRUE_RES_TO_HIDDEN_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1] 
+        self.hidden_item_inventory_cell_length = int(self._game_ctx['true_res'][0] * TRUE_RES_TO_HIDDEN_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1] 
 
-        self.current_weapon_display_cell_dim = (int(self._true_res[0] * TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO[0]),
-                                                 int(self._true_res[1] * TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO[1]))
+        self.current_weapon_display_cell_dim = (int(self._game_ctx['true_res'][0] * TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO[0]),
+                                                 int(self._game_ctx['true_res'][1] * TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO[1]))
         
         
         # TODO: COMPUTE THIS: 
@@ -244,10 +245,10 @@ class HUD:
 
     def _create_ui_element_vertices(self,topleft:tuple[int,int],size:tuple[int,int])-> bytes:
 
-        x = 2. * (topleft[0])/ self._true_res[0]- 1.
-        y = 1. - 2. * (topleft[1])/ self._true_res[1]
-        w = 2. * size[0] / self._true_res[0]
-        h = 2. * size[1] /self._true_res[1]
+        x = 2. * (topleft[0])/ self._game_ctx['true_res'][0]- 1.
+        y = 1. - 2. * (topleft[1])/ self._game_ctx['true_res'][1]
+        w = 2. * size[0] / self._game_ctx['true_res'][0]
+        h = 2. * size[1] /self._game_ctx['true_res'][1]
 
         #return np.array([(x, y), (x + w, y), (x, y - h),
         #                    (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
@@ -328,6 +329,9 @@ class HUD:
             self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords_bytes['weapon_slot'][False],offset = write_to_buffer_offset)
 
 
+            self.hidden_items_vertices_buffer.write(self.weapon_vertices_bytes[False][(row,col)],offset = write_to_buffer_offset - BYTES_PER_TEXTURE_QUAD)
+
+
         if new_current_node:
             row = new_current_node.ind // weapon_inventory.columns 
             col = new_current_node.ind - row * weapon_inventory.columns 
@@ -336,6 +340,8 @@ class HUD:
 
             self.hidden_vertices_buffer.write(self.weapon_inven_vertices_bytes[True][(row,col)],offset = write_to_buffer_offset)
             self.hidden_texcoords_buffer.write(self._ref_rm.ui_element_texcoords_bytes['weapon_slot'][True],offset = write_to_buffer_offset)
+
+            self.hidden_items_vertices_buffer.write(self.weapon_vertices_bytes[True][(row,col)],offset = write_to_buffer_offset - BYTES_PER_TEXTURE_QUAD)
 
 
     def _on_cursor_item_change_callback(self)->None: 
@@ -475,12 +481,12 @@ class HUD:
 
 
 
-    def update(self,dt:float,cursor_state_change_callback:"function",cursor_cell_hover_callback:"function")->None:
+    def update(self,dt:float32,cursor_state_change_callback:"function",cursor_cell_hover_callback:"function")->None:
         # inventory open time update 
         self.inven_open_time = max(0,min(self.max_inven_open_time,self.inven_open_time + (2*self.inven_open_state - 1) * 4 * dt))
 
         # cursor update 
-        self.cursor.update(self._true_to_native_ratio,dt,cursor_state_change_callback)
+        self.cursor.update(self._game_ctx['display_scale_ratio'],dt,cursor_state_change_callback)
 
         # TODO: stamina, health bar updates
 

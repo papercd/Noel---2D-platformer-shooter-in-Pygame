@@ -32,11 +32,11 @@ class Item:
 
 
 class Weapon(Item): 
-    def __init__(self, size, origin,name, count=1, stackable=False):
+    def __init__(self, size, origin_offset ,name, count=1, stackable=False):
         super().__init__(name, count, stackable)
         self.magazine = 0
         self.size = size
-        self.origin = origin 
+        self.origin_offset_from_center = origin_offset 
         self._type = 'weapon'
         
 
@@ -48,7 +48,7 @@ class Weapon(Item):
 
 class AK47(Weapon):
     def __init__(self):
-        super().__init__((18,9),(2,2),'ak47', 1, False)
+        super().__init__((18,9),(-7,-2),'ak47', 1, False)
 
     def copy(self)->"AK47": 
         new_ak = AK47()
@@ -57,7 +57,7 @@ class AK47(Weapon):
 
 class FlameThrower(Weapon):
     def __init__(self):
-        super().__init__((24,8),(2,2),'flamethrower', 1, False) 
+        super().__init__((24,8),(-10,-2),'flamethrower', 1, False) 
 
     def copy(self)->"FlameThrower":
         new_flamethrower = FlameThrower()

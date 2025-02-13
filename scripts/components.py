@@ -1,46 +1,45 @@
 from dataclasses import dataclass as component 
 from dataclasses import field
 from pygame.rect import Rect
-from scripts.frect import FRect
 from pygame.math import Vector2 as vec2
 from scripts.data import GRAVITY, AnimationDataCollection
-import numpy as np
-
+ 
+from numpy import cos,sin, float32,uint16,uint32,int32,array,zeros
 
 @component 
 class PhysicsComponent: 
-    size :     tuple[int,int] 
+    size :     tuple[uint32,uint32] 
     flip :     bool = False 
-    position : vec2  = field(default_factory= lambda:vec2(0,0))         # world coordinates of entity. 
-    rotation : float = 0                                                # rotation angle in radians 
-    scale :    vec2  = field(default_factory= lambda:vec2(1.0,1.0))     #  (1.0,1.0)
-    origin :   vec2  = field(default_factory= lambda:vec2(0,0))         # local origin coordinates (0,0) is topleft. 
-    velocity:  vec2  = field(default_factory= lambda:vec2(0,0))
-    acceleration: vec2 = field(default_factory= lambda:vec2(0,GRAVITY))
+    position : array = field(default_factory= lambda:array([0,0],dtype=int32))
+    rotation : array = field(default_factory= lambda:array([0],dtype=float32))
+    scale : array = field(default_factory= lambda : array([1.0,1.0],dtype = float32))
+    origin : array = field(default_factory= lambda: array([0,0],dtype=float32))
+    velocity : array = field(default_factory= lambda : array([0,0],dtype=float32))
+    acceleration : array = field(default_factory= lambda: array([0,GRAVITY],dtype= float32))
 
     collision_rect : Rect = field(default_factory= lambda: Rect(0,0,1,1))
-    displacement_buffer : vec2 = field(default_factory= lambda: vec2(0,0))
+    displacement_buffer : array = field(default_factory= lambda: array([0,0],dtype= float32))
     
-    prev_transform : np.array = field(default_factory= lambda: np.array([
+    prev_transform : array = field(default_factory= lambda: array([
         [1,0,0],                        
         [0,1,0],
         [0,0,1]
-    ],dtype=np.float32)) # previous transform matrix to integrate interpolation for rendering.
+    ],dtype=float32)) # previous transform matrix to integrate interpolation for rendering.
 
 
     @property 
-    def transform(self)->np.array: 
-        cos_a = np.cos(self.rotation)
-        sin_a = np.sin(self.rotation)
+    def transform(self)->array: 
+        cos_a = cos(self.rotation[0])
+        sin_a = sin(self.rotation[0])
 
         tx = self.position[0] - self.origin[0] * self.scale[0] 
         ty = self.position[1] - self.origin[1] * self.scale[1] 
         
-        return np.array([
+        return array([
             [(-2*self.flip +1) *cos_a * self.scale[0], -sin_a * self.scale[1], tx],
             [sin_a * self.scale[0], cos_a  * self.scale[1], ty],
             [0,0,1]
-        ],dtype= np.float32)
+        ],dtype= float32)
 
 
 
@@ -54,15 +53,15 @@ class WeaponHolderComponent:
     origin : vec2 = field(default_factory= lambda:vec2(0,0))
 
     @property
-    def transform(self,position:vec2)->np.array: 
-        cos_a = np.cos(self.rotation)
-        sin_a = np.sin(self.rotation)
+    def transform(self,position:vec2)->array: 
+        cos_a = cos(self.rotation)
+        sin_a = sin(self.rotation)
 
         tx = position[0] - self.origin[0] * self.scale[0]
         ty = position[1] - self.origin[1] * self.scale[1] 
 
 
-        return np.array([
+        return array([
             [(-2*self.flip +1) *cos_a * self.scale[0], -sin_a * self.scale[1], tx],
             [sin_a * self.scale[0], cos_a  * self.scale[1], ty],
             [0,0,1]
@@ -73,8 +72,8 @@ class StateInfoComponent:
 
     type : str = "default"
     curr_state : str = "idle"
-    max_jump_count : int = 0
-    jump_count : int = 0
+    max_jump_count : uint16 = uint16(5)
+    jump_count : array = field(default_factory= lambda: array([0],dtype = uint16))
     collide_left : bool = False
     collide_right : bool = False
     collide_top : bool = False
@@ -94,7 +93,7 @@ class InputComponent:
 @component 
 class RenderComponent:
     animation_data_collection : AnimationDataCollection
-    vertices_bytes : bytes = field(default_factory= lambda: np.zeros(6).tobytes())
+    vertices_bytes : bytes = field(default_factory= lambda: zeros(6).tobytes())
 
 
 
