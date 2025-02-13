@@ -2,6 +2,8 @@ import pygame
 import platform
 import importlib
 from os import environ
+from numpy import array,float32,int32,bool_
+
 from moderngl import create_context
 from screeninfo import get_monitors
 
@@ -77,21 +79,21 @@ class Noel():
         # game context is a set of game's system values that 
         # other systems have access to 
         self._game_context = {
-            "camera_offset" : [0,0],
-            "screen_shake": [0,0],
+            "camera_offset" : array([0,0],dtype=int32),
+            "screen_shake": array([0,0],dtype = int32),
             "gamestate" : GameState.GameLoop,
             "true_res" : (0,0),
             "screen_res": (0,0),
-            "display_scale_ratio": 4
+            "display_scale_ratio": int32(4)
         }
 
         # private members 
-        self._float_camera_offset_buffer = [0,0]
-        self._frame_count:int = 0
-        self._dt :float = 0
-        self._grass_rotation_function_time:float = 0
-        self._time_accumulator:float =0
-        self._movement_input:list[bool,bool] = [False,False]
+        self._float_camera_offset_buffer = array([0,0],dtype = float32)
+        self._frame_count = int32(0) 
+        self._dt = float32(0) 
+        self._grass_rotation_function_time = float32(0)
+        self._time_accumulator = float32(32)
+        self._movement_input = [False,False]
 
         self._system_display_info = self._get_system_display_info()
         self._set_initial_display_settings()
@@ -136,9 +138,9 @@ class Noel():
         self._game_context["screen_res"] = self._system_display_info['resolution']
         
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
-        self._game_context["display_scale_ratio"] = 4.0 
-        self._game_context["true_res"]= (int(self._game_context["screen_res"][0]/self._game_context["display_scale_ratio"]),\
-                                         int(self._game_context["screen_res"][1]/self._game_context["display_scale_ratio"]))
+        self._game_context["display_scale_ratio"] =  int32(4)
+        self._game_context["true_res"]= (int32(self._game_context["screen_res"][0]/self._game_context["display_scale_ratio"]),\
+                                         int32(self._game_context["screen_res"][1]/self._game_context["display_scale_ratio"]))
     
     def _configure_pygame(self):
         # Check that pygame has been initialized

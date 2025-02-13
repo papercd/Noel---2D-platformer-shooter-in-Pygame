@@ -2,6 +2,9 @@ from collections import namedtuple
 from dataclasses import dataclass 
 from my_pygame_light2d.light import PointLight
 
+from numpy import uint16 ,float32,array
+
+
 
 RGBA_tuple = namedtuple('RGBA_tuple',['r','g','b','a'])
 TileTexcoordsKey = namedtuple('TileTexcoordsKey',['type','relative_pos_ind','variant'])
@@ -20,56 +23,63 @@ AnimationParticleData = namedtuple('AnimationParticleData',['type','pos','veloci
 TEXTURE_BASE_PATH = 'data/images/'
 BYTES_PER_TEXTURE_QUAD = 48 
 BYTES_PER_POSITION_VEC2 = 8 
-PHYSICS_TIMESTEP = 1/60
+PHYSICS_TIMESTEP = float32(1/60)
 
 
 class Animation: 
     """ Animation class to handle entities' animations update """
-    def __init__(self,n_textures:int,img_dur:int=5,halt:bool = False,loop :bool =True):
-        self._loop= loop
-        self._halt = halt
-        self._img_dur = img_dur
-        self.finished = False 
-        self.accum_time = 0
-        self.frame = 0
-        self.count = n_textures 
+    def __init__(self,n_textures:uint16,img_dur:uint16=5,halt:bool = False,loop :bool =True):
+        self._n_textures:uint16 = n_textures
+        self._img_dur:uint16 = img_dur
+        self._halt:bool = halt
+        self._loop:bool = loop
+
+        self.finished:bool= False
+        self.accum_time = array([0],dtype=float32)
+        self.frame= array([0],dtype=uint16)
+
+    @property 
+    def n_textures(self)->uint16:
+        return self._n_textures
 
     def set_new_data(self,animation_data:AnimationData):
-        self._loop = animation_data.loop
-        self._halt = animation_data.halt
+        self._n_textures = animation_data.n_textures
         self._img_dur = animation_data.img_dur
-        self.finished= False 
-        self.frame = 0
-        self.count = animation_data.n_textures
+        self._halt = animation_data.halt
+        self._loop = animation_data.loop
+
+        self.finished = False
+        self.accum_time[0] = float(0)
+        self.frame[0] = uint16(0)
 
     def reset(self):
-        self.frame = 0
+        self.frame[0] = uint16(0)
         self.finished= False
     
     def copy(self):
-        return Animation(self.count,self._img_dur,self._halt,self._loop)
+        return Animation(self._n_textures,self._img_dur,self._halt,self._loop)
     
-    def update(self,dt):
+    def update(self,dt:float32):
 
         dt = min(dt, 2 * PHYSICS_TIMESTEP)
 
-        self.accum_time += dt 
+        self.accum_time[0] += dt 
         if self.accum_time >= PHYSICS_TIMESTEP: 
             if self._halt: 
-                self.frame = min(self.frame+1,self._img_dur * self.count -1)
-                if self.frame == self._img_dur * self.count -1 : self.finished= True 
+                self.frame[0] = min(self.frame[0]+uint16(1),self._img_dur * self._n_textures-uint16(1))
+                if self.frame[0] == self._img_dur * self._n_textures-uint16(1) : self.finished= True 
             else: 
                 if self._loop:
-                    self.frame = (self.frame+1) % (self._img_dur * self.count)
+                    self.frame[0] = (self.frame[0]+uint16(1)) % (self._img_dur * self._n_textures)
                 else: 
-                    self.frame = min(self.frame+1,self._img_dur *self.count -1)
-                    if self.frame >= self._img_dur *self.count -1:
+                    self.frame[0] = min(self.frame[0]+uint16(1),self._img_dur *self._n_textures-uint16(1))
+                    if self.frame[0] >= self._img_dur *self._n_textures-uint16(1):
                         self.finished= True 
             self.accum_time -= PHYSICS_TIMESTEP
 
 
-    def curr_frame(self) -> int:
-        return int(self.frame/self._img_dur)
+    def curr_frame(self) -> uint16:
+        return self.frame[0]//self._img_dur
 
 
 class DoorAnimation(Animation):
@@ -79,17 +89,17 @@ class DoorAnimation(Animation):
         super().__init__(n_textures, img_dur, True,False)
 
     def reset(self):
-        self.frame = 0 if self.opened else self._img_dur * self.count -1
+        self.frame = 0 if self.opened else self._img_dur * self._n_textures-1
         self.finished= False 
     
     def open(self,is_open = False):
         self.opened = is_open
-        self.frame = 0 if self.opened else self._img_dur * self.count -1 
+        self.frame = 0 if self.opened else self._img_dur * self._n_textures-1 
 
     def update(self):
         if self.opened: 
-            self.frame = min(self.frame+1,self._img_dur * self.count -1)
-            if self.frame == self._img_dur * self.count - 1 : self.finished= True 
+            self.frame = min(self.frame+1,self._img_dur * self._n_textures-1)
+            if self.frame == self._img_dur * self._n_textures- 1 : self.finished= True 
         else: 
             self.frame = max(0,self.frame-1) 
             if self.frame == 0 : self.finished= True 
@@ -166,15 +176,15 @@ ENTITIES_MAX_HORIZONTAL_SPEED = {
 
 ENTITY_ANIMATION_DATA = {
     'player' : (
-    AnimationData('idle',4,6,False,True),
-    AnimationData('crouch',1,4,True,False),
-    AnimationData('jump_up',1,5,True,False),
-    AnimationData('jump_down',4,5,True,False),
-    AnimationData('land',6,2,False,False),
-    AnimationData('run',6,4,False,True),
-    AnimationData('slide',1,5,True,False),
-    AnimationData('wall_slide',1,4,True,False),
-    AnimationData('sprint',6,3,False,True)
+    AnimationData('idle',uint16(4),uint16(6),False,True),
+    AnimationData('crouch',uint16(1),uint16(4),True,False),
+    AnimationData('jump_up',uint16(1),uint16(5),True,False),
+    AnimationData('jump_down',uint16(4),uint16(5),True,False),
+    AnimationData('land',uint16(6),uint16(2),False,False),
+    AnimationData('run',uint16(6),uint16(4),False,True),
+    AnimationData('slide',uint16(1),uint16(5),True,False),
+    AnimationData('wall_slide',uint16(1),uint16(4),True,False),
+    AnimationData('sprint',uint16(6),uint16(3),False,True)
     )
 }
 

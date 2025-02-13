@@ -239,6 +239,9 @@ class Tilemap:
                     self.physical_tiles_texcoords_vbo.write(self.null_texcoords_bytes,offset = texcoords_buffer_write_offset)
                     self.physical_tiles_position_vbo.write(self.null_positions_bytes,offset = positions_buffer_write_offset)
 
+                for non_physical_tile_layer in self.non_physical_tiles:
+                    if coor in non_physical_tile_layer:
+                        tile_info = non_physical_tile_layer[coor]
 
                 texcoords_buffer_write_offset += BYTES_PER_TEXTURE_QUAD
                 positions_buffer_write_offset += BYTES_PER_POSITION_VEC2

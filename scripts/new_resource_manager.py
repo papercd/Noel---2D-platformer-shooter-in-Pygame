@@ -165,7 +165,7 @@ class ResourceManager:
                 for gun_holding_state in player_texture_atlas_positions:
                     for animation_state in player_texture_atlas_positions[gun_holding_state]:
                         animation = self.animation_data_collections['player'].animations[animation_state]
-                        for frame in range(animation.count): 
+                        for frame in range(animation.n_textures): 
                             self.entity_texcoords_bytes[(entity_type,gun_holding_state,animation_state,frame)] = self._create_entity_texcoords(player_texture_atlas_positions[gun_holding_state][animation_state],ENTITY_SIZES[entity_type],frame)
                         
             else: 
@@ -268,8 +268,8 @@ class ResourceManager:
         physical_tiles_vbo = self._gl_ctx.buffer(data=physical_tiles_texcoords_array.tobytes(),dynamic=True)
         physical_tiles_position_vbo = self._gl_ctx.buffer(data = physical_tiles_positions_array.tobytes(),dynamic= True)
 
-        non_physical_tiles_texcoords_array = np.zeros((max_visible_tiles_plus_extra * non_physical_tile_layers * 6,2),dtype=np.float32)
-        non_physical_tiles_positions_array = np.zeros((max_visible_tiles_plus_extra * non_physical_tile_layers ,2), dtype= np.float32)
+        non_physical_tiles_texcoords_array = np.zeros(max_visible_tiles_plus_extra * non_physical_tile_layers * 12,dtype=np.float32)
+        non_physical_tiles_positions_array = np.zeros(max_visible_tiles_plus_extra * non_physical_tile_layers * 2, dtype= np.float32)
 
         non_physical_tiles_vbo = self._gl_ctx.buffer(data=non_physical_tiles_texcoords_array.tobytes(),dynamic=True)
         non_physical_tiles_position_vbo = self._gl_ctx.buffer(data = non_physical_tiles_positions_array.tobytes(),dynamic= True)
