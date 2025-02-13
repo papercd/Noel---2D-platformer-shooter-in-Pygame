@@ -2,7 +2,7 @@ from collections import namedtuple
 from dataclasses import dataclass 
 from my_pygame_light2d.light import PointLight
 
-from numpy import uint16 ,uint32,float32,array
+from numpy import int32,uint16 ,uint32,float32,array
 
 
 
@@ -154,13 +154,14 @@ class AnimationDataCollection:
 """ Animation Data """
 # physics updates are done every 1/60 seconds, the 60 is multiplied to the physics calculations 
 # so the number in front of the * corresponds to the unit of distance in pixels.
-SPRINT_FACTOR = 1.4
+SPRINT_FACTOR = float32(1.4)
 WALL_SLIDE_CAP_VELOCITY = 1 * 60 
 GRAVITY = 35 * 60   # 20 pixels per second squared
-TERMINAL_VELOCITY = 10 * 60     # 20 pixels per second
-HORIZONTAL_DECELERATION = 35 * 60    #15 pixels per second squared
+TERMINAL_VELOCITY = float32(10 * 60)     # 20 pixels per second
+HORIZONTAL_DECELERATION = int32(35 * 60)    #15 pixels per second squared
+
 ENTITIES_ACCELERATION = {
-    'player' : 70 * 60 
+    'player' : int32(70 * 60) 
 }
 
 ENTITIES_JUMP_SPEED = {
@@ -168,7 +169,7 @@ ENTITIES_JUMP_SPEED = {
 }
 
 ENTITIES_MAX_HORIZONTAL_SPEED = {
-    'player' : 240
+    'player' : int32(240)
 }
 
 

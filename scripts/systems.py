@@ -18,7 +18,10 @@ from moderngl import NEAREST,LINEAR,BLEND,Texture,Framebuffer
 from OpenGL.GL import glUniformBlockBinding,glGetUniformBlockIndex,glViewport
 from math import sqrt,dist,degrees,pi
 from random import choice
+
 import numpy as np
+
+from numpy import float32,uint16,int32,uint8,array
 
 from typing import TYPE_CHECKING 
 
@@ -41,48 +44,48 @@ class PhysicsSystem(esper.Processor):
 
 
     def _process_regular_tile_y_collision(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,
-                                          rect_tile:tuple["Rect","TileInfoDataClass"],dt:float)->None: 
-        if physics_comp.velocity[1] > 0:
+                                          rect_tile:tuple["Rect","TileInfoDataClass"],dt:float32)->None: 
+        if physics_comp.velocity[1] > float32(0):
             state_info_comp.collide_bottom = True
-            physics_comp.position[1] = rect_tile[0].top - physics_comp.size[1] // 2
+            physics_comp.position[1] = rect_tile[0].top + int32(physics_comp.size[1]) // -2
             physics_comp.collision_rect.bottom = rect_tile[0].top 
             physics_comp.velocity[1] =GRAVITY * dt 
-            state_info_comp.jump_count = 0
+            state_info_comp.jump_count[0] = uint16(0)
 
-        elif physics_comp.velocity[1] < 0:
+        elif physics_comp.velocity[1] < float32(0):
             state_info_comp.collide_top = True
-            physics_comp.position[1] = rect_tile[0].bottom + physics_comp.size[1] // 2
+            physics_comp.position[1] = rect_tile[0].bottom + int32(physics_comp.size[1]) // 2
             physics_comp.collision_rect.top = rect_tile[0].bottom
-            physics_comp.velocity[1] = 0
-        physics_comp.displacement_buffer[1] = 0
+            physics_comp.velocity[1] = float32(0)
+        physics_comp.displacement_buffer[1] = float32(0)
 
 
     def _process_regular_tile_x_collision(self,state_info_comp:StateInfoComponent,physics_comp:PhysicsComponent,
                                           rect_tile:tuple["Rect","TileInfoDataClass"])->None: 
-        if physics_comp.velocity[0] > 0:
+        if physics_comp.velocity[0] > float32(0):
             state_info_comp.collide_right = True
             physics_comp.collision_rect.right = rect_tile[0].left 
-            physics_comp.position[0]  = physics_comp.collision_rect.centerx 
+            physics_comp.position[0]  = int32(physics_comp.collision_rect.centerx) 
             
-        elif physics_comp.velocity[0] < 0 :
+        elif physics_comp.velocity[0] < float32(0) :
             state_info_comp.collide_left = True 
             physics_comp.collision_rect.left = rect_tile[0].right 
-            physics_comp.position[0] = physics_comp.collision_rect.centerx 
+            physics_comp.position[0] = int32(physics_comp.collision_rect.centerx) 
         else: 
-            if physics_comp.position[0] > rect_tile[0].centerx:
+            if physics_comp.position[0] > int32(rect_tile[0].centerx):
                 state_info_comp.collide_left = True
                 physics_comp.collision_rect.left = rect_tile[0].right
-                physics_comp.position[0] = physics_comp.collision_rect.centerx
+                physics_comp.position[0] = int32(physics_comp.collision_rect.centerx)
             else: 
                 state_info_comp.collide_right = True
                 physics_comp.collision_rect.right = rect_tile[0].left
-                physics_comp.position[0] = physics_comp.collision_rect.centerx
-        physics_comp.displacement_buffer[0] = 0
+                physics_comp.position[0] = int32(physics_comp.collision_rect.centerx)
+        physics_comp.displacement_buffer[0] = float32(0)
 
 
 
     def _handle_tile_collision(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,rect_tile:tuple["Rect","TileInfoDataClass"],
-                          tile_size:int,dt:float,axis_bit:bool)->None: 
+                          tile_size:int32,dt:float32,axis_bit:bool)->None: 
 
     
         rel_pos_ind= rect_tile[1].info.relative_pos_ind 
@@ -119,11 +122,11 @@ class PhysicsSystem(esper.Processor):
 
                     if physics_comp.collision_rect.bottom > new_collision_rect_bottom:
                         physics_comp.collision_rect.bottom = new_collision_rect_bottom
-                        physics_comp.position[1] = physics_comp.collision_rect.bottom - physics_comp.size[1] // 2 
+                        physics_comp.position[1] = physics_comp.collision_rect.bottom + int32(physics_comp.size[1]) // -2 
                         physics_comp.velocity[1] = GRAVITY * dt
-                        state_info_comp.jump_count = 0
+                        state_info_comp.jump_count[0] = uint16(0) 
                         state_info_comp.collide_bottom = True
-                        physics_comp.displacement_buffer[1] = 0
+                        physics_comp.displacement_buffer[1] = float32(0)
 
                 else: 
                     if rect_tile[1].info.type.endswith('door'):
@@ -132,17 +135,17 @@ class PhysicsSystem(esper.Processor):
                     self._process_regular_tile_y_collision(physics_comp,state_info_comp,rect_tile,dt)
 
 
-    def _process_common_physics_updates(self,physics_comp: PhysicsComponent,state_info_comp:StateInfoComponent,dt:float,sprinting:bool = False)->None: 
+    def _process_common_physics_updates(self,physics_comp: PhysicsComponent,state_info_comp:StateInfoComponent,dt:float32,sprinting:bool = False)->None: 
 
         physics_comp.prev_transform = physics_comp.transform
 
         # apply deceleration to horizontal velocity
-        if physics_comp.velocity[0] > 0:
-            physics_comp.velocity[0] = max(0,physics_comp.velocity[0] - HORIZONTAL_DECELERATION * dt)
-        elif physics_comp.velocity[0] < 0:
-            physics_comp.velocity[0] = min(0,physics_comp.velocity[0] + HORIZONTAL_DECELERATION * dt)
+        if physics_comp.velocity[0] > float32(0):
+            physics_comp.velocity[0] = max(float32(0),physics_comp.velocity[0] - HORIZONTAL_DECELERATION * dt)
+        elif physics_comp.velocity[0] < float32(0):
+            physics_comp.velocity[0] = min(float32(0),physics_comp.velocity[0] + HORIZONTAL_DECELERATION * dt)
 
-        sprint_factor = SPRINT_FACTOR if sprinting else 1
+        sprint_factor = SPRINT_FACTOR if sprinting else float32(1)
 
         # clamp velocity to maximums
         physics_comp.velocity[0] = max(-ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type]*sprint_factor, min(ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type]*sprint_factor,physics_comp.velocity[0] + physics_comp.acceleration[0] * dt * sprint_factor))
@@ -154,15 +157,15 @@ class PhysicsSystem(esper.Processor):
         displacement = 0
         collided = False 
 
-        if physics_comp.displacement_buffer[0] >= 1.0 or physics_comp.displacement_buffer[0] <= -1.0:
-            displacement = int(physics_comp.displacement_buffer[0]) 
+        if physics_comp.displacement_buffer[0] >= float32(1.0) or physics_comp.displacement_buffer[0] <= float32(-1.0):
+            displacement = int32(physics_comp.displacement_buffer[0]) 
 
             physics_comp.collision_rect.x += displacement
             physics_comp.position[0] += displacement 
 
             physics_comp.displacement_buffer[0] -= displacement
 
-        for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((physics_comp.position[0]- physics_comp.size[0] //2 ,physics_comp.position[1] - physics_comp.size[1] //2),\
+        for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((physics_comp.position[0]+ int32(physics_comp.size[0]) // -2 ,physics_comp.position[1] + int32(physics_comp.size[1]) //-2),\
                                                                            physics_comp.size,dir = physics_comp.flip):
             if physics_comp.collision_rect.colliderect(rect_tile[0]):
                 collided = True 
@@ -173,7 +176,7 @@ class PhysicsSystem(esper.Processor):
             state_info_comp.collide_right = False 
 
         if physics_comp.displacement_buffer[1] >= 1.0 or physics_comp.displacement_buffer[1] <= -1.0:
-            displacement = int(physics_comp.displacement_buffer[1]) 
+            displacement = int32(physics_comp.displacement_buffer[1]) 
             physics_comp.collision_rect.y += displacement
             physics_comp.position[1] += displacement 
 
@@ -194,19 +197,19 @@ class PhysicsSystem(esper.Processor):
 
 
     def _process_physics_updates_for_player(self,input_comp:InputComponent,physics_comp:PhysicsComponent
-                                            ,state_info_comp:StateInfoComponent,dt:float)->None:
+                                            ,state_info_comp:StateInfoComponent,dt:float32)->None:
         
-        direction_bit = input_comp.right - input_comp.left
-        if direction_bit != 0:
-            physics_comp.flip = direction_bit == -1
+        direction = int32(input_comp.right - input_comp.left)
+        if direction != int32(0):
+            physics_comp.flip = direction == int32(-1)
         
-        physics_comp.acceleration[0] = ENTITIES_ACCELERATION[state_info_comp.type] * direction_bit 
-        if input_comp.up and state_info_comp.jump_count < state_info_comp.max_jump_count:
-            physics_comp.velocity[1] = -ENTITIES_JUMP_SPEED[state_info_comp.type]
+        physics_comp.acceleration[0] = float32(ENTITIES_ACCELERATION[state_info_comp.type] * direction)
+        if input_comp.up and state_info_comp.jump_count[0] < state_info_comp.max_jump_count:
+            physics_comp.velocity[1] = float32(-ENTITIES_JUMP_SPEED[state_info_comp.type])
         
             # to stop the player from jumping infinitely
             input_comp.up = False
-            state_info_comp.jump_count += 1
+            state_info_comp.jump_count[0] += uint16(1)
 
         self._process_common_physics_updates(physics_comp, state_info_comp,dt,sprinting = input_comp.shift)
 
@@ -224,13 +227,12 @@ class PhysicsSystem(esper.Processor):
         self._ref_tilemap =tilemap
         
 
-    def process(self,dt:float)->None: 
+    def process(self,dt:float32)->None: 
         # process physics for player entity, which has an input component while the rest of the entities don't.
         #player,(player_input_comp,player_state_info_comp,player_physics_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent)[0]
 
         for entity, (state_info_comp,physics_comp) in esper.get_components(StateInfoComponent,PhysicsComponent):
             if state_info_comp.type == "player":
-                # print(physics_comp.position[0]// 16, physics_comp.position[1] // 16)
                 self._process_physics_updates_for_player(self._ref_em.player_input_comp,physics_comp,state_info_comp,dt)
             else: 
                 self._process_non_player_physics_updates(physics_comp,state_info_comp,dt)
@@ -255,24 +257,24 @@ class RenderSystem(esper.Processor):
         self._ref_hud : "HUD" =None
         
         # Initialize members 
-        self._background_panels:int = 3
+        self._background_panels:int32= int32(3)
 
         self._game_ctx = game_context
-
-        self._diagonal = sqrt(self._game_ctx['true_res'][0] ** 2 + self._game_ctx['true_res'][1] ** 2)
-        self._ambient_light_RGBA = (.25, .25, .25, .25)
+        
+        self._ambient_light_RGBA = array([.25,.25,.25,.25],dtype= float32)
 
         self._active_static_lights : list["PointLight"] = []
         self.dynamic_lights:list["PointLight"] = []
         self.hulls:list["Hull"] = []
 
-        self._prev_hull_query_player_pos = (0,0)
-        self._prev_hull_query_camera_scroll = (0,0)
+        self._prev_hull_query_player_pos = array([0,0],dtype = int32) 
 
-        self._prev_lights_query_camera_scroll = (0,0)
+        self._prev_hull_query_camera_scroll = array([0,0],dtype = int32)
 
-        self._shadow_blur_radius = 5
-        self._max_hull_count = 512 
+        self._prev_lights_query_camera_scroll = array([0,0],dtype = int32)
+
+        self._shadow_blur_radius = uint8(5)
+        self._max_hull_count = uint16(512) 
 
         self._projection_matrix = np.array([
             [2. / self._game_ctx['true_res'][0] , 0 , -1.],
@@ -493,7 +495,7 @@ class RenderSystem(esper.Processor):
         )
 
 
-    def _opt_render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
+    def _opt_render_tilemap_to_bg_fbo(self,camera_offset:tuple[int32,int32])->None: 
         self._tile_draw_prog['cameraOffset'] = self._camera_offset_to_ndc_component(camera_offset) 
 
         self._fbo_bg.use()
@@ -503,7 +505,7 @@ class RenderSystem(esper.Processor):
 
 
     
-    def _camera_offset_to_ndc_component(self,camera_offset:tuple[int,int])->np.ndarray: 
+    def _camera_offset_to_ndc_component(self,camera_offset:tuple[int32,int32])->np.ndarray: 
         return np.array([ 2. * camera_offset[0] / self._game_ctx['true_res'][0],
                          -2. * camera_offset[1] / self._game_ctx['true_res'][1]],dtype=np.float32)
 
@@ -563,7 +565,7 @@ class RenderSystem(esper.Processor):
 
             self._vao_physical_tiles_draw.render(vertices=6,instances= physical_tile_instances)
 
-    def _render_HUD_to_fg_fbo(self,dt:float)->None: 
+    def _render_HUD_to_fg_fbo(self,dt:float32)->None: 
 
         self._ref_hud.update(dt,self.cursor_state_change_callback,self._ref_hud.cursor_cell_hover_state_change_callback)
         
@@ -632,15 +634,15 @@ class RenderSystem(esper.Processor):
                 , 1. - 2. * (position[1] * self._ref_tilemap.tile_size - camera_offset[1]) / fbo_h],dtype=np.float32).tobytes()
 
 
-    def _render_background_to_bg_fbo(self,camera_offset:tuple[int,int],infinite:bool = False)->None: 
-        speed = 1
-        
+    def _render_background_to_bg_fbo(self,camera_offset:tuple[int32,int32],infinite:bool = False)->None: 
+        speed = array([0],dtype= int32)
         for tex in self._ref_background.textures:
             if infinite: 
-                num_tiles = (self._game_ctx['true_res'][0]//tex.width) + 2
+                tex_width_int32 = int32(tex.width)
+                num_tiles = (int32(self._game_ctx['true_res'][0])//tex_width_int32) + int32(2)
 
                 for panel in range(-1,num_tiles):
-                    x_pos = panel*tex.width - (camera_offset[0] * 0.05 *speed) % tex.width
+                    x_pos = panel*tex_width_int32- (camera_offset[0] * 0.05 *speed[0]) % tex_width_int32 
                     vertex_data = self._create_infinite_background_texture_vertex_data(camera_offset,x_pos)
                     self._ref_background_vertices_buffer.write(vertex_data)
 
@@ -649,15 +651,15 @@ class RenderSystem(esper.Processor):
 
                     self._vao_background_draw.render()
             else: 
-                for panel in range(-self._background_panels//2 , self._background_panels//2 +1):
-                    vertex_data = self._create_background_texture_vertex_data(camera_offset,panel,speed)
+                for panel in range(self._background_panels//-2 , self._background_panels//2 +int32(1)):
+                    vertex_data = self._create_background_texture_vertex_data(camera_offset,panel,speed[0])
                     self._ref_background_vertices_buffer.write(vertex_data)
 
                     self._fbo_bg.use()
                     tex.use()
 
                     self._vao_background_draw.render()
-            speed += 1
+            speed[0] += int32(1)
 
 
     def _create_infinite_background_texture_vertex_data(self,camera_scroll:tuple[int,int],x_pos:int)->bytes:
@@ -672,7 +674,7 @@ class RenderSystem(esper.Processor):
 
 
 
-    def _create_background_texture_vertex_data(self,camera_scroll:tuple[int,int],panel_num,speed:int)->np.array:
+    def _create_background_texture_vertex_data(self,camera_scroll:tuple[int,int],panel_num:int,speed:int32)->np.array:
         width,height = self._fbo_bg.size 
         x = 2. * (panel_num*self._game_ctx['true_res'][0]-camera_scroll[0] *0.05 * speed) / width - 1.
         y = 1. -2. * (-min(0,camera_scroll[1]) * 0.05) / height
@@ -1119,13 +1121,13 @@ class RenderSystem(esper.Processor):
         )
 
     def clear(self,R:int = 0, G:int = 0, B:int = 0,A:int =255)->None: 
-        R,G,B,A =   normalize_color_arguments(R,G,B,A,)
+        R,G,B,A =   normalize_color_arguments(R,G,B,A)
         self._gl_ctx.screen.clear(0,0,0,255)
         self._fbo_bg.clear(R,G,B,A)
         self._fbo_fg.clear(R,G,B,A)
         
-    def process(self,game_context,interpolation_delta:float,dt:float)->None: 
-        
+    def process(self,game_context,interpolation_delta:float32,dt:float32)->None: 
+
         camera_offset = tuple(game_context['camera_offset'])
         screen_shake  = tuple(game_context['screen_shake'])
 
@@ -1133,7 +1135,7 @@ class RenderSystem(esper.Processor):
         self._render_background_to_bg_fbo(camera_offset)
         self._opt_render_tilemap_to_bg_fbo(camera_offset)
         #self._render_tilemap_to_bg_fbo(camera_offset)
-        #self._render_HUD_to_fg_fbo(dt)
+        self._render_HUD_to_fg_fbo(dt)
 
         entity_vertices_byte_array = bytearray()
         entity_texcoords_byte_array = bytearray()
@@ -1275,7 +1277,7 @@ class StateSystem(esper.Processor):
         self._player_state_machine = PlayerStateMachine()
         self._enemy_state_machine = EnemyStateMachine()
 
-    def process(self,dt:float)->None: 
+    def process(self,dt:float32)->None: 
         
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
@@ -1321,7 +1323,7 @@ class InputHandler(esper.Processor):
         self._ref_hud = hud
 
 
-    def process(self,dt:float,on_hot_reload_callback:"function")->None: 
+    def process(self,on_hot_reload_callback:"function")->None: 
   
         player_input_comp = self._ref_em.player_input_comp
 
@@ -1400,12 +1402,12 @@ class StateMachine:
 
 
 class PlayerStateMachine(StateMachine):
-    def change_state(self,input_comp:InputComponent,state_info_comp:StateInfoComponent,physics_comp:PhysicsComponent,render_comp:RenderComponent,dt:float):
+    def change_state(self,input_comp:InputComponent,state_info_comp:StateInfoComponent,physics_comp:PhysicsComponent,render_comp:RenderComponent,dt:float32):
         if state_info_comp.curr_state == 'land':
             pass
         else:
             if state_info_comp.collide_bottom:
-                if physics_comp.velocity[0] == 0:
+                if physics_comp.velocity[0] == float32(0):
                     if state_info_comp.collide_bottom:
                         if input_comp.down: 
                             new_state = 'slide'
@@ -1423,7 +1425,7 @@ class PlayerStateMachine(StateMachine):
                 if state_info_comp.collide_left or state_info_comp.collide_right:
                     new_state = 'wall_slide'
                 else: 
-                    if physics_comp.velocity[1] > 0:
+                    if physics_comp.velocity[1] > float32(0):
                         new_state = 'jump_down'
                     else: 
                         new_state = 'jump_up'

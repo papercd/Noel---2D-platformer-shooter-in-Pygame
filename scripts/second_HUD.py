@@ -6,6 +6,7 @@ from scripts.new_resource_manager import ResourceManager
 from scripts.new_inventory import Inventory,InventoryEngine,WeaponInventory,Cell
 from scripts.lists import WeaponNode
 import numpy as np 
+from numpy import float32
 
 from typing import TYPE_CHECKING
 
@@ -480,7 +481,7 @@ class HUD:
 
 
 
-    def update(self,dt:float,cursor_state_change_callback:"function",cursor_cell_hover_callback:"function")->None:
+    def update(self,dt:float32,cursor_state_change_callback:"function",cursor_cell_hover_callback:"function")->None:
         # inventory open time update 
         self.inven_open_time = max(0,min(self.max_inven_open_time,self.inven_open_time + (2*self.inven_open_state - 1) * 4 * dt))
 

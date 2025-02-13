@@ -2,7 +2,7 @@ import pygame
 import platform
 import importlib
 from os import environ
-from numpy import array,float32,int32,bool_
+from numpy import array,float32,float64,int32,uint8,uint16,bool_
 
 from moderngl import create_context
 from screeninfo import get_monitors
@@ -82,17 +82,17 @@ class Noel():
             "camera_offset" : array([0,0],dtype=int32),
             "screen_shake": array([0,0],dtype = int32),
             "gamestate" : GameState.GameLoop,
-            "true_res" : (0,0),
-            "screen_res": (0,0),
-            "display_scale_ratio": int32(4)
+            "true_res" : array([0,0],dtype=uint16),
+            "screen_res": array([0,0],dtype= uint16),
+            "display_scale_ratio": uint8(1)
         }
 
         # private members 
-        self._float_camera_offset_buffer = array([0,0],dtype = float32)
-        self._frame_count = int32(0) 
-        self._dt = float32(0) 
-        self._grass_rotation_function_time = float32(0)
-        self._time_accumulator = float32(32)
+        self._float_camera_offset_buffer = array([0,0],dtype = float64)
+        self._frame_count = array([0],dtype = uint16) 
+        self._dt = array([0],dtype = float32) 
+        #self._grass_rotation_function_time = float32(0)
+        self._time_accumulator = array([0],dtype= float32)
         self._movement_input = [False,False]
 
         self._system_display_info = self._get_system_display_info()
@@ -135,12 +135,15 @@ class Noel():
     def _set_initial_display_settings(self):
         environ['SDL_VIDEO_CENTERED'] = '1'
 
-        self._game_context["screen_res"] = self._system_display_info['resolution']
-        
+        self._game_context["screen_res"][0] = uint16(self._system_display_info['resolution'][0])
+        self._game_context["screen_res"][1] = uint16(self._system_display_info['resolution'][1])
+
         #TODO : you need to create a way to calculate native_res depending on selected resolution and scaling. 
-        self._game_context["display_scale_ratio"] =  int32(4)
-        self._game_context["true_res"]= (int32(self._game_context["screen_res"][0]/self._game_context["display_scale_ratio"]),\
-                                         int32(self._game_context["screen_res"][1]/self._game_context["display_scale_ratio"]))
+        self._game_context["display_scale_ratio"] =  uint8(4)
+
+        self._game_context["true_res"][0] = uint16(self._game_context["screen_res"][0] / uint16(self._game_context["display_scale_ratio"]))
+        self._game_context["true_res"][1] = uint16(self._game_context["screen_res"][1] / uint16(self._game_context["display_scale_ratio"]))
+
     
     def _configure_pygame(self):
         # Check that pygame has been initialized
@@ -166,42 +169,42 @@ class Noel():
 
     def _update_render(self):
 
-        self._frame_count = (self._frame_count+1) %360
+        self._frame_count[0] = (self._frame_count[0]+uint16(1)) % uint16(360)
         self._render_system.clear(0,0,0,0)
-        self._dt = min(self._clock.tick() / 1000.0,0.1)
-        self._time_accumulator += self._dt
+        self._dt[0] = min(float32(self._clock.tick() / 1000),float32(0.1))
+        self._time_accumulator[0] += self._dt[0]
 
         if self._game_context['gamestate']== GameState.GameLoop: 
           
             player_position = self._entities_manager.player_physics_comp.position
 
-            self._float_camera_offset_buffer[0] += 3*self._dt*(player_position[0] - self._game_context["true_res"][0] /2 - self._game_context['camera_offset'][0])
-            self._float_camera_offset_buffer[1] += 3*self._dt*(player_position[1] - self._game_context["true_res"][1] /2 - self._game_context['camera_offset'][1])
+            self._float_camera_offset_buffer[0] += 3*self._dt[0]*(player_position[0] + int32(self._game_context["true_res"][0]) // -2 - self._game_context['camera_offset'][0])
+            self._float_camera_offset_buffer[1] += 3*self._dt[0]*(player_position[1] + int32(self._game_context["true_res"][1]) // -2 - self._game_context['camera_offset'][1])
+
 
             # cast the camera offset to be an integer 
-            self._game_context['camera_offset'][0] = int(self._float_camera_offset_buffer[0])
-            self._game_context['camera_offset'][1] = int(self._float_camera_offset_buffer[1])        
+            self._game_context['camera_offset'][0] = int32(self._float_camera_offset_buffer[0])
+            self._game_context['camera_offset'][1] = int32(self._float_camera_offset_buffer[1])        
 
 
-            while self._time_accumulator >= PHYSICS_TIMESTEP:
+            while self._time_accumulator[0] >= PHYSICS_TIMESTEP:
                 self._physics_system.process(PHYSICS_TIMESTEP)
                 self._state_system.process(PHYSICS_TIMESTEP)
-                self._time_accumulator -= PHYSICS_TIMESTEP
+                self._time_accumulator[0] -= PHYSICS_TIMESTEP
             
-            interpolation_delta = self._time_accumulator / PHYSICS_TIMESTEP
+            interpolation_delta = self._time_accumulator[0] / PHYSICS_TIMESTEP
 
-            self._render_system.process(self._game_context,interpolation_delta,self._dt)
+            self._render_system.process(self._game_context,interpolation_delta,self._dt[0])
           
             pygame.display.flip()
             #fps = self._clock.get_fps()
             #print(fps)
 
     def start(self):
-        self._dt = self._clock.tick() / 1000.0
-        self._time_accumulator += self._dt 
+        self._dt[0] = float32(self._clock.tick() / 1000)
+        self._time_accumulator[0] += self._dt[0] 
         while(True):
-
-            self._input_handler.process(self._dt,self._hot_reload)
+            self._input_handler.process(self._hot_reload)
             self._update_render() 
         
 

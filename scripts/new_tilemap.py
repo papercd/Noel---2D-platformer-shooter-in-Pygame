@@ -8,6 +8,7 @@ from pygame import Rect
 from my_pygame_light2d.light import PointLight
 from scripts.new_resource_manager import ResourceManager
 import numpy as np
+from numpy import int32, uint32
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ class Tilemap:
         return self._initial_player_position
 
     @property
-    def tile_size(self)->int: 
+    def tile_size(self)->int32: 
         return self._tile_size
 
     @property
@@ -57,7 +58,7 @@ class Tilemap:
         return self._non_physical_tiles_position_vbo
        
     def load_map(self,json_file):
-        self._tile_size:int = json_file['tile_size']
+        self._tile_size:int32 = int32(json_file['tile_size'])
         self._non_physical_tile_layers:int= json_file['offgrid_layers']
         self._non_physical_tiles:list[dict[tuple[int,int],"TileInfo"]] = [{} for i in range(0,self._non_physical_tile_layers)]
         self._physical_tiles:dict[tuple[int,int],"TileInfoDataClass"] = {}
@@ -572,17 +573,17 @@ class Tilemap:
             self._hulls.append(Hull( vertices=[(x1, y1), (x2, y1), (x2, y2), (x1, y2)]))
             
 
-    def tiles_around(self, pos, size, dir: bool = False) -> list["TileInfoDataClass"]:
+    def tiles_around(self, pos:tuple[int32,int32], size:tuple[uint32,uint32], dir: bool = False) -> list["TileInfoDataClass"]:
         tiles = []
 
         # Calculate the tile coordinates of the center position
-        tile_center = (int(pos[0] // self._tile_size), int(pos[1] // self._tile_size))
+        tile_center = (pos[0] // self._tile_size, pos[1] // self._tile_size)
 
         # Calculate the boundary coordinates of the surrounding tiles
-        x_start = tile_center[0] - 1
-        x_end = tile_center[0] + int(size[0] // self._tile_size) + 1
-        y_start = tile_center[1] - 1
-        y_end = tile_center[1] + int(size[1] // self._tile_size) + 1
+        x_start = tile_center[0] - int32(1)
+        x_end = tile_center[0] + int32(int32(size[0]) // self._tile_size) + int32(1)
+        y_start = tile_center[1] - int32(1)
+        y_end = tile_center[1] + int(int32(size[1]) // self._tile_size) + int32(1)
 
         # Determine the x iteration order based on the 'dir' flag
         x_range = range(x_start, x_end + 1) if dir else range(x_end, x_start - 1, -1)
@@ -621,7 +622,7 @@ class Tilemap:
         return coor  in self._physical_tiles\
                 and self._physical_tiles[coor][0].type in PHYSICS_APPLIED_TILE_TYPES
 
-    def query_rect_tile_pair_around_ent(self,pos,size,dir:bool = False)->list[tuple[Rect,"TileInfoDataClass"]]:
+    def query_rect_tile_pair_around_ent(self,pos:tuple[int32,int32],size:tuple[uint32,uint32],dir:bool = False)->list[tuple[Rect,"TileInfoDataClass"]]:
         surrounding_rects = []
         tiles_around = self.tiles_around(pos,size,dir)
         
