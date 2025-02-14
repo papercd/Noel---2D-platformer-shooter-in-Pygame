@@ -567,7 +567,7 @@ class RenderSystem(esper.Processor):
 
     def _render_HUD_to_fg_fbo(self,dt:float32)->None: 
 
-        self._ref_hud.update(dt,self.cursor_state_change_callback,self._ref_hud.cursor_cell_hover_state_change_callback)
+        self._ref_hud.update(dt,self.cursor_state_change_callback)
         
         self._ref_rm.texture_atlasses['ui'].use()
         self._fbo_fg.use()
