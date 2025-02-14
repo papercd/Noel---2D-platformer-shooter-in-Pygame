@@ -1,8 +1,10 @@
 from my_pygame_light2d.light import PointLight
 from scripts.data import LIGHT_POSITION_OFFSET_FROM_TOPLEFT
 
+from numpy import int32
+
 class hullSpatialGrid:
-    def __init__(self, cell_size):
+    def __init__(self, cell_size:int32):
         self.cell_size = cell_size
         self.grid = {}
 
@@ -38,7 +40,7 @@ class hullSpatialGrid:
         return list(visible_hulls)
 
 class lightSpatialGrid: 
-    def __init__(self,cell_size)->None: 
+    def __init__(self,cell_size:int32)->None: 
         self.cell_size = cell_size 
         self.grid = {}
 

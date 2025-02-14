@@ -1,7 +1,8 @@
 from collections import namedtuple
 from dataclasses import dataclass 
+from typing import NamedTuple
 from my_pygame_light2d.light import PointLight
-
+from pygame.rect import Rect
 from numpy import int32,uint16 ,uint32,float32,array
 
 
@@ -9,8 +10,8 @@ from numpy import int32,uint16 ,uint32,float32,array
 RGBA_tuple = namedtuple('RGBA_tuple',['r','g','b','a'])
 TileTexcoordsKey = namedtuple('TileTexcoordsKey',['type','relative_pos_ind','variant'])
 TileColorKey = namedtuple('TileColorKey',['type','relative_pos_ind','variant','side'])
-TileInfo = namedtuple('TileInfo',['type','relative_pos_ind','variant','tile_pos','tile_size','atl_pos'])
-LightInfo = namedtuple('LightInfo',['type','relative_pos_ind','variant','tile_pos','tile_size','rect','radius','power','colorValue','atl_pos'])
+#TileInfo = namedtuple('TileInfo',['type','relative_pos_ind','variant','tile_pos','tile_size','atl_pos'])
+#LightInfo = namedtuple('LightInfo',['type','relative_pos_ind','variant','tile_pos','tile_size','rect','radius','power','colorValue','atl_pos'])
 AnimationData = namedtuple('AnimationData',['state','n_textures','img_dur','halt','loop'])
 DoorInfo = namedtuple('DoorInfo', ['type','relative_pos_ind','variant','tile_pos','tile_size','rect','atl_pos'])
 
@@ -18,6 +19,47 @@ SparkData = namedtuple('SparkData',['pos','decay_factor','angle','speed','scale'
 CollideParticleData = namedtuple('CollideParticleData',['size','pos','angle','speed','color','life','gravity_factor'])
 FireParticleData = namedtuple('FireParticleData',['x','y','size','density','rise','rise_angle','spread','wind','damage'])
 AnimationParticleData = namedtuple('AnimationParticleData',['type','pos','velocity','angle','flipped','source'])
+
+
+
+class TileInfo(NamedTuple):
+    type: str 
+    relative_pos_ind : uint16 
+    variant : uint16 
+    tile_pos : tuple[int32,int32]
+    tile_size : tuple[int32,int32]
+    atl_pos : tuple[uint32,uint32]
+
+class LightInfo(NamedTuple):
+    type : str 
+    relative_pos_ind: uint16
+    variant: uint16 
+    tile_pos : tuple[int32,int32]
+    tile_size : tuple[int32,int32]
+    rect : Rect
+    radius: float
+    power: float 
+    colorValue : tuple[int,int,int,int]
+    atl_pos : tuple[uint32,uint32]
+
+"""
+
+namedtuple data types:
+
+RGBA_tuple 
+TileTexcoordsKey 
+TileColorKey 
+TileInfo  - 'type' : str , 'relative_pos_ind' : uint16 , 'variant' : uint16 , 'tile_pos': tuple[int32,int32], 'tile_size': tuple[int32,int32], 'atl_pos' :tuple[uint32,uint32]
+LightInfo 
+AnimationData 
+DoorInfo 
+
+SparkData 
+CollideParticleData 
+FireParticleData 
+AnimationParticleData 
+
+"""
 
 
 TEXTURE_BASE_PATH = 'data/images/'
@@ -209,19 +251,19 @@ PARTICLE_ANIMATION_PIVOTS = {
 
 
 TILE_ATLAS_POSITIONS ={
-    "building_0" : (0,0),
-    'building_1' : (0,160),
-    'trap_door' : (48,208),
-    'building_2' : (0,320),
-    'building_3' : (0,384),
-    'building_4' : (0,448),
-    'building_5' : (0,528),
-    'building_door' : (48,256),
-    'dungeon_back' : (0,656),
-    'building_stairs': (48,0),
-    'building_back': (48,80),
-    'spawners' : (80,0),
-    'lights':(128,0)
+    "building_0" : (uint32(0),uint32(0)),
+    'building_1' : (uint32(0),uint32(160)),
+    'trap_door' : (uint32(48),uint32(208)),
+    'building_2' : (uint32(0),uint32(320)),
+    'building_3' : (uint32(0),uint32(384)),
+    'building_4' : (uint32(0),uint32(448)),
+    'building_5' : (uint32(0),uint32(528)),
+    'building_door' : (uint32(48),uint32(256)),
+    'dungeon_back' : (uint32(0),uint32(656)),
+    'building_stairs': (uint32(48),uint32(0)),
+    'building_back': (uint32(48),uint32(80)),
+    'spawners' : (uint32(80),uint32(0)),
+    'lights':(uint32(128),uint32(0))
 }
 
 BULLET_ATLAS_POSITIONS_AND_SIZES = {
@@ -316,8 +358,8 @@ ENTITY_SIZES = {
 }
 
 IRREGULAR_TILE_SIZES = {
-    "spawners": (48,32),
-    "building_door": (18,32)
+    "spawners": (int32(48),int32(32)),
+    "building_door": (int32(18),int32(32))
 
 }
 
@@ -478,12 +520,12 @@ TEXT_TRUE_DIMENSIONS = (16,16)
 HEALTH_BAR_TRUE_DIMENSIONS = (1,1)
 STAMINA_BAR_TRUE_DIMENSIONS = (1,1)
 
-TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO = 1 / 3
-TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO =  1 / 4
+TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO = float32(1/3)
+TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO =  float32(1 / 4)
 
-TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO = 1.2 / 40
-TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO = (1/12,9/10)
-TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO = (5/12,1/12)
+TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO = float32(1.2/40)
+TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO = (float32(1/12),float32(9/10))
+TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO = (float32(5/12),float32(1/12))
 TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO = (5/12,1/12)
 TRUE_RES_TO_HIDDEN_ITEM_INVEN_DIM_RATIO = (5/12,1/12)
 TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO = (1/7,1/12)

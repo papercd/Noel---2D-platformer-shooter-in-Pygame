@@ -8,7 +8,7 @@ from pygame import Rect
 from my_pygame_light2d.light import PointLight
 from scripts.new_resource_manager import ResourceManager
 import numpy as np
-from numpy import int32, uint32
+from numpy import int32, uint16,uint32,array
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ class Tilemap:
             self.load_map(json_file)
 
     @property 
-    def initial_player_position(self)->tuple[int,int]:
+    def initial_player_position(self)->tuple[int32,int32]:
         return self._initial_player_position
 
     @property
@@ -58,10 +58,11 @@ class Tilemap:
         return self._non_physical_tiles_position_vbo
        
     def load_map(self,json_file):
+
         self._tile_size:int32 = int32(json_file['tile_size'])
-        self._non_physical_tile_layers:int= json_file['offgrid_layers']
+        self._non_physical_tile_layers:int32= int32(json_file['offgrid_layers'])
         self._non_physical_tiles:list[dict[tuple[int,int],"TileInfo"]] = [{} for i in range(0,self._non_physical_tile_layers)]
-        self._physical_tiles:dict[tuple[int,int],"TileInfoDataClass"] = {}
+        self._physical_tiles:dict[tuple[int32,int32],"TileInfoDataClass"] = {}
         self._ref_ambient_node:ambientNode = None
 
 
@@ -74,7 +75,7 @@ class Tilemap:
 
 
         # the player position is also quried from the json file. 
-        self._initial_player_position = [600,32]
+        self._initial_player_position = (int32(600),int32(32))
 
 
         for tile_key in json_file['tilemap']: 
@@ -82,23 +83,26 @@ class Tilemap:
                                     not in IRREGULAR_TILE_SIZES else IRREGULAR_TILE_SIZES[json_file['tilemap'][tile_key]['type']]
 
             atl_pos = TILE_ATLAS_POSITIONS[json_file['tilemap'][tile_key]['type']]
-            tile_pos = tuple(json_file['tilemap'][tile_key]["pos"])
+            tile_pos = (int32(json_file['tilemap'][tile_key]["pos"][0]),
+                        int32(json_file['tilemap'][tile_key]["pos"][1]))
 
-            relative_position_index,variant = map(int,json_file['tilemap'][tile_key]['variant'].split(';'))
+            relative_position_index,variant = map(uint16,json_file['tilemap'][tile_key]['variant'].split(';'))
 
             if json_file['tilemap'][tile_key]['type'] != "lights":
                 if json_file['tilemap'][tile_key]['type'].endswith('door'):
                     if json_file['tilemap'][tile_key]['type'].split('_')[0] == 'trap':
                         # Tile info creation for trap door 
 
-                        rect = Rect(tile_pos[0] * self._tile_size, self.pos[1] * self._tile_size, self._tile_size,5)
+                        rect = Rect(tile_pos[0] * self._tile_size, tile_pos[1] * self._tile_size, self._tile_size,int32(5))
 
+                        # ONCE YOU HAVE TRAP DOORS, CHECK ON THIS 
                         self._physical_tiles[tile_pos] = TrapDoorTileInfoWithOpenState(
                                                             info = DoorInfo((json_file['tilemap'][tile_key]["type"],relative_position_index,variant,\
                                                                  tile_pos,tile_size,rect,atl_pos)),
                                                             open= False
                                                          )
                     else: 
+                        # ONCE YOU HAVE NORMAL DOORS, CHECK ON THIS 
                         if tile_key in self._physical_tiles: continue 
                         else: 
                             rect = Rect(tile_pos[0] * self._tile_size + 3, tile_pos[1] * self._tile_size ,6,32)
@@ -158,11 +162,12 @@ class Tilemap:
         for i in range(0,self._non_physical_tile_layers):
             tilemap_key = f"offgrid_{i}"
             for tile_key in json_file[tilemap_key]:
-                tile_pos = tuple(json_file[tilemap_key][tile_key]["pos"])
+                tile_pos = (int32(json_file[tilemap_key][tile_key]["pos"][0]),
+                            int32(json_file[tilemap_key][tile_key]["pos"][1]))
                 atl_pos = TILE_ATLAS_POSITIONS[json_file[tilemap_key][tile_key]["type"]]
                 tile_size = (self._tile_size,self._tile_size) if json_file[tilemap_key][tile_key]['type'] \
                                     not in IRREGULAR_TILE_SIZES else IRREGULAR_TILE_SIZES[json_file[tilemap_key][tile_key]['type']]
-                relative_position_index,variant = map(int,json_file[tilemap_key][tile_key]['variant'].split(';'))
+                relative_position_index,variant = map(uint16,json_file[tilemap_key][tile_key]['variant'].split(';'))
                 if json_file[tilemap_key][tile_key]["type"] == "lights":
                     pass 
                     """
@@ -187,7 +192,7 @@ class Tilemap:
                                                             tile_pos,tile_size,atl_pos)
         
         for node_data in json_file['ambient_nodes']:
-            if len(node_data.items()) ==4:
+            if len(node_data.items()) == 4:
                 self.ambientNodes.insert_interpolated_ambient_node(node_data["range"],node_data['hull_range'],node_data["leftColorValue"],node_data["rightColorValue"])
             else: 
                 self.ambientNodes.insert_ambient_node(node_data["range"],node_data['hull_range'],node_data["colorValue"])
@@ -215,11 +220,14 @@ class Tilemap:
     def load_initial_tilemap_buffers(self)->None: 
 
         # x, y 
-        self._physical_tiles_texcoords_write_offset_ind = [0,0]
-        self._physical_tiles_positions_write_offset_ind = [0,0]
+        self._physical_tiles_texcoords_write_offset_ind = array([0,0],dtype = int32)
+        self._physical_tiles_positions_write_offset_ind = array([0,0],dtype = int32)
 
-        self._current_grid_topleft = [int((self._initial_player_position[0] - self._game_ctx['true_res'][0] / 2) / 16) - self._tilemap_buffer_padding,
-                                int((self._initial_player_position[1] - self._game_ctx['true_res'][1] / 2) / 16) - self._tilemap_buffer_padding]
+        self._current_grid_topleft = array([ (self._initial_player_position[0] + int32(self._game_ctx['true_res'][0]) // int32(2)) // int32(16) - int32(self._tilemap_buffer_padding),
+                                             (self._initial_player_position[1] + int32(self._game_ctx['true_res'][1]) // int32(2)) // int32(16) - int32(self._tilemap_buffer_padding)])
+
+        #self._current_grid_topleft = [int((self._initial_player_position[0] - self._game_ctx['true_res'][0] / 2) / 16) - self._tilemap_buffer_padding,
+        #                            int((self._initial_player_position[1] - self._game_ctx['true_res'][1] / 2) / 16) - self._tilemap_buffer_padding]
 
         texcoords_buffer_write_offset = 0
         positions_buffer_write_offset = 0
@@ -232,28 +240,32 @@ class Tilemap:
                     tile_data = self.physical_tiles[coor]
                     tile_general_info = tile_data.info
 
-                    relative_position_index,variant = tile_general_info.relative_pos_ind, tile_general_info.variant
+                    type,relative_position_index,variant = tile_general_info.type,tile_general_info.relative_pos_ind, tile_general_info.variant
 
-                    self.physical_tiles_texcoords_vbo.write(self.tile_texcoords_bytes[(tile_general_info.type,relative_position_index,variant)],offset = texcoords_buffer_write_offset)
+                    self.physical_tiles_texcoords_vbo.write(self.tile_texcoords_bytes[(type,relative_position_index,variant)],offset = texcoords_buffer_write_offset)
                     self.physical_tiles_position_vbo.write(self.tile_pos_to_ndc_bytes(coor),offset = positions_buffer_write_offset)
                 else: 
                     self.physical_tiles_texcoords_vbo.write(self.null_texcoords_bytes,offset = texcoords_buffer_write_offset)
                     self.physical_tiles_position_vbo.write(self.null_positions_bytes,offset = positions_buffer_write_offset)
 
+                """
                 for non_physical_tile_layer in self.non_physical_tiles:
                     if coor in non_physical_tile_layer:
                         tile_info = non_physical_tile_layer[coor]
+                """
 
                 texcoords_buffer_write_offset += BYTES_PER_TEXTURE_QUAD
                 positions_buffer_write_offset += BYTES_PER_POSITION_VEC2
         
     # TODO: when rendering optimization is done, creation of tile vertices need to be precomputed.   
-    def tile_pos_to_ndc_bytes(self,tile_grid_pos:tuple[int,int])->bytes: 
+    def tile_pos_to_ndc_bytes(self,tile_grid_pos:tuple[int32,int32])->bytes: 
         return np.array([2. * (tile_grid_pos[0] *self._tile_size) / self._game_ctx['true_res'][0]-1.
                 , 1. - 2. * (tile_grid_pos[1] * self.tile_size) / self._game_ctx['true_res'][1]],dtype=np.float32).tobytes()
 
     
     def update_tilemap_vbos(self, player_position: "vec2") -> None:
+
+        """
         new_grid_topleft = (
             int((player_position[0] - self._game_ctx['true_res'][0] / 2) / 16) - self._tilemap_buffer_padding,
             int((player_position[1] - self._game_ctx['true_res'][1] / 2) / 16) - self._tilemap_buffer_padding
@@ -279,6 +291,7 @@ class Tilemap:
         while self._current_grid_topleft[1] != new_grid_topleft[1]:
             self._current_grid_topleft[1] += signs[1]
             self._update_tilemap_vbos_y(signs[1])
+        """
 
 
 

@@ -181,7 +181,6 @@ class Noel():
             self._float_camera_offset_buffer[0] += 3*self._dt[0]*(player_position[0] + int32(self._game_context["true_res"][0]) // -2 - self._game_context['camera_offset'][0])
             self._float_camera_offset_buffer[1] += 3*self._dt[0]*(player_position[1] + int32(self._game_context["true_res"][1]) // -2 - self._game_context['camera_offset'][1])
 
-
             # cast the camera offset to be an integer 
             self._game_context['camera_offset'][0] = int32(self._float_camera_offset_buffer[0])
             self._game_context['camera_offset'][1] = int32(self._float_camera_offset_buffer[1])        

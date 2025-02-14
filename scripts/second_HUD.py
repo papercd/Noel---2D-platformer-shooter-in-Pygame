@@ -6,15 +6,12 @@ from scripts.new_resource_manager import ResourceManager
 from scripts.new_inventory import Inventory,InventoryEngine,WeaponInventory,Cell
 from scripts.lists import WeaponNode
 import numpy as np 
-from numpy import float32
+from numpy import float32,uint32,uint16,array
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: 
     from scripts.item import Weapon
-
-
-
 
 class HUD:
 
@@ -25,7 +22,7 @@ class HUD:
         self._game_ctx = game_context
          
         self.inven_open_state = False
-        self.inven_open_time = 0
+        self.inven_open_time = array([0],dtype = float32) 
         self.max_inven_open_time = 30 * PHYSICS_TIMESTEP
         self.cursor = Cursor()
 
@@ -33,22 +30,21 @@ class HUD:
         
 
     def _create_diplay_elements(self)->None:
- 
-        self.health_bar_topleft = (int(self._game_ctx['true_res'][0] * TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO[0]),
-                                    int(self._game_ctx['true_res'][1] * TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO[1]))
-        self.health_bar_dimensions = (int(TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO * self._game_ctx['true_res'][0]),
-                                       int(TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO * self._game_ctx['true_res'][1]))
 
-        self.stamina_bar_topelft = (self.health_bar_topleft[0],self.health_bar_topleft[1] + self.health_bar_dimensions[1] + 1)
-        self.stamina_bar_dimensions = (int(TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO * self._game_ctx['true_res'][0]),
-                                       int(TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO * self._game_ctx['true_res'][1])) 
+        true_res_array_float32 = self._game_ctx["true_res"].astype(float32)
 
-        self.weapon_inventory_rows_cols = (1,4)
-        self.weapon_inventory_cells = self.weapon_inventory_rows_cols[0] * self.weapon_inventory_rows_cols[1]
-        self.weapon_inventory_cell_dim = (int(self._game_ctx['true_res'][0] * TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO[0]) // self.weapon_inventory_rows_cols[1],
-                                           int(self._game_ctx['true_res'][1] * TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO[1]) // self.weapon_inventory_rows_cols[0])
+        self.health_bar_topleft = tuple((true_res_array_float32 *array(TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO,dtype= float32)).astype(uint32))
+        self.health_bar_dimensions = tuple((true_res_array_float32 * array([TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO,TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO],dtype = float32)).astype(uint32))
 
-        self.open_item_inventory_rows_cols = (1,5)
+        self.stamina_bar_topelft = (self.health_bar_topleft[0],self.health_bar_topleft[1] + self.health_bar_dimensions[1] + uint32(1))
+
+        self.stamina_bar_dimensions = tuple((true_res_array_float32 * array([TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO,TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO],dtype= float32)).astype(uint32))
+
+        self.weapon_inventory_rows_cols = (uint16(1),uint16(4))
+        self.weapon_inventory_cells = uint32(self.weapon_inventory_rows_cols[0]) * uint32(self.weapon_inventory_rows_cols[1])
+        self.weapon_inventory_cell_dim = tuple( (true_res_array_float32 * array(TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO,dtype = float32)).astype(uint32) // self.weapon_inventory_rows_cols[::-1])
+
+        self.open_item_inventory_rows_cols = (uint16(1),uint16(5))
         self.open_item_inventory_cells = self.open_item_inventory_rows_cols[0] * self.open_item_inventory_rows_cols[1]
         self.open_item_inventory_cell_length =int(self._game_ctx['true_res'][0] * TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1]  
 
@@ -398,7 +394,7 @@ class HUD:
     
 
 
-    def cursor_cell_hover_state_change_callback(self)->None: 
+    def _cursor_cell_hover_state_change_callback(self)->None: 
         # when the cursor hover state changes, you need to overwrite the corresponding cell's vertex data 
         # in the buffers
 
@@ -481,9 +477,9 @@ class HUD:
 
 
 
-    def update(self,dt:float32,cursor_state_change_callback:"function",cursor_cell_hover_callback:"function")->None:
+    def update(self,dt:float32,cursor_state_change_callback:"function")->None:
         # inventory open time update 
-        self.inven_open_time = max(0,min(self.max_inven_open_time,self.inven_open_time + (2*self.inven_open_state - 1) * 4 * dt))
+        self.inven_open_time[0] = max(float32(0),min(self.max_inven_open_time,self.inven_open_time + (2*self.inven_open_state - 1) * 4 * dt))
 
         # cursor update 
         self.cursor.update(self._game_ctx['display_scale_ratio'],dt,cursor_state_change_callback)
@@ -491,8 +487,8 @@ class HUD:
         # TODO: stamina, health bar updates
 
         # inventory updates 
-        self._items_engine.update(self.cursor,cursor_cell_hover_callback,self._on_inven_item_change_callback,self._on_current_weapon_change_callback,
-                                  self._on_cursor_item_change_callback,self.inven_open_time == self.max_inven_open_time)
+        self._items_engine.update(self.cursor,self._cursor_cell_hover_state_change_callback,self._on_inven_item_change_callback,self._on_current_weapon_change_callback,
+                                  self._on_cursor_item_change_callback,self.inven_open_time[0] == self.max_inven_open_time)
 
         
     @property 

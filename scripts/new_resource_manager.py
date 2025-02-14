@@ -258,10 +258,10 @@ class ResourceManager:
         return texcoords
 
 
-    def create_tilemap_vbos(self,tile_size:int,non_physical_tile_layers:int)->tuple[int,int,int,"Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
-        padding = 11
-        tiles_per_buffer_column = padding * 2 + self._game_ctx['true_res'][1] // tile_size 
-        tiles_per_buffer_row = padding * 2 + self._game_ctx['true_res'][0] // tile_size
+    def create_tilemap_vbos(self,tile_size:int32,non_physical_tile_layers:int32)->tuple[uint16,uint16,uint16,"Context.buffer","Context.buffer","Context.buffer","Context.buffer"]:
+        padding = uint16(11)
+        tiles_per_buffer_column = padding * uint16(2) + self._game_ctx['true_res'][1] // uint16(tile_size) 
+        tiles_per_buffer_row = padding * uint16(2) + self._game_ctx['true_res'][0] // uint16(tile_size)
 
         max_visible_tiles_plus_extra = tiles_per_buffer_column * tiles_per_buffer_row
 
