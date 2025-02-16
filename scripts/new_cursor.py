@@ -1,7 +1,10 @@
 from pygame import Rect
 from pygame.mouse import get_pos
-from scripts.data import TIME_FOR_ONE_LOGICAL_STEP
+from scripts.data import PHYSICS_TIMESTEP
 from scripts.new_resource_manager import ResourceManager
+from math import atan2
+
+from numpy import uint8,float32,int32,array
 import numpy as np
 class Cursor: 
     def __init__(self,in_editor :bool = False)-> None:
@@ -14,7 +17,7 @@ class Cursor:
         self.ref_hovered_cell = None
 
         self.in_editor = in_editor 
-        self.topleft = [0,0]  
+        self.topleft = array([0,0],dtype = int32)
         self.text = None 
         self.size = (9,10)
         self.interacting = False 
@@ -22,7 +25,7 @@ class Cursor:
         self.state = "default"
         self.prev_state = "default"
         self.box = Rect(0,0,1,1)
-        self.cooldown = 10 * TIME_FOR_ONE_LOGICAL_STEP
+        self.cooldown = array([10 * PHYSICS_TIMESTEP],dtype = float32)
         self.pressed=  0 
         self.magnet = False 
         self.move = False 
@@ -31,20 +34,30 @@ class Cursor:
         self.pressed = [0,0]
 
     def set_cooldown(self) -> None:
-        self.cooldown = 10 * TIME_FOR_ONE_LOGICAL_STEP
+        self.cooldown[0] = 10 * PHYSICS_TIMESTEP
 
-    def update(self,display_scale_ratio:int,dt:float,cursor_state_change_callback:"function")-> None:
- 
+
+    def get_angle_from_point(self,point)->float: 
+        dx = self.topleft[0] - point[0]
+        dy = self.topleft[1] - point[1]
+
+        return atan2(-dy,dx)
+
+        
+
+    def update(self,display_scale_ratio:uint8,dt:float32,cursor_state_change_callback:"function")-> None:
+
         new_topleft = get_pos()
-        self.topleft[0] = new_topleft[0] // display_scale_ratio
-        self.topleft[1] = new_topleft[1] // display_scale_ratio
+
+        self.topleft[0] = int32(new_topleft[0]) // int32(display_scale_ratio)
+        self.topleft[1] = int32(new_topleft[1]) // int32(display_scale_ratio)
 
         self.box.x = self.topleft[0]
         self.box.y = self.topleft[1]
 
         if not self.in_editor:
-            if self.cooldown >0 :
-                self.cooldown -= dt
+            if self.cooldown[0] > float32(0) :
+                self.cooldown[0] -= dt
             
             self.magnet = self.special_actions and self.item is not None 
             self.move = self.special_actions and not self.magnet 

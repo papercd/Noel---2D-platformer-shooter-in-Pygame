@@ -1,13 +1,17 @@
 from collections import namedtuple
 from dataclasses import dataclass 
+from typing import NamedTuple
 from my_pygame_light2d.light import PointLight
+from pygame.rect import Rect
+from numpy import int32,uint16 ,uint32,float32,array
+
 
 
 RGBA_tuple = namedtuple('RGBA_tuple',['r','g','b','a'])
 TileTexcoordsKey = namedtuple('TileTexcoordsKey',['type','relative_pos_ind','variant'])
 TileColorKey = namedtuple('TileColorKey',['type','relative_pos_ind','variant','side'])
-TileInfo = namedtuple('TileInfo',['type','relative_pos_ind','variant','tile_pos','tile_size','atl_pos'])
-LightInfo = namedtuple('LightInfo',['type','relative_pos_ind','variant','tile_pos','tile_size','rect','radius','power','colorValue','atl_pos'])
+#TileInfo = namedtuple('TileInfo',['type','relative_pos_ind','variant','tile_pos','tile_size','atl_pos'])
+#LightInfo = namedtuple('LightInfo',['type','relative_pos_ind','variant','tile_pos','tile_size','rect','radius','power','colorValue','atl_pos'])
 AnimationData = namedtuple('AnimationData',['state','n_textures','img_dur','halt','loop'])
 DoorInfo = namedtuple('DoorInfo', ['type','relative_pos_ind','variant','tile_pos','tile_size','rect','atl_pos'])
 
@@ -17,57 +21,107 @@ FireParticleData = namedtuple('FireParticleData',['x','y','size','density','rise
 AnimationParticleData = namedtuple('AnimationParticleData',['type','pos','velocity','angle','flipped','source'])
 
 
+
+class TileInfo(NamedTuple):
+    type: str 
+    relative_pos_ind : uint16 
+    variant : uint16 
+    tile_pos : tuple[int32,int32]
+    tile_size : tuple[int32,int32]
+    atl_pos : tuple[uint32,uint32]
+
+class LightInfo(NamedTuple):
+    type : str 
+    relative_pos_ind: uint16
+    variant: uint16 
+    tile_pos : tuple[int32,int32]
+    tile_size : tuple[int32,int32]
+    rect : Rect
+    radius: float
+    power: float 
+    colorValue : tuple[int,int,int,int]
+    atl_pos : tuple[uint32,uint32]
+
+"""
+
+namedtuple data types:
+
+RGBA_tuple 
+TileTexcoordsKey 
+TileColorKey 
+TileInfo  - 'type' : str , 'relative_pos_ind' : uint16 , 'variant' : uint16 , 'tile_pos': tuple[int32,int32], 'tile_size': tuple[int32,int32], 'atl_pos' :tuple[uint32,uint32]
+LightInfo 
+AnimationData 
+DoorInfo 
+
+SparkData 
+CollideParticleData 
+FireParticleData 
+AnimationParticleData 
+
+"""
+
+
 TEXTURE_BASE_PATH = 'data/images/'
-TIME_FOR_ONE_LOGICAL_STEP= 1/60
+BYTES_PER_TEXTURE_QUAD = 48 
+BYTES_PER_POSITION_VEC2 = 8 
+PHYSICS_TIMESTEP = float32(1/60)
 
 
 class Animation: 
     """ Animation class to handle entities' animations update """
-    def __init__(self,n_textures:int,img_dur:int=5,halt:bool = False,loop :bool =True):
-        self._loop= loop
-        self._halt = halt
-        self._img_dur = img_dur
-        self.finished = False 
-        self.accum_time = 0
-        self.frame = 0
-        self.count = n_textures 
+    def __init__(self,n_textures:uint16,img_dur:uint16=5,halt:bool = False,loop :bool =True):
+        self._n_textures:uint16 = n_textures
+        self._img_dur:uint16 = img_dur
+        self._halt:bool = halt
+        self._loop:bool = loop
+
+        self.finished:bool= False
+        self.accum_time = array([0],dtype=float32)
+        self.frame= array([0],dtype=uint16)
+
+    @property 
+    def n_textures(self)->uint16:
+        return self._n_textures
 
     def set_new_data(self,animation_data:AnimationData):
-        self._loop = animation_data.loop
-        self._halt = animation_data.halt
+        self._n_textures = animation_data.n_textures
         self._img_dur = animation_data.img_dur
-        self.finished= False 
-        self.frame = 0
-        self.count = animation_data.n_textures
+        self._halt = animation_data.halt
+        self._loop = animation_data.loop
+
+        self.finished = False
+        self.accum_time[0] = float(0)
+        self.frame[0] = uint16(0)
 
     def reset(self):
-        self.frame = 0
+        self.frame[0] = uint16(0)
         self.finished= False
     
     def copy(self):
-        return Animation(self.count,self._img_dur,self._halt,self._loop)
+        return Animation(self._n_textures,self._img_dur,self._halt,self._loop)
     
-    def update(self,dt):
+    def update(self,dt:float32):
 
-        dt = min(dt, 2 * TIME_FOR_ONE_LOGICAL_STEP)
+        dt = min(dt, 2 * PHYSICS_TIMESTEP)
 
-        self.accum_time += dt 
-        if self.accum_time >= TIME_FOR_ONE_LOGICAL_STEP: 
+        self.accum_time[0] += dt 
+        if self.accum_time >= PHYSICS_TIMESTEP: 
             if self._halt: 
-                self.frame = min(self.frame+1,self._img_dur * self.count -1)
-                if self.frame == self._img_dur * self.count -1 : self.finished= True 
+                self.frame[0] = min(self.frame[0]+uint16(1),self._img_dur * self._n_textures-uint16(1))
+                if self.frame[0] == self._img_dur * self._n_textures-uint16(1) : self.finished= True 
             else: 
                 if self._loop:
-                    self.frame = (self.frame+1) % (self._img_dur * self.count)
+                    self.frame[0] = (self.frame[0]+uint16(1)) % (self._img_dur * self._n_textures)
                 else: 
-                    self.frame = min(self.frame+1,self._img_dur *self.count -1)
-                    if self.frame >= self._img_dur *self.count -1:
+                    self.frame[0] = min(self.frame[0]+uint16(1),self._img_dur *self._n_textures-uint16(1))
+                    if self.frame[0] >= self._img_dur *self._n_textures-uint16(1):
                         self.finished= True 
-            self.accum_time -= TIME_FOR_ONE_LOGICAL_STEP
+            self.accum_time -= PHYSICS_TIMESTEP
 
 
-    def curr_frame(self) -> int:
-        return int(self.frame/self._img_dur)
+    def curr_frame(self) -> uint16:
+        return self.frame[0]//self._img_dur
 
 
 class DoorAnimation(Animation):
@@ -77,17 +131,17 @@ class DoorAnimation(Animation):
         super().__init__(n_textures, img_dur, True,False)
 
     def reset(self):
-        self.frame = 0 if self.opened else self._img_dur * self.count -1
+        self.frame = 0 if self.opened else self._img_dur * self._n_textures-1
         self.finished= False 
     
     def open(self,is_open = False):
         self.opened = is_open
-        self.frame = 0 if self.opened else self._img_dur * self.count -1 
+        self.frame = 0 if self.opened else self._img_dur * self._n_textures-1 
 
     def update(self):
         if self.opened: 
-            self.frame = min(self.frame+1,self._img_dur * self.count -1)
-            if self.frame == self._img_dur * self.count - 1 : self.finished= True 
+            self.frame = min(self.frame+1,self._img_dur * self._n_textures-1)
+            if self.frame == self._img_dur * self._n_textures- 1 : self.finished= True 
         else: 
             self.frame = max(0,self.frame-1) 
             if self.frame == 0 : self.finished= True 
@@ -142,13 +196,14 @@ class AnimationDataCollection:
 """ Animation Data """
 # physics updates are done every 1/60 seconds, the 60 is multiplied to the physics calculations 
 # so the number in front of the * corresponds to the unit of distance in pixels.
-SPRINT_FACTOR = 1.4
+SPRINT_FACTOR = float32(1.4)
 WALL_SLIDE_CAP_VELOCITY = 1 * 60 
 GRAVITY = 35 * 60   # 20 pixels per second squared
-TERMINAL_VELOCITY = 10 * 60     # 20 pixels per second
-HORIZONTAL_DECELERATION = 35 * 60    #15 pixels per second squared
+TERMINAL_VELOCITY = float32(10 * 60)     # 20 pixels per second
+HORIZONTAL_DECELERATION = int32(35 * 60)    #15 pixels per second squared
+
 ENTITIES_ACCELERATION = {
-    'player' : 70 * 60 
+    'player' : int32(70 * 60) 
 }
 
 ENTITIES_JUMP_SPEED = {
@@ -156,7 +211,7 @@ ENTITIES_JUMP_SPEED = {
 }
 
 ENTITIES_MAX_HORIZONTAL_SPEED = {
-    'player' : 240
+    'player' : int32(240)
 }
 
 
@@ -164,15 +219,15 @@ ENTITIES_MAX_HORIZONTAL_SPEED = {
 
 ENTITY_ANIMATION_DATA = {
     'player' : (
-    AnimationData('idle',4,6,False,True),
-    AnimationData('crouch',1,4,True,False),
-    AnimationData('jump_up',1,5,True,False),
-    AnimationData('jump_down',4,5,True,False),
-    AnimationData('land',6,2,False,False),
-    AnimationData('run',6,4,False,True),
-    AnimationData('slide',1,5,True,False),
-    AnimationData('wall_slide',1,4,True,False),
-    AnimationData('sprint',6,3,False,True)
+    AnimationData('idle',uint16(4),uint16(6),False,True),
+    AnimationData('crouch',uint16(1),uint16(4),True,False),
+    AnimationData('jump_up',uint16(1),uint16(5),True,False),
+    AnimationData('jump_down',uint16(4),uint16(5),True,False),
+    AnimationData('land',uint16(6),uint16(2),False,False),
+    AnimationData('run',uint16(6),uint16(4),False,True),
+    AnimationData('slide',uint16(1),uint16(5),True,False),
+    AnimationData('wall_slide',uint16(1),uint16(4),True,False),
+    AnimationData('sprint',uint16(6),uint16(3),False,True)
     )
 }
 
@@ -196,19 +251,19 @@ PARTICLE_ANIMATION_PIVOTS = {
 
 
 TILE_ATLAS_POSITIONS ={
-    "building_0" : (0,0),
-    'building_1' : (0,160),
-    'trap_door' : (48,208),
-    'building_2' : (0,320),
-    'building_3' : (0,384),
-    'building_4' : (0,448),
-    'building_5' : (0,528),
-    'building_door' : (48,256),
-    'dungeon_back' : (0,656),
-    'building_stairs': (48,0),
-    'building_back': (48,80),
-    'spawners' : (80,0),
-    'lights':(128,0)
+    "building_0" : (uint32(0),uint32(0)),
+    'building_1' : (uint32(0),uint32(160)),
+    'trap_door' : (uint32(48),uint32(208)),
+    'building_2' : (uint32(0),uint32(320)),
+    'building_3' : (uint32(0),uint32(384)),
+    'building_4' : (uint32(0),uint32(448)),
+    'building_5' : (uint32(0),uint32(528)),
+    'building_door' : (uint32(48),uint32(256)),
+    'dungeon_back' : (uint32(0),uint32(656)),
+    'building_stairs': (uint32(48),uint32(0)),
+    'building_back': (uint32(48),uint32(80)),
+    'spawners' : (uint32(80),uint32(0)),
+    'lights':(uint32(128),uint32(0))
 }
 
 BULLET_ATLAS_POSITIONS_AND_SIZES = {
@@ -223,20 +278,20 @@ TEXT_ATLAS_POSITIONS_AND_SPACE_AND_SIZES = {
 
 
 IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
-    'ak47': {"normal": ((0,0),(31,12)),"holding":((56,0),(18,9))},
-    'flamethrower': {"normal": ((0,12),(32,9)),"holding":((57,12),(24,8))}
+    'ak47': {"normal": ((uint32(0),uint32(0)),(uint32(31),uint32(12))),"holding":((uint32(56),uint32(0)),(uint32(18),uint32(9)))},
+    'flamethrower': {"normal": ((uint32(0),uint32(12)),(uint32(32),uint32(9))),"holding":((uint32(57),uint32(12)),(uint32(24),uint32(8)))}
 }
 
 UI_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
     'ak47' : ((384,92),(31,12)),
-    'flamethrower' : ((415,92),(32,11))
+    'flamethrower' : ((416,92),(31,12))
 }
 
 ITEM_ATLAS_POSITIONS_AND_SIZES={
-    "amethyst_arrow": ((381,0),(16,16)),
-    "amethyst_clump" : ((397,0),(16,16)),
-    "arrow": ((413,0),(16,16)),
-    "string":((429,0),(16,16))
+    "amethyst_arrow": ((uint32(381),uint32(0)),(uint32(16),uint32(16))),
+    "amethyst_clump" : ((uint32(397),uint32(0)),(uint32(16),uint32(16))),
+    "arrow": ((uint32(413),uint32(0)),(uint32(16),uint32(16))),
+    "string":((uint32(429),uint32(0)),(uint32(16),uint32(16)))
 
 }
 
@@ -248,17 +303,17 @@ ITEM_ATLAS_POSITIONS_AND_SIZES={
 """
 
 UI_ATLAS_POSITIONS_AND_SIZES = {
-    "health_bar" : ((0,0),(204,8)),
-    "stamina_bar" : ((0,0),(204,8)),
-    "item_slot" : {True:((20,8),(24,24)),False:((0,8),(20,20))},
-    "weapon_slot" : {True:((82,9),(45,24)),False:((44,9),(38,18))},
-    "background" : ((204,0),(176,93)),
+    "health_bar" : ((uint32(0),uint32(0)),(uint32(204),uint32(8))),
+    "stamina_bar" : ((uint32(0),uint32(0)),(uint32(204),uint32(8))),
+    "item_slot" : {True:((uint32(20),uint32(8)),(uint32(24),uint32(24))),False:((uint32(0),uint32(8)),(uint32(20),uint32(20)))},
+    "weapon_slot" : {True:((uint32(82),uint32(9)),(uint32(45),uint32(24))),False:((uint32(44),uint32(9)),(uint32(38),uint32(18)))},
+    "background" : ((uint32(204),uint32(0)),(uint32(176),uint32(93))),
     "cursor" : {
-        "default" : ((0,32),(9,10)),
-        "grab" :  ((9,32),(9,10)),
-        "magnet" :  ((18,32),(9,10)),
-        "move" :  ((27,32),(9,10)),
-        "crosshair" :  ((36,32),(10,10))
+        "default" : ((uint32(0),uint32(32)),(uint32(9),uint32(10))),
+        "grab" :  ((uint32(9),uint32(32)),(uint32(9),uint32(10))),
+        "magnet" :  ((uint32(18),uint32(32)),(uint32(9),uint32(10))),
+        "move" :  ((uint32(27),uint32(32)),(uint32(9),uint32(10))),
+        "crosshair" :  ((uint32(36),uint32(32)),(uint32(10),uint32(10)))
     }
 }
 
@@ -272,39 +327,39 @@ PARTICLE_ATLAS_POSITIONS_AND_SIZES ={
 
 ENTITIES_ATLAS_POSITIONS ={
     "player" : {False:{
-                "idle": (0,0),
-                "crouch" : (0,16),
-                "jump_up": (0,32),
-                "jump_down": (0,48),
-                "land": (0,80),
-                "run": (0,96),
-                "slide": (0,112),
-                "wall_slide": (0,128),
-                "sprint": (0,144)
+                "idle": (uint32(0),uint32(0)),
+                "crouch" : (uint32(0),uint32(16)),
+                "jump_up": (uint32(0),uint32(32)),
+                "jump_down": (uint32(0),uint32(48)),
+                "land": (uint32(0),uint32(80)),
+                "run": (uint32(0),uint32(96)),
+                "slide": (uint32(0),uint32(112)),
+                "wall_slide": (uint32(0),uint32(128)),
+                "sprint": (uint32(0),uint32(144))
 
                 },
                 True: {
-                "idle": (96,0),
-                "crouch" : (96,16),
-                "jump_up": (96,32),
-                "jump_down": (96,48),
-                "land": (96,80),
-                "run": (96,96),
-                "slide": (96,112),
-                "wall_slide": (96,128),
-                "sprint": (96,144)
+                "idle": (uint32(96),uint32(0)),
+                "crouch" : (uint32(96),uint32(16)),
+                "jump_up": (uint32(96),uint32(32)),
+                "jump_down": (uint32(96),uint32(48)),
+                "land": (uint32(96),uint32(80)),
+                "run": (uint32(96),uint32(96)),
+                "slide": (uint32(96),uint32(112)),
+                "wall_slide": (uint32(96),uint32(128)),
+                "sprint": (uint32(96),uint32(144))
                 }                        
                 } 
 
 }
 
 ENTITY_SIZES = {
-    "player" : (16,16)
+    "player" : (uint32(16),uint32(16))
 }
 
 IRREGULAR_TILE_SIZES = {
-    "spawners": (48,32),
-    "building_door": (18,32)
+    "spawners": (int32(48),int32(32)),
+    "building_door": (int32(18),int32(32))
 
 }
 
@@ -348,6 +403,21 @@ WPNS_PIVOT_N_PIVOT_TO_OPENING_OFFSET ={
 }
 
 
+PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS = {
+
+    True: {"idle": {False: (-6,-2), True: (5,-2)}, "walk": {False: (-6,-2), True: (5,-2)},'run' :{False: (-7,-2), True: (0,-3)} 
+            ,'jump_up' :{False: (-6,-3), True: (1,-4)},'jump_down' :{False: (-5,-3), True: (2,-4)}
+            ,'slide' :{ False : (3,1) ,True: (3,1)} , 'wall_slide' : {False: (-4,-3), True: (0,-3)},'land' :{ False : (-6,-2) ,True: (0,-3)} , 
+            'crouch' :{ False : (-6,0) ,True: (5,0)},'sprint': {False : (-6,-2),True:(-1,-3)}
+            },
+    False: {"idle": {False: (-6,-2), True: (5,-2)},"walk": {False: (-6,-2), True: (5,-2)}, 'run' :{False: (-1,-3), True: (6,-2)} 
+            ,'jump_up' :{False: (-2,-4), True: (7,-3)},'jump_down' :{False: (-2,-4), True: (6,-3)}
+            ,'slide' :{ False: (-4,1), True: (-4,1) }, 'wall_slide': {False : (-1,-3), True : (3,-3)},'land' :{ False : (-2,-3) ,True: (5,-2)} ,
+            'crouch' :{ False : (-6,0) ,True: (6,0)},'sprint' : {False: (-1,-3), True: (5,-2)} 
+    }
+}
+
+
 """  Grass Data  """
 
 GRASS_ASSET_ATLAS_POS_AND_INFO = {
@@ -364,6 +434,7 @@ GRASS_ASSET_ATLAS_POS_AND_INFO = {
 PHYSICS_APPLIED_TILE_TYPES = {'grass','stone','box','building_0','building_1','building_2','building_3','building_4','building_5','building_stairs','building_door','trap_door',\
                               'ladder'}
 
+LIGHT_POSITION_OFFSET_FROM_TOPLEFT= (7,3)
 HULL_OUTER_EDGE_OFFSET = 4 
 HULL_AXIS_TO_OFFSET_EVEN_POS= [ ((0,2),(1,1)),((1,2),(-1,1)),((1,3),(-1,-1)),((0,3),(1,-1))]
 HULL_AXIS_TO_OFFSET_ODD_POS = [(2,1),(1,-1),(3,-1),(0,1)]
@@ -449,12 +520,12 @@ TEXT_TRUE_DIMENSIONS = (16,16)
 HEALTH_BAR_TRUE_DIMENSIONS = (1,1)
 STAMINA_BAR_TRUE_DIMENSIONS = (1,1)
 
-TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO = 1 / 3
-TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO =  1 / 4
+TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO = float32(1/3)
+TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO =  float32(1 / 4)
 
-TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO = 1.2 / 40
-TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO = (1/12,9/10)
-TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO = (5/12,1/12)
+TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO = float32(1.2/40)
+TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO = (float32(1/12),float32(9/10))
+TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO = (float32(5/12),float32(1/12))
 TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO = (5/12,1/12)
 TRUE_RES_TO_HIDDEN_ITEM_INVEN_DIM_RATIO = (5/12,1/12)
 TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO = (1/7,1/12)

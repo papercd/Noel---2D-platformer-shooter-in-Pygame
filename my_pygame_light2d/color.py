@@ -1,4 +1,3 @@
-
 # Convert from 0-255 to 0-1, and also process the different ways
 # in which arguments may be given (an int tuple vs four separate ints)
 def normalize_color_arguments(R: (int | tuple[int]), G: int, B: int, A: int):

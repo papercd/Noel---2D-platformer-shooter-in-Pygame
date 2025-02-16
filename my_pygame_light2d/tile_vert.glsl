@@ -8,11 +8,12 @@ layout(location = 1 ) in vec2 in_texcoord[6];
 
 out vec2 frag_texcoord; 
 
+uniform vec2 cameraOffset; 
 
 void main(){
     vec2 ndcVertex = NDCVertices[gl_VertexID];
 
-    vec2 finalPosition = ndcVertex + in_position;
+    vec2 finalPosition = ndcVertex + in_position - cameraOffset;
 
     vec2 texCoord = in_texcoord[gl_VertexID];
 

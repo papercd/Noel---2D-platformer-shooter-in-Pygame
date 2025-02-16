@@ -1,4 +1,4 @@
-t """
+"""
 Noel: game made in pygame, a module for 2d game development in python.
 
 pygame is definitely too slow to make a high-end, sophisticated game. Reasons?

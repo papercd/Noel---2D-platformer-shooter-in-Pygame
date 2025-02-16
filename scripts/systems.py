@@ -2,7 +2,8 @@ import esper
 from scripts.second_HUD import HUD
 from scripts.game_state import GameState
 from scripts.game_state import GameState
-from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR
+from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR,\
+                        ITEM_ATLAS_POSITIONS_AND_SIZES,PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS,BYTES_PER_TEXTURE_QUAD
 from pygame.rect import Rect
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
@@ -10,13 +11,17 @@ from scripts.components import PhysicsComponent,RenderComponent, StateInfoCompon
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
 from scripts.layer import Layer_
-
+from scripts.item import Item,AK47,FlameThrower
 from scripts.lists import interpolatedLightNode
 import pygame
 from moderngl import NEAREST,LINEAR,BLEND,Texture,Framebuffer
-from OpenGL.GL import glUniformBlockBinding,glGetUniformBlockIndex
-from math import sqrt,ceil,floor,dist
+from OpenGL.GL import glUniformBlockBinding,glGetUniformBlockIndex,glViewport
+from math import sqrt,dist,degrees,pi
+from random import choice
+
 import numpy as np
+
+from numpy import float32,uint16,int32,uint8,array
 
 from typing import TYPE_CHECKING 
 
@@ -32,53 +37,55 @@ if TYPE_CHECKING:
 
 class PhysicsSystem(esper.Processor):
     def __init__(self)->None: 
+
         self._ref_tilemap:"Tilemap" = None
+        self._ref_em : EntitiesManager = EntitiesManager.get_instance()
         self._collision_rect_buffer = Rect(0,0,1,1)
 
 
     def _process_regular_tile_y_collision(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,
-                                          rect_tile:tuple["Rect","TileInfoDataClass"],dt:float)->None: 
-        if physics_comp.velocity[1] > 0:
+                                          rect_tile:tuple["Rect","TileInfoDataClass"],dt:float32)->None: 
+        if physics_comp.velocity[1] > float32(0):
             state_info_comp.collide_bottom = True
-            physics_comp.position[1] = rect_tile[0].top - physics_comp.size[1] // 2
+            physics_comp.position[1] = rect_tile[0].top + int32(physics_comp.size[1]) // -2
             physics_comp.collision_rect.bottom = rect_tile[0].top 
             physics_comp.velocity[1] =GRAVITY * dt 
-            state_info_comp.jump_count = 0
+            state_info_comp.jump_count[0] = uint16(0)
 
-        elif physics_comp.velocity[1] < 0:
+        elif physics_comp.velocity[1] < float32(0):
             state_info_comp.collide_top = True
-            physics_comp.position[1] = rect_tile[0].bottom + physics_comp.size[1] // 2
+            physics_comp.position[1] = rect_tile[0].bottom + int32(physics_comp.size[1]) // 2
             physics_comp.collision_rect.top = rect_tile[0].bottom
-            physics_comp.velocity[1] = 0
-        physics_comp.displacement_buffer[1] = 0
+            physics_comp.velocity[1] = float32(0)
+        physics_comp.displacement_buffer[1] = float32(0)
 
 
     def _process_regular_tile_x_collision(self,state_info_comp:StateInfoComponent,physics_comp:PhysicsComponent,
                                           rect_tile:tuple["Rect","TileInfoDataClass"])->None: 
-        if physics_comp.velocity[0] > 0:
+        if physics_comp.velocity[0] > float32(0):
             state_info_comp.collide_right = True
             physics_comp.collision_rect.right = rect_tile[0].left 
-            physics_comp.position[0]  = physics_comp.collision_rect.centerx 
+            physics_comp.position[0]  = int32(physics_comp.collision_rect.centerx) 
             
-        elif physics_comp.velocity[0] < 0 :
+        elif physics_comp.velocity[0] < float32(0) :
             state_info_comp.collide_left = True 
             physics_comp.collision_rect.left = rect_tile[0].right 
-            physics_comp.position[0] = physics_comp.collision_rect.centerx 
+            physics_comp.position[0] = int32(physics_comp.collision_rect.centerx) 
         else: 
-            if physics_comp.position[0] > rect_tile[0].centerx:
+            if physics_comp.position[0] > int32(rect_tile[0].centerx):
                 state_info_comp.collide_left = True
                 physics_comp.collision_rect.left = rect_tile[0].right
-                physics_comp.position[0] = physics_comp.collision_rect.centerx
+                physics_comp.position[0] = int32(physics_comp.collision_rect.centerx)
             else: 
                 state_info_comp.collide_right = True
                 physics_comp.collision_rect.right = rect_tile[0].left
-                physics_comp.position[0] = physics_comp.collision_rect.centerx
-        physics_comp.displacement_buffer[0] = 0
+                physics_comp.position[0] = int32(physics_comp.collision_rect.centerx)
+        physics_comp.displacement_buffer[0] = float32(0)
 
 
 
     def _handle_tile_collision(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,rect_tile:tuple["Rect","TileInfoDataClass"],
-                          tile_size:int,dt:float,axis_bit:bool)->None: 
+                          tile_size:int32,dt:float32,axis_bit:bool)->None: 
 
     
         rel_pos_ind= rect_tile[1].info.relative_pos_ind 
@@ -115,11 +122,11 @@ class PhysicsSystem(esper.Processor):
 
                     if physics_comp.collision_rect.bottom > new_collision_rect_bottom:
                         physics_comp.collision_rect.bottom = new_collision_rect_bottom
-                        physics_comp.position[1] = physics_comp.collision_rect.bottom - physics_comp.size[1] // 2 
+                        physics_comp.position[1] = physics_comp.collision_rect.bottom + int32(physics_comp.size[1]) // -2 
                         physics_comp.velocity[1] = GRAVITY * dt
-                        state_info_comp.jump_count = 0
+                        state_info_comp.jump_count[0] = uint16(0) 
                         state_info_comp.collide_bottom = True
-                        physics_comp.displacement_buffer[1] = 0
+                        physics_comp.displacement_buffer[1] = float32(0)
 
                 else: 
                     if rect_tile[1].info.type.endswith('door'):
@@ -128,17 +135,17 @@ class PhysicsSystem(esper.Processor):
                     self._process_regular_tile_y_collision(physics_comp,state_info_comp,rect_tile,dt)
 
 
-    def _process_common_physics_updates(self,physics_comp: PhysicsComponent,state_info_comp:StateInfoComponent,dt:float,sprinting:bool = False)->None: 
+    def _process_common_physics_updates(self,physics_comp: PhysicsComponent,state_info_comp:StateInfoComponent,dt:float32,sprinting:bool = False)->None: 
 
         physics_comp.prev_transform = physics_comp.transform
 
         # apply deceleration to horizontal velocity
-        if physics_comp.velocity[0] > 0:
-            physics_comp.velocity[0] = max(0,physics_comp.velocity[0] - HORIZONTAL_DECELERATION * dt)
-        elif physics_comp.velocity[0] < 0:
-            physics_comp.velocity[0] = min(0,physics_comp.velocity[0] + HORIZONTAL_DECELERATION * dt)
+        if physics_comp.velocity[0] > float32(0):
+            physics_comp.velocity[0] = max(float32(0),physics_comp.velocity[0] - HORIZONTAL_DECELERATION * dt)
+        elif physics_comp.velocity[0] < float32(0):
+            physics_comp.velocity[0] = min(float32(0),physics_comp.velocity[0] + HORIZONTAL_DECELERATION * dt)
 
-        sprint_factor = SPRINT_FACTOR if sprinting else 1
+        sprint_factor = SPRINT_FACTOR if sprinting else float32(1)
 
         # clamp velocity to maximums
         physics_comp.velocity[0] = max(-ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type]*sprint_factor, min(ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type]*sprint_factor,physics_comp.velocity[0] + physics_comp.acceleration[0] * dt * sprint_factor))
@@ -150,26 +157,26 @@ class PhysicsSystem(esper.Processor):
         displacement = 0
         collided = False 
 
-        if physics_comp.displacement_buffer[0] >= 1.0 or physics_comp.displacement_buffer[0] <= -1.0:
-            displacement = int(physics_comp.displacement_buffer[0]) 
+        if physics_comp.displacement_buffer[0] >= float32(1.0) or physics_comp.displacement_buffer[0] <= float32(-1.0):
+            displacement = int32(physics_comp.displacement_buffer[0]) 
 
             physics_comp.collision_rect.x += displacement
             physics_comp.position[0] += displacement 
 
             physics_comp.displacement_buffer[0] -= displacement
 
-        for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((physics_comp.position[0]- physics_comp.size[0] //2 ,physics_comp.position[1] - physics_comp.size[1] //2),\
+        for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((physics_comp.position[0]+ int32(physics_comp.size[0]) // -2 ,physics_comp.position[1] + int32(physics_comp.size[1]) //-2),\
                                                                            physics_comp.size,dir = physics_comp.flip):
             if physics_comp.collision_rect.colliderect(rect_tile[0]):
                 collided = True 
-                self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,False)
+                self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.tile_size,dt,False)
         
         if not collided :
             state_info_comp.collide_left = False
             state_info_comp.collide_right = False 
 
         if physics_comp.displacement_buffer[1] >= 1.0 or physics_comp.displacement_buffer[1] <= -1.0:
-            displacement = int(physics_comp.displacement_buffer[1]) 
+            displacement = int32(physics_comp.displacement_buffer[1]) 
             physics_comp.collision_rect.y += displacement
             physics_comp.position[1] += displacement 
 
@@ -181,8 +188,7 @@ class PhysicsSystem(esper.Processor):
                                                                            physics_comp.size,dir = physics_comp.flip):
             if physics_comp.collision_rect.colliderect(rect_tile[0]):
                 collided = True
-                self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.regular_tile_size,dt,True)
-
+                self._handle_tile_collision(physics_comp,state_info_comp,rect_tile,self._ref_tilemap.tile_size,dt,True)
 
         if not collided :
             state_info_comp.collide_bottom = False 
@@ -190,26 +196,26 @@ class PhysicsSystem(esper.Processor):
 
 
 
-    def _process_physics_updates_for_player(self,physics_comp: PhysicsComponent,state_info_comp:StateInfoComponent,dt:float,input_comp:InputComponent)->None: 
-        direction_bit = input_comp.right - input_comp.left
-        if direction_bit != 0:
-            physics_comp.flip = direction_bit == -1
+    def _process_physics_updates_for_player(self,input_comp:InputComponent,physics_comp:PhysicsComponent
+                                            ,state_info_comp:StateInfoComponent,dt:float32)->None:
         
-        physics_comp.acceleration[0] = ENTITIES_ACCELERATION[state_info_comp.type] * direction_bit 
-        if input_comp.up and state_info_comp.jump_count < state_info_comp.max_jump_count:
-            physics_comp.velocity[1] = -ENTITIES_JUMP_SPEED[state_info_comp.type]
+        direction = int32(input_comp.right - input_comp.left)
+        if direction != int32(0):
+            physics_comp.flip = direction == int32(-1)
+        
+        physics_comp.acceleration[0] = float32(ENTITIES_ACCELERATION[state_info_comp.type] * direction)
+        if input_comp.up and state_info_comp.jump_count[0] < state_info_comp.max_jump_count:
+            physics_comp.velocity[1] = float32(-ENTITIES_JUMP_SPEED[state_info_comp.type])
         
             # to stop the player from jumping infinitely
             input_comp.up = False
-            state_info_comp.jump_count += 1
+            state_info_comp.jump_count[0] += uint16(1)
 
         self._process_common_physics_updates(physics_comp, state_info_comp,dt,sprinting = input_comp.shift)
 
         if (state_info_comp.collide_left or state_info_comp.collide_right) and not state_info_comp.collide_bottom:
             physics_comp.velocity[1] = min(physics_comp.velocity[1] , WALL_SLIDE_CAP_VELOCITY)
         
-
-
 
     def _process_non_player_physics_updates(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,dt:float)->None:
         physics_comp.flip = physics_comp.velocity[0] < 0
@@ -220,17 +226,15 @@ class PhysicsSystem(esper.Processor):
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
         self._ref_tilemap =tilemap
         
-        
 
-
-    def process(self,dt:float)->None: 
+    def process(self,dt:float32)->None: 
         # process physics for player entity, which has an input component while the rest of the entities don't.
-        player,(player_input_comp,player_state_info_comp,player_physics_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent)[0]
-
-        self._process_physics_updates_for_player(player_physics_comp,player_state_info_comp,dt,player_input_comp)
+        #player,(player_input_comp,player_state_info_comp,player_physics_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent)[0]
 
         for entity, (state_info_comp,physics_comp) in esper.get_components(StateInfoComponent,PhysicsComponent):
-            if state_info_comp.type != "player":
+            if state_info_comp.type == "player":
+                self._process_physics_updates_for_player(self._ref_em.player_input_comp,physics_comp,state_info_comp,dt)
+            else: 
                 self._process_non_player_physics_updates(physics_comp,state_info_comp,dt)
 
 
@@ -241,48 +245,44 @@ class ParticleSystem(esper.Processor):
 
 class RenderSystem(esper.Processor):
 
-
-    def __init__(self,ctx:"Context",true_to_screen_res_ratio:int=1,screen_res:tuple[int,int] = (500,500),\
-                 true_res :tuple[int,int] = (500,500))->None: 
-        self._ctx = ctx
+    def __init__(self,gl_ctx:"Context",game_context)->None: 
+        self._gl_ctx = gl_ctx
 
         # references 
+        self._ref_em = EntitiesManager.get_instance()
         self._ref_rm = ResourceManager.get_instance()
-
         self._ref_tilemap: "Tilemap" = None
         self._ref_background: "Background" = None
         self._ref_background_vertices_buffer : "Context.buffer" = None 
         self._ref_hud : "HUD" =None
         
         # Initialize members 
-        self._background_panels:int = 3
+        self._background_panels:int32= int32(3)
 
-        self._true_to_native_ratio = true_to_screen_res_ratio 
-        self._screen_res = screen_res
-        self._true_res = true_res 
-
-        self._diagonal = sqrt(self._true_res[0] ** 2 + self._true_res[1] ** 2)
-        self._ambient_light_RGBA = (.25, .25, .25, .25)
+        self._game_ctx = game_context
+        
+        self._ambient_light_RGBA = array([.25,.25,.25,.25],dtype= float32)
 
         self._active_static_lights : list["PointLight"] = []
         self.dynamic_lights:list["PointLight"] = []
         self.hulls:list["Hull"] = []
 
-        self._prev_query_camera_scroll= (0,0)
-        self._camera_displacement_buffer = [0,0]
-        self._shadow_blur_radius = 5
-        self._max_hull_count = 512 
+        self._prev_hull_query_player_pos = array([0,0],dtype = int32) 
 
+        self._prev_hull_query_camera_scroll = array([0,0],dtype = int32)
 
+        self._prev_lights_query_camera_scroll = array([0,0],dtype = int32)
 
-        self._projection_transform = np.array( 
-            [
-            [2. / self._true_res[0] , 0 , -1.],
-            [0, -2. / self._true_res[1]  ,  1.],
+        self._shadow_blur_radius = uint8(5)
+        self._max_hull_count = uint16(512) 
+
+        self._projection_matrix = np.array([
+            [2. / self._game_ctx['true_res'][0] , 0 , -1.],
+            [0, -2. / self._game_ctx['true_res'][1]  ,  1.],
             [0,0,1.]
         ],dtype=np.float32)
 
-        self._view_transform = np.array([
+        self._view_matrix = np.array([
             [1,0,0],
             [0,1,0],
             [0,0,1]
@@ -294,13 +294,14 @@ class RenderSystem(esper.Processor):
         self._create_frame_buffers()
         self._create_screen_vertex_buffers()
         self._create_entity_vertex_buffers()
+        self._create_weapon_vertex_buffers()
 
     def _load_shader_srcs(self,vertex_src_path:str,fragment_src_path:str)->tuple[str,str]:
         try:
             with open(vertex_src_path,encoding= 'utf-8') as file: 
                 vertex_src = file.read()
         except:
-            print("vertex shader source file could not be opened.")
+           print("vertex shader source file could not be opened.")
         try:
             with open(fragment_src_path,encoding= 'utf-8') as file: 
                 fragment_src = file.read()
@@ -323,10 +324,8 @@ class RenderSystem(esper.Processor):
         vertex_src,fragment_src = self._load_shader_srcs('my_pygame_light2d/vertex.glsl',
                                                          'my_pygame_light2d/fragment_draw.glsl')
     
-
         tile_draw_vert_src,tile_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/tile_vert.glsl',
                                                                        'my_pygame_light2d/tile_frag.glsl')
-
 
         entities_draw_vert_src,entities_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/entity_draw_vert.glsl',
                                                                                  'my_pygame_light2d/entity_draw_frag.glsl')
@@ -342,36 +341,33 @@ class RenderSystem(esper.Processor):
 
         hidden_draw_frag_src = self._load_shader_src('my_pygame_light2d/fragment_hidden_ui_draw.glsl')
 
-        self._entity_draw_prog = self._ctx.program(vertex_shader = entities_draw_vert_src,
+        self._entity_draw_prog = self._gl_ctx.program(vertex_shader = entities_draw_vert_src,
                                                     fragment_shader = entities_draw_frag_src)
-
-        self._to_screen_draw_prog = self._ctx.program(vertex_shader =vertex_src,
+        
+        self._to_screen_draw_prog = self._gl_ctx.program(vertex_shader =vertex_src,
                                                                  fragment_shader= fragment_src)
-        self._tile_draw_prog = self._ctx.program(vertex_shader=tile_draw_vert_src,
+        self._tile_draw_prog = self._gl_ctx.program(vertex_shader=tile_draw_vert_src,
                                                          fragment_shader= tile_draw_frag_src)
         
-        self._opaque_ui_draw_prog = self._ctx.program(vertex_shader=vertex_src,
+        self._opaque_ui_draw_prog = self._gl_ctx.program(vertex_shader=vertex_src,
                                                       fragment_shader= fragment_src)
         
-        self._hidden_ui_draw_prog = self._ctx.program(vertex_shader= vertex_src,
+        self._hidden_ui_draw_prog = self._gl_ctx.program(vertex_shader= vertex_src,
                                                       fragment_shader=hidden_draw_frag_src)
 
-        self._prog_mask = self._ctx.program(vertex_shader= vertex_src,
+        
+        self._prog_mask = self._gl_ctx.program(vertex_shader= vertex_src,
                                             fragment_shader=mask_frag_src)
         
-        self._prog_cursor_draw = self._ctx.program(vertex_shader =cursor_draw_vert_src,
+        self._prog_cursor_draw = self._gl_ctx.program(vertex_shader =cursor_draw_vert_src,
                                                    fragment_shader= cursor_draw_frag_src )
 
-        self._prog_light = self._ctx.program(vertex_shader= vertex_src,
+        self._prog_light = self._gl_ctx.program(vertex_shader= vertex_src,
                                              fragment_shader= light_frag_src )
         
-        self._prog_blur = self._ctx.program(vertex_shader= vertex_src,
+        self._prog_blur = self._gl_ctx.program(vertex_shader= vertex_src,
                                             fragment_shader= blur_frag_src)
         
-
-        self._prog_blur['iResolution'] = self._true_res
-
-               
     
     def _create_ssbos(self)->None: 
         prog_glo = self._prog_light.glo
@@ -383,48 +379,26 @@ class RenderSystem(esper.Processor):
         glUniformBlockBinding(prog_glo, blockIndex, 2)
 
 
-        # Create SSBOs
-        self._ssbo_v = self._ctx.buffer(reserve=4*8*self._max_hull_count)
+        # Create SSBOs``
+        self._ssbo_v = self._gl_ctx.buffer(reserve=4*8*self._max_hull_count)
         self._ssbo_v.bind_to_uniform_block(1)
-        self._ssbo_ind = self._ctx.buffer(reserve=4*self._max_hull_count)
+        self._ssbo_ind = self._gl_ctx.buffer(reserve=4*self._max_hull_count)
         self._ssbo_ind.bind_to_uniform_block(2)
 
 
-        
-
+    
     def _create_frame_buffers(self)->None: 
-        # Frame buffers
-        self._tex_bg = self._ctx.texture(self._true_res, components=4)
+        # background framebufffer
+        self._tex_bg = self._gl_ctx.texture(self._game_ctx['true_res'], components=4)
         self._tex_bg.filter = (NEAREST, NEAREST)
-        self._fbo_bg = self._ctx.framebuffer([self._tex_bg])
+        self._fbo_bg = self._gl_ctx.framebuffer([self._tex_bg])
 
-
-        self._tex_fg = self._ctx.texture(self._true_res, components=4)
+        # foreground framebuffer
+        self._tex_fg = self._gl_ctx.texture(self._game_ctx['true_res'], components=4)
         self._tex_fg.filter = (NEAREST, NEAREST)
-        self._fbo_fg = self._ctx.framebuffer([self._tex_fg])
+        self._fbo_fg = self._gl_ctx.framebuffer([self._tex_fg])
 
-        """
-        # Double buffer for lights
-        self._buf_lt = DoubleBuffer(self._ctx, self._lightmap_res)
-
-        # Ambient occlussion map
-        self._tex_ao = self._ctx.texture(
-            self._lightmap_res, components=4, dtype='f2')
-        self._tex_ao.filter = (LINEAR, LINEAR)
-        self._fbo_ao = self._ctx.framebuffer([self._tex_ao])
-
-
-        # wrapping settings 
-
-        self._buf_lt._tex1.repeat_x = False
-        self._buf_lt._tex1.repeat_y = False
-        self._buf_lt._tex2.repeat_x = False
-        self._buf_lt._tex2.repeat_y = False
-
-        self._tex_ao.repeat_x = False
-        self._tex_ao.repeat_y = False
-        """
-
+        # set wrapping settings for buffers 
         self._tex_bg.repeat_x = False
         self._tex_bg.repeat_y = False 
         self._tex_fg.repeat_x = False
@@ -436,32 +410,33 @@ class RenderSystem(esper.Processor):
                                     (-1.0, -1.0), (1.0, 1.0), (1.0, -1.0)], dtype=np.float32)
         screen_tex_coords = np.array([(0.0, 1.0), (1.0, 1.0), (0.0, 0.0),
                                       (0.0, 0.0), (1.0, 1.0), (1.0, 0.0)], dtype=np.float32)
+
         screen_vertex_data = np.hstack([screen_vertices, screen_tex_coords])
+        screen_vbo = self._gl_ctx.buffer(screen_vertex_data) 
+  
 
-        screen_vbo = self._ctx.buffer(screen_vertex_data) 
-
-        self._vao_light = self._ctx.vertex_array(
+        self._vao_light = self._gl_ctx.vertex_array(
             self._prog_light,
             [
                 (screen_vbo, '2f 2f', 'vertexPos', 'vertexTexCoord')
             ]
         )
 
-        self._vao_blur = self._ctx.vertex_array(
+        self._vao_blur = self._gl_ctx.vertex_array(
             self._prog_blur,
             [
                 (screen_vbo, '2f 2f' , 'vertexPos' , 'vertexTexCoord')
             ]
         )
 
-        self._vao_mask = self._ctx.vertex_array(
+        self._vao_mask = self._gl_ctx.vertex_array(
             self._prog_mask,
             [
                 (screen_vbo, '2f 2f' ,'vertexPos','vertexTexCoord')
             ]
         )
 
-        self._vao_to_screen_draw = self._ctx.vertex_array(
+        self._vao_to_screen_draw = self._gl_ctx.vertex_array(
             self._to_screen_draw_prog,
             [
                 (screen_vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
@@ -479,114 +454,164 @@ class RenderSystem(esper.Processor):
         transform_matrix_col_size  = 3 * 4 
         transform_column_buffer_size = transform_matrix_col_size *  3  * EntitiesManager.max_entities 
 
-        self._entity_local_vertices_vbo= self._ctx.buffer(reserve=local_space_vertices_buffer_size, dynamic=True)
-        self._entity_texcoords_vbo = self._ctx.buffer(reserve = texcoords_buffer_size, dynamic=True)
+        self._entity_local_vertices_vbo= self._gl_ctx.buffer(reserve=local_space_vertices_buffer_size, dynamic=True)
+        self._entity_texcoords_vbo = self._gl_ctx.buffer(reserve = texcoords_buffer_size, dynamic=True)
         
-        
-        self._entity_transform_matrices_vbo = self._ctx.buffer(reserve = transform_column_buffer_size, dynamic=True)
-
-
-        self._vao_entity_draw = self._ctx.vertex_array(
+        self._entity_transform_matrices_vbo = self._gl_ctx.buffer(reserve = transform_column_buffer_size, dynamic=True)
+       
+        self._vao_entity_draw = self._gl_ctx.vertex_array(
             self._entity_draw_prog,
             [
-                (self._entity_local_vertices_vbo, '12f/i', 'in_position'),
-                (self._entity_texcoords_vbo, '12f/i', 'texcoord'),
+                (self._entity_local_vertices_vbo, '2f', 'in_position'),
+                (self._entity_texcoords_vbo, '2f', 'texcoord'),
                 (self._entity_transform_matrices_vbo, '3f 3f 3f/i', 'col1', 'col2' ,'col3')
+            ]
+        )
+        
+
+
+    def _create_weapon_vertex_buffers(self)->None:
+        local_space_vertex_size = 2* 4 
+        local_space_vertices_buffer_size = local_space_vertex_size * 6 * EntitiesManager.max_entities
+
+        texcoords_vertex_size = 2 * 4 
+        texcoords_buffer_size = texcoords_vertex_size * 6 * EntitiesManager.max_entities
+
+        transform_matrix_col_size = 3 * 4 
+        transform_column_buffer_size = transform_matrix_col_size * 3 * EntitiesManager.max_entities
+
+        self._entity_weapons_local_vertices_vbo = self._gl_ctx.buffer(reserve=local_space_vertices_buffer_size,dynamic=True)
+        self._entity_weapons_texcoords_vbo = self._gl_ctx.buffer(reserve=texcoords_buffer_size , dynamic= True)
+
+        self._entity_weapons_transform_matrices_vbo = self._gl_ctx.buffer(reserve= transform_column_buffer_size , dynamic= True)
+        
+        self._vao_entity_weapons_draw = self._gl_ctx.vertex_array(
+            self._entity_draw_prog,
+            [
+                (self._entity_weapons_local_vertices_vbo, '2f', 'in_position'),
+                (self._entity_weapons_texcoords_vbo, '2f', 'texcoord'),
+                (self._entity_weapons_transform_matrices_vbo, '3f 3f 3f/i', 'col1', 'col2', 'col3')
             ]
         )
 
 
+    def _opt_render_tilemap_to_bg_fbo(self,camera_offset:tuple[int32,int32])->None: 
+        self._tile_draw_prog['cameraOffset'] = self._camera_offset_to_ndc_component(camera_offset) 
+
+        self._fbo_bg.use()
+        self._ref_rm.texture_atlasses['tiles'].use()
+
+        self._vao_physical_tiles_draw.render(vertices= 6 , instances = self._ref_tilemap.physical_tiles_texcoords_vbo.size // BYTES_PER_TEXTURE_QUAD)
+
+
+    
+    def _camera_offset_to_ndc_component(self,camera_offset:tuple[int32,int32])->np.ndarray: 
+        return np.array([ 2. * camera_offset[0] / self._game_ctx['true_res'][0],
+                         -2. * camera_offset[1] / self._game_ctx['true_res'][1]],dtype=np.float32)
 
 
     def _render_tilemap_to_bg_fbo(self,camera_offset:tuple[int,int])->None: 
         
 
-        physical_tiles_render_bit = False
-        non_physical_tiles_render_bit = False
+        physical_tile_texcoords_byte_array = bytearray()
+        physical_tiles_positions_byte_array = bytearray()
 
-        physical_tiles_texcoords_array = []
-        physical_tiles_positions_array = []
 
-        non_physical_tiles_texcoords_array = []
-        non_physical_tiles_positions_array = []
+        non_physical_tiles_texcoords_byte_array = bytearray()
+        non_physical_tiles_positions_byte_array = bytearray()
 
-        tile_size = self._ref_tilemap.regular_tile_size
+        tile_size = self._ref_tilemap.tile_size
+
         physical_tile_instances = 0
         non_physical_tile_instances= 0
         
 
-        for x in range(camera_offset[0] // tile_size- 1, (camera_offset[0] + self._true_res[0]) // tile_size+ 1):
-            for y in range(camera_offset[1] // tile_size- 1, (camera_offset[1] + self._true_res[1]) // tile_size+1):
+        for x in range(camera_offset[0] // tile_size- 1, (camera_offset[0] + self._game_ctx['true_res'][0]) // tile_size+ 1):
+            for y in range(camera_offset[1] // tile_size- 1, (camera_offset[1] + self._game_ctx['true_res'][1]) // tile_size+1):
                 coor = (x,y) 
 
                 for i, dict in enumerate(self._ref_tilemap.non_physical_tiles):
                     if coor in dict:
                         non_physical_tile_instances += 1
-                        non_physical_tiles_render_bit = True
                         tile_info = self._ref_tilemap.non_physical_tiles[i][coor]
 
-                        non_physical_tiles_texcoords_array.append(self._ref_tilemap.tile_texcoords[(tile_info.type,tile_info.relative_pos_ind,tile_info.variant)])
-                        non_physical_tiles_positions_array.append(self._tile_position_to_ndc(coor,camera_offset))
+                        non_physical_tiles_texcoords_byte_array.extend(self._ref_tilemap.tile_texcoords_bytes[(tile_info.type,tile_info.relative_pos_ind,tile_info.variant)])
+                        non_physical_tiles_positions_byte_array.extend(self._tile_position_to_ndc(coor,camera_offset))
 
                 if coor in self._ref_tilemap.physical_tiles:
                     physical_tile_instances +=1
-                    physical_tiles_render_bit = True
                     tile_data = self._ref_tilemap.physical_tiles[coor]
                     tile_general_info = tile_data.info 
                     relative_position_index, variant = tile_general_info.relative_pos_ind, tile_general_info.variant 
 
-                    physical_tiles_texcoords_array.append(self._ref_tilemap.tile_texcoords[(tile_general_info.type,relative_position_index,variant)])
-                    physical_tiles_positions_array.append(self._tile_position_to_ndc(coor,camera_offset))
+                    physical_tile_texcoords_byte_array.extend(self._ref_tilemap.tile_texcoords_bytes[(tile_general_info.type,relative_position_index,variant)])
+                    physical_tiles_positions_byte_array.extend(self._tile_position_to_ndc(coor,camera_offset))
 
-        if non_physical_tiles_render_bit:
-            buffer_data = np.array(non_physical_tiles_texcoords_array).astype(np.float32)
-            self._ref_tilemap.write_to_non_physical_tiles_texcoords_vbo(buffer_data)
-
-            positions_buffer_data = np.array(non_physical_tiles_positions_array).astype(np.float32)
-            self._ref_tilemap.write_to_non_physical_tiles_positions_vbo(positions_buffer_data)
+        if non_physical_tile_instances > 0:
+            self._ref_tilemap.write_to_non_physical_tiles_texcoords_vbo(non_physical_tiles_texcoords_byte_array)
+            self._ref_tilemap.write_to_non_physical_tiles_positions_vbo(non_physical_tiles_positions_byte_array)
 
             self._fbo_bg.use()
-            self._ref_tilemap.ref_texture_atlas.use()
+            self._ref_rm.texture_atlasses['tiles'].use()
 
             self._vao_non_physical_tiles_draw.render(vertices = 6, instances= non_physical_tile_instances)
 
-        if physical_tiles_render_bit:
-            buffer_data = np.array(physical_tiles_texcoords_array).astype(np.float32)
-            self._ref_tilemap.write_to_physical_tiles_texcoords_vbo(buffer_data)
-
-            positions_buffer_data = np.array(physical_tiles_positions_array).astype(np.float32)
-            self._ref_tilemap.write_to_physical_tiles_positions_vbo(positions_buffer_data)
+        if physical_tile_instances > 0:
+            self._ref_tilemap.write_to_physical_tiles_texcoords_vbo(physical_tile_texcoords_byte_array)
+            self._ref_tilemap.write_to_physical_tiles_positions_vbo(physical_tiles_positions_byte_array)
 
             self._fbo_bg.use()
-            self._ref_tilemap.ref_texture_atlas.use()
+            self._ref_rm.texture_atlasses['tiles'].use()
 
             self._vao_physical_tiles_draw.render(vertices=6,instances= physical_tile_instances)
 
-    def _render_HUD_to_fg_fbo(self,dt:float)->None: 
-        self._ref_hud.update(dt,self.cursor_state_change_callback,self._ref_hud.cursor_cell_hover_state_change_callback)
+    def _render_HUD_to_fg_fbo(self,dt:float32)->None: 
+
+        self._ref_hud.update(dt,self.cursor_state_change_callback)
         
-        # TODO: render the opaque hud elements
         self._ref_rm.texture_atlasses['ui'].use()
         self._fbo_fg.use()
-        self._vao_opaque_ui_draw.render()  
 
         if self._ref_hud.inven_open_time > 0:
             self._hidden_ui_draw_prog['alpha'] = self._ref_hud.inven_open_time/self._ref_hud.max_inven_open_time
             self._vao_hidden_ui_draw.render()
+            self._vao_hidden_items_draw.render()
 
+        self._vao_opaque_ui_draw.render()  
+
+        if self._ref_hud.cursor.item:
+            self._ref_hud.opaque_items_vertices_buffer.write(self._create_cursor_item_vertices(),
+                                                             offset = self._ref_hud.opaque_items_vertices_buffer.size - BYTES_PER_TEXTURE_QUAD)
+        
+        self._vao_opaque_items_draw.render()   
 
         self._write_cursor_position_to_buffer()
-
-        self._fbo_fg.use()
+        #self._fbo_fg.use()
         self._ref_rm.texture_atlasses['ui'].use()
         self._vao_cursor_draw.render()
 
-    
+    def _create_cursor_item_vertices(self)->bytes: 
+        if self._ref_hud.cursor.item.type == 'item':
+            item_dim = (self._ref_hud.open_item_inventory_cell_length//2,
+                        self._ref_hud.open_item_inventory_cell_length//2)
+        else: 
+            item_dim = (self._ref_hud.weapon_inventory_cell_dim[0] * 4 // 6,
+                        self._ref_hud.weapon_inventory_cell_dim[1] * 4 // 6)
+
+        x = 2. * (self._ref_hud.cursor.topleft[0]-item_dim[0] //2)/ self._game_ctx['true_res'][0]- 1.
+        y = 1. - 2. * (self._ref_hud.cursor.topleft[1]- item_dim[1]//2)/ self._game_ctx['true_res'][1]
+        w = 2. * item_dim[0] / self._game_ctx['true_res'][0]
+        h = 2. * item_dim[1] /self._game_ctx['true_res'][1]
+
+        return np.array([(x, y - h),(x + w, y - h),(x,y),
+                         (x,y),(x + w, y - h),(x+w,y)],dtype= np.float32).tobytes()
+
+
     def _write_cursor_position_to_buffer(self)->None: 
-        x = 2. * (self._ref_hud.cursor.topleft[0] )/ self._true_res[0]- 1.
-        y = 1. - 2. * (self._ref_hud.cursor.topleft[1] )/ self._true_res[1]
-        w = 2. * self._ref_hud.cursor.size[0] / self._true_res[0]
-        h = 2. * self._ref_hud.cursor.size[1] / self._true_res[1]
+        x = 2. * (self._ref_hud.cursor.topleft[0] )/ self._game_ctx['true_res'][0]- 1.
+        y = 1. - 2. * (self._ref_hud.cursor.topleft[1] )/ self._game_ctx['true_res'][1]
+        w = 2. * self._ref_hud.cursor.size[0] / self._game_ctx['true_res'][0]
+        h = 2. * self._ref_hud.cursor.size[1] / self._game_ctx['true_res'][1]
 
         self._ref_hud.cursor.ndc_vertices[0] = (x,y-h)
         self._ref_hud.cursor.ndc_vertices[1] = (x+w,y-h)
@@ -600,26 +625,24 @@ class RenderSystem(esper.Processor):
 
     def cursor_state_change_callback(self,new_cursor_state:str)->None: 
         # change the texcoords uniform in the cursor draw program according to the new cursor state 
-        self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords['cursor'][new_cursor_state]
+        self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords_array['cursor'][new_cursor_state]
 
 
-    def _tile_position_to_ndc(self,position:tuple[int,int],camera_offset:tuple[int,int])->tuple[float,float]:
+    def _tile_position_to_ndc(self,position:tuple[int,int],camera_offset:tuple[int,int])->bytes:
         fbo_w,fbo_h = self._fbo_bg.size
-        return (2. * (position[0] *self._ref_tilemap.regular_tile_size -camera_offset[0]) / fbo_w -1.
-                , 1. - 2. * (position[1] * self._ref_tilemap.regular_tile_size - camera_offset[1]) / fbo_h)
+        return np.array([2. * (position[0] *self._ref_tilemap.tile_size -camera_offset[0]) / fbo_w -1.
+                , 1. - 2. * (position[1] * self._ref_tilemap.tile_size - camera_offset[1]) / fbo_h],dtype=np.float32).tobytes()
 
 
-
-
-    def _render_background_to_bg_fbo(self,camera_offset:tuple[int,int],infinite:bool = False)->None: 
-        speed = 1
-        
+    def _render_background_to_bg_fbo(self,camera_offset:tuple[int32,int32],infinite:bool = False)->None: 
+        speed = array([0],dtype= int32)
         for tex in self._ref_background.textures:
             if infinite: 
-                num_tiles = (self._true_res[0]//tex.width) + 2
+                tex_width_int32 = int32(tex.width)
+                num_tiles = (int32(self._game_ctx['true_res'][0])//tex_width_int32) + int32(2)
 
                 for panel in range(-1,num_tiles):
-                    x_pos = panel*tex.width - (camera_offset[0] * 0.05 *speed) % tex.width
+                    x_pos = panel*tex_width_int32- (camera_offset[0] * 0.05 *speed[0]) % tex_width_int32 
                     vertex_data = self._create_infinite_background_texture_vertex_data(camera_offset,x_pos)
                     self._ref_background_vertices_buffer.write(vertex_data)
 
@@ -628,18 +651,18 @@ class RenderSystem(esper.Processor):
 
                     self._vao_background_draw.render()
             else: 
-                for panel in range(-self._background_panels//2 , self._background_panels//2 +1):
-                    vertex_data = self._create_background_texture_vertex_data(camera_offset,panel,speed)
+                for panel in range(self._background_panels//-2 , self._background_panels//2 +int32(1)):
+                    vertex_data = self._create_background_texture_vertex_data(camera_offset,panel,speed[0])
                     self._ref_background_vertices_buffer.write(vertex_data)
 
                     self._fbo_bg.use()
                     tex.use()
 
                     self._vao_background_draw.render()
-            speed += 1
+            speed[0] += int32(1)
 
 
-    def _create_infinite_background_texture_vertex_data(self,camera_scroll:tuple[int,int],x_pos:int)->np.array:
+    def _create_infinite_background_texture_vertex_data(self,camera_scroll:tuple[int,int],x_pos:int)->bytes:
         width,height = self._fbo_bg.size 
         x = 2. * (x_pos) / width - 1.
         y = 1. -2 * (-min(0,camera_scroll[1]) * 0.05) / height
@@ -647,23 +670,19 @@ class RenderSystem(esper.Processor):
         h = 2.
 
         return np.array([(x,y),(x+w,y),(x,y-h),
-                         (x,y-h),(x+w,y),(x+w,y-h)],dtype= np.float32)
+                         (x,y-h),(x+w,y),(x+w,y-h)],dtype= np.float32).tobytes()
 
 
 
-    def _create_background_texture_vertex_data(self,camera_scroll:tuple[int,int],panel_num,speed:int)->np.array:
+    def _create_background_texture_vertex_data(self,camera_scroll:tuple[int,int],panel_num:int,speed:int32)->np.array:
         width,height = self._fbo_bg.size 
-        x = 2. * (panel_num*self._true_res[0]-camera_scroll[0] *0.05 * speed) / width - 1.
+        x = 2. * (panel_num*self._game_ctx['true_res'][0]-camera_scroll[0] *0.05 * speed) / width - 1.
         y = 1. -2. * (-min(0,camera_scroll[1]) * 0.05) / height
         w = 2.
         h = 2. 
 
         return np.array([(x,y),(x+w,y),(x,y-h),
                          (x,y-h),(x+w,y),(x+w,y-h)],dtype= np.float32)
-
-
-    def _point_to_uv(self, p: tuple[float, float]):
-        return [p[0]/self._true_res[0], 1 - (p[1]/self._true_res[1])]
 
     
     def _send_hull_data_to_lighting_program(self,render_offset:tuple[int,int] = (0,0))->None: 
@@ -675,15 +694,17 @@ class RenderSystem(esper.Processor):
                 continue
             vertices_buffer = [ ]
 
-            #the vertices of the hulls are adjusted by the offset, then added to the list. 
+            # the vertices of the hulls are adjusted by the offset, then added to the list. 
+            # the vertices are then converted to uv coords (lightmap)
 
             for vertice in hull.vertices:
-                vertices_buffer.append((vertice[0]- render_offset[0], vertice[1]-render_offset[1]))
+                vertices_buffer.append((vertice[0]+self._lightmap_buffer_slack - render_offset[0], 
+                                        vertice[1]+self._lightmap_buffer_slack - render_offset[1]))
             vertices += vertices_buffer
             indices.append(len(vertices))
 
         # Store hull vertex data in SSBO
-        vertices = [self._point_to_uv(v) for v in vertices]
+        vertices = [self._pos_to_lightmap_uv(v) for v in vertices]
         data_v = np.array(vertices, dtype=np.float32).flatten().tobytes()
         self._ssbo_v.write(data_v)
 
@@ -694,20 +715,21 @@ class RenderSystem(esper.Processor):
 
     def _render_static_lights_to_light_buffer(self,render_offset:tuple[int,int])->None:
 
-        self._ctx.disable(BLEND)
+        self._gl_ctx.disable(BLEND)
 
         for i in range(len(self._active_static_lights)-1,-1,-1):
             light = self._active_static_lights[i]
             self._buf_lt.tex.use()
             self._buf_lt.fbo.use()
             # Send light uniforms
-            self._prog_light['lightPos'] = self._point_to_uv((light.position[0]-render_offset[0],light.position[1] - render_offset[1]))
+            self._prog_light['lightPos'] = self._pos_to_lightmap_uv((light.position[0]+self._lightmap_buffer_slack-render_offset[0],
+                                                              light.position[1]+self._lightmap_buffer_slack-render_offset[1]))
             self._prog_light['lightCol'] = light._color
             self._prog_light['lightPower'] = light.cur_power
             self._prog_light['radius'] = light.radius
             self._prog_light['castShadows'] = light.cast_shadows
-            self._prog_light['native_width'] = self._true_res[0]
-            self._prog_light['native_height'] = self._true_res[1]
+            self._prog_light['lightmapWidth'] = self._lightmap_res[0]
+            self._prog_light['lightmapHeight'] = self._lightmap_res[1]
 
             # Send number of hulls
             self._prog_light['numHulls'] = len(self.hulls)
@@ -718,94 +740,29 @@ class RenderSystem(esper.Processor):
             # Flip double buffer
             self._buf_lt.flip()
 
-        self._ctx.enable(BLEND)
+        self._gl_ctx.enable(BLEND)
 
+    def _pos_to_lightmap_uv(self,world_coords)->tuple[int,int]:
+        return (world_coords[0] / self._lightmap_res[0], 1 - (world_coords[1] / self._lightmap_res[1]))
+        
 
-
-
-    def _render_to_light_buffer(self,interpolation_delta: float, dt,render_offset:tuple[int,int])->None:
-        # Disable alpha blending to render lights
-        ambient_lighting_range = self._ref_tilemap._ambient_node_ptr.range
-
-        self._ctx.disable(BLEND)
-
-        for i in range(len(self._ref_tilemap.lights) -1, -1,-1):
-            light = self._ref_tilemap.lights[i]
-            if light.popped:
-                del self._ref_tilemap.lights[i]
-                continue 
-            if light.illuminator and light.illuminator.dead:
-                del self._ref_tilemap.lights[i]
-                continue 
-
-            if not light.illuminator and (light.position[0] < ambient_lighting_range[0] or light.position[0] > ambient_lighting_range[1]):
-                light.cur_power = max(0.0,light.cur_power - 8*dt*light.power)
-            else: 
-                light.cur_power = min(light.power,light.cur_power + 8*dt*light.power)
-
-            if light.life == 0: 
-                del self._ref_tilemap.lights[i]
-                continue 
-            elif light.life > 0: 
-                light.life -= dt
-            
-            if not light.enabled:
-                continue 
-
-            self._buf_lt.tex.use()
-            self._buf_lt.fbo.use()
-
-            if light.radius_decay: 
-                light.radius = max(1,light.radius * (light.life/light.maxlife))
-
-            if light.illuminator: 
-                
-                #light.cur_power = max(0,light.power * (light.life/light.maxlife))
-                light.position = (int(light.illuminator.center[0]+light.illuminator.velocity[0]*interpolation_delta) ,\
-                                   int(light.illuminator.center[1]+light.illuminator.velocity[1]*interpolation_delta))    
-                
-            elif light.life > 0: 
-                if light.maxlife-1 == light.life: 
-                    light.position = (int(light.position[0]) , int(light.position[1]))
-                
-             
-            # Send light uniforms
-            self._prog_light['lightPos'] = self._point_to_uv((light.position[0]-render_offset[0],light.position[1] - render_offset[1]))
-            self._prog_light['lightCol'] = light._color
-            self._prog_light['lightPower'] = light.cur_power
-            self._prog_light['radius'] = light.radius
-            self._prog_light['castShadows'] = light.cast_shadows
-            self._prog_light['native_width'] = self._true_res[0]
-            self._prog_light['native_height'] = self._true_res[1]
-
-            # Send number of hulls
-            self._prog_light['numHulls'] = len(self.hulls)
-
-            # Render onto lightmap
-            self._vao_light.render()
-
-            # Flip double buffer
-            self._buf_lt.flip()
-
-        self._ctx.enable(BLEND)
-
-
-    def _render_aomap(self,render_offset:tuple[int,int])->None:
+    def _render_aomap(self,camera_scroll:tuple[int,int])->None:
         self._fbo_ao.use()
         self._buf_lt.tex.use()
-
-        self._prog_blur['renderOffset'] = (self._prev_query_camera_scroll[0] - render_offset[0],
-                                           -self._prev_query_camera_scroll[1] + render_offset[1]) 
+        
+        # render offset of the lastly rendered lightmap to the current camera position 
+        self._prog_blur['renderOffset'] = (self._prev_hull_query_camera_scroll[0] - camera_scroll[0],
+                                           -self._prev_hull_query_camera_scroll[1] + camera_scroll[1])
+                                           
 
         self._prog_blur['blurRadius'] = self._shadow_blur_radius
         self._vao_blur.render()
 
 
     def _render_background_layer(self)->None: 
-        self._ctx.screen.use()
+        self._gl_ctx.screen.use()
         self._tex_bg.use()
         self._tex_ao.use(1)
-
 
         self._prog_mask['lightmap'].value = 1
         self._prog_mask['ambient'].value = self._ambient_light_RGBA
@@ -814,7 +771,7 @@ class RenderSystem(esper.Processor):
 
 
     def _render_foreground_layer(self)->None:
-        self._ctx.screen.use()
+        self._gl_ctx.screen.use()
         self._tex_fg.use()
         self._vao_to_screen_draw.render()
 
@@ -823,13 +780,15 @@ class RenderSystem(esper.Processor):
         self._ambient_light_RGBA = normalize_color_arguments(R, G, B, A)
 
 
-    def _update_hulls(self,camera_scroll:tuple[int,int] = (0,0))->bool: 
-        tile_size = self._ref_tilemap.regular_tile_size
-        if dist(self._prev_query_camera_scroll,camera_scroll) >= 3: 
+    def _update_hulls(self,player_position:tuple[int,int],camera_scroll:tuple[int,int])->bool: 
+        tile_size = self._ref_tilemap.tile_size
+  
+        if dist(self._prev_hull_query_player_pos,player_position) >= tile_size * 7: 
             self.hulls = self._ref_tilemap.hull_grid.query(camera_scroll[0] - 10 * tile_size, camera_scroll[1] - 10 * tile_size,\
-                                                           camera_scroll[0] + self._true_res[0] + 10 * tile_size, camera_scroll[1] + self._true_res[1] + 10 * tile_size)
+                                                           camera_scroll[0] + self._game_ctx['true_res'][0] +  10 * tile_size, camera_scroll[1] + self._game_ctx['true_res'][1] + 10 * tile_size)
             
-            self._prev_query_camera_scroll = camera_scroll
+            self._prev_hull_query_player_pos = tuple(player_position)
+            self._prev_hull_query_camera_scroll = camera_scroll
             return True
 
         return False
@@ -850,7 +809,7 @@ class RenderSystem(esper.Processor):
         img_flip = pygame.transform.flip(sfc, False, True)
         img_data = pygame.image.tostring(img_flip, "RGBA")
 
-        tex = self._ctx.texture(sfc.get_size(), components=4, data=img_data)
+        tex = self._gl_ctx.texture(sfc.get_size(), components=4, data=img_data)
         tex.filter = (NEAREST, NEAREST)
         return tex
 
@@ -916,8 +875,8 @@ class RenderSystem(esper.Processor):
         # Create VBO and VAO
         buffer_data = np.hstack([vertices, tex_coords])
 
-        vbo = self._ctx.buffer(buffer_data)
-        vao = self._ctx.vertex_array(self._to_screen_draw_prog, [
+        vbo = self._gl_ctx.buffer(buffer_data)
+        vao = self._gl_ctx.vertex_array(self._to_screen_draw_prog, [
             (vbo, '2f 2f', 'vertexPos', 'vertexTexCoord'),
         ])
 
@@ -933,7 +892,7 @@ class RenderSystem(esper.Processor):
 
 
     def _render_rectangles(self,camera_scroll:tuple[int,int])->None: 
-        buffer_surf = pygame.Surface(self._true_res).convert_alpha()
+        buffer_surf = pygame.Surface(self._game_ctx['true_res']).convert_alpha()
         buffer_surf.fill((0, 0, 0, 0))
 
         # Iterate over rectangles
@@ -949,7 +908,7 @@ class RenderSystem(esper.Processor):
             screen_y = rect_y - camera_scroll[1]
 
             # Check if the rectangle is within the visible screen
-            if 0 <= screen_x < self._true_res[0] and 0 <= screen_y < self._true_res[1]:
+            if 0 <= screen_x < self._game_ctx['true_res'][0] and 0 <= screen_y < self._game_ctx['true_res'][1]:
                 # Draw the rectangle directly onto the buffer surface
                 pygame.draw.rect(
                     buffer_surf,
@@ -973,70 +932,102 @@ class RenderSystem(esper.Processor):
         tex.release()
 
 
-
-    def _render_fbos_to_screen_with_lighting(self,camera_scroll:tuple[int,int],interpolation_delta:float,dt:float,screen_shake:tuple[int,int] = (0,0))->None: 
+    def _render_fbos_to_screen_with_lighting(self,player_position:tuple[int,int],camera_scroll:tuple[int,int],\
+                                             screen_shake:tuple[int,int],interpolation_delta:float)->None: 
+        """
+        self._tex_bg.use()
+        self._gl_ctx.screen.use()
+        self._vao_to_screen_draw.render()
+        """
         
         render_offset = (camera_scroll[0] - screen_shake[0],camera_scroll[1] - screen_shake[1])
-        hulls_updated = self._update_hulls(camera_scroll)
+
+        hulls_updated = self._update_hulls(player_position,camera_scroll)
         
         self._fbo_ao.clear(0,0,0,0)
-
-        self._update_active_static_lights(dt)
-
-
+    
         if hulls_updated:
             self._buf_lt.clear(0,0,0,0)
             self._send_hull_data_to_lighting_program(render_offset)
             self._render_static_lights_to_light_buffer(render_offset)
 
-        self._render_aomap(render_offset)
+        self._render_aomap(camera_scroll)
 
         self._render_background_layer()
 
         self._render_foreground_layer()
+
+
+    def _on_ambient_node_change_callback(self,camera_offset:tuple[int,int],screen_shake:tuple[int,int],
+                                         player_position:tuple[int,int])->None:
         
+        self._update_active_static_lights(camera_offset)
 
-    def _update_active_static_lights(self,dt:float)->None: 
-        active_static_lights = []
+        render_offset = (camera_offset[0]- screen_shake[0],camera_offset[1] -screen_shake[1])
 
-        ambient_lighting_range = self._ref_tilemap._ambient_node_ptr.range
+        tile_size = self._ref_tilemap.tile_size
 
-        # update the list of active static lights depending on player position 
-        for i in range(len(self._ref_tilemap.lights) -1,-1,-1):
-            light = self._ref_tilemap.lights[i]
-            if light.popped or not light.enabled:
-                continue 
+        self.hulls = self._ref_tilemap.hull_grid.query(camera_offset[0] - 10 * tile_size, camera_offset[1] - 10 * tile_size,\
+                                                           camera_offset[0] + self._game_ctx['true_res'][0] +  10 * tile_size, camera_offset[1] + self._game_ctx['true_res'][1] + 10 * tile_size)
+        
+        self._prev_hull_query_player_pos = tuple(player_position)
+        self._prev_hull_query_camera_scroll = camera_offset
+
+
+        self._fbo_ao.clear(0,0,0,0)
+        self._buf_lt.clear(0,0,0,0)
+        self._send_hull_data_to_lighting_program(render_offset)
+        self._render_static_lights_to_light_buffer(render_offset)
+
+        self._render_aomap(camera_offset)
+
+
+
+    def _update_active_static_lights(self,camera_offset:tuple[int,int])->None: 
+     
+
+        ambient_lighting_range = self._ref_tilemap._ref_ambient_node.range
+
+        if dist(self._prev_lights_query_camera_scroll,camera_offset) >= 16:
+            # query the lights 
+            self._active_static_lights = self._ref_tilemap.lights_grid.query(camera_offset[0]- 2 * self._lightmap_buffer_slack,
+                                                                            camera_offset[1]- 2 * self._lightmap_buffer_slack,
+                                                                             camera_offset[0] + self._game_ctx['true_res'][0] + 2 * self._lightmap_buffer_slack,
+                                                                            camera_offset[1] +self._game_ctx['true_res'][1] + 2 * self._lightmap_buffer_slack )
+            
+            self._prev_lights_query_camera_scroll = camera_offset
+
+        for i in range(len(self._active_static_lights)-1,-1,-1):
+            light = self._active_static_lights[i] 
+            if light.popped or not light.enabled: 
+                continue
             if light.position[0] < ambient_lighting_range[0] or light.position[0] > ambient_lighting_range[1]:
-                light.cur_power = max(0.0,light.cur_power - 8 *dt*light.power)
+                light.cur_power = 0
                 continue 
             else: 
-                light.cur_power = min(light.power,light.cur_power + 8 * dt * light.power)
-
-            active_static_lights.append(light)
-            
-        self._active_static_lights = active_static_lights
+                light.cur_power = light.power
 
     def attatch_hud(self,hud:"HUD")->None:
         self._ref_hud = hud
 
-        self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords['cursor']['default']
+        self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords_array['cursor']['default']
 
-        self._vao_cursor_draw = self._ctx.vertex_array(
+        self._vao_cursor_draw = self._gl_ctx.vertex_array(
             self._prog_cursor_draw,
             [
                 (self._ref_hud.cursor.ndc_vertices_buffer, '2f' , 'in_position')
             ]
         )
 
-        self._vao_opaque_ui_draw = self._ctx.vertex_array(
+        self._vao_opaque_ui_draw = self._gl_ctx.vertex_array(
             self._opaque_ui_draw_prog,
             [
-                (self._ref_hud.opqaue_vertices_buffer, '2f' ,'vertexPos'),
+                (self._ref_hud.opaque_vertices_buffer, '2f' ,'vertexPos'),
                 (self._ref_hud.opaque_texcoords_buffer, '2f', 'vertexTexCoord')
             ]
         )
 
-        self._vao_hidden_ui_draw = self._ctx.vertex_array(
+        self._vao_hidden_ui_draw = self._gl_ctx.vertex_array(
             self._hidden_ui_draw_prog,
             [
                 (self._ref_hud.hidden_vertices_buffer, '2f', 'vertexPos'),
@@ -1044,28 +1035,46 @@ class RenderSystem(esper.Processor):
             ]
         )
 
-
-
-
-
-
+        self._vao_opaque_items_draw = self._gl_ctx.vertex_array(
+            self._opaque_ui_draw_prog,
+            [
+                (self._ref_hud.opaque_items_vertices_buffer, '2f', 'vertexPos'),
+                (self._ref_hud.opaque_items_texcoords_buffer, '2f', 'vertexTexCoord')
+            ]
+        )
+        
+        self._vao_hidden_items_draw = self._gl_ctx.vertex_array(
+            self._hidden_ui_draw_prog,
+            [
+                (self._ref_hud.hidden_items_vertices_buffer, '2f' , 'vertexPos'),
+                (self._ref_hud.hidden_items_texcoords_buffer, '2f' , 'vertexTexCoord')
+            ]
+        )
 
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None:
         self._ref_tilemap = tilemap
 
-        # lightmap res according to tilemap tilesize 
-        self._lightmap_res = (self._true_res[0]+ 2 * 10 * self._ref_tilemap.regular_tile_size,
-                              self._true_res[1]+ 2 * 10 * self._ref_tilemap.regular_tile_size,)
+        self._lightmap_buffer_slack = 10 * self._ref_tilemap.tile_size
 
+        # lightmap res according to tilemap tilesize 
+        self._lightmap_res = (self._game_ctx['true_res'][0]+ 2 * self._lightmap_buffer_slack,
+                              self._game_ctx['true_res'][1]+ 2 * self._lightmap_buffer_slack)
+        
         # Double buffer for lights
-        self._buf_lt = DoubleBuffer(self._ctx, self._lightmap_res)
+        self._buf_lt = DoubleBuffer(self._gl_ctx, self._lightmap_res)
+
+        self._prog_blur['iResolution'] = self._lightmap_res
+
+
+        self._prog_mask['nativeRes'] = self._game_ctx['true_res']
+        self._prog_mask['lightmapRes'] = self._lightmap_res
 
         # Ambient occlussion map
-        self._tex_ao = self._ctx.texture(
+        self._tex_ao = self._gl_ctx.texture(
             self._lightmap_res, components=4, dtype='f2')
         self._tex_ao.filter = (LINEAR, LINEAR)
-        self._fbo_ao = self._ctx.framebuffer([self._tex_ao])
+        self._fbo_ao = self._gl_ctx.framebuffer([self._tex_ao])
 
         # wrapping settings 
         self._buf_lt._tex1.repeat_x = False
@@ -1077,9 +1086,9 @@ class RenderSystem(esper.Processor):
         self._tex_ao.repeat_y = False
  
 
-        self._tile_draw_prog['NDCVertices'] = self._ref_tilemap.NDC_tile_vertices
+        self._tile_draw_prog['NDCVertices'] = self._ref_tilemap.NDC_tile_vertices_array
 
-        self._vao_physical_tiles_draw = self._ctx.vertex_array(
+        self._vao_physical_tiles_draw = self._gl_ctx.vertex_array(
             self._tile_draw_prog,
             [
                 (self._ref_tilemap.physical_tiles_position_vbo,'2f/i','in_position'),
@@ -1087,7 +1096,7 @@ class RenderSystem(esper.Processor):
             ]
         )
 
-        self._vao_non_physical_tiles_draw = self._ctx.vertex_array(
+        self._vao_non_physical_tiles_draw = self._gl_ctx.vertex_array(
             self._tile_draw_prog,
             [
                 (self._ref_tilemap.non_physical_tiles_position_vbo, '2f/i' , 'in_position'),
@@ -1100,10 +1109,10 @@ class RenderSystem(esper.Processor):
         self._ref_background = background 
         background_vertices = np.zeros(shape=(12,),dtype=np.float32)
 
-        self._ref_background_vertices_buffer = self._ctx.buffer(background_vertices,dynamic=True)
-        texcoords_buffer = self._ctx.buffer(self._ref_background.identity_texcoords)
+        self._ref_background_vertices_buffer = self._gl_ctx.buffer(background_vertices,dynamic=True)
+        texcoords_buffer = self._gl_ctx.buffer(self._ref_background.identity_texcoords)
 
-        self._vao_background_draw = self._ctx.vertex_array(
+        self._vao_background_draw = self._gl_ctx.vertex_array(
             self._to_screen_draw_prog,
             [
                 (self._ref_background_vertices_buffer, '2f' , 'vertexPos'),
@@ -1111,106 +1120,182 @@ class RenderSystem(esper.Processor):
             ]
         )
 
-
     def clear(self,R:int = 0, G:int = 0, B:int = 0,A:int =255)->None: 
-        R,G,B,A =   normalize_color_arguments(R,G,B,A,)
-        self._ctx.screen.clear(0,0,0,255)
+        R,G,B,A =   normalize_color_arguments(R,G,B,A)
+        self._gl_ctx.screen.clear(0,0,0,255)
         self._fbo_bg.clear(R,G,B,A)
         self._fbo_fg.clear(R,G,B,A)
         
+    def process(self,game_context,interpolation_delta:float32,dt:float32)->None: 
 
+        camera_offset = tuple(game_context['camera_offset'])
+        screen_shake  = tuple(game_context['screen_shake'])
 
-    def process(self,camera_offset:tuple[int,int],interpolation_delta:float,dt:float)->None: 
-        self._ctx.enable(BLEND)
+        self._gl_ctx.enable(BLEND)
         self._render_background_to_bg_fbo(camera_offset)
-        self._render_tilemap_to_bg_fbo(camera_offset)
+        self._opt_render_tilemap_to_bg_fbo(camera_offset)
+        #self._render_tilemap_to_bg_fbo(camera_offset)
         self._render_HUD_to_fg_fbo(dt)
 
-        entity_vertices = []
-        entity_texcoords = []
-        entity_matrices = []
+        entity_vertices_byte_array = bytearray()
+        entity_texcoords_byte_array = bytearray()
+        entity_matrices_byte_array = bytearray()
 
-        self._view_transform[0][2] = -camera_offset[0]
-        self._view_transform[1][2] = -camera_offset[1]
+        weapon_vertices_byte_array = bytearray()
+        weapon_texcoords_byte_array = bytearray() 
+        weapon_matrices_byte_array  = bytearray()
 
-        instances = 0 
+        self._view_matrix[0][2] = -camera_offset[0]
+        self._view_matrix[1][2] = -camera_offset[1]
+
+        entity_instances = 0
+        weapon_instances = 0 
+
+        player_weapon_equipped = self._ref_hud.weapon_equipped
 
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
 
-                self._ref_tilemap.update_ambient_node_ptr(physics_comp.position[0])
+                self._ref_tilemap.update_tilemap_vbos(physics_comp.position)
+                self._ref_tilemap.update_ambient_node_ref(physics_comp.position,self._on_ambient_node_change_callback,camera_offset,screen_shake)
 
-                if isinstance(self._ref_tilemap._ambient_node_ptr,interpolatedLightNode):
-                    self._set_ambient(self._ref_tilemap._ambient_node_ptr.get_interpolated_RGBA(physics_comp.position[0]))
+                if isinstance(self._ref_tilemap._ref_ambient_node,interpolatedLightNode):
+                    self._set_ambient(self._ref_tilemap._ref_ambient_node.get_interpolated_RGBA(physics_comp.position[0]))
                 else: 
-                    self._set_ambient(*self._ref_tilemap._ambient_node_ptr.colorValue)
+                    self._set_ambient(*self._ref_tilemap._ref_ambient_node.colorValue)
 
                 animation_data_collection = render_comp.animation_data_collection
                 animation = animation_data_collection.get_animation(state_info_comp.curr_state)
 
-                texcoords = self._ref_rm.entity_texcoords[(state_info_comp.type,state_info_comp.has_weapon,state_info_comp.curr_state,animation.curr_frame())]
-                entity_local_vertices = render_comp.vertices    
-                
+                texcoords_bytes = self._ref_rm.entity_texcoords_bytes[(state_info_comp.type,player_weapon_equipped,state_info_comp.curr_state,animation.curr_frame())]
+                entity_local_vertices_bytes = render_comp.vertices_bytes
+          
                 interpolated_model_transform = physics_comp.prev_transform * (1.0 - interpolation_delta) + physics_comp.transform * interpolation_delta
+                player_model_interpolated_translation = (interpolated_model_transform[0][2], interpolated_model_transform[1][2]) 
 
-                clip_transform = self._projection_transform @ self._view_transform @ interpolated_model_transform 
+                clip_transform = self._projection_matrix @ self._view_matrix @ interpolated_model_transform 
 
-                entity_vertices.extend(entity_local_vertices)
-                entity_texcoords.extend(texcoords)
+                entity_vertices_byte_array.extend(entity_local_vertices_bytes)
+                entity_texcoords_byte_array.extend(texcoords_bytes)
 
-                column_major_clip_transform = clip_transform.T.flatten()
-                entity_matrices.extend(column_major_clip_transform)
+                column_major_clip_transform_bytes = clip_transform.T.flatten().tobytes()
+                entity_matrices_byte_array.extend(column_major_clip_transform_bytes)
+
+
+                # writing to weapon render buffers 
+                if player_weapon_equipped:
+                    weapon_instances += 1  
+                    weapon = self._ref_hud.curr_weapon
+                    
+                    weapon_texcoords_bytes = self._ref_rm.holding_weapon_texcoords_bytes[weapon.name] 
+                    weapon_local_vertices_bytes = self._ref_rm.holding_weapon_vertices_bytes[weapon.name] 
+
+                    weapon_flip = physics_comp.position[0] - camera_offset[0] > self._ref_hud.cursor.topleft[0]
+
+
+                    anchor_position_offset_from_center = PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS[physics_comp.flip][state_info_comp.curr_state][weapon_flip]
+
+                    anchor_to_cursor_angle = self._ref_hud.cursor.get_angle_from_point((physics_comp.position[0]-camera_offset[0] + anchor_position_offset_from_center[0],
+                                                                                        physics_comp.position[1]-camera_offset[1] + anchor_position_offset_from_center[1]))
+
+                    sin_a = np.sin(pi - anchor_to_cursor_angle if weapon_flip else - anchor_to_cursor_angle) 
+                    cos_a = np.cos(pi - anchor_to_cursor_angle if weapon_flip else  - anchor_to_cursor_angle)
+
+                    weapon_model_to_pivot_transform = np.array([
+                        [1,0,-weapon.origin_offset_from_center[0]],
+                        [0,1,-weapon.origin_offset_from_center[1]],
+                        [0,0,1]
+                    ],dtype = np.float32)
+
+                    weapon_model_rotate_transform = np.array([
+                        [cos_a,-sin_a,0],
+                        [sin_a,cos_a,0],
+                        [0,0,1]
+                    ],dtype = np.float32)
+
+                    weapon_model_flip_transform = np.array([
+                        [(-2*weapon_flip +1),0,0],
+                        [0,1,0],
+                        [0,0,1]
+                    ],dtype = np.float32)
+
+
+                    weapon_model_translate_transform = np.array([
+                        [1,0,player_model_interpolated_translation[0]+anchor_position_offset_from_center[0]],
+                        [0,1,player_model_interpolated_translation[1]+anchor_position_offset_from_center[1]],
+                        [0,0,1]
+                    ],dtype= np.float32)
+                    
+
+                    """
+                    weapon_model_translate_transform = np.array([
+                        [1,0,physics_comp.position[0]],
+                        [0,1,physics_comp.position[1]],
+                        [0,0,1]
+                    ],dtype= np.float32)
+                    """
+
+                    weapon_clip_transform = self._projection_matrix @ self._view_matrix @ weapon_model_translate_transform @ weapon_model_rotate_transform @ weapon_model_flip_transform  @ weapon_model_to_pivot_transform
+
+                    weapon_vertices_byte_array.extend(weapon_local_vertices_bytes)
+                    weapon_texcoords_byte_array.extend(weapon_texcoords_bytes)
+
+                    column_major_clip_transform_bytes = weapon_clip_transform.T.flatten().tobytes()
+                    weapon_matrices_byte_array.extend(column_major_clip_transform_bytes) 
 
             else: 
                 pass
-            instances += 1
+            entity_instances += 1
+        
 
-        self._entity_local_vertices_vbo.write(np.array(entity_vertices,dtype=np.float32).tobytes())
-        self._entity_texcoords_vbo.write(np.array(entity_texcoords,dtype=np.float32).tobytes())
-        self._entity_transform_matrices_vbo.write(np.array(entity_matrices,dtype=np.float32).tobytes())
+        self._entity_weapons_local_vertices_vbo.write(weapon_vertices_byte_array)
+        self._entity_weapons_texcoords_vbo.write(weapon_texcoords_byte_array)
+        self._entity_weapons_transform_matrices_vbo.write(weapon_matrices_byte_array)
+
+        self._entity_local_vertices_vbo.write(entity_vertices_byte_array)
+        self._entity_texcoords_vbo.write(entity_texcoords_byte_array)
+        self._entity_transform_matrices_vbo.write(entity_matrices_byte_array)
 
         self._fbo_bg.use()
+
+
         self._ref_rm.texture_atlasses['entities'].use()
-        self._vao_entity_draw.render(vertices= 6, instances= instances)
+        self._vao_entity_draw.render(instances= entity_instances)
 
-        self._render_fbos_to_screen_with_lighting(camera_offset,interpolation_delta,dt)
+        self._ref_rm.texture_atlasses['holding_weapons'].use()
+        self._vao_entity_weapons_draw.render(instances= weapon_instances)
 
+        
+        self._update_active_static_lights(camera_offset)
+        self._render_fbos_to_screen_with_lighting(self._ref_em.player_physics_comp.position,camera_offset,screen_shake,interpolation_delta)
 
-
-        # final render to the screen from the bg fbo 
-        """
-        self._ctx.screen.use()
-        self._tex_bg.use()
-        self._vao_to_screen_draw.render()
-        """
 
 class StateSystem(esper.Processor):
 
-
     def __init__(self)->None: 
+        self._ref_em :EntitiesManager = EntitiesManager.get_instance()
         self._player_state_machine = PlayerStateMachine()
         self._enemy_state_machine = EnemyStateMachine()
 
-    def process(self,dt:float)->None: 
+    def process(self,dt:float32)->None: 
         
-        player, (input_comp,state_info_comp,physics_comp,render_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent,RenderComponent)[0]
-
-        new_state = self._player_state_machine.change_state(input_comp,state_info_comp,physics_comp,render_comp,dt)
-                
-
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
-                continue
+                self._player_state_machine.change_state(self._ref_em.player_input_comp,state_info_comp,physics_comp,render_comp,dt)
+            else: 
+                pass
 
 class InputHandler(esper.Processor):
 
     def __init__(self,game_context)->None: 
+        
+        self._ref_em : EntitiesManager = EntitiesManager.get_instance()
         self._ref_game_context = game_context
         self._ref_hud: "HUD" = None
         
 
 
-    def _handle_common_events(self,event:pygame.Event)->None:
+    def _handle_common_events(self,event:pygame.event)->None:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 pygame.quit()
@@ -1238,8 +1323,9 @@ class InputHandler(esper.Processor):
         self._ref_hud = hud
 
 
-    def process(self,dt:float,on_hot_reload_callback)->None: 
-        player, (player_input_comp,player_physics_comp,player_state_comp) = esper.get_components(InputComponent,PhysicsComponent,StateInfoComponent)[0]
+    def process(self,on_hot_reload_callback:"function")->None: 
+  
+        player_input_comp = self._ref_em.player_input_comp
 
         if self._ref_game_context['gamestate'] == GameState.GameLoop: 
             for event in pygame.event.get():
@@ -1271,11 +1357,18 @@ class InputHandler(esper.Processor):
                     if event.key == pygame.K_e:
                         # toggle inventory
                         self._ref_hud.inven_open_state = not self._ref_hud.inven_open_state
-                    if event.key == pygame.K_i: 
-                        # temporary key binding to add items to inventory for debugging purposes
-                        pass
+                    if event.key == pygame.K_i:
+                        # temporary keybinding to add items to inventory 
+                        self._ref_hud.add_item(Item(choice(list(ITEM_ATLAS_POSITIONS_AND_SIZES.keys()))),0)
+                    if event.key == pygame.K_f: 
+                        self._ref_hud.add_item(AK47(),2)
+                    if event.key == pygame.K_g: 
+                        self._ref_hud.add_item(FlameThrower(),2)
+                
+                elif event.type == pygame.MOUSEWHEEL:
+                    self._ref_hud.change_weapon(event.y)
 
-                if event.type == pygame.KEYUP:
+                elif event.type == pygame.KEYUP:
                     
                     if event.key == pygame.K_LSHIFT:
                         self._ref_hud.cursor.special_actions = False
@@ -1309,12 +1402,12 @@ class StateMachine:
 
 
 class PlayerStateMachine(StateMachine):
-    def change_state(self,input_comp:InputComponent,state_info_comp:StateInfoComponent,physics_comp:PhysicsComponent,render_comp:RenderComponent,dt:float):
+    def change_state(self,input_comp:InputComponent,state_info_comp:StateInfoComponent,physics_comp:PhysicsComponent,render_comp:RenderComponent,dt:float32):
         if state_info_comp.curr_state == 'land':
             pass
         else:
             if state_info_comp.collide_bottom:
-                if physics_comp.velocity[0] == 0:
+                if physics_comp.velocity[0] == float32(0):
                     if state_info_comp.collide_bottom:
                         if input_comp.down: 
                             new_state = 'slide'
@@ -1332,7 +1425,7 @@ class PlayerStateMachine(StateMachine):
                 if state_info_comp.collide_left or state_info_comp.collide_right:
                     new_state = 'wall_slide'
                 else: 
-                    if physics_comp.velocity[1] > 0:
+                    if physics_comp.velocity[1] > float32(0):
                         new_state = 'jump_down'
                     else: 
                         new_state = 'jump_up'
