@@ -106,7 +106,7 @@ class Noel():
     def _get_system_display_info(self):
         system_info = {}
 
-        primary_monitor = get_monitors()[0]
+        primary_monitor = get_monitors()[1]
         system_info["resolution"] = (primary_monitor.width, primary_monitor.height)
 
 

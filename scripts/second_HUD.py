@@ -1,12 +1,13 @@
 from scripts.data import BYTES_PER_TEXTURE_QUAD,TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO,TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO,TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO,SPACE_BETWEEN_INVENTORY_ELEMENTS,\
                         TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO,TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO,TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO,TRUE_RES_TO_HIDDEN_ITEM_INVEN_DIM_RATIO,\
                         TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO, SPACE_BETWEEN_INVENTORY_CELLS,INVENTORY_CELL_EXPANSION_RATIO,PHYSICS_TIMESTEP
+
 from scripts.new_cursor import Cursor
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_inventory import Inventory,InventoryEngine,WeaponInventory,Cell
 from scripts.lists import WeaponNode
 import numpy as np 
-from numpy import float32,uint32,uint16,array
+from numpy import float32,float64,uint32,uint16,array
 
 from typing import TYPE_CHECKING
 
@@ -22,7 +23,7 @@ class HUD:
         self._game_ctx = game_context
          
         self.inven_open_state = False
-        self.inven_open_time = array([0],dtype = float32) 
+        self.inven_open_time = array([0],dtype = float64) 
         self.max_inven_open_time = 30 * PHYSICS_TIMESTEP
         self.cursor = Cursor()
 
@@ -45,15 +46,15 @@ class HUD:
         self.weapon_inventory_cell_dim = tuple( (true_res_array_float32 * array(TRUE_RES_TO_WEAPON_INVEN_DIM_RATIO,dtype = float32)).astype(uint32) // self.weapon_inventory_rows_cols[::-1])
 
         self.open_item_inventory_rows_cols = (uint16(1),uint16(5))
-        self.open_item_inventory_cells = self.open_item_inventory_rows_cols[0] * self.open_item_inventory_rows_cols[1]
-        self.open_item_inventory_cell_length =int(self._game_ctx['true_res'][0] * TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1]  
+        self.open_item_inventory_cells = uint32(self.open_item_inventory_rows_cols[0]) * uint32(self.open_item_inventory_rows_cols[1])
+        self.open_item_inventory_cell_length = uint32(self._game_ctx['true_res'][0] * TRUE_RES_TO_OPAQUE_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1]  
 
-        self.hidden_item_inventory_rows_cols = [2,5]
-        self.hidden_item_inventory_cells = self.hidden_item_inventory_rows_cols[0] * self.open_item_inventory_rows_cols[1]
-        self.hidden_item_inventory_cell_length = int(self._game_ctx['true_res'][0] * TRUE_RES_TO_HIDDEN_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1] 
+        self.hidden_item_inventory_rows_cols = array([2,5],dtype = uint16)
+        self.hidden_item_inventory_cells = uint32(self.hidden_item_inventory_rows_cols[0]) * uint32(self.open_item_inventory_rows_cols[1])
+        self.hidden_item_inventory_cell_length = uint32(self._game_ctx['true_res'][0] * TRUE_RES_TO_HIDDEN_ITEM_INVEN_DIM_RATIO[0]) // self.open_item_inventory_rows_cols[1] 
        
-        self.current_weapon_display_cell_dim = (int(self._game_ctx['true_res'][0] * TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO[0]),
-                                                 int(self._game_ctx['true_res'][1] * TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO[1]))
+
+        self.current_weapon_display_cell_dim = tuple((true_res_array_float32 * array(TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO,dtype = float32)).astype(uint32))
         
         
         # TODO: COMPUTE THIS: 
@@ -66,17 +67,17 @@ class HUD:
                                             +SPACE_BETWEEN_INVENTORY_CELLS -SPACE_BETWEEN_INVENTORY_ELEMENTS)
 
         self.current_weapon_display_topleft = (self.health_bar_topleft[0] + self.health_bar_dimensions[0]+SPACE_BETWEEN_INVENTORY_ELEMENTS,
-                                                self.health_bar_topleft[1] -2)
+                                                self.health_bar_topleft[1] - uint32(2))
 
         self.open_item_inventory_topleft = (self.health_bar_topleft[0]+self.health_bar_dimensions[0]+self.current_weapon_display_cell_dim[0]+SPACE_BETWEEN_INVENTORY_ELEMENTS,\
-                                             self.health_bar_topleft[1] - int(0.5 * self.open_item_inventory_cell_length) + self.health_bar_dimensions[1])
+                                             self.health_bar_topleft[1] - uint32(self.open_item_inventory_cell_length >> 1) + self.health_bar_dimensions[1])
 
         self.hidden_item_inventory_topleft = (self.open_item_inventory_topleft[0],self.open_item_inventory_topleft[1] -(self.hidden_item_inventory_rows_cols[0]) * (self.hidden_item_inventory_cell_length+SPACE_BETWEEN_INVENTORY_CELLS))
 
-        self.hidden_item_inven_background_topleft = (self.hidden_item_inventory_topleft[0] - 2*self.hidden_item_inventory_cell_length * INVENTORY_CELL_EXPANSION_RATIO,\
-                                                     self.hidden_item_inventory_topleft[1] - 2*self.hidden_item_inventory_cell_length * INVENTORY_CELL_EXPANSION_RATIO)
-        self.hidden_item_inven_background_dim = (self.hidden_item_inventory_rows_cols[1] * (self.hidden_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS) -SPACE_BETWEEN_INVENTORY_CELLS + 4 *self.hidden_item_inventory_cell_length* INVENTORY_CELL_EXPANSION_RATIO ,\
-                                                 self.hidden_item_inventory_rows_cols[0] * (self.hidden_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS) -SPACE_BETWEEN_INVENTORY_CELLS + 4 *self.hidden_item_inventory_cell_length * INVENTORY_CELL_EXPANSION_RATIO  )
+        self.hidden_item_inven_background_topleft = (self.hidden_item_inventory_topleft[0] - (self.hidden_item_inventory_cell_length << 1 ) * INVENTORY_CELL_EXPANSION_RATIO,\
+                                                     self.hidden_item_inventory_topleft[1] - (self.hidden_item_inventory_cell_length << 1 )* INVENTORY_CELL_EXPANSION_RATIO)
+        self.hidden_item_inven_background_dim = (self.hidden_item_inventory_rows_cols[1] * (self.hidden_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS) -SPACE_BETWEEN_INVENTORY_CELLS +  (self.hidden_item_inventory_cell_length << 2) * INVENTORY_CELL_EXPANSION_RATIO ,\
+                                                 self.hidden_item_inventory_rows_cols[0] * (self.hidden_item_inventory_cell_length + SPACE_BETWEEN_INVENTORY_CELLS) -SPACE_BETWEEN_INVENTORY_CELLS +  (self.hidden_item_inventory_cell_length << 2) * INVENTORY_CELL_EXPANSION_RATIO  )
 
         self._precompute_hud_display_elements_vertices()
 
@@ -90,11 +91,11 @@ class HUD:
 
         self._inven_list= [
             Inventory('item',*self.open_item_inventory_rows_cols,self.open_item_inventory_topleft,(self.open_item_inventory_cell_length,self.open_item_inventory_cell_length),SPACE_BETWEEN_INVENTORY_CELLS,
-                      16,expandable = False),
+                      uint16(16),expandable = False),
             Inventory('item',*self.hidden_item_inventory_rows_cols,self.hidden_item_inventory_topleft,(self.hidden_item_inventory_cell_length,self.hidden_item_inventory_cell_length),SPACE_BETWEEN_INVENTORY_CELLS,
-                      16, expandable= True),
+                      uint16(16), expandable= True),
             WeaponInventory(*self.weapon_inventory_rows_cols,self.weapon_inventory_topleft,self.weapon_inventory_cell_dim,SPACE_BETWEEN_INVENTORY_CELLS,
-                            1,expandable= True)
+                            uint16(1),expandable= True)
         ]
 
         self._items_engine = InventoryEngine(self._inven_list)
@@ -104,14 +105,14 @@ class HUD:
     def _clamp_dimensions(self)->None: 
         # clamp the dimensions of the health and stamina bars 
         # clamp the height of the health and stamina bars to 9 maximum
-        self.health_bar_dimensions  = (self.health_bar_dimensions[0],min(9,self.health_bar_dimensions[1])) 
-        self.stamina_bar_dimensions = (self.stamina_bar_dimensions[0],min(9,self.stamina_bar_dimensions[1])) 
+        self.health_bar_dimensions  = (self.health_bar_dimensions[0],min(uint32(9),self.health_bar_dimensions[1])) 
+        self.stamina_bar_dimensions = (self.stamina_bar_dimensions[0],min(uint32(9),self.stamina_bar_dimensions[1])) 
 
-        self.open_item_inventory_cell_length= min(28,self.open_item_inventory_cell_length)
-        self.hidden_item_inventory_cell_length = min(28,self.hidden_item_inventory_cell_length)
+        self.open_item_inventory_cell_length= min(uint32(28),self.open_item_inventory_cell_length)
+        self.hidden_item_inventory_cell_length = min(uint32(28),self.hidden_item_inventory_cell_length)
 
         #self.weapon_inventory_cell_dim = (min(self.weapon_inventory_cell_dim[0],44),max(23,min(28,self.weapon_inventory_cell_dim[1])))
-        self.weapon_inventory_cell_dim = (42,20)
+        self.weapon_inventory_cell_dim = (uint32(42),uint32(20))
 
 
 
@@ -246,8 +247,6 @@ class HUD:
         w = 2. * size[0] / self._game_ctx['true_res'][0]
         h = 2. * size[1] /self._game_ctx['true_res'][1]
 
-        #return np.array([(x, y), (x + w, y), (x, y - h),
-        #                    (x, y - h), (x + w, y), (x + w, y - h)], dtype=np.float32)
         
         return np.array([(x, y - h),(x + w, y - h),(x,y),
                          (x,y),(x + w, y - h),(x+w,y)],dtype= np.float32).tobytes()
@@ -479,7 +478,7 @@ class HUD:
 
     def update(self,dt:float32,cursor_state_change_callback:"function")->None:
         # inventory open time update 
-        self.inven_open_time[0] = max(float32(0),min(self.max_inven_open_time,self.inven_open_time + (2*self.inven_open_state - 1) * 4 * dt))
+        self.inven_open_time[0] = max(float64(0),min(self.max_inven_open_time,self.inven_open_time + (2*self.inven_open_state - 1) * 4 * dt))
 
         # cursor update 
         self.cursor.update(self._game_ctx['display_scale_ratio'],dt,cursor_state_change_callback)

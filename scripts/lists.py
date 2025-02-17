@@ -1,4 +1,5 @@
 from pygame import Rect
+from numpy import uint16,uint32,int64,int32,float32
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -105,7 +106,7 @@ class DoublyLinkedList:
 
 
 class WeaponInvenList(DoublyLinkedList):
-    def __init__(self, inven_ind:int,objs = None)->None:
+    def __init__(self, inven_ind:uint16,objs = None)->None:
         super().__init__(objs)
 
         self._inventory_id = inven_ind
@@ -113,7 +114,7 @@ class WeaponInvenList(DoublyLinkedList):
 
     
     @property 
-    def inventory_id(self)->int:
+    def inventory_id(self)->uint16:
         return self._inventory_id
 
     def add_weapon(self,weapon:"Weapon",on_inven_item_change_callback:"function",on_current_weapon_change_callback:"function")->None:
@@ -191,12 +192,11 @@ class WeaponInvenList(DoublyLinkedList):
         return interacting
 
 class WeaponNode:
-    def __init__(self,list:WeaponInvenList,cell_ind:int,pos:tuple[int,int],size:tuple[int,int])->None:
+    def __init__(self,list:WeaponInvenList,cell_ind:int32,pos:tuple[int64,int64],size:tuple[uint32,uint32])->None:
         self.list = list 
         self._cell_ind = cell_ind 
         self._pos = pos 
         self._hovered = False 
-        self._offset = (0,0)
         self._size = size 
         self._rect = Rect(*self._pos, *self._size)
 
@@ -252,11 +252,9 @@ class WeaponNode:
                on_current_weapon_change_callback:"function",on_cursor_item_change_callback:"function")->None:
             
             if cursor.box.colliderect(self._rect):
-                self._offset = (-1,-1)
                 self._hovered = True 
                 cursor.ref_hovered_cell = self
             else: 
-                self._offset = (0,0)
                 self._hovered = False
 
             if inven_open_state:
@@ -269,15 +267,15 @@ class WeaponNode:
                         # this part actually never gets called as weapon inventory items are always not stackable. 
                         if not (cursor.item.type == self._type):
                             return
-                        amount = stack_limit - cursor.item.count
-                        if self.weapon.count + cursor.item.count <= stack_limit:
-                            cursor.item.count = cursor.item.count + self.weapon.count
+                        amount = stack_limit - cursor.item.count[0]
+                        if self.weapon.count[0] + cursor.item.count[0] <= stack_limit:
+                            cursor.item.count[0] = cursor.item.count[0] + self.weapon.count[0]
                             self.weapon= None 
 
                             on_inven_item_add_callback(self)
                         else: 
-                            cursor.item.count = cursor.item.count + amount 
-                            self.weapon.count = self.weapon.count - amount
+                            cursor.item.count[0] = cursor.item.count[0] + amount 
+                            self.weapon.count[0] = self.weapon.count[0] - amount
                         cursor.set_cooldown()
                     if cursor.item is None:
                         if self._hovered:
@@ -306,25 +304,25 @@ class WeaponNode:
                             on_inven_item_add_callback(self)
                             on_cursor_item_change_callback()
 
-                        elif cursor.pressed[1] and self.weapon.count > 1:
-                            half = self.weapon.count // 2
+                        elif cursor.pressed[1] and self.weapon.count[0] > uint16(1):
+                            half = self.weapon.count[0] >> 1
                             cursor.item = self.weapon.copy()
-                            cursor.item.count = half 
-                            self.weapon.count = self.weapon.count - half 
+                            cursor.item.count[0] = half 
+                            self.weapon.count[0] = self.weapon.count[0] - half 
                             cursor.set_cooldown()
                         else: 
                             # this part seems off, unneeded maybe. 
                             if cursor.cooldown != 0:
                                 return 
-                            if cursor.pressed[0] and cursor.item.name == self.weapon.name and self.weapon.count + cursor.item.count <= stack_limit and self.weapon.stackable:
-                                self.weapon.count = self.weapon.count + cursor.item.count
+                            if cursor.pressed[0] and cursor.item.name == self.weapon.name and self.weapon.count[0] + cursor.item.count[0] <= stack_limit and self.weapon.stackable:
+                                self.weapon.count[0] = self.weapon.count[0] + cursor.item.count[0]
                                 cursor.item = None 
                                 cursor.set_cooldown()
                                 on_cursor_item_change_callback()
                             elif cursor.pressed[0] and cursor.item.name == self.weapon.name and self.weapon.stackable :
-                                amount = stack_limit - self.weapon.count
-                                self.weapon.count = self.weapon.count + amount 
-                                cursor.item.count = cursor.item.count - amount 
+                                amount = stack_limit - self.weapon.count[0]
+                                self.weapon.count[0] = self.weapon.count[0] + amount 
+                                cursor.item.count[0] = cursor.item.count[0] - amount 
                                 cursor.set_cooldown()
                             elif cursor.pressed[0]:
                                 temp = cursor.item.copy()
@@ -337,7 +335,7 @@ class WeaponNode:
                                 on_cursor_item_change_callback()
 
                     elif cursor.item is not None and cursor.item.type == "weapon"\
-                          and self._hovered and cursor.cooldown <= 0:
+                          and self._hovered and cursor.cooldown <= float32(0):
                         if cursor.pressed[0] :
                             temp = cursor.item.copy()
                             cursor.item = self.weapon
@@ -347,7 +345,7 @@ class WeaponNode:
                             on_inven_item_add_callback(self)
                             on_cursor_item_change_callback()
 
-                elif cursor.item is not None and self._hovered and cursor.cooldown <= 0:
+                elif cursor.item is not None and self._hovered and cursor.cooldown <= float32(0):
                     if cursor.item.type != self.list._type:
                         return
                     if cursor.pressed[0]:
@@ -364,11 +362,11 @@ class WeaponNode:
                         on_cursor_item_change_callback()
 
                     elif cursor.pressed[1] and cursor.item.stackable:
-                        if cursor.item.count >1:
-                            half = cursor.item.count // 2
+                        if cursor.item.count[0] > uint16(1):
+                            half = cursor.item.count >> 1
                             self.weapon = cursor.item.copy()
-                            self.weapon.count = half 
-                            cursor.item.count = cursor.item.count - half 
+                            self.weapon.count[0] = half 
+                            cursor.item.count[0] = cursor.item.count[0] - half 
                         else: 
                             self.weapon = cursor.item 
                             cursor.item = None 

@@ -4,8 +4,7 @@ from scripts.data import PHYSICS_TIMESTEP
 from scripts.new_resource_manager import ResourceManager
 from math import atan2
 
-from numpy import uint8,float32,int32,array
-import numpy as np
+from numpy import uint8,uint16,float32,int32,array
 class Cursor: 
     def __init__(self,in_editor :bool = False)-> None:
 
@@ -19,19 +18,18 @@ class Cursor:
         self.in_editor = in_editor 
         self.topleft = array([0,0],dtype = int32)
         self.text = None 
-        self.size = (9,10)
+        self.size = (uint16(9),uint16(10))
         self.interacting = False 
         self.item = None
         self.state = "default"
         self.prev_state = "default"
         self.box = Rect(0,0,1,1)
         self.cooldown = array([10 * PHYSICS_TIMESTEP],dtype = float32)
-        self.pressed=  0 
         self.magnet = False 
         self.move = False 
         self.text = None 
         self.special_actions = False 
-        self.pressed = [0,0]
+        self.pressed = [False,False]
 
     def set_cooldown(self) -> None:
         self.cooldown[0] = 10 * PHYSICS_TIMESTEP

@@ -1,15 +1,14 @@
 from scripts.data import ITEM_DESCRIPTIONS
 
+from numpy import uint16,uint32,int16,array
+
 class Item:
-    def __init__(self,name,count = 1,stackable = True):
+    def __init__(self,name,count:uint16 = uint16(1),stackable = True):
         self._name = name 
         self._type = "item"
         self._rarity = "common"
         self._stackable = stackable
-        if not stackable: 
-            self.count = 1
-        else: 
-            self.count = count
+        self.count = array([count],dtype = uint16)
 
     def copy(self):
         return Item(self.name,self.count,self._stackable)
@@ -32,23 +31,24 @@ class Item:
 
 
 class Weapon(Item): 
-    def __init__(self, size, origin_offset ,name, count=1, stackable=False):
+    def __init__(self, size:tuple[uint16,uint16], origin_offset:tuple[int16,int16],
+                 name:str, count:uint16 = uint16(1), stackable=False):
         super().__init__(name, count, stackable)
-        self.magazine = 0
-        self.size = size
-        self.origin_offset_from_center = origin_offset 
+        self.magazine = array(0,dtype = uint32)
+        self._size = size
         self._type = 'weapon'
+        self.origin_offset_from_center = origin_offset 
         
 
     def copy(self):
         weapon = Weapon(self.name)
-        weapon.magazine = self.magazine
+        weapon.magazine[0] = self.magazine[0]
         return weapon
 
 
 class AK47(Weapon):
     def __init__(self):
-        super().__init__((18,9),(-7,-2),'ak47', 1, False)
+        super().__init__((uint16(18),uint16(9)),(int16(-7),int16(-2)),'ak47', uint16(1), False)
 
     def copy(self)->"AK47": 
         new_ak = AK47()
@@ -57,7 +57,7 @@ class AK47(Weapon):
 
 class FlameThrower(Weapon):
     def __init__(self):
-        super().__init__((24,8),(-10,-2),'flamethrower', 1, False) 
+        super().__init__((uint16(24),uint16(8)),(int16(-10),int16(-2)),'flamethrower', uint16(1), False) 
 
     def copy(self)->"FlameThrower":
         new_flamethrower = FlameThrower()

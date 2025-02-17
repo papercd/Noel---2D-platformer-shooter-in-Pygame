@@ -1,2 +1,1 @@
-
-        primary_monitor = get_monitors()[1]
+ch_background(self._resource_manager.backgrounds['start'])
