@@ -501,6 +501,7 @@ class RenderSystem(esper.Processor):
         self._fbo_bg.use()
         self._ref_rm.texture_atlasses['tiles'].use()
 
+        self._vao_non_physical_tiles_draw.render(vertices= 6, instances = self._ref_tilemap.tiles_in_buffer * self._ref_tilemap._non_physical_tile_layers) 
         self._vao_physical_tiles_draw.render(vertices= 6 , instances = self._ref_tilemap.tiles_in_buffer)
 
 

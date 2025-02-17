@@ -223,15 +223,11 @@ class Tilemap:
 
     def load_initial_tilemap_buffers(self)->None: 
 
-        # x, y 
         self._physical_tiles_texcoords_write_offset_ind = array([0,0],dtype = int32)
         self._physical_tiles_positions_write_offset_ind = array([0,0],dtype = int32)
 
-        self._current_grid_topleft = array([ (self._initial_player_position[0] + int32(self._game_ctx['true_res'][0]) // int32(2)) // int32(16) - int32(self._tilemap_buffer_padding),
-                                             (self._initial_player_position[1] + int32(self._game_ctx['true_res'][1]) // int32(2)) // int32(16) - int32(self._tilemap_buffer_padding)])
-
-        #self._current_grid_topleft = [int((self._initial_player_position[0] - self._game_ctx['true_res'][0] / 2) / 16) - self._tilemap_buffer_padding,
-        #                            int((self._initial_player_position[1] - self._game_ctx['true_res'][1] / 2) / 16) - self._tilemap_buffer_padding]
+        self._current_grid_topleft = array([ (self._initial_player_position[0] - int32(self._game_ctx['true_res'][0] >> 1)) // int32(16) - int32(self._tilemap_buffer_padding),
+                                             (self._initial_player_position[1] - int32(self._game_ctx['true_res'][1] >> 1)) // int32(16) - int32(self._tilemap_buffer_padding)])
 
         texcoords_buffer_write_offset = 0
         positions_buffer_write_offset = 0
@@ -240,23 +236,18 @@ class Tilemap:
             for grid_y_offset in range(0,self._tiles_per_screen_col):
                 coor = (self._current_grid_topleft[0] + grid_x_offset, self._current_grid_topleft[1] + grid_y_offset)
 
-                if coor in self.physical_tiles:
-                    tile_data = self.physical_tiles[coor]
-                    tile_general_info = tile_data.info
+                # load initial physical tilemap buffer
 
-                    type,relative_position_index,variant = tile_general_info.type,tile_general_info.relative_pos_ind, tile_general_info.variant
+                self._write_physical_tile_to_vbo(coor,texcoords_buffer_write_offset,positions_buffer_write_offset)
+                
+                # load initial non physical tilemap buffer
 
-                    self.physical_tiles_texcoords_vbo.write(self.tile_texcoords_bytes[(type,relative_position_index,variant)],offset = texcoords_buffer_write_offset)
-                    self.physical_tiles_position_vbo.write(self.tile_pos_to_ndc_bytes(coor),offset = positions_buffer_write_offset)
-                else: 
-                    self.physical_tiles_texcoords_vbo.write(self.null_texcoords_bytes,offset = texcoords_buffer_write_offset)
-                    self.physical_tiles_position_vbo.write(self.null_positions_bytes,offset = positions_buffer_write_offset)
+                for i, non_physical_tile_layer in enumerate(self.non_physical_tiles): 
 
-                """
-                for non_physical_tile_layer in self.non_physical_tiles:
-                    if coor in non_physical_tile_layer:
-                        tile_info = non_physical_tile_layer[coor]
-                """
+                    non_physical_tiles_texcoords_write_offset =  i * self.tiles_in_buffer * BYTES_PER_TEXTURE_QUAD + texcoords_buffer_write_offset
+                    non_physical_tiles_positions_write_offset = i * self.tiles_in_buffer * BYTES_PER_POSITION_VEC2 + positions_buffer_write_offset
+
+                    self._write_non_physical_tile_to_vbo(non_physical_tile_layer,coor,non_physical_tiles_texcoords_write_offset,non_physical_tiles_positions_write_offset)
 
                 texcoords_buffer_write_offset += BYTES_PER_TEXTURE_QUAD
                 positions_buffer_write_offset += BYTES_PER_POSITION_VEC2
@@ -296,7 +287,7 @@ class Tilemap:
             self._current_grid_topleft[1] += signs[1]
             self._update_tilemap_vbos_y(signs[1])
 
-    def _write_tile_to_vbo(self,coor:tuple[int32,int32],texcoords_write_offset:int, position_write_offset:int)->None:
+    def _write_physical_tile_to_vbo(self,coor:tuple[int32,int32],texcoords_write_offset:int, position_write_offset:int)->None:
 
         if coor in self.physical_tiles: 
             tile_data = self.physical_tiles[coor]
@@ -311,6 +302,19 @@ class Tilemap:
         self.physical_tiles_texcoords_vbo.write(texcoords_bytes,offset = texcoords_write_offset )
         self.physical_tiles_position_vbo.write(position_bytes,offset = position_write_offset)
 
+    
+    def _write_non_physical_tile_to_vbo(self,non_physical_tile_layer,coor:tuple[int32,int32],texcoords_write_offset:int, position_write_offset:int)->None:
+        if coor in non_physical_tile_layer: 
+            tile_info = non_physical_tile_layer[coor]
+            texcoords_bytes = self.tile_texcoords_bytes[(tile_info.type,tile_info.relative_pos_ind,tile_info.variant)]
+            position_bytes = self.tile_pos_to_ndc_bytes(coor)
+        else: 
+            texcoords_bytes = self.null_texcoords_bytes
+            position_bytes = self.null_positions_bytes
+
+        self.non_physical_tiles_texcoords_vbo.write(texcoords_bytes,offset = texcoords_write_offset )
+        self.non_physical_tiles_position_vbo.write(position_bytes,offset = position_write_offset)
+
 
     def _update_tilemap_vbos_x(self,direction:int32)->None: 
 
@@ -324,6 +328,7 @@ class Tilemap:
             for new_column_grid_y_offset in range(0,self._tiles_per_screen_col):
                 coor = (self._current_grid_topleft[0]-1 + self._tiles_per_screen_row ,self._current_grid_topleft[1] + new_column_grid_y_offset)
 
+                # physical tiles 
                 # calculate the write offsets 
                 col_wrap_around_texcoords_write_offset = (texcoords_write_offset_from_y + in_column_tile_texcoords_write_offset) % (self._tiles_per_screen_col * BYTES_PER_TEXTURE_QUAD)
                 final_texcoords_write_offset = col_wrap_around_texcoords_write_offset + self._physical_tiles_texcoords_write_offset_ind[0] * self._tiles_per_screen_col * BYTES_PER_TEXTURE_QUAD
@@ -331,7 +336,17 @@ class Tilemap:
                 col_wrap_around_positions_write_offset = (positions_write_offset_from_y + in_column_tile_position_write_offset) % (self._tiles_per_screen_col * BYTES_PER_POSITION_VEC2)
                 final_positions_write_offset = col_wrap_around_positions_write_offset + self._physical_tiles_positions_write_offset_ind[0] * self._tiles_per_screen_col * BYTES_PER_POSITION_VEC2
 
-                self._write_tile_to_vbo(coor,final_texcoords_write_offset,final_positions_write_offset)
+                self._write_physical_tile_to_vbo(coor,final_texcoords_write_offset,final_positions_write_offset)
+                
+                for i, non_physical_tile_layer in enumerate(self._non_physical_tiles):
+                    layer_offset_texcoords =  i * self.tiles_in_buffer * BYTES_PER_TEXTURE_QUAD
+                    layer_offset_positions = i * self.tiles_in_buffer * BYTES_PER_POSITION_VEC2
+
+                    final_texcoords_write_offset_non_physical = final_texcoords_write_offset + layer_offset_texcoords
+                    final_positions_write_offset_non_physical = final_positions_write_offset + layer_offset_positions 
+
+                    self._write_non_physical_tile_to_vbo(non_physical_tile_layer,coor,final_texcoords_write_offset_non_physical,final_positions_write_offset_non_physical)
+                # non physical tiles
 
                 in_column_tile_texcoords_write_offset += BYTES_PER_TEXTURE_QUAD
                 in_column_tile_position_write_offset +=  BYTES_PER_POSITION_VEC2  
@@ -352,7 +367,16 @@ class Tilemap:
                 col_wrap_around_positions_write_offset = (positions_write_offset_from_y + in_column_tile_position_write_offset) % (self._tiles_per_screen_col * BYTES_PER_POSITION_VEC2)
                 final_positions_write_offset = col_wrap_around_positions_write_offset + self._physical_tiles_positions_write_offset_ind[0] * self._tiles_per_screen_col * BYTES_PER_POSITION_VEC2
 
-                self._write_tile_to_vbo(coor,final_texcoords_write_offset,final_positions_write_offset)
+                self._write_physical_tile_to_vbo(coor,final_texcoords_write_offset,final_positions_write_offset)
+
+                for i,non_physical_tile_layer in enumerate(self._non_physical_tiles):
+                    layer_offset_texcoords =  i * self.tiles_in_buffer * BYTES_PER_TEXTURE_QUAD
+                    layer_offset_positions = i * self.tiles_in_buffer * BYTES_PER_POSITION_VEC2
+
+                    final_texcoords_write_offset_non_physical = final_texcoords_write_offset + layer_offset_texcoords
+                    final_positions_write_offset_non_physical = final_positions_write_offset + layer_offset_positions
+
+                    self._write_non_physical_tile_to_vbo(non_physical_tile_layer,coor,final_texcoords_write_offset_non_physical,final_positions_write_offset_non_physical)
                 
                 in_column_tile_texcoords_write_offset +=  BYTES_PER_TEXTURE_QUAD 
                 in_column_tile_position_write_offset +=  BYTES_PER_POSITION_VEC2 
@@ -379,7 +403,13 @@ class Tilemap:
                 final_texcoords_write_offset = row_wrap_texcoords_write_offset + self._physical_tiles_texcoords_write_offset_ind[1] * BYTES_PER_TEXTURE_QUAD 
                 final_positions_write_offset = row_wrap_positions_write_offset + self._physical_tiles_positions_write_offset_ind[1] * BYTES_PER_POSITION_VEC2
 
-                self._write_tile_to_vbo(coor,final_texcoords_write_offset,final_positions_write_offset)
+                self._write_physical_tile_to_vbo(coor,final_texcoords_write_offset,final_positions_write_offset)
+
+                for i,non_physical_tile_layer in enumerate(self._non_physical_tiles):
+                    non_physical_texcoords_write_offset = i * self.tiles_in_buffer * BYTES_PER_TEXTURE_QUAD + final_texcoords_write_offset
+                    non_physical_positions_write_offset = i * self.tiles_in_buffer * BYTES_PER_POSITION_VEC2 + final_positions_write_offset
+
+                    self._write_non_physical_tile_to_vbo(non_physical_tile_layer,coor,non_physical_texcoords_write_offset,non_physical_positions_write_offset)
 
                 in_row_tile_texcoords_write_offset +=  self._tiles_per_screen_col * BYTES_PER_TEXTURE_QUAD 
                 in_row_tile_position_write_offset +=  self._tiles_per_screen_col * BYTES_PER_POSITION_VEC2
@@ -400,7 +430,13 @@ class Tilemap:
                 final_texcoords_write_offset = row_wrap_texcoords_write_offset + self._physical_tiles_texcoords_write_offset_ind[1] * BYTES_PER_TEXTURE_QUAD 
                 final_positions_write_offset = row_wrap_positions_write_offset + self._physical_tiles_positions_write_offset_ind[1] * BYTES_PER_POSITION_VEC2
 
-                self._write_tile_to_vbo(coor,final_texcoords_write_offset,final_positions_write_offset)
+                self._write_physical_tile_to_vbo(coor,final_texcoords_write_offset,final_positions_write_offset)
+
+                for i,non_physical_tile_layer in enumerate(self._non_physical_tiles):
+                    non_physical_texcoords_write_offset = i * self.tiles_in_buffer * BYTES_PER_TEXTURE_QUAD + final_texcoords_write_offset
+                    non_physical_positions_write_offset = i * self.tiles_in_buffer * BYTES_PER_POSITION_VEC2 + final_positions_write_offset
+ 
+                    self._write_non_physical_tile_to_vbo(non_physical_tile_layer,coor,final_texcoords_write_offset,final_positions_write_offset)
 
                 in_row_tile_texcoords_write_offset +=  self._tiles_per_screen_col * BYTES_PER_TEXTURE_QUAD  
                 in_row_tile_position_write_offset += self._tiles_per_screen_col * BYTES_PER_POSITION_VEC2 
