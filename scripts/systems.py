@@ -5,6 +5,7 @@ from scripts.game_state import GameState
 from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR,\
                         ITEM_ATLAS_POSITIONS_AND_SIZES,PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS,BYTES_PER_TEXTURE_QUAD
 from pygame.rect import Rect
+from pygame.mouse import get_pos
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
 from scripts.components import PhysicsComponent,RenderComponent, StateInfoComponent,InputComponent
@@ -1239,6 +1240,12 @@ class InputHandler(esper.Processor):
 
 
     def _handle_common_events(self,event:pygame.event)->None:
+        
+        new_topleft = get_pos()
+
+        self._ref_hud.cursor.topleft = (int32(new_topleft[0]) // int32(self._ref_game_context['display_scale_ratio']), 
+                                        int32(new_topleft[1]) // int32(self._ref_game_context['display_scale_ratio']))
+
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 pygame.quit()

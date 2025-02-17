@@ -43,17 +43,14 @@ class Cursor:
 
         
 
-    def update(self,display_scale_ratio:uint8,dt:float32,cursor_state_change_callback:"function")-> None:
-
-        new_topleft = get_pos()
-
-        self.topleft[0] = int32(new_topleft[0]) // int32(display_scale_ratio)
-        self.topleft[1] = int32(new_topleft[1]) // int32(display_scale_ratio)
+    def update(self,dt:float32,cursor_state_change_callback:"function",player_physics_comp,camera_offset)-> None:
 
         self.box.x = self.topleft[0]
         self.box.y = self.topleft[1]
 
         if not self.in_editor:
+
+
             if self.cooldown[0] > float32(0) :
                 self.cooldown[0] -= dt
             
@@ -68,6 +65,12 @@ class Cursor:
                 else: self.state = "default"
             else: 
                 #TODO: add the crosshair here later. 
+                if self.pressed[0] and player_physics_comp.collision_rect.collidepoint((self.topleft[0] +camera_offset[0],self.topleft[1] + camera_offset[1])):
+                    player_physics_comp.position[0] = self.topleft[0] + camera_offset[0]
+                    player_physics_comp.position[1] = self.topleft[1] + camera_offset[1]
+                    player_physics_comp.collision_rect.left = self.topleft[0] + camera_offset[0]
+                    player_physics_comp.collision_rect.top = self.topleft[1] + camera_offset[1]
+
 
                 self.state = "default"
                 

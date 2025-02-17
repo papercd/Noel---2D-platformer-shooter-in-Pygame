@@ -4,6 +4,7 @@ from scripts.data import BYTES_PER_TEXTURE_QUAD,TRUE_RES_TO_HEALTH_BAR_WIDTH_RAT
 
 from scripts.new_cursor import Cursor
 from scripts.new_resource_manager import ResourceManager
+from scripts.new_entities_manager import EntitiesManager
 from scripts.new_inventory import Inventory,InventoryEngine,WeaponInventory,Cell
 from scripts.lists import WeaponNode
 import numpy as np 
@@ -19,7 +20,8 @@ class HUD:
     def __init__(self,game_context)->None: 
 
         self._ref_rm = ResourceManager.get_instance()
-        
+        self._ref_em = EntitiesManager.get_instance()
+
         self._game_ctx = game_context
          
         self.inven_open_state = False
@@ -480,8 +482,10 @@ class HUD:
         # inventory open time update 
         self.inven_open_time[0] = max(float64(0),min(self.max_inven_open_time,self.inven_open_time + (2*self.inven_open_state - 1) * 4 * dt))
 
+        camera_offset = tuple(self._game_ctx['camera_offset'])
+
         # cursor update 
-        self.cursor.update(self._game_ctx['display_scale_ratio'],dt,cursor_state_change_callback)
+        self.cursor.update(dt,cursor_state_change_callback,self._ref_em.player_physics_comp,camera_offset)
 
         # TODO: stamina, health bar updates
 
