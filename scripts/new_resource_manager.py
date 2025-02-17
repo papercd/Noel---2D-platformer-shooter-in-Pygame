@@ -80,6 +80,7 @@ class ResourceManager:
                                             (0.,0.),(1.,1.),(1.,0.)],dtype=float32).tobytes()
         
         self.backgrounds : dict[str,Background] = {}
+
         for folder in listdir(path):
             textures = []
             for tex_path in listdir(path = path + '/' + folder):
@@ -117,6 +118,7 @@ class ResourceManager:
                            
 
     def _create_ui_element_texcoords(self)->None: 
+
         self.ui_element_texcoords_bytes = {}
         self.ui_element_texcoords_array = {}
 
@@ -147,8 +149,10 @@ class ResourceManager:
 
 
     def _create_holding_weapon_vertices_texcoords(self)->None:
+
         self.holding_weapon_texcoords_bytes = {}
         self.holding_weapon_vertices_bytes = {}
+
         for weapon_name in IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES:
             atlas_pos,size = IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES[weapon_name]['holding']
 
@@ -157,6 +161,7 @@ class ResourceManager:
 
 
     def _load_entity_texcoords_and_local_vertices(self)->None:
+
         self.entity_texcoords_bytes = {}
         self.entity_local_vertices_bytes = {}
 
@@ -176,6 +181,7 @@ class ResourceManager:
 
 
     def _create_texcoords(self,atlas_position:tuple[uint32,uint32],texture_size:tuple[uint32,uint32],texture_atlas:"Context.Texture",asbytes = True) ->bytes:
+
         x =  (atlas_position[0]) / texture_atlas.size[0]
         y = (atlas_position[1]) / texture_atlas.size[1]
         w = texture_size[0] / texture_atlas.size[0]
@@ -197,6 +203,7 @@ class ResourceManager:
 
 
         uint32_texture_size = (uint32(self.texture_atlasses['entities'].width),uint32(self.texture_atlasses['entities'].height))
+
         x =  (texture_atlas_position[0] + uint32(animation_frame) * texture_size[0]) / uint32_texture_size[0]
         y = (texture_atlas_position[1]) / uint32_texture_size[1]
         w = texture_size[0] / uint32_texture_size[0]
@@ -212,8 +219,8 @@ class ResourceManager:
 
     def _create_entity_local_vertices(self,entity_size:tuple[uint32,uint32])->bytes:
 
-        x =  int32(entity_size[0]) // -2
-        y = int32(entity_size[1]) //2
+        x = int32(entity_size[0]) // -2
+        y = int32(entity_size[1]) //  2
         w = int32(entity_size[0])
         h = int32(entity_size[1])
 

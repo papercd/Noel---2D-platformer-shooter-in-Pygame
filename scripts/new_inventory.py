@@ -1,6 +1,6 @@
 from pygame import Rect
 from scripts.lists import WeaponInvenList
-
+from numpy import uint16,uint32,int64,float32,array
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: 
@@ -9,8 +9,9 @@ if TYPE_CHECKING:
     from scripts.new_cursor import Cursor 
     from scripts.new_entities import Player
 class Inventory:
-    def __init__(self,name:str,rows:int,columns:int,topleft:tuple[int,int],cell_dim:tuple[int,int]\
-                    ,space_between_cells:int,stack_limit:int,expandable:bool = False):
+    def __init__(self,name:str,rows:uint16,columns:uint16,topleft:tuple[uint32,uint32],cell_dim:tuple[uint32,uint32]\
+                    ,space_between_cells:uint32,stack_limit:uint16,expandable:bool = False):
+
         self._ind = 0
         self._name = name
         self._rows = rows 
@@ -22,7 +23,7 @@ class Inventory:
 
         self._stack_limit = stack_limit
         self._max_capacity = rows * columns
-        self._cur_capacity = 0
+        self._cur_capacity = array([0],dtype = uint16)
         #TODO: need to account for space between cells 
         self._size = (self._columns * self._cell_dim[0] + ((self._space_between_cells * (self._columns-1)) if self._columns > 1 else 0),
                       self._rows * self._cell_dim[1] + ((self._space_between_cells * (self._rows-1)) if self._rows > 1 else 0))
@@ -34,56 +35,33 @@ class Inventory:
 
         #TODO: if the inventory is a weapons inventory, also create a weapon linked list. 
 
-
     @property
     def cells(self):
-        return self._cells
-    
+        return
+
     @property 
-    def rows(self):
+    def rows(self)->uint16:
         return self._rows
     
     @property
-    def columns(self):
+    def columns(self)->uint16:
         return self._columns
-
-    @property
-    def done_open(self)->int:
-        return self._done_open
-
-    @property 
-    def topleft(self)->tuple[int,int]:
-        return self._topleft
-
+    
     @property
     def name(self)->str:
         return self._name
 
     @property   
-    def expandable(self)->bool:
-        return self._expandable
-
-    @property
-    def cur_capacity(self)->int:
-        return self._cur_capacity
-
-    @property 
-    def max_capacity(self)->int: 
+    def max_capacity(self)->uint16:
         return self._max_capacity
     
     @property
-    def stack_limit(self)->int: 
-        return self._stack_limit
+    def cur_capacity(self)->uint16:
+        return self._cur_capacity
 
-    @property
-    def size(self)->int:
-        return self._size
-    @property 
-    def ind(self)->int:
-        return self._ind
     
     def set_ind(self,ind:int)->None:
-        self._ind = ind
+        self._ind = uint16(ind)
 
         for i in range(self._rows):
             new_row = []
@@ -95,7 +73,7 @@ class Inventory:
 
 
     def add_item(self,item:"Item",on_inven_item_change_callback:"function") -> None:
-        if self._cur_capacity == self._max_capacity: 
+        if self._cur_capacity[0] == self._max_capacity: 
             return True  
         for row in self._cells:
             for cell in row:
@@ -104,15 +82,15 @@ class Inventory:
                     on_inven_item_change_callback(cell)
                     return False
                 elif item.stackable and cell._item.name == item.name:
-                    if cell._item.count+ item.count <= self._stack_limit:
-                        cell._item.count = cell._item.count+ item.count
+                    if cell._item.count[0]+ item.count[0] <= self._stack_limit:
+                        cell._item.count[0] = cell._item.count[0]+ item.count[0]
                         return False
-                    elif self._stack_limit - cell._item.count> 0:
-                        amount = self._stack_limit - cell._item.count
-                        cell._item.count = cell._item.count + amount
-                        item.count = item.count- amount
+                    elif self._stack_limit - cell._item.count[0] > 0:
+                        amount = self._stack_limit - cell._item.count[0]
+                        cell._item.count[0] = cell._item.count[0] + amount
+                        item.count[0] = item.count[0]- amount
                     
-                        if item.count> 0:
+                        if item.count[0]> 0:
                             self.add_item(item.copy(),on_inven_item_change_callback)
                         return False
 
@@ -123,7 +101,7 @@ class Inventory:
 
         for i, row in enumerate(self._cells):
             for j, cell in enumerate(row):
-                cell_interact =cell.update(self._stack_limit,inventory_list,cursor,inven_open_state or not self.expandable,
+                cell_interact =cell.update(self._stack_limit,inventory_list,cursor,inven_open_state or not self._expandable,
                                            on_inven_item_change_callback,on_cursor_item_change_callback)
                 
                 interacting = cell_interact or interacting  
@@ -137,13 +115,13 @@ class Inventory:
         
 
 class WeaponInventory(Inventory):
-    def __init__(self, rows:int, columns:int, topleft:tuple[int,int], cell_dim:tuple[int,int], \
-                 space_between_cells:int, stack_limit:int, expandable:bool=False)->None:
+    def __init__(self, rows:uint16, columns:uint16, topleft:tuple[uint32,uint32], cell_dim:tuple[uint32,uint32], \
+                 space_between_cells:uint32, stack_limit:uint16, expandable:bool=False)->None:
         super().__init__('weapon', rows, columns, topleft, cell_dim, space_between_cells, stack_limit, expandable)
 
     
     def set_ind(self,ind:int)->None:
-        self._ind = ind 
+        self._ind = uint16(ind) 
         self._weapons_list = WeaponInvenList(self._ind)
         for i in range(self._rows):
             for j in range(self._columns):
@@ -221,12 +199,12 @@ class InventoryEngine:
 
 
 class Cell:
-    def __init__(self,ind:int,pos:tuple[int,int],size:tuple[int,int],\
-                 inventory_id:int,type:str = None,item:"Item"= None):
+    def __init__(self,ind:int,pos:tuple[int64,int64],size:tuple[uint32,uint32],\
+                 inventory_id:uint16,type:str = None,item:"Item"= None):
+
         self._ind = ind 
         self._pos = pos 
         self._hovered = False 
-        self._offset = (0,0)
         self._size = size
         self._item = item 
         self._type  = type 
@@ -250,15 +228,13 @@ class Cell:
     def hovered(self)->bool: 
         return self._hovered
 
-    def update(self,stack_limit:int,inventory_list:list[Inventory],cursor:"Cursor",inven_open_state:bool,
+    def update(self,stack_limit:uint16,inventory_list:list[Inventory],cursor:"Cursor",inven_open_state:bool,
                on_inven_item_change_callback:"function",on_cursor_item_change_callback:"function")->None:
         
         if cursor.box.colliderect(self._rect):
-            self._offset = (-1,-1)
             self._hovered = True 
             cursor.ref_hovered_cell = self
         else: 
-            self._offset = (0,0)
             self._hovered = False 
         
         if inven_open_state:
@@ -272,14 +248,14 @@ class Cell:
                     if not (cursor.item.type == self._type):
                         return 
                     
-                    amount = stack_limit - cursor.item.count
-                    if self._item.count + cursor.item.count <= stack_limit:
-                        cursor.item.count = cursor.item.count + self._item.count
+                    amount = stack_limit - cursor.item.count[0]
+                    if self._item.count[0] + cursor.item.count[0] <= stack_limit:
+                        cursor.item.count[0] = cursor.item.count[0] + self._item.count[0]
                         self._item = None 
                         on_inven_item_change_callback(self)
                     else: 
-                        cursor.item.count = cursor.item.count + amount 
-                        self._item.count = self._item.count - amount
+                        cursor.item.count[0] = cursor.item.count[0] + amount 
+                        self._item.count[0] = self._item.count[0] - amount
                     
                     cursor.set_cooldown()
                 
@@ -287,16 +263,15 @@ class Cell:
                     if self._hovered:
                         cursor.text = (self._item.name,self._item.description)
                     if cursor.pressed[0] and cursor.move:
+
                         index = self._inventory_id
                         len_inventory = len(inventory_list)
                         for i in range(len_inventory):
-                            index = (index + 1) % len_inventory
-                            #index = index + 1 if index < len_inventory - 1 else 0  
+                            index = (index + uint16(1)) % len_inventory
 
                             if self._item.type != inventory_list[index].name:
                                 continue 
                             
-                            #index = index + 1 if index < len_inventory -1 else 0 
                             if index == self._inventory_id:
                                 break 
                             if inventory_list[index].max_capacity != inventory_list[index].cur_capacity:
@@ -305,7 +280,7 @@ class Cell:
                                 for row in inventory_list[index].cells:
                                     for cell in row:
                                         if cell.item.name == self.item.name and cell.item.stackable: 
-                                            if cell.item.count + self._item.count <= inventory_list[index].stack_limit:
+                                            if cell.item.count[0] + self._item.count[0] <= inventory_list[index].stack_limit:
                                                 break
                         
        
@@ -323,28 +298,28 @@ class Cell:
                         on_cursor_item_change_callback()
                         on_inven_item_change_callback(self)
                         cursor.set_cooldown()
-                    elif cursor.pressed[1] and self._item.count > 1:
-                        half = self._item.count //2 
+                    elif cursor.pressed[1] and self._item.count[0] >uint16(1):
+                        half = self._item.count[0] >> 1 
                         cursor.item = self._item.copy() 
                         on_cursor_item_change_callback()
 
-                        cursor.item.count = half 
-                        self._item.count = self._item.count - half
+                        cursor.item.count[0] = half 
+                        self._item.count[0] = self._item.count[0] - half
 
                         cursor.set_cooldown()
                     else: 
-                        if cursor.cooldown > 0:
+                        if cursor.cooldown > uint16(0):
                             return 
                         if cursor.pressed[0] and cursor.item.name == self._item.name and \
-                            self._item.count + cursor.item.count <= stack_limit and self._item.stackable: 
-                            self._item.count = self._item.count + cursor.item.count 
+                            self._item.count[0] + cursor.item.count[0] <= stack_limit and self._item.stackable: 
+                            self._item.count[0] = self._item.count[0] + cursor.item.count[0] 
                             cursor.item = None 
                             on_cursor_item_change_callback()
                             cursor.set_cooldown()
                         elif cursor.pressed[0] and cursor.item.name == self._item.name and self._item.stackable: 
-                            amount = stack_limit - self._item.count
-                            self._item.count = self._item.count + amount 
-                            cursor.item.count = cursor.item.count - amount 
+                            amount = stack_limit - self._item.count[0]
+                            self._item.count[0] = self._item.count[0] + amount 
+                            cursor.item.count[0] = cursor.item.count[0] - amount 
 
                             cursor.set_cooldown()
                         elif cursor.pressed[0]:
@@ -357,17 +332,17 @@ class Cell:
 
                             cursor.set_cooldown()
                 elif cursor.item is not None and cursor.item.type == self._type \
-                     and self._hovered and cursor.cooldown <= 0: 
+                     and self._hovered and cursor.cooldown <= float32(0): 
                     if cursor.pressed[0] :
                         if cursor.item.name == self._item.name: 
-                            if self._item.count + cursor.item.count <= stack_limit and self._item.stackable: 
-                                self._item.count = self._item.count + cursor.item.count 
+                            if self._item.count[0] + cursor.item.count[0] <= stack_limit and self._item.stackable: 
+                                self._item.count[0] = self._item.count[0] + cursor.item.count[0] 
                                 cursor.item = None 
                                 on_cursor_item_change_callback()
-                            elif self._item.count + cursor.item.count > stack_limit and self._item.stackable: 
-                                amount = stack_limit - self._item.count 
-                                self._item.count += amount 
-                                cursor.item.count -= amount 
+                            elif self._item.count[0] + cursor.item.count[0] > stack_limit and self._item.stackable: 
+                                amount = stack_limit - self._item.count[0] 
+                                self._item.count[0] += amount 
+                                cursor.item.count[0] -= amount 
                         else: 
                             temp = cursor.item.copy()
                             cursor.item = self._item
@@ -377,7 +352,7 @@ class Cell:
                             on_inven_item_change_callback(self)
                         cursor.set_cooldown()
             
-            elif cursor.item is not None and self._hovered and cursor.cooldown <= 0:
+            elif cursor.item is not None and self._hovered and cursor.cooldown <= float32(0):
                 if cursor.item.type != self._type:
                     return 
                 if cursor.pressed[0]:
@@ -389,12 +364,12 @@ class Cell:
                     on_inven_item_change_callback(self)
 
                 elif cursor.pressed[1] and cursor.item.stackable: 
-                    if cursor.item.count > 1:
-                        half = cursor.item.count //2
+                    if cursor.item.count[0] > uint16(1):
+                        half = cursor.item.count >> 1
                         self._item = cursor.item.copy() 
                         on_inven_item_change_callback(self)
-                        self._item.count = half 
-                        cursor.item.count = cursor.item.count - half 
+                        self._item.count[0] = half 
+                        cursor.item.count[0] = cursor.item.count[0] - half 
                     else: 
                         self._item = cursor.item 
                         cursor.item = None 
