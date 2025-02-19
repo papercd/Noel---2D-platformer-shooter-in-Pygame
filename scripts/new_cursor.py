@@ -31,6 +31,8 @@ class Cursor:
         self.special_actions = False 
         self.pressed = [False,False]
 
+        self.energy = array([0],dtype = float32)
+
     def set_cooldown(self) -> None:
         self.cooldown[0] = 10 * PHYSICS_TIMESTEP
 
@@ -43,7 +45,7 @@ class Cursor:
 
         
 
-    def update(self,dt:float32,cursor_state_change_callback:"function",player_physics_comp,camera_offset)-> None:
+    def update(self,dt:float32,cursor_state_change_callback:"function",player_physics_comp,player_state_info_comp,camera_offset)-> None:
 
         self.box.x = self.topleft[0]
         self.box.y = self.topleft[1]
@@ -66,13 +68,15 @@ class Cursor:
             else: 
                 #TODO: add the crosshair here later. 
                 if self.pressed[0] and player_physics_comp.collision_rect.collidepoint((self.topleft[0] +camera_offset[0],self.topleft[1] + camera_offset[1])):
+                    player_state_info_comp.mouse_hold = True
+                    self.state = "grab"
                     player_physics_comp.position[0] = self.topleft[0] + camera_offset[0]
                     player_physics_comp.position[1] = self.topleft[1] + camera_offset[1]
-                    player_physics_comp.collision_rect.left = self.topleft[0] + camera_offset[0]
-                    player_physics_comp.collision_rect.top = self.topleft[1] + camera_offset[1]
-
-
-                self.state = "default"
+                    player_physics_comp.collision_rect.left = self.topleft[0] + camera_offset[0] - 6
+                    player_physics_comp.collision_rect.top = self.topleft[1] + camera_offset[1] - 8
+                else: 
+                    player_state_info_comp.mouse_hold = False
+                    self.state = "default"
                 
             
         else: 

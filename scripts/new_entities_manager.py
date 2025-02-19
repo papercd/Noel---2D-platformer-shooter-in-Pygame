@@ -39,8 +39,8 @@ class EntitiesManager:
         self._player_physics.position[0] = pos[0]
         self._player_physics.position[1] = pos[1]
 
-        self._player_physics.collision_rect.top = int(pos[1])
-        self._player_physics.collision_rect.left = int(pos[0])
+        self._player_physics.collision_rect.top = int(pos[1] - self._player_physics.size[1] // 2 )
+        self._player_physics.collision_rect.left = int(pos[0] ) -  6
 
     @property 
     def player_physics_comp(self)->PhysicsComponent:

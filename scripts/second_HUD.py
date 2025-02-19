@@ -129,7 +129,7 @@ class HUD:
 
         # stamina bar 
         self.stamina_bar_vertices_bytes = self._create_ui_element_vertices(self.stamina_bar_topelft,self.stamina_bar_dimensions) 
-        
+
         # open item inventory
         self.open_item_inven_vertices_bytes = {}
         self.open_item_inven_vertices_bytes[False] = {}
@@ -485,7 +485,7 @@ class HUD:
         camera_offset = tuple(self._game_ctx['camera_offset'])
 
         # cursor update 
-        self.cursor.update(dt,cursor_state_change_callback,self._ref_em.player_physics_comp,camera_offset)
+        self.cursor.update(dt,cursor_state_change_callback,self._ref_em.player_physics_comp,self._ref_em.player_state_info_comp,camera_offset)
 
         # TODO: stamina, health bar updates
 

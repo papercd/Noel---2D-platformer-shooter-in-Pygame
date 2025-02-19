@@ -1,1 +1,2 @@
-ch_background(self._resource_manager.backgrounds['start'])
+
+        #self._grass_rotation_function_time = float32(0)

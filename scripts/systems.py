@@ -150,10 +150,13 @@ class PhysicsSystem(esper.Processor):
 
         # clamp velocity to maximums
         physics_comp.velocity[0] = max(-ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type]*sprint_factor, min(ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type]*sprint_factor,physics_comp.velocity[0] + physics_comp.acceleration[0] * dt * sprint_factor))
-        physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1]   * dt ) 
+        physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1]   * dt ) if not state_info_comp.mouse_hold else GRAVITY * dt
+
+
+
 
         physics_comp.displacement_buffer[0] += physics_comp.velocity[0] * dt
-        physics_comp.displacement_buffer[1] += physics_comp.velocity[1] * dt
+        physics_comp.displacement_buffer[1] += physics_comp.velocity[1] * dt if not state_info_comp.mouse_hold else float32(0)
 
         displacement = 0
         collided = False 

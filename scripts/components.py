@@ -78,6 +78,7 @@ class StateInfoComponent:
     collide_right : bool = False
     collide_top : bool = False
     collide_bottom : bool = False
+    mouse_hold : bool = False
 
 
 @component 

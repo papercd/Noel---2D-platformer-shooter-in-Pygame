@@ -1,0 +1,13 @@
+make it so that 
+
+so the energy (stamina) is going to represent the cursor's energy 
+
+the health bar represents the player's health. 
+
+when you click on the player - the player's position snaps to the cursor, 
+
+
+the camera doesn't move if the player's position is snapped . 
+
+
+when you left click again or when your energy runs out, the player is released in its current position .

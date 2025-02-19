@@ -49,7 +49,7 @@ class Noel():
   
 
     def _hot_reload(self)->None: 
-        # reload systems module
+        # reload systems modulesdW
         importlib.reload(scripts.data)
         importlib.reload(scripts.second_HUD)
         importlib.reload(scripts.systems)
@@ -84,7 +84,8 @@ class Noel():
             "gamestate" : GameState.GameLoop,
             "true_res" : array([0,0],dtype=uint16),
             "screen_res": array([0,0],dtype= uint16),
-            "display_scale_ratio": uint8(1)
+            "display_scale_ratio": uint8(1),
+            "holding_player": False,
         }
 
         # private members 
