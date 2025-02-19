@@ -515,12 +515,10 @@ class RenderSystem(esper.Processor):
                          -2. * camera_offset[1] / self._game_ctx['true_res'][1]],dtype=np.float32)
 
     def _render_HUD_to_fg_fbo(self,dt:float32)->None: 
-
-        self._ref_hud.update(dt,self.cursor_state_change_callback)
-        
-        self._ref_rm.texture_atlasses['ui'].use()
-        self._fbo_fg.use()
-
+        pass
+        #self._ref_rm.texture_atlasses['ui'].use()
+        #self._fbo_fg.use()
+        """
         if self._ref_hud.inven_open_time > 0:
             self._hidden_ui_draw_prog['alpha'] = self._ref_hud.inven_open_time/self._ref_hud.max_inven_open_time
             self._vao_hidden_ui_draw.render()
@@ -537,6 +535,8 @@ class RenderSystem(esper.Processor):
         self._write_cursor_position_to_buffer()
         self._ref_rm.texture_atlasses['ui'].use()
         self._vao_cursor_draw.render()
+        """
+
 
     def _create_cursor_item_vertices(self)->bytes: 
         if self._ref_hud.cursor.item.type == 'item':
@@ -1082,7 +1082,8 @@ class RenderSystem(esper.Processor):
         self._gl_ctx.enable(BLEND)
         self._render_background_to_bg_fbo(camera_offset)
         self._opt_render_tilemap_to_bg_fbo(camera_offset)
-        self._render_HUD_to_fg_fbo(dt)
+        #self._ref_hud.update(dt,self.cursor_state_change_callback)
+        #self._render_HUD_to_fg_fbo(dt)
 
         entity_vertices_byte_array = bytearray()
         entity_texcoords_byte_array = bytearray()
@@ -1098,7 +1099,8 @@ class RenderSystem(esper.Processor):
         entity_instances = 0
         weapon_instances = 0 
 
-        player_weapon_equipped = self._ref_hud.weapon_equipped
+        # player_weapon_equipped = self._ref_hud.weapon_equipped
+        player_weapon_equipped = False 
 
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
             if state_info_comp.type == 'player':
@@ -1246,8 +1248,11 @@ class InputHandler(esper.Processor):
         
         new_topleft = get_pos()
 
-        self._ref_hud.cursor.topleft = (int32(new_topleft[0]) // int32(self._ref_game_context['display_scale_ratio']), 
-                                        int32(new_topleft[1]) // int32(self._ref_game_context['display_scale_ratio']))
+        #self._ref_hud.cursor.topleft = (int32(new_topleft[0]) // int32(self._ref_game_context['display_scale_ratio']), 
+        #                                int32(new_topleft[1]) // int32(self._ref_game_context['display_scale_ratio']))
+        
+        #self._ref_hud.cursor.box.x  = self._ref_hud.cursor.topleft[0]
+        #self._ref_hud.cursor.box.x = self._ref_hud.cursor.topleft[1]
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
@@ -1258,22 +1263,27 @@ class InputHandler(esper.Processor):
         
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
-                self._ref_hud.cursor.pressed[0] = True 
+                pass
+                #self._ref_hud.cursor.pressed[0] = True 
             elif event.button==3:
-                self._ref_hud.cursor.pressed[1] = True 
+                #self._ref_hud.cursor.pressed[1] = True 
+                pass
 
         elif event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
-                self._ref_hud.cursor.pressed[0] = False 
+                #self._ref_hud.cursor.pressed[0] = False 
+                pass
             elif event.button==3:
-                self._ref_hud.cursor.pressed[1] = False 
+                #self._ref_hud.cursor.pressed[1] = False 
+                pass
 
         elif event.type == pygame.QUIT:
             pygame.quit()
             quit()
 
     def attatch_hud(self,hud:"HUD")->None:
-        self._ref_hud = hud
+        #self._ref_hud = hud
+        pass
 
 
     def process(self,on_hot_reload_callback:"function")->None: 
@@ -1288,7 +1298,8 @@ class InputHandler(esper.Processor):
                     if event.key == pygame.K_F5: 
                         on_hot_reload_callback()
                     if event.key == pygame.K_LSHIFT:
-                        self._ref_hud.cursor.special_actions = True
+                        #self._ref_hud.cursor.special_actions = True
+                        pass
                         player_input_comp.shift = True 
                     if event.key == pygame.K_w:
                         player_input_comp.up = True
@@ -1308,23 +1319,29 @@ class InputHandler(esper.Processor):
                         player_input_comp.interact = True
                         # interact with interactable objects
                     if event.key == pygame.K_e:
+                        pass
                         # toggle inventory
-                        self._ref_hud.inven_open_state = not self._ref_hud.inven_open_state
+                        #self._ref_hud.inven_open_state = not self._ref_hud.inven_open_state
+
                     if event.key == pygame.K_i:
                         # temporary keybinding to add items to inventory 
-                        self._ref_hud.add_item(Item(choice(list(ITEM_ATLAS_POSITIONS_AND_SIZES.keys()))),0)
+                        #self._ref_hud.add_item(Item(choice(list(ITEM_ATLAS_POSITIONS_AND_SIZES.keys()))),0)
+                        pass
                     if event.key == pygame.K_f: 
-                        self._ref_hud.add_item(AK47(),2)
+                        pass
+                        #self._ref_hud.add_item(AK47(),2)
                     if event.key == pygame.K_g: 
-                        self._ref_hud.add_item(FlameThrower(),2)
+                        pass
+                        #self._ref_hud.add_item(FlameThrower(),2)
                 
                 elif event.type == pygame.MOUSEWHEEL:
-                    self._ref_hud.change_weapon(event.y)
+                    #self._ref_hud.change_weapon(event.y)
+                    pass
 
                 elif event.type == pygame.KEYUP:
                     
                     if event.key == pygame.K_LSHIFT:
-                        self._ref_hud.cursor.special_actions = False
+                        #self._ref_hud.cursor.special_actions = False
                         player_input_comp.shift = False
 
                     if event.key == pygame.K_w:

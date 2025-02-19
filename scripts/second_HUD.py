@@ -24,9 +24,9 @@ class HUD:
 
         self._game_ctx = game_context
          
-        self.inven_open_state = False
-        self.inven_open_time = array([0],dtype = float64) 
-        self.max_inven_open_time = 30 * PHYSICS_TIMESTEP
+        #self.inven_open_state = False
+        #self.inven_open_time = array([0],dtype = float64) 
+        #self.max_inven_open_time = 30 * PHYSICS_TIMESTEP
         self.cursor = Cursor()
 
         self._create_diplay_elements()
@@ -480,7 +480,7 @@ class HUD:
 
     def update(self,dt:float32,cursor_state_change_callback:"function")->None:
         # inventory open time update 
-        self.inven_open_time[0] = max(float64(0),min(self.max_inven_open_time,self.inven_open_time + (2*self.inven_open_state - 1) * 4 * dt))
+        #self.inven_open_time[0] = max(float64(0),min(self.max_inven_open_time,self.inven_open_time + (2*self.inven_open_state - 1) * 4 * dt))
 
         camera_offset = tuple(self._game_ctx['camera_offset'])
 
@@ -501,3 +501,5 @@ class HUD:
     @property 
     def curr_weapon(self)->"Weapon":
         return self._inven_list[2].weapons_list.curr_node.weapon
+    
+

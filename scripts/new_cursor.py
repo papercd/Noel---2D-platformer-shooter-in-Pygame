@@ -47,8 +47,6 @@ class Cursor:
 
     def update(self,dt:float32,cursor_state_change_callback:"function",player_physics_comp,player_state_info_comp,camera_offset)-> None:
 
-        self.box.x = self.topleft[0]
-        self.box.y = self.topleft[1]
 
         if not self.in_editor:
 

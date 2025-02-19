@@ -42,7 +42,7 @@ class Noel():
         self._entities_manager.set_initial_player_position(self._tilemap.initial_player_position)
         self._physics_system.attatch_tilemap(self._tilemap)
         self._input_handler.attatch_hud(self._hud)
-        self._render_system.attatch_hud(self._hud)
+        #self._render_system.attatch_hud(self._hud)
         self._render_system.attatch_tilemap(self._tilemap)
         self._render_system.attatch_background(self._resource_manager.backgrounds['start'])
 
@@ -156,7 +156,7 @@ class Noel():
         # setup clock 
         self._clock = pygame.time.Clock()
         # change cursor to invisible 
-        pygame.mouse.set_visible(False)
+        pygame.mouse.set_visible(True)
 
         # Set OpenGL version to 4.3 core
         pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 4)
