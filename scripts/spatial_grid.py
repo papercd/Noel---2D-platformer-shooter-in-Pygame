@@ -67,3 +67,30 @@ class lightSpatialGrid:
                 if (cx,cy) in self.grid: 
                     visible_lights.extend(self.grid[(cx,cy)])
         return visible_lights
+    
+
+
+class ItemSpatialGrid: 
+    def __init__(self,cell_size :int32) ->None: 
+        self.cell_size = cell_size
+        self.grid = set()
+
+    def _get_cell_coords(self, x, y):
+        return int(x // self.cell_size), int(y // self.cell_size)
+
+    def insert(self,tile_pos:tuple[int32,int32])->None: 
+        if tile_pos not in self.grid: 
+            self.grid.add(tile_pos)
+
+    def query(self,x1,y1,x2,y2)->None: 
+        item_spawner_positions = []
+
+        cell_x1, cell_y1 = self._get_cell_coords(x1,y1)
+        cell_x2, cell_y2 = self._get_cell_coords(x2,y2)
+
+        for cx in range(cell_x1,cell_x2 + 1):
+            for cy in range(cell_y1, cell_y2 + 1):
+                if (cx,cy) in self.grid: 
+                    item_spawner_positions.append((cx,cy))
+        
+        return item_spawner_positions

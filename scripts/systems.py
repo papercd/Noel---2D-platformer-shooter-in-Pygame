@@ -1149,6 +1149,8 @@ class RenderSystem(esper.Processor):
                 else: 
                     self._set_ambient(*self._ref_tilemap._ref_ambient_node.colorValue)
 
+                self._set_ambient(100,100,100,255)
+
                 animation_data_collection = render_comp.animation_data_collection
                 animation = animation_data_collection.get_animation(state_info_comp.curr_state)
 

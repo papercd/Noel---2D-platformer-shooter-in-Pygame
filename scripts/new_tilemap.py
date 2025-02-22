@@ -1,7 +1,7 @@
 from scripts.data import BYTES_PER_TEXTURE_QUAD,BYTES_PER_POSITION_VEC2, TILE_ATLAS_POSITIONS,IRREGULAR_TILE_SIZES,TileInfo,LightInfo,DoorInfo,DoorAnimation,HULL_OUTER_EDGE_OFFSET,TILE_NEIGHBOR_MAP,OPEN_SIDE_OFFSET_TO_AXIS_NUM,\
                             LIGHT_POSITION_OFFSET_FROM_TOPLEFT,DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,RegularTileInfo,LightTileInfo, PHYSICS_APPLIED_TILE_TYPES
 
-from scripts.spatial_grid import hullSpatialGrid,lightSpatialGrid 
+from scripts.spatial_grid import hullSpatialGrid,lightSpatialGrid,ItemSpatialGrid
 from scripts.lists import ambientNodeList,ambientNode
 from my_pygame_light2d.hull import Hull 
 from pygame import Rect
@@ -69,7 +69,7 @@ class Tilemap:
         self._physical_tiles:dict[tuple[int32,int32],"TileInfoDataClass"] = {}
         self._ref_ambient_node:ambientNode = None
 
-
+        self.item_spawners_grid = ItemSpatialGrid(cell_size=self._tile_size) 
         self.hull_grid  = hullSpatialGrid(cell_size= self._tile_size)        
         self.lights_grid = lightSpatialGrid(cell_size= self._tile_size)
     
@@ -126,10 +126,14 @@ class Tilemap:
                     #hull = self._create_hulls(json_file['tilemap'][tile_key])
                     # TODO: THE TILE KEYS NEED TO BE CHANGED TO INTS, NOT STRINGS. 
 
-                    self._physical_tiles[tile_pos] = RegularTileInfo(
-                                                        info =TileInfo(json_file['tilemap'][tile_key]["type"],relative_position_index,variant,
-                                                        tile_pos,tile_size,atl_pos) 
-                                                    )
+                    if json_file['tilemap'][tile_key]['type'] == 'spawners':
+                        if relative_position_index == 6:
+                            self.item_spawners_grid.insert(tile_pos)
+                    else:
+                        self._physical_tiles[tile_pos] = RegularTileInfo(
+                                                            info =TileInfo(json_file['tilemap'][tile_key]["type"],relative_position_index,variant,
+                                                            tile_pos,tile_size,atl_pos) 
+                                                        )
 
             
             else: 
@@ -496,7 +500,6 @@ class Tilemap:
         else: 
 
             open_side_offsets = [(1, 0), (-1, 0), (0, 1), (0, -1)]
-            print(tile_general_info.type,rel_pos)
             neighbor_offsets = TILE_NEIGHBOR_MAP[tile_general_info.type][rel_pos]
 
             # Create a new list with only the offsets not in neighbor_offsets

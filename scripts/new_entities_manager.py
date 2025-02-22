@@ -4,7 +4,7 @@ from pygame.math import Vector2 as vec2
 from scripts.components import * 
 import esper
 
-from numpy import uint32,uint16
+from numpy import uint32,uint16,float64
 
 from scripts.new_resource_manager import ResourceManager
 
@@ -20,6 +20,13 @@ class EntitiesManager:
 
     def __init__(self)->None:
         self._ref_rm =  ResourceManager.get_instance()
+
+        self._last_item_drop_time = array([0],dtype = float64)
+        self._last_enemey_spawn_time = array([0],dtype = float64)
+
+        self._item_drop_cooldown = array([10],dtype = float64)
+        self._enemey_spawn_cooldown = array([10],dtype = float64)
+
         self._create_player_entity()
         self._create_item_entity_pools()
 
@@ -33,6 +40,10 @@ class EntitiesManager:
 
     def _create_item_entity_pools(self)->None: 
         self._max_item_entities = uint32(100)
+
+        self._item_entities_index_start = uint32(1)
+        self._item_entities_index_end = uint32(101)
+
         for i in range(self._max_item_entities):
             esper.create_entity(PhysicsComponent(size = (uint32(8),uint32(8)), collision_rect= Rect(0,0,8,8)), StaticRenderComponent())
 
@@ -43,6 +54,20 @@ class EntitiesManager:
 
         self._player_physics.collision_rect.top = int(pos[1] - self._player_physics.size[1] // 2 )
         self._player_physics.collision_rect.left = int(pos[0] ) -  6
+
+
+    def process(self,current_game_time:float64)->None: 
+        if current_game_time - self._last_item_drop_time[0] > self._item_drop_cooldown[0]:
+            self._last_item_drop_time[0] = current_game_time
+            # drop item logic 
+            print("item dropped")
+
+        if current_game_time - self._last_enemey_spawn_time[0] > self._enemey_spawn_cooldown[0]:
+            self._last_enemey_spawn_time[0] = current_game_time
+            # spawn enemy logic
+            print("enemy spawned")
+
+
 
     @property 
     def player_physics_comp(self)->PhysicsComponent:

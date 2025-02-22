@@ -195,6 +195,7 @@ class Noel():
             
             interpolation_delta = self._time_accumulator[0] / PHYSICS_TIMESTEP
 
+            self._entities_manager.process(self._game_context['game_timer'][0])
             self._render_system.process(self._game_context,interpolation_delta,self._dt[0])
           
             pygame.display.flip()

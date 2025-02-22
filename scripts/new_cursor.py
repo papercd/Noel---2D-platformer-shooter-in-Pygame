@@ -48,7 +48,7 @@ class Cursor:
         
 
     def update(self,dt:float32,cursor_state_change_callback:"function",player_physics_comp,player_state_info_comp,camera_offset)-> None:
-        print(self.energy[0])
+        #print(self.energy[0])
         if not self.in_editor:
 
             if self.cooldown[0] > float32(0) :
