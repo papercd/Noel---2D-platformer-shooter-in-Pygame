@@ -1,13 +1,9 @@
-make it so that 
+next steps: 
 
-so the energy (stamina) is going to represent the cursor's energy 
+game should be played in a confined space, not too large. 
 
-the health bar represents the player's health. 
+items - 
 
-when you click on the player - the player's position snaps to the cursor, 
+you can move the player around to pick up items.
 
-
-the camera doesn't move if the player's position is snapped . 
-
-
-when you left click again or when your energy runs out, the player is released in its current position .
+keep it simple; 

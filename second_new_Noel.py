@@ -7,11 +7,11 @@ from numpy import array,float32,float64,int32,uint8,uint16,bool_
 from moderngl import create_context
 from screeninfo import get_monitors
 
+import scripts.mandelae_hud
 import scripts.data
-import scripts.second_HUD
 import scripts.systems
 
-from scripts.second_HUD import HUD
+from scripts.mandelae_hud import HUD
 from scripts.game_state import GameState
 from scripts.data import PHYSICS_TIMESTEP
 from scripts.new_resource_manager import ResourceManager
@@ -42,7 +42,7 @@ class Noel():
         self._entities_manager.set_initial_player_position(self._tilemap.initial_player_position)
         self._physics_system.attatch_tilemap(self._tilemap)
         self._input_handler.attatch_hud(self._hud)
-        #self._render_system.attatch_hud(self._hud)
+        self._render_system.attatch_hud(self._hud)
         self._render_system.attatch_tilemap(self._tilemap)
         self._render_system.attatch_background(self._resource_manager.backgrounds['start'])
 
@@ -51,34 +51,34 @@ class Noel():
     def _hot_reload(self)->None: 
         # reload systems modulesdW
         importlib.reload(scripts.data)
-        importlib.reload(scripts.second_HUD)
+        importlib.reload(scripts.mandelae_hud)
         importlib.reload(scripts.systems)
 
-        from scripts.second_HUD import HUD
+        from scripts.mandelae_hud import HUD
         from scripts.systems import PhysicsSystem, StateSystem,RenderSystem, InputHandler 
+
         # reinitialize systems
         self._physics_system = PhysicsSystem()
-        self._physics_system.attatch_tilemap(self._tilemap)
-        
         self._state_system = StateSystem()
-
-        self._hud = HUD(self._game_context["true_res"],self._game_context["display_scale_ratio"])
-
-        self._render_system = RenderSystem(self._ctx,self._game_context['display_scale_ratio'],self._game_context['screen_res'],\
-                                           self._game_context['true_res'])
+        self._render_system = RenderSystem(self._ctx,self._game_context)
         self._input_handler = InputHandler(self._game_context)
-        
+
+        self._hud = HUD(self._game_context)
+
+        self._entities_manager.set_initial_player_position(self._tilemap.initial_player_position)
+        self._physics_system.attatch_tilemap(self._tilemap)
         self._input_handler.attatch_hud(self._hud)
         self._render_system.attatch_hud(self._hud)
-        self._render_system.attatch_background(self._resource_manager.backgrounds['start'])
         self._render_system.attatch_tilemap(self._tilemap)
-    
+        self._render_system.attatch_background(self._resource_manager.backgrounds['start'])
+
 
     def _initalize_game_settings(self):
         
         # game context is a set of game's system values that 
         # other systems have access to 
         self._game_context = {
+            "game_timer" : array([0],dtype = float64),
             "camera_offset" : array([0,0],dtype=int32),
             "screen_shake": array([0,0],dtype = int32),
             "gamestate" : GameState.GameLoop,
@@ -156,7 +156,7 @@ class Noel():
         # setup clock 
         self._clock = pygame.time.Clock()
         # change cursor to invisible 
-        pygame.mouse.set_visible(True)
+        pygame.mouse.set_visible(False)
 
         # Set OpenGL version to 4.3 core
         pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 4)
@@ -174,6 +174,7 @@ class Noel():
         self._render_system.clear(0,0,0,0)
         self._dt[0] = min(float32(self._clock.tick() / 1000),float32(0.1))
         self._time_accumulator[0] += self._dt[0]
+        self._game_context["game_timer"][0] += self._dt[0]  
 
         if self._game_context['gamestate']== GameState.GameLoop: 
           

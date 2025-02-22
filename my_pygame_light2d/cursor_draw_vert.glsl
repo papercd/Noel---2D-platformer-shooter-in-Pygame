@@ -1,5 +1,7 @@
 #version 430 
 
+
+
 in vec2 in_position; 
 
 uniform vec2[6] texCoords;

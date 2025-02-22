@@ -1,5 +1,5 @@
 import esper
-from scripts.second_HUD import HUD
+from scripts.mandelae_hud import HUD
 from scripts.game_state import GameState
 from scripts.game_state import GameState
 from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR,\
@@ -8,7 +8,7 @@ from pygame.rect import Rect
 from pygame.mouse import get_pos
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
-from scripts.components import PhysicsComponent,RenderComponent, StateInfoComponent,InputComponent
+from scripts.components import PhysicsComponent,AnimatedRenderComponent, StateInfoComponent,InputComponent
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
 from scripts.layer import Layer_
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from scripts.data import TileInfo, TileInfoDataClass
     from moderngl import Context
     from scripts.new_tilemap import Tilemap
-    from scripts.second_HUD import HUD 
+    from scripts.mandelae_hud import HUD 
 
 class PhysicsSystem(esper.Processor):
     def __init__(self)->None: 
@@ -337,6 +337,9 @@ class RenderSystem(esper.Processor):
         cursor_draw_vert_src,cursor_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/cursor_draw_vert.glsl',
                                                                            'my_pygame_light2d/cursor_draw_frag.glsl')
         
+        bar_draw_vert_src,bar_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/vertex_bar.glsl',
+                                                                     'my_pygame_light2d/fragment_bar.glsl')
+
         light_frag_src = self._load_shader_src('my_pygame_light2d/fragment_light.glsl')
 
         blur_frag_src = self._load_shader_src('my_pygame_light2d/fragment_blur.glsl')
@@ -359,6 +362,8 @@ class RenderSystem(esper.Processor):
         self._hidden_ui_draw_prog = self._gl_ctx.program(vertex_shader= vertex_src,
                                                       fragment_shader=hidden_draw_frag_src)
 
+        self._prog_bar_draw = self._gl_ctx.program(vertex_shader= bar_draw_vert_src,   
+                                                fragment_shader= bar_draw_frag_src)
         
         self._prog_mask = self._gl_ctx.program(vertex_shader= vertex_src,
                                             fragment_shader=mask_frag_src)
@@ -515,7 +520,20 @@ class RenderSystem(esper.Processor):
                          -2. * camera_offset[1] / self._game_ctx['true_res'][1]],dtype=np.float32)
 
     def _render_HUD_to_fg_fbo(self,dt:float32)->None: 
-        pass
+
+        self._ref_rm.texture_atlasses['ui'].use()   
+        self._fbo_fg.use()
+
+        self._vao_hud_draw.render()
+
+        # draw the actual health and stamina bars here 
+
+        self._vao_bars_draw.render()
+
+
+        self._write_cursor_position_to_buffer()
+
+        self._vao_cursor_draw.render()
         #self._ref_rm.texture_atlasses['ui'].use()
         #self._fbo_fg.use()
         """
@@ -960,13 +978,31 @@ class RenderSystem(esper.Processor):
 
         self._prog_cursor_draw['texCoords'] = self._ref_rm.ui_element_texcoords_array['cursor']['default']
 
+        # TODO: OPTIMIZE cursor draw program to use a uniform to position cursor 
         self._vao_cursor_draw = self._gl_ctx.vertex_array(
             self._prog_cursor_draw,
             [
                 (self._ref_hud.cursor.ndc_vertices_buffer, '2f' , 'in_position')
             ]
+        )  
+    
+        self._vao_hud_draw = self._gl_ctx.vertex_array(
+            self._opaque_ui_draw_prog,
+            [
+                (self._ref_hud.vertices_buffer , '2f' , 'vertexPos'),
+                (self._ref_hud.texcoords_buffer, '2f' , 'vertexTexCoord')
+            ]
         )
 
+        self._vao_bars_draw = self._gl_ctx.vertex_array(
+            self._prog_bar_draw,
+            [
+                (self._ref_hud.bars_vertices_and_color_buffer, '2f 4f' , 'in_vert', 'in_color')       
+            ]
+        )
+
+
+        """
         self._vao_opaque_ui_draw = self._gl_ctx.vertex_array(
             self._opaque_ui_draw_prog,
             [
@@ -998,7 +1034,7 @@ class RenderSystem(esper.Processor):
                 (self._ref_hud.hidden_items_texcoords_buffer, '2f' , 'vertexTexCoord')
             ]
         )
-
+        """
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None:
         self._ref_tilemap = tilemap
@@ -1082,8 +1118,8 @@ class RenderSystem(esper.Processor):
         self._gl_ctx.enable(BLEND)
         self._render_background_to_bg_fbo(camera_offset)
         self._opt_render_tilemap_to_bg_fbo(camera_offset)
-        #self._ref_hud.update(dt,self.cursor_state_change_callback)
-        #self._render_HUD_to_fg_fbo(dt)
+        self._ref_hud.update(dt,interpolation_delta,camera_offset,self.cursor_state_change_callback)
+        self._render_HUD_to_fg_fbo(dt)
 
         entity_vertices_byte_array = bytearray()
         entity_texcoords_byte_array = bytearray()
@@ -1102,7 +1138,7 @@ class RenderSystem(esper.Processor):
         # player_weapon_equipped = self._ref_hud.weapon_equipped
         player_weapon_equipped = False 
 
-        for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
+        for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,AnimatedRenderComponent):
             if state_info_comp.type == 'player':
 
                 self._ref_tilemap.update_tilemap_vbos(physics_comp.position)
@@ -1228,7 +1264,7 @@ class StateSystem(esper.Processor):
 
     def process(self,dt:float32)->None: 
         
-        for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,RenderComponent):
+        for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,AnimatedRenderComponent):
             if state_info_comp.type == 'player':
                 self._player_state_machine.change_state(self._ref_em.player_input_comp,state_info_comp,physics_comp,render_comp,dt)
             else: 
@@ -1248,11 +1284,11 @@ class InputHandler(esper.Processor):
         
         new_topleft = get_pos()
 
-        #self._ref_hud.cursor.topleft = (int32(new_topleft[0]) // int32(self._ref_game_context['display_scale_ratio']), 
-        #                                int32(new_topleft[1]) // int32(self._ref_game_context['display_scale_ratio']))
+        self._ref_hud.cursor.topleft = (int32(new_topleft[0]) // int32(self._ref_game_context['display_scale_ratio']), 
+                                        int32(new_topleft[1]) // int32(self._ref_game_context['display_scale_ratio']))
         
-        #self._ref_hud.cursor.box.x  = self._ref_hud.cursor.topleft[0]
-        #self._ref_hud.cursor.box.x = self._ref_hud.cursor.topleft[1]
+        self._ref_hud.cursor.box.x  = self._ref_hud.cursor.topleft[0]
+        self._ref_hud.cursor.box.x = self._ref_hud.cursor.topleft[1]
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
@@ -1264,17 +1300,17 @@ class InputHandler(esper.Processor):
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 pass
-                #self._ref_hud.cursor.pressed[0] = True 
+                self._ref_hud.cursor.pressed[0] = True 
             elif event.button==3:
-                #self._ref_hud.cursor.pressed[1] = True 
+                self._ref_hud.cursor.pressed[1] = True 
                 pass
 
         elif event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
-                #self._ref_hud.cursor.pressed[0] = False 
+                self._ref_hud.cursor.pressed[0] = False 
                 pass
             elif event.button==3:
-                #self._ref_hud.cursor.pressed[1] = False 
+                self._ref_hud.cursor.pressed[1] = False 
                 pass
 
         elif event.type == pygame.QUIT:
@@ -1282,8 +1318,7 @@ class InputHandler(esper.Processor):
             quit()
 
     def attatch_hud(self,hud:"HUD")->None:
-        #self._ref_hud = hud
-        pass
+        self._ref_hud = hud
 
 
     def process(self,on_hot_reload_callback:"function")->None: 
@@ -1298,8 +1333,7 @@ class InputHandler(esper.Processor):
                     if event.key == pygame.K_F5: 
                         on_hot_reload_callback()
                     if event.key == pygame.K_LSHIFT:
-                        #self._ref_hud.cursor.special_actions = True
-                        pass
+                        self._ref_hud.cursor.special_actions = True
                         player_input_comp.shift = True 
                     if event.key == pygame.K_w:
                         player_input_comp.up = True
@@ -1341,7 +1375,7 @@ class InputHandler(esper.Processor):
                 elif event.type == pygame.KEYUP:
                     
                     if event.key == pygame.K_LSHIFT:
-                        #self._ref_hud.cursor.special_actions = False
+                        self._ref_hud.cursor.special_actions = False
                         player_input_comp.shift = False
 
                     if event.key == pygame.K_w:
@@ -1372,7 +1406,7 @@ class StateMachine:
 
 
 class PlayerStateMachine(StateMachine):
-    def change_state(self,input_comp:InputComponent,state_info_comp:StateInfoComponent,physics_comp:PhysicsComponent,render_comp:RenderComponent,dt:float32):
+    def change_state(self,input_comp:InputComponent,state_info_comp:StateInfoComponent,physics_comp:PhysicsComponent,render_comp:AnimatedRenderComponent,dt:float32):
         if state_info_comp.curr_state == 'land':
             pass
         else:

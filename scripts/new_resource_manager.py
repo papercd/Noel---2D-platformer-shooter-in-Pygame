@@ -19,7 +19,8 @@ TEXTURE_ATLAS_NAMES_TO_PATH = {
     'tiles' : TEXTURE_BASE_PATH + 'tiles/tile_atlas.png',
     'entities' :   TEXTURE_BASE_PATH + 'entities/entities_atlas.png',
     'ui' : TEXTURE_BASE_PATH + 'ui/ui_atlas.png',
-    'holding_weapons' : TEXTURE_BASE_PATH + 'weapons/weapon_atlas.png'
+    'items' : TEXTURE_BASE_PATH + 'items/item_atlas.png',
+    'holding_weapons' : TEXTURE_BASE_PATH + 'weapons/weapon_atlas.png',
 }
 
 class ResourceManager:
@@ -63,7 +64,7 @@ class ResourceManager:
         self._create_ui_element_texcoords()
 
         # load item texcoords 
-        self._create_item_texcoords()
+        self._create_item_texcoords_and_local_vertices()
 
         # load holding weapon texcoords
         self._create_holding_weapon_vertices_texcoords()
@@ -71,7 +72,8 @@ class ResourceManager:
     def _create_animation_data_collections(self)->None: 
         self.animation_data_collections = {}
         self.animation_data_collections['player'] = AnimationDataCollection(ENTITY_ANIMATION_DATA['player'])  
-
+        
+        # create animation data collections for items 
 
     def _load_backgrounds(self,path:str)->None:
 
@@ -138,13 +140,18 @@ class ResourceManager:
                 self.ui_element_texcoords_bytes[ui_element] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
 
     
-    def _create_item_texcoords(self)->None: 
+    def _create_item_texcoords_and_local_vertices(self)->None: 
         self.item_texcoords_bytes = {}
+        self.item_local_vertices_bytes = {}
+
         for item_name in ITEM_ATLAS_POSITIONS_AND_SIZES: 
             atlas_pos,size = ITEM_ATLAS_POSITIONS_AND_SIZES[item_name]
-            self.item_texcoords_bytes[item_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['ui'])
+            self.item_local_vertices_bytes[item_name] = self._create_entity_local_vertices(size)
+            self.item_texcoords_bytes[item_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['items'])
+
         for weapon_name in UI_WEAPON_ATLAS_POSITIONS_AND_SIZES: 
             atlas_pos,size = UI_WEAPON_ATLAS_POSITIONS_AND_SIZES[weapon_name]
+            self.item_local_vertices_bytes[weapon_name] = self._create_entity_local_vertices(size)
             self.item_texcoords_bytes[weapon_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['ui'])
 
 
@@ -165,6 +172,8 @@ class ResourceManager:
         self.entity_texcoords_bytes = {}
         self.entity_local_vertices_bytes = {}
 
+        # create local vertices for item entities 
+
         for entity_type in ENTITIES_ATLAS_POSITIONS: 
             if entity_type == 'player':
                 player_texture_atlas_positions = ENTITIES_ATLAS_POSITIONS[entity_type]
@@ -173,7 +182,6 @@ class ResourceManager:
                         animation = self.animation_data_collections['player'].animations[animation_state]
                         for frame in range(animation.n_textures): 
                             self.entity_texcoords_bytes[(entity_type,gun_holding_state,animation_state,frame)] = self._create_entity_texcoords(player_texture_atlas_positions[gun_holding_state][animation_state],ENTITY_SIZES[entity_type],frame)
-                        
             else: 
                 pass
             
@@ -371,7 +379,24 @@ class ResourceManager:
                 (x, y - h), (x + w, y), (x + w, y - h)],dtype=float32)
     
 
+    def get_hud_diplay_vertices_and_texcoords(self,quads:int) -> tuple['Context.buffer','Context.buffer']:
+         
+        quad_vertex_size = 2 * 4 
+        quad_texcoord_size = 2 * 4
+        color_data_size = 4 * 4
+
+        vertex_buffer_size  = quad_vertex_size * 6 * quads
+        texcoords_buffer_size = quad_texcoord_size * 6 * quads
+
+        bars_vertices_and_color_buffer = self._gl_ctx.buffer(reserve= 2* (quad_vertex_size * 6 + color_data_size *6), dynamic= True)
+        vertex_buffer = self._gl_ctx.buffer(reserve=vertex_buffer_size,dynamic=True)
+        texcoords_buffer_size = self._gl_ctx.buffer(reserve=texcoords_buffer_size,dynamic=True)
+
+        return (bars_vertices_and_color_buffer,vertex_buffer,texcoords_buffer_size)
+
+
     def create_hud_inven_vbos(self,opaque_ui_element_quads:int,hidden_ui_element_quads:int)->tuple["Context.buffer","Context.buffer","Context.buffer","Context.buffer"]: 
+
         ui_element_vertex_size = 2 * 4
 
         opaque_ui_elements_buffer_size = ui_element_vertex_size* 6 * opaque_ui_element_quads

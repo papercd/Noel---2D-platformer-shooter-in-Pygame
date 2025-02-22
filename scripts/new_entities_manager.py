@@ -21,19 +21,21 @@ class EntitiesManager:
     def __init__(self)->None:
         self._ref_rm =  ResourceManager.get_instance()
         self._create_player_entity()
+        self._create_item_entity_pools()
 
     def _create_player_entity(self)->None: 
         self._player_state = StateInfoComponent(type='player',max_jump_count=uint16(1000))
         self._player_physics = PhysicsComponent(size=(uint32(16),uint32(16)),collision_rect= Rect(0,0,12,16))
-        self._player_render = RenderComponent(self._ref_rm.animation_data_collections['player'],self._ref_rm.entity_local_vertices_bytes['player'])
+        self._player_render = AnimatedRenderComponent(self._ref_rm.animation_data_collections['player'],self._ref_rm.entity_local_vertices_bytes['player'])
         self._player_input = InputComponent()
         self._player = esper.create_entity(self._player_state,self._player_physics,self._player_render,self._player_input)
 
 
+    def _create_item_entity_pools(self)->None: 
+        self._max_item_entities = uint32(100)
+        for i in range(self._max_item_entities):
+            esper.create_entity(PhysicsComponent(size = (uint32(8),uint32(8)), collision_rect= Rect(0,0,8,8)), StaticRenderComponent())
 
-    """
-    ,position= vec2(386,0),collision_rect=Rect(380,0,12,16),displacement_buffer=vec2(0,0)
-    """
 
     def set_initial_player_position(self,pos:tuple[int32,int32])->None: 
         self._player_physics.position[0] = pos[0]
@@ -51,7 +53,7 @@ class EntitiesManager:
         return self._player_state
     
     @property 
-    def player_render_comp(self)->RenderComponent: 
+    def player_render_comp(self)->AnimatedRenderComponent: 
         return self._player_render
     
     @property 

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import NamedTuple
 from my_pygame_light2d.light import PointLight
 from pygame.rect import Rect
-from numpy import int32,uint16 ,uint32,float32,array
+from numpy import int16, int32,uint8, uint16 ,uint32,float32,array
 
 
 
@@ -288,18 +288,16 @@ UI_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
 }
 
 ITEM_ATLAS_POSITIONS_AND_SIZES={
-    "amethyst_arrow": ((uint32(381),uint32(0)),(uint32(16),uint32(16))),
-    "amethyst_clump" : ((uint32(397),uint32(0)),(uint32(16),uint32(16))),
-    "arrow": ((uint32(413),uint32(0)),(uint32(16),uint32(16))),
-    "string":((uint32(429),uint32(0)),(uint32(16),uint32(16)))
-
+  "ak47" : ((uint32(0),uint32(0)),(uint32(31),uint32(12))),
+  "rocket_launcher" : ((uint32(21),uint32(21)), (uint32(32), uint32(9))),
+  "shotgun" : ((uint32(0),uint32(12)), (uint32(32), uint32(9)))
 }
 
 """
- "amethyst_arrow": (381,0),
-    "amethyst_clump" : (397,0),
-    "arrow": (413,0),
-    "string": (429,0)
+  "amethyst_arrow": ((uint32(381),uint32(0)),(uint32(16),uint32(16))),
+    "amethyst_clump" : ((uint32(397),uint32(0)),(uint32(16),uint32(16))),
+    "arrow": ((uint32(413),uint32(0)),(uint32(16),uint32(16))),
+    "string":((uint32(429),uint32(0)),(uint32(16),uint32(16)))
 """
 
 UI_ATLAS_POSITIONS_AND_SIZES = {
@@ -349,12 +347,23 @@ ENTITIES_ATLAS_POSITIONS ={
                 "wall_slide": (uint32(96),uint32(128)),
                 "sprint": (uint32(96),uint32(144))
                 }                        
-                } 
-
+                },  
 }
+     
+"""
+"ak47": (0,0),
+"rocket_launcher": (0,0),
+"shotgun" : (0,0)
+"""
+
 
 ENTITY_SIZES = {
-    "player" : (uint32(16),uint32(16))
+    "player" : (uint32(16),uint32(16)),
+    "items":{
+        "ak47" : (uint32(16),uint32(5)),
+        "rocket_launcher" : (uint32(16),uint32(5)),
+        "shotgun" : (uint32(16),uint32(5))
+    }
 }
 
 IRREGULAR_TILE_SIZES = {
@@ -534,13 +543,23 @@ TRUE_RES_TO_CURRENT_WEAPON_DISPLAY_DIM_RATIO = (float32(1/7),float32(1/12))
 
 """ MANDELAE hud positioning numbers """
 
-TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO_MANDELAE = (float32(1/12),float32(9/10))
-TRUE_RES_TO_STAMINA_BAR_TOPLEFT_RATIO_MANDELAE = (float32(1/12),float32(9/10))
+TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO_MANDELAE = (float32(8/16),float32(8/10))
+TRUE_RES_TO_STAMINA_BAR_TOPLEFT_RATIO_MANDELAE = (float32(8/16),float32(8.3/10))
 
-TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO_MANDELAE = float32(1/3)
-TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO_MANDELAE =  float32(1/4)
+TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO_MANDELAE = float32(1/5)
+TRUE_RES_TO_STAMINA_BAR_WIDTH_RATIO_MANDELAE =  float32(1/6)
 
-TRUE_RES_TO_WEAPON_DISPLAY_TOPLEFT_RATIO_MANDELAE = (float32(1/12),float32(9/10))
-TRUE_RES_TO_WEAPON_DISPLAY_DIM_RATIO_MANDELAE = (float32(1/7),float32(1/12))
+TRUE_RES_TO_WEAPON_DISPLAY_TOPLEFT_RATIO_MANDELAE = (float32(13/32),float32(16/20))
+TRUE_RES_TO_WEAPON_DISPLAY_DIM_RATIO_MANDELAE = (float32(2/32),float32(1/20))
 
-TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO_MANDELAE = float32(1.2/40)
+TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO_MANDELAE = float32(1/44)
+
+""" MANDELAE data """
+HEALTH_BAR_FULL_COLOR = array([72,12,12,255],dtype = int16)
+HEALTH_BAR_DEPLETED_COLOR = array([116,81,81,255],dtype = int16)
+
+ENERGY_BAR_FULL_COLOR = array([14,45,55,255],dtype = int16) 
+ENERGY_BAR_DEPLETED_COLOR = array([61,99,126,255],dtype = int16) 
+
+CURSOR_ENERGY_INITIAL_EXPENDITURE_RATE = float32(40)
+CURSOR_ENERGY_RECHARGE_RATE = float32(10)

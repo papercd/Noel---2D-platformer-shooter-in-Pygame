@@ -72,6 +72,8 @@ class StateInfoComponent:
 
     type : str = "default"
     curr_state : str = "idle"
+    max_health : uint16 = uint16(100)
+    health : array = field(default_factory= lambda: array([100],dtype = uint16))
     max_jump_count : uint16 = uint16(5)
     jump_count : array = field(default_factory= lambda: array([0],dtype = uint16))
     collide_left : bool = False
@@ -92,11 +94,13 @@ class InputComponent:
     shift : bool = False
 
 @component 
-class RenderComponent:
+class AnimatedRenderComponent:
     animation_data_collection : AnimationDataCollection
     vertices_bytes : bytes = field(default_factory= lambda: zeros(6).tobytes())
 
-
+@component
+class StaticRenderComponent: 
+    vertices_bytes : bytes = field(default_factory= lambda: zeros(6).tobytes())
 
 @component 
 class ParticleEmiiterComponent: 
