@@ -496,6 +496,7 @@ class Tilemap:
         else: 
 
             open_side_offsets = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+            print(tile_general_info.type,rel_pos)
             neighbor_offsets = TILE_NEIGHBOR_MAP[tile_general_info.type][rel_pos]
 
             # Create a new list with only the offsets not in neighbor_offsets

@@ -36,7 +36,7 @@ class Noel():
         self._render_system = RenderSystem(self._ctx,self._game_context)
         self._input_handler = InputHandler(self._game_context)
 
-        self._tilemap = Tilemap(self._game_context,self._resource_manager.get_tilemap_json('test1.json'))
+        self._tilemap = Tilemap(self._game_context,self._resource_manager.get_tilemap_json('mandelae.json'))
         self._hud = HUD(self._game_context)
 
         self._entities_manager.set_initial_player_position(self._tilemap.initial_player_position)
@@ -44,7 +44,7 @@ class Noel():
         self._input_handler.attatch_hud(self._hud)
         self._render_system.attatch_hud(self._hud)
         self._render_system.attatch_tilemap(self._tilemap)
-        self._render_system.attatch_background(self._resource_manager.backgrounds['start'])
+        self._render_system.attatch_background(self._resource_manager.backgrounds['building'])
 
   
 
