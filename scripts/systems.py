@@ -22,7 +22,7 @@ from random import choice
 
 import numpy as np
 
-from numpy import float32,uint16,int32,uint8,array
+from numpy import float32,uint16,uint32,int32,uint8,array
 
 from typing import TYPE_CHECKING 
 
@@ -51,7 +51,8 @@ class PhysicsSystem(esper.Processor):
             physics_comp.position[1] = rect_tile[0].top + int32(physics_comp.size[1]) // -2
             physics_comp.collision_rect.bottom = rect_tile[0].top 
             physics_comp.velocity[1] =GRAVITY * dt 
-            state_info_comp.jump_count[0] = uint16(0)
+
+            if state_info_comp.dynamic : state_info_comp.jump_count[0] = uint16(0)
 
         elif physics_comp.velocity[1] < float32(0):
             state_info_comp.collide_top = True
@@ -125,7 +126,7 @@ class PhysicsSystem(esper.Processor):
                         physics_comp.collision_rect.bottom = new_collision_rect_bottom
                         physics_comp.position[1] = physics_comp.collision_rect.bottom + int32(physics_comp.size[1]) // -2 
                         physics_comp.velocity[1] = GRAVITY * dt
-                        state_info_comp.jump_count[0] = uint16(0) 
+                        if state_info_comp.dynamic: state_info_comp.jump_count[0] = uint16(0) 
                         state_info_comp.collide_bottom = True
                         physics_comp.displacement_buffer[1] = float32(0)
 
@@ -151,9 +152,6 @@ class PhysicsSystem(esper.Processor):
         # clamp velocity to maximums
         physics_comp.velocity[0] = max(-ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type]*sprint_factor, min(ENTITIES_MAX_HORIZONTAL_SPEED[state_info_comp.type]*sprint_factor,physics_comp.velocity[0] + physics_comp.acceleration[0] * dt * sprint_factor))
         physics_comp.velocity[1] = min(TERMINAL_VELOCITY,physics_comp.velocity[1] + physics_comp.acceleration[1]   * dt ) if not state_info_comp.mouse_hold else GRAVITY * dt
-
-
-
 
         physics_comp.displacement_buffer[0] += physics_comp.velocity[0] * dt
         physics_comp.displacement_buffer[1] += physics_comp.velocity[1] * dt if not state_info_comp.mouse_hold else float32(0)
@@ -241,6 +239,21 @@ class PhysicsSystem(esper.Processor):
             else: 
                 self._process_non_player_physics_updates(physics_comp,state_info_comp,dt)
 
+        for i in range(self._ref_em.active_items[0] -1,-1,-1):
+            entity = self._ref_em.active_item_entities[i]
+            item_info_comp,item_phy_comp,static_render_comp = esper.components_for_entity(entity)
+
+            if item_info_comp.active_time[0] < float32(9):
+                self._process_non_player_physics_updates(item_phy_comp,item_info_comp,dt)
+                item_info_comp.active_time[0] += dt
+            else: 
+                self._ref_em.active_items[0] -= uint32(1)
+                self._ref_em.active_item_entities.pop()
+
+            
+        
+
+
 
 
 class ParticleSystem(esper.Processor):
@@ -299,6 +312,7 @@ class RenderSystem(esper.Processor):
         self._create_screen_vertex_buffers()
         self._create_entity_vertex_buffers()
         self._create_weapon_vertex_buffers()
+        self._create_item_vertex_buffers()
 
     def _load_shader_srcs(self,vertex_src_path:str,fragment_src_path:str)->tuple[str,str]:
         try:
@@ -455,13 +469,13 @@ class RenderSystem(esper.Processor):
 
     def _create_entity_vertex_buffers(self)->None:
         local_space_vertex_size = 2 * 4
-        local_space_vertices_buffer_size = local_space_vertex_size * 6 * EntitiesManager.max_entities
+        local_space_vertices_buffer_size = local_space_vertex_size * 6 * EntitiesManager.max_dynamic_entities
 
         texcoords_vertex_size = 2 * 4
-        texcoords_buffer_size = texcoords_vertex_size * 6 * EntitiesManager.max_entities
+        texcoords_buffer_size = texcoords_vertex_size * 6 * EntitiesManager.max_dynamic_entities
 
         transform_matrix_col_size  = 3 * 4 
-        transform_column_buffer_size = transform_matrix_col_size *  3  * EntitiesManager.max_entities 
+        transform_column_buffer_size = transform_matrix_col_size *  3  * EntitiesManager.max_dynamic_entities
 
         self._entity_local_vertices_vbo= self._gl_ctx.buffer(reserve=local_space_vertices_buffer_size, dynamic=True)
         self._entity_texcoords_vbo = self._gl_ctx.buffer(reserve = texcoords_buffer_size, dynamic=True)
@@ -481,13 +495,13 @@ class RenderSystem(esper.Processor):
 
     def _create_weapon_vertex_buffers(self)->None:
         local_space_vertex_size = 2* 4 
-        local_space_vertices_buffer_size = local_space_vertex_size * 6 * EntitiesManager.max_entities
+        local_space_vertices_buffer_size = local_space_vertex_size * 6 * EntitiesManager.max_dynamic_entities
 
         texcoords_vertex_size = 2 * 4 
-        texcoords_buffer_size = texcoords_vertex_size * 6 * EntitiesManager.max_entities
+        texcoords_buffer_size = texcoords_vertex_size * 6 * EntitiesManager.max_dynamic_entities
 
         transform_matrix_col_size = 3 * 4 
-        transform_column_buffer_size = transform_matrix_col_size * 3 * EntitiesManager.max_entities
+        transform_column_buffer_size = transform_matrix_col_size * 3 * EntitiesManager.max_dynamic_entities
 
         self._entity_weapons_local_vertices_vbo = self._gl_ctx.buffer(reserve=local_space_vertices_buffer_size,dynamic=True)
         self._entity_weapons_texcoords_vbo = self._gl_ctx.buffer(reserve=texcoords_buffer_size , dynamic= True)
@@ -500,6 +514,31 @@ class RenderSystem(esper.Processor):
                 (self._entity_weapons_local_vertices_vbo, '2f', 'in_position'),
                 (self._entity_weapons_texcoords_vbo, '2f', 'texcoord'),
                 (self._entity_weapons_transform_matrices_vbo, '3f 3f 3f/i', 'col1', 'col2', 'col3')
+            ]
+        )
+
+
+    def _create_item_vertex_buffers(self)->None: 
+        local_space_vertex_size = 2 * 4 
+        local_space_vertices_buffer_size = local_space_vertex_size * 6 * EntitiesManager.max_item_entities 
+
+        texcoords_vertex_size = 2 * 4
+        texcoords_buffer_size = texcoords_vertex_size * 6 * EntitiesManager.max_item_entities
+
+        transform_matrix_col_size = 3 * 4 
+        transform_column_buffer_size = transform_matrix_col_size * 3 * EntitiesManager.max_item_entities 
+
+        self._items_local_vertices_vbo = self._gl_ctx.buffer(reserve= local_space_vertices_buffer_size,dynamic= True)
+        self._item_texcoords_vbo = self._gl_ctx.buffer(reserve=texcoords_buffer_size,dynamic=True)
+
+        self._items_transform_matrices_vbo = self._gl_ctx.buffer(reserve=transform_column_buffer_size, dynamic= True)
+
+        self._vao_items_draw = self._gl_ctx.vertex_array(
+            self._entity_draw_prog,
+            [
+                (self._items_local_vertices_vbo, '2f' , 'in_position'),
+                (self._item_texcoords_vbo, '2f' , 'texcoord'),
+                (self._items_transform_matrices_vbo, '3f 3f 3f/i' , 'col1', 'col2', 'col3')
             ]
         )
 
@@ -1129,6 +1168,10 @@ class RenderSystem(esper.Processor):
         weapon_texcoords_byte_array = bytearray() 
         weapon_matrices_byte_array  = bytearray()
 
+        item_vertices_byte_array = bytearray()
+        item_texcoords_byte_array = bytearray()
+        item_matrices_byte_array = bytearray()
+
         self._view_matrix[0][2] = -camera_offset[0]
         self._view_matrix[1][2] = -camera_offset[1]
 
@@ -1137,6 +1180,8 @@ class RenderSystem(esper.Processor):
 
         # player_weapon_equipped = self._ref_hud.weapon_equipped
         player_weapon_equipped = False 
+
+        # render the player and moving entities 
 
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,AnimatedRenderComponent):
             if state_info_comp.type == 'player':
@@ -1234,6 +1279,25 @@ class RenderSystem(esper.Processor):
                 pass
             entity_instances += 1
         
+        # render the item entities 
+
+
+        for i in range(self._ref_em.active_items[0]-1,-1,-1):
+            item_entity = self._ref_em.active_item_entities[i] 
+            item_info_comp,item_phy_comp,static_render_comp = esper.components_for_entity(item_entity)
+
+            texcoords_bytes = self._ref_rm.item_texcoords_bytes[item_info_comp.type] 
+            item_local_vertices_bytes = static_render_comp.vertices_bytes
+
+            interpolated_model_transform = item_phy_comp.prev_transform * (1.0 - interpolation_delta) + item_phy_comp.transform * interpolation_delta
+
+            clip_transform = self._projection_matrix @ self._view_matrix @ interpolated_model_transform
+
+            item_vertices_byte_array.extend(item_local_vertices_bytes)
+            item_texcoords_byte_array.extend(texcoords_bytes)
+
+            column_major_clip_transform_bytes = clip_transform.T.flatten().tobytes()
+            item_matrices_byte_array.extend(column_major_clip_transform_bytes)
 
         self._entity_weapons_local_vertices_vbo.write(weapon_vertices_byte_array)
         self._entity_weapons_texcoords_vbo.write(weapon_texcoords_byte_array)
@@ -1243,8 +1307,11 @@ class RenderSystem(esper.Processor):
         self._entity_texcoords_vbo.write(entity_texcoords_byte_array)
         self._entity_transform_matrices_vbo.write(entity_matrices_byte_array)
 
-        self._fbo_bg.use()
+        self._items_local_vertices_vbo.write(item_vertices_byte_array)
+        self._item_texcoords_vbo.write(item_texcoords_byte_array)
+        self._items_transform_matrices_vbo.write(item_matrices_byte_array)
 
+        self._fbo_bg.use()
 
         self._ref_rm.texture_atlasses['entities'].use()
         self._vao_entity_draw.render(instances= entity_instances)
@@ -1252,7 +1319,10 @@ class RenderSystem(esper.Processor):
         self._ref_rm.texture_atlasses['holding_weapons'].use()
         self._vao_entity_weapons_draw.render(instances= weapon_instances)
 
-        
+        self._ref_rm.texture_atlasses['items'].use()
+        self._vao_items_draw.render(instances=self._ref_em.active_items[0])
+
+
         self._update_active_static_lights(camera_offset)
         self._render_fbos_to_screen_with_lighting(self._ref_em.player_physics_comp.position,camera_offset,screen_shake,interpolation_delta)
 
@@ -1338,18 +1408,22 @@ class InputHandler(esper.Processor):
                         self._ref_hud.cursor.special_actions = True
                         player_input_comp.shift = True 
                     if event.key == pygame.K_w:
-                        player_input_comp.up = True
+                        pass
+                        #player_input_comp.up = True
                         #player_physics_comp.velocity[1] = -PLAYER_JUMP_SPEED
                     if event.key == pygame.K_a:
-                        player_input_comp.left = True
+                        pass
+                        #player_input_comp.left = True
                         #player_physics_comp.acceleration[0] = -PLAYER_ACCELERATION
                         
                     if event.key == pygame.K_d:
-                        player_input_comp.right = True 
+                        pass
+                        #player_input_comp.right = True 
                         #player_physics_comp.acceleration[0] = PLAYER_ACCELERATION
 
                     if event.key == pygame.K_s:
-                        player_input_comp.down = True
+                        pass
+                        #player_input_comp.down = True
                         # crouch maybe?
                     if event.key == pygame.K_SPACE:
                         player_input_comp.interact = True
@@ -1381,17 +1455,21 @@ class InputHandler(esper.Processor):
                         player_input_comp.shift = False
 
                     if event.key == pygame.K_w:
-                        player_input_comp.up = False
+                        pass
+                        #player_input_comp.up = False
                     if event.key == pygame.K_a:
-                        player_input_comp.left = False
+                        pass
+                        #player_input_comp.left = False
                         #player_physics_comp.acceleration[0] = 0
 
                     if event.key == pygame.K_d:
-                        player_input_comp.right = False
+                        pass
+                        #player_input_comp.right = False
                         #player_physics_comp.acceleration[0] = 0
 
                     if event.key == pygame.K_s:
-                        player_input_comp.down = False
+                        pass
+                        #player_input_comp.down = False
                     if event.key == pygame.K_SPACE:
                         player_input_comp.interact = False
 

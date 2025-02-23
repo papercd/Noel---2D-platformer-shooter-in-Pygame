@@ -205,6 +205,7 @@ class Tilemap:
             else: 
                 self.ambientNodes.insert_ambient_node(node_data["range"],node_data['hull_range'],node_data["colorValue"])
         
+        print(self.item_spawners_grid.item_spawner_bounds)
 
         self._create_hulls()
         for hull in self._hulls:

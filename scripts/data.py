@@ -211,7 +211,11 @@ ENTITIES_JUMP_SPEED = {
 }
 
 ENTITIES_MAX_HORIZONTAL_SPEED = {
-    'player' : int32(240)
+    'player' : int32(240),
+    'rof': int32(240),
+    'ak47' : int32(240),
+    'damage' : int32(240),
+    'ammo' : int32(240)
 }
 
 
@@ -290,8 +294,9 @@ UI_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
 
 ITEM_ATLAS_POSITIONS_AND_SIZES={
   "ak47" : ((uint32(0),uint32(0)),(uint32(31),uint32(12))),
-  "rocket_launcher" : ((uint32(21),uint32(21)), (uint32(32), uint32(9))),
-  "shotgun" : ((uint32(0),uint32(12)), (uint32(32), uint32(9)))
+  "rof" : ((uint32(0),uint32(84)),(uint32(16),uint32(16))),
+  "damage" : ((uint32(0),uint32(68)),(uint32(16),uint32(16))),
+  "ammo" : ((uint32(0),uint32(52)),(uint32(16),uint32(16))),
 }
 
 """
@@ -576,3 +581,6 @@ ENERGY_BAR_DEPLETED_COLOR = array([61,99,126,255],dtype = int16)
 
 CURSOR_ENERGY_INITIAL_EXPENDITURE_RATE = float32(40)
 CURSOR_ENERGY_RECHARGE_RATE = float32(10)
+
+ITEM_TYPES = array(['ak47','rof','damage','ammo'])
+ITEM_PROBABILITIES = array([0.15,0.25,0.25,0.35])

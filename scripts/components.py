@@ -69,19 +69,29 @@ class WeaponHolderComponent:
 
 @component
 class StateInfoComponent:
-
     type : str = "default"
     curr_state : str = "idle"
     max_health : uint16 = uint16(100)
     health : array = field(default_factory= lambda: array([100],dtype = uint16))
     max_jump_count : uint16 = uint16(5)
     jump_count : array = field(default_factory= lambda: array([0],dtype = uint16))
+    dynamic : bool = True
     collide_left : bool = False
     collide_right : bool = False
     collide_top : bool = False
     collide_bottom : bool = False
     mouse_hold : bool = False
 
+@component 
+class ItemInfoComponent: 
+    type: str = "item"
+    active_time : array = field(default_factory= lambda: array([0],dtype = float32))
+    dynamic : bool = False 
+    mouse_hold : bool = False
+    collide_left : bool = False
+    collide_right : bool = False
+    collide_top : bool = False
+    collide_bottom : bool = False
 
 @component 
 class InputComponent: 

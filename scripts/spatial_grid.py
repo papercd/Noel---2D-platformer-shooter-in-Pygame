@@ -1,7 +1,7 @@
 from my_pygame_light2d.light import PointLight
 from scripts.data import LIGHT_POSITION_OFFSET_FROM_TOPLEFT
 
-from numpy import int32
+from numpy import int32,array
 
 class hullSpatialGrid:
     def __init__(self, cell_size:int32):
@@ -74,6 +74,8 @@ class ItemSpatialGrid:
     def __init__(self,cell_size :int32) ->None: 
         self.cell_size = cell_size
         self.grid = set()
+        self.item_spawner_count = array([0],dtype = int32)
+        self.item_spawner_bounds = array([981,400,-800,-20],dtype=int32)
 
     def _get_cell_coords(self, x, y):
         return int(x // self.cell_size), int(y // self.cell_size)
@@ -81,6 +83,12 @@ class ItemSpatialGrid:
     def insert(self,tile_pos:tuple[int32,int32])->None: 
         if tile_pos not in self.grid: 
             self.grid.add(tile_pos)
+            self.item_spawner_count[0] += int32(1) 
+            # update item spawner bounds
+            self.item_spawner_bounds[0] = min(self.item_spawner_bounds[0],tile_pos[0])
+            self.item_spawner_bounds[1] = min(self.item_spawner_bounds[1],tile_pos[1])
+            self.item_spawner_bounds[2] = max(self.item_spawner_bounds[2],tile_pos[0])
+            self.item_spawner_bounds[3] = max(self.item_spawner_bounds[3],tile_pos[1])
 
     def query(self,x1,y1,x2,y2)->None: 
         item_spawner_positions = []

@@ -40,6 +40,7 @@ class Noel():
         self._hud = HUD(self._game_context)
 
         self._entities_manager.set_initial_player_position(self._tilemap.initial_player_position)
+        self._entities_manager.set_item_spawning_positions(self._tilemap.item_spawners_grid)
         self._physics_system.attatch_tilemap(self._tilemap)
         self._input_handler.attatch_hud(self._hud)
         self._render_system.attatch_hud(self._hud)
@@ -66,6 +67,7 @@ class Noel():
         self._hud = HUD(self._game_context)
 
         self._entities_manager.set_initial_player_position(self._tilemap.initial_player_position)
+        self._entities_manager.set_item_spawning_positions(self._tilemap.item_spawners_grid)
         self._physics_system.attatch_tilemap(self._tilemap)
         self._input_handler.attatch_hud(self._hud)
         self._render_system.attatch_hud(self._hud)
