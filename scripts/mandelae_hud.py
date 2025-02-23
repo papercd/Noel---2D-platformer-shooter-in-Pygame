@@ -31,6 +31,10 @@ class HUD:
 
         true_res_array_float32 = self._game_ctx["true_res"].astype(float32)
 
+        # the background 
+        self.background_topleft = None 
+        self.background_dimensions = None
+
         # the health bar,
         self.health_bar_topleft = tuple((true_res_array_float32 * array(TRUE_RES_TO_HEALTH_BAR_TOPLEFT_RATIO_MANDELAE,dtype = float32)).astype(uint32)) 
         self.heatlh_bar_dimensions = tuple((true_res_array_float32 * array([TRUE_RES_TO_HEALTH_BAR_WIDTH_RATIO_MANDELAE,TRUE_RES_TO_HEALTH_STAMINA_BAR_HEIGHT_RATIO_MANDELAE],dtype = float32)).astype(uint32)) 
@@ -53,7 +57,7 @@ class HUD:
         """
         self._precompute_hud_display_elements_vertices()
 
-        self.bars_vertices_and_color_buffer, self.vertices_buffer,self.texcoords_buffer = self._ref_rm.get_hud_diplay_vertices_and_texcoords(quads = 4)
+        self.bars_vertices_and_color_buffer, self.vertices_buffer,self.texcoords_buffer = self._ref_rm.get_hud_diplay_vertices_and_texcoords(quads = 5)
 
         self._write_initial_state_to_buffers()
 
@@ -64,6 +68,9 @@ class HUD:
         self._items_engine = InventoryEngine(self._inven_list)
 
     def _precompute_hud_display_elements_vertices(self)->None: 
+
+        # background vertices 
+        self.background_vertices_bytes = None 
 
         # health bar container vertices
         self.health_bar_vertices_bytes = self._create_hud_element_vertices(self.health_bar_topleft,self.heatlh_bar_dimensions) 
@@ -110,6 +117,9 @@ class HUD:
     def _write_initial_state_to_buffers(self)->None: 
         
         buffer_write_offset = 0
+
+        # background 
+
 
         # health bar 
         self.vertices_buffer.write(self.health_bar_vertices_bytes,offset = buffer_write_offset)

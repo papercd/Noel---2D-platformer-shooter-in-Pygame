@@ -1,5 +1,5 @@
 from scripts.new_tilemap import Tilemap
-from scripts.data import ITEM_TYPES,ITEM_PROBABILITIES
+from scripts.data import ITEM_SIZES,ITEM_TYPES,ITEM_PROBABILITIES
 from pygame.rect import Rect
 from pygame.math import Vector2 as vec2
 from scripts.components import * 
@@ -57,7 +57,7 @@ class EntitiesManager:
         self.current_item_pool_index= array([2],dtype = uint32)
 
         for i in range(self.max_item_entities):
-            esper.create_entity(ItemInfoComponent(),PhysicsComponent(size = (uint32(8),uint32(8)), collision_rect= Rect(0,0,8,8)), StaticRenderComponent())
+            esper.create_entity(ItemInfoComponent(),PhysicsComponent(size = (uint32(16),uint32(16)), collision_rect= Rect(0,0,16,16)), StaticRenderComponent())
 
 
     def set_initial_player_position(self,pos:tuple[int32,int32])->None: 
@@ -94,8 +94,8 @@ class EntitiesManager:
             item_phy_comp.position[1] = spawn_position[1] * self._ref_isp.cell_size
 
             item_phy_comp.collision_rect.top = int(item_phy_comp.position[1] + int32(item_phy_comp.size[1]) // -2)
-            item_phy_comp.collision_rect.left = int(item_phy_comp.position[0] + int32(item_phy_comp.size[0]) // -2)
-            
+            item_phy_comp.collision_rect.left = int(item_phy_comp.position[0] + int32(item_phy_comp.size[0]) // -2) 
+
             item_render_comp.vertices_bytes = self._ref_rm.item_local_vertices_bytes[item_type]
 
             # add the item entity to the active item entities set

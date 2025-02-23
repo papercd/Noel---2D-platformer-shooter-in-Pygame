@@ -2,8 +2,8 @@ import esper
 from scripts.mandelae_hud import HUD
 from scripts.game_state import GameState
 from scripts.game_state import GameState
-from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR,\
-                        ITEM_ATLAS_POSITIONS_AND_SIZES,PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS,BYTES_PER_TEXTURE_QUAD
+from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR,ITEM_SIZES,\
+                        PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS,BYTES_PER_TEXTURE_QUAD
 from pygame.rect import Rect
 from pygame.mouse import get_pos
 from scripts.new_resource_manager import ResourceManager
@@ -249,6 +249,8 @@ class PhysicsSystem(esper.Processor):
             else: 
                 self._ref_em.active_items[0] -= uint32(1)
                 self._ref_em.active_item_entities.pop()
+
+            print(item_phy_comp.position,item_phy_comp.collision_rect)
 
             
         
@@ -1281,23 +1283,26 @@ class RenderSystem(esper.Processor):
         
         # render the item entities 
 
+        item_instances = 0
 
         for i in range(self._ref_em.active_items[0]-1,-1,-1):
             item_entity = self._ref_em.active_item_entities[i] 
             item_info_comp,item_phy_comp,static_render_comp = esper.components_for_entity(item_entity)
 
-            texcoords_bytes = self._ref_rm.item_texcoords_bytes[item_info_comp.type] 
-            item_local_vertices_bytes = static_render_comp.vertices_bytes
+            if item_info_comp.active_time[0] > float32(0.12):
+                item_instances += 1
+                texcoords_bytes = self._ref_rm.item_texcoords_bytes[item_info_comp.type] 
+                item_local_vertices_bytes = static_render_comp.vertices_bytes
 
-            interpolated_model_transform = item_phy_comp.prev_transform * (1.0 - interpolation_delta) + item_phy_comp.transform * interpolation_delta
+                interpolated_model_transform = item_phy_comp.prev_transform * (1.0 - interpolation_delta) + item_phy_comp.transform * interpolation_delta
 
-            clip_transform = self._projection_matrix @ self._view_matrix @ interpolated_model_transform
+                clip_transform = self._projection_matrix @ self._view_matrix @ interpolated_model_transform
 
-            item_vertices_byte_array.extend(item_local_vertices_bytes)
-            item_texcoords_byte_array.extend(texcoords_bytes)
+                item_vertices_byte_array.extend(item_local_vertices_bytes)
+                item_texcoords_byte_array.extend(texcoords_bytes)
 
-            column_major_clip_transform_bytes = clip_transform.T.flatten().tobytes()
-            item_matrices_byte_array.extend(column_major_clip_transform_bytes)
+                column_major_clip_transform_bytes = clip_transform.T.flatten().tobytes()
+                item_matrices_byte_array.extend(column_major_clip_transform_bytes)
 
         self._entity_weapons_local_vertices_vbo.write(weapon_vertices_byte_array)
         self._entity_weapons_texcoords_vbo.write(weapon_texcoords_byte_array)
@@ -1320,7 +1325,7 @@ class RenderSystem(esper.Processor):
         self._vao_entity_weapons_draw.render(instances= weapon_instances)
 
         self._ref_rm.texture_atlasses['items'].use()
-        self._vao_items_draw.render(instances=self._ref_em.active_items[0])
+        self._vao_items_draw.render(instances=item_instances)
 
 
         self._update_active_static_lights(camera_offset)

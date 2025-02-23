@@ -2,7 +2,7 @@ from scripts.background import Background
 from scripts.utils import load_texture
 from os import listdir
 from json import load as jsLoad
-from scripts.data import IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS_AND_SIZES,TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,\
+from scripts.data import IN_WORLD_WEAPON_ATLAS_POSITIONS_AND_SIZES,UI_WEAPON_ATLAS_POSITIONS_AND_SIZES,ITEM_ATLAS_POSITIONS,ITEM_SIZES,TEXTURE_BASE_PATH,TILE_COLOR_SAMPLE_POS_TO_DIM_RATIO,TILE_ATLAS_POSITIONS,ENTITIES_ATLAS_POSITIONS ,ENTITY_ANIMATION_DATA,ENTITY_SIZES,\
                     DoorTileInfoWithAnimation,TrapDoorTileInfoWithOpenState,TileInfo,TileInfoDataClass,AnimationDataCollection,UI_ATLAS_POSITIONS_AND_SIZES
 
 from numpy import uint32,uint8,uint16,int32,float32,array,zeros,frombuffer
@@ -144,10 +144,10 @@ class ResourceManager:
         self.item_texcoords_bytes = {}
         self.item_local_vertices_bytes = {}
 
-        for item_name in ITEM_ATLAS_POSITIONS_AND_SIZES: 
-            atlas_pos,size = ITEM_ATLAS_POSITIONS_AND_SIZES[item_name]
+        for item_name in ITEM_ATLAS_POSITIONS: 
+            atlas_pos,size = ITEM_ATLAS_POSITIONS[item_name], ITEM_SIZES[item_name]
             self.item_local_vertices_bytes[item_name] = self._create_entity_local_vertices(size)
-            self.item_texcoords_bytes[item_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['items'])
+            self.item_texcoords_bytes[item_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['items'],print_=True)
 
         for weapon_name in UI_WEAPON_ATLAS_POSITIONS_AND_SIZES: 
             atlas_pos,size = UI_WEAPON_ATLAS_POSITIONS_AND_SIZES[weapon_name]
@@ -188,7 +188,7 @@ class ResourceManager:
             self.entity_local_vertices_bytes[entity_type] = self._create_entity_local_vertices(ENTITY_SIZES[entity_type])
 
 
-    def _create_texcoords(self,atlas_position:tuple[uint32,uint32],texture_size:tuple[uint32,uint32],texture_atlas:"Context.Texture",asbytes = True) ->bytes:
+    def _create_texcoords(self,atlas_position:tuple[uint32,uint32],texture_size:tuple[uint32,uint32],texture_atlas:"Context.Texture",asbytes = True,print_ = False) ->bytes:
 
         x =  (atlas_position[0]) / texture_atlas.size[0]
         y = (atlas_position[1]) / texture_atlas.size[1]
@@ -199,7 +199,9 @@ class ResourceManager:
         p2 = (x + w, y + h)
         p3 = (x, y)
         p4 = (x + w, y)
-
+        if print_:
+            print([p3, p4, p1,
+                p1, p4, p2])
         if asbytes:
             return array([p3, p4, p1,
                             p1, p4, p2], dtype=float32).tobytes()

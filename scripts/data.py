@@ -292,11 +292,16 @@ UI_WEAPON_ATLAS_POSITIONS_AND_SIZES = {
     'flamethrower' : ((416,92),(31,12))
 }
 
-ITEM_ATLAS_POSITIONS_AND_SIZES={
-  "ak47" : ((uint32(0),uint32(0)),(uint32(31),uint32(12))),
-  "rof" : ((uint32(0),uint32(84)),(uint32(16),uint32(16))),
-  "damage" : ((uint32(0),uint32(68)),(uint32(16),uint32(16))),
-  "ammo" : ((uint32(0),uint32(52)),(uint32(16),uint32(16))),
+ITEM_ATLAS_POSITIONS={
+  "rof" : ((uint32(0),uint32(84))),
+  "damage" : ((uint32(0),uint32(68))),
+  "ammo" : ((uint32(0),uint32(52))),
+}
+
+ITEM_SIZES = {
+  "rof" : (uint32(16),uint32(16)),
+  "damage" : (uint32(16),uint32(16)),
+  "ammo" : (uint32(16),uint32(16)),
 }
 
 """
@@ -582,5 +587,5 @@ ENERGY_BAR_DEPLETED_COLOR = array([61,99,126,255],dtype = int16)
 CURSOR_ENERGY_INITIAL_EXPENDITURE_RATE = float32(40)
 CURSOR_ENERGY_RECHARGE_RATE = float32(10)
 
-ITEM_TYPES = array(['ak47','rof','damage','ammo'])
-ITEM_PROBABILITIES = array([0.15,0.25,0.25,0.35])
+ITEM_TYPES = array(['rof','damage','ammo'])
+ITEM_PROBABILITIES = array([0.3,0.3,0.4])
