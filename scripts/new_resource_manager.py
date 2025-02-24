@@ -21,6 +21,7 @@ TEXTURE_ATLAS_NAMES_TO_PATH = {
     'ui' : TEXTURE_BASE_PATH + 'ui/ui_atlas.png',
     'items' : TEXTURE_BASE_PATH + 'items/item_atlas.png',
     'holding_weapons' : TEXTURE_BASE_PATH + 'weapons/weapon_atlas.png',
+    'bullet': TEXTURE_BASE_PATH + 'bullets/bullet_atlas.png'
 }
 
 class ResourceManager:
@@ -68,6 +69,9 @@ class ResourceManager:
 
         # load holding weapon texcoords
         self._create_holding_weapon_vertices_texcoords()
+
+        # load main bullet texcoords and vertices 
+        self._create_main_weapon_bullet_vertices_texcoords()
 
     def _create_animation_data_collections(self)->None: 
         self.animation_data_collections = {}
@@ -140,6 +144,11 @@ class ResourceManager:
                 self.ui_element_texcoords_bytes[ui_element] = self._create_texcoords(atlas_position,texture_size,self.texture_atlasses['ui'])
 
     
+    def _create_main_weapon_bullet_vertices_texcoords(self)->None: 
+        size = (uint32(16),uint32(5))
+        self.bullet_local_vertices_bytes = self._create_entity_local_vertices(size)
+        self.bullet_texcoords_bytes = self._create_texcoords((uint32(0),uint32(0)),size,self.texture_atlasses['bullet'])
+
     def _create_item_texcoords_and_local_vertices(self)->None: 
         self.item_texcoords_bytes = {}
         self.item_local_vertices_bytes = {}
@@ -147,7 +156,7 @@ class ResourceManager:
         for item_name in ITEM_ATLAS_POSITIONS: 
             atlas_pos,size = ITEM_ATLAS_POSITIONS[item_name], ITEM_SIZES[item_name]
             self.item_local_vertices_bytes[item_name] = self._create_entity_local_vertices(size)
-            self.item_texcoords_bytes[item_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['items'],print_=True)
+            self.item_texcoords_bytes[item_name] = self._create_texcoords(atlas_pos,size,self.texture_atlasses['items'])
 
         for weapon_name in UI_WEAPON_ATLAS_POSITIONS_AND_SIZES: 
             atlas_pos,size = UI_WEAPON_ATLAS_POSITIONS_AND_SIZES[weapon_name]
@@ -172,7 +181,6 @@ class ResourceManager:
         self.entity_texcoords_bytes = {}
         self.entity_local_vertices_bytes = {}
 
-        # create local vertices for item entities 
 
         for entity_type in ENTITIES_ATLAS_POSITIONS: 
             if entity_type == 'player':
@@ -188,7 +196,7 @@ class ResourceManager:
             self.entity_local_vertices_bytes[entity_type] = self._create_entity_local_vertices(ENTITY_SIZES[entity_type])
 
 
-    def _create_texcoords(self,atlas_position:tuple[uint32,uint32],texture_size:tuple[uint32,uint32],texture_atlas:"Context.Texture",asbytes = True,print_ = False) ->bytes:
+    def _create_texcoords(self,atlas_position:tuple[uint32,uint32],texture_size:tuple[uint32,uint32],texture_atlas:"Context.Texture",asbytes = True) ->bytes:
 
         x =  (atlas_position[0]) / texture_atlas.size[0]
         y = (atlas_position[1]) / texture_atlas.size[1]
@@ -199,9 +207,7 @@ class ResourceManager:
         p2 = (x + w, y + h)
         p3 = (x, y)
         p4 = (x + w, y)
-        if print_:
-            print([p3, p4, p1,
-                p1, p4, p2])
+
         if asbytes:
             return array([p3, p4, p1,
                             p1, p4, p2], dtype=float32).tobytes()

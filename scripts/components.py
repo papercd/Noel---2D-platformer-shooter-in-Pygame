@@ -1,6 +1,7 @@
 from dataclasses import dataclass as component 
 from dataclasses import field
 from pygame.rect import Rect
+from scripts.rotated_rect import RotatedRect
 from pygame.math import Vector2 as vec2
 from scripts.data import GRAVITY, AnimationDataCollection
  
@@ -42,30 +43,51 @@ class PhysicsComponent:
         ],dtype= float32)
 
 
-
-
 @component 
-class WeaponHolderComponent: 
-    size: tuple[int,int] = (1,1)
-    flip: bool = False 
-    rotation: float = 0
-    scale : vec2 = field(default_factory= lambda: vec2(1.0,1.0)) 
-    origin : vec2 = field(default_factory= lambda:vec2(0,0))
+class BulletPhysicsComponent: 
+    
+    size: tuple[uint32,uint32]
+    flip : bool = False 
+    position : array = field(default_factory= lambda:array([0,0],dtype=int32))
+    rotation : array = field(default_factory= lambda:array([0],dtype=float32))
+    scale : array = field(default_factory= lambda : array([1.0,1.0],dtype = float32))
+    origin : array = field(default_factory= lambda: array([0,0],dtype=float32))
+    velocity : array = field(default_factory= lambda : array([0,0],dtype=float32))
+    acceleration : array = field(default_factory= lambda: array([0,GRAVITY],dtype= float32))
+    damage = uint32(1)
+    rotated_collision_rect : RotatedRect = field(default_factory= lambda: RotatedRect((int32(0),int32(0)),(int32(1),int32(1)),float32(0)))
 
-    @property
-    def transform(self,position:vec2)->array: 
-        cos_a = cos(self.rotation)
-        sin_a = sin(self.rotation)
+    displacement_buffer : array = field(default_factory= lambda: array([0,0],dtype= float32))
+    
+    prev_transform : array = field(default_factory= lambda: array([
+        [1,0,0],                        
+        [0,1,0],
+        [0,0,1]
+    ],dtype=float32)) # previous transform matrix to integrate interpolation for rendering.
 
-        tx = position[0] - self.origin[0] * self.scale[0]
-        ty = position[1] - self.origin[1] * self.scale[1] 
 
+    @property 
+    def transform(self)->array: 
+        cos_a = cos(self.rotation[0])
+        sin_a = sin(self.rotation[0])
 
+        tx = self.position[0] - self.origin[0] * self.scale[0] 
+        ty = self.position[1] - self.origin[1] * self.scale[1] 
+        
         return array([
             [(-2*self.flip +1) *cos_a * self.scale[0], -sin_a * self.scale[1], tx],
             [sin_a * self.scale[0], cos_a  * self.scale[1], ty],
             [0,0,1]
-        ])
+        ],dtype= float32)
+
+
+@component 
+class WeaponHolderComponent: 
+    weapon_flip : bool = False
+    weapon_anchor_pos_offset_from_center : array = field(default_factory= lambda: array([0,0],dtype = int32))
+    knockback : array = field(default_factory= lambda: array([0,0],dtype = int32))
+    anchor_to_cursor_angle: float = 0
+
 
 @component
 class StateInfoComponent:
@@ -93,6 +115,7 @@ class ItemInfoComponent:
     collide_top : bool = False
     collide_bottom : bool = False
 
+
 @component 
 class InputComponent: 
     left: bool = False
@@ -111,6 +134,36 @@ class AnimatedRenderComponent:
 @component
 class StaticRenderComponent: 
     vertices_bytes : bytes = field(default_factory= lambda: zeros(6).tobytes())
+
+
+@component 
+class WeaponRenderComponent:
+    texcoords_bytes : bytes = field(default_factory= lambda: zeros(6).tobytes())
+    vertices_bytes : bytes = field(default_factory= lambda: zeros(6).tobytes())
+
+    weapon_model_to_pivot_transform :  array = field(default_factory= lambda: array([
+        [1,0,0],                        
+        [0,1,0],
+        [0,0,1]
+    ],dtype=float32))
+
+    weapon_model_rotate_transform : array = field(default_factory= lambda:array([
+        [1,0,0],
+        [0,1,0],
+        [0,0,1]]
+    ,dtype = float32))
+
+    weapon_model_flip_transform : array = field(default_factory= lambda:array([
+        [1,0,0],
+        [0,1,0],
+        [0,0,1]]
+    ,dtype = float32))
+
+    weapon_model_translate_transform : array = field(default_factory=lambda: array([
+        [1,0,0],
+        [0,1,0],
+        [0,0,1]]
+    ,dtype=float32))
 
 @component 
 class ParticleEmiiterComponent: 

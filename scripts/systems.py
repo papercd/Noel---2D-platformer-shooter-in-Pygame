@@ -8,7 +8,7 @@ from pygame.rect import Rect
 from pygame.mouse import get_pos
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
-from scripts.components import PhysicsComponent,AnimatedRenderComponent, StateInfoComponent,InputComponent
+from scripts.components import PhysicsComponent,AnimatedRenderComponent, StateInfoComponent,InputComponent,WeaponHolderComponent
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
 from scripts.layer import Layer_
@@ -37,8 +37,10 @@ if TYPE_CHECKING:
     from scripts.mandelae_hud import HUD 
 
 class PhysicsSystem(esper.Processor):
-    def __init__(self)->None: 
-
+    def __init__(self,game_ctx)->None: 
+        
+        self._ref_hud: "HUD" = None
+        self._ref_game_ctx = game_ctx
         self._ref_tilemap:"Tilemap" = None
         self._ref_em : EntitiesManager = EntitiesManager.get_instance()
         self._collision_rect_buffer = Rect(0,0,1,1)
@@ -198,8 +200,9 @@ class PhysicsSystem(esper.Processor):
 
 
 
-    def _process_physics_updates_for_player(self,input_comp:InputComponent,physics_comp:PhysicsComponent
+    def _process_physics_updates_for_player(self,input_comp:InputComponent,weapon_holder_comp:WeaponHolderComponent,physics_comp:PhysicsComponent
                                             ,state_info_comp:StateInfoComponent,dt:float32)->None:
+        
         
         direction = int32(input_comp.right - input_comp.left)
         if direction != int32(0):
@@ -217,7 +220,15 @@ class PhysicsSystem(esper.Processor):
 
         if (state_info_comp.collide_left or state_info_comp.collide_right) and not state_info_comp.collide_bottom:
             physics_comp.velocity[1] = min(physics_comp.velocity[1] , WALL_SLIDE_CAP_VELOCITY)
-        
+
+        camera_offset = self._ref_game_ctx['camera_offset']
+
+        # update weapon holder component 
+        weapon_holder_comp.weapon_flip = physics_comp.position[0] - camera_offset[0] > self._ref_hud.cursor.topleft[0]
+        weapon_holder_comp.weapon_anchor_pos_offset_from_center = PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS[physics_comp.flip][state_info_comp.curr_state][weapon_holder_comp.weapon_flip]
+        weapon_holder_comp.anchor_to_cursor_angle = self._ref_hud.cursor.get_angle_from_point((physics_comp.position[0] - camera_offset[0] + weapon_holder_comp.weapon_anchor_pos_offset_from_center[0],
+                                                                                               physics_comp.position[1] - camera_offset[1] + weapon_holder_comp.weapon_anchor_pos_offset_from_center[1]))
+
 
     def _process_non_player_physics_updates(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,dt:float)->None:
         physics_comp.flip = physics_comp.velocity[0] < 0
@@ -227,15 +238,17 @@ class PhysicsSystem(esper.Processor):
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
         self._ref_tilemap =tilemap
-        
-
+    
+    def attatch_hud(self,hud:"HUD")->None: 
+        self._ref_hud = hud
+    
     def process(self,dt:float32)->None: 
         # process physics for player entity, which has an input component while the rest of the entities don't.
         #player,(player_input_comp,player_state_info_comp,player_physics_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent)[0]
 
         for entity, (state_info_comp,physics_comp) in esper.get_components(StateInfoComponent,PhysicsComponent):
             if state_info_comp.type == "player":
-                self._process_physics_updates_for_player(self._ref_em.player_input_comp,physics_comp,state_info_comp,dt)
+                self._process_physics_updates_for_player(self._ref_em.player_input_comp,self._ref_em._player_weapon_holder,physics_comp,state_info_comp,dt)
             else: 
                 self._process_non_player_physics_updates(physics_comp,state_info_comp,dt)
 
@@ -1160,7 +1173,6 @@ class RenderSystem(esper.Processor):
         self._render_background_to_bg_fbo(camera_offset)
         self._opt_render_tilemap_to_bg_fbo(camera_offset)
         self._ref_hud.update(dt,interpolation_delta,camera_offset,self.cursor_state_change_callback)
-        self._render_HUD_to_fg_fbo(dt)
 
         entity_vertices_byte_array = bytearray()
         entity_texcoords_byte_array = bytearray()
@@ -1180,8 +1192,6 @@ class RenderSystem(esper.Processor):
         entity_instances = 0
         weapon_instances = 0 
 
-        # player_weapon_equipped = self._ref_hud.weapon_equipped
-        player_weapon_equipped = False 
 
         # render the player and moving entities 
 
@@ -1196,12 +1206,12 @@ class RenderSystem(esper.Processor):
                 else: 
                     self._set_ambient(*self._ref_tilemap._ref_ambient_node.colorValue)
 
-                self._set_ambient(100,100,100,255)
+                self._set_ambient(99,88,88,255)
 
                 animation_data_collection = render_comp.animation_data_collection
                 animation = animation_data_collection.get_animation(state_info_comp.curr_state)
 
-                texcoords_bytes = self._ref_rm.entity_texcoords_bytes[(state_info_comp.type,player_weapon_equipped,state_info_comp.curr_state,animation.curr_frame())]
+                texcoords_bytes = self._ref_rm.entity_texcoords_bytes[(state_info_comp.type,True,state_info_comp.curr_state,animation.curr_frame())]
                 entity_local_vertices_bytes = render_comp.vertices_bytes
           
                 interpolated_model_transform = physics_comp.prev_transform * (1.0 - interpolation_delta) + physics_comp.transform * interpolation_delta
@@ -1215,8 +1225,39 @@ class RenderSystem(esper.Processor):
                 column_major_clip_transform_bytes = clip_transform.T.flatten().tobytes()
                 entity_matrices_byte_array.extend(column_major_clip_transform_bytes)
 
+                # write to weapon vertex buffer (ak47) 
+                wpn_holder_comp = self._ref_em.weapon_holder_comp
 
-                # writing to weapon render buffers 
+                weapon_instances += 1
+
+                sin_a = np.sin(pi - wpn_holder_comp.anchor_to_cursor_angle if wpn_holder_comp.weapon_flip else - wpn_holder_comp.anchor_to_cursor_angle) 
+                cos_a = np.cos(pi - wpn_holder_comp.anchor_to_cursor_angle if wpn_holder_comp.weapon_flip else - wpn_holder_comp.anchor_to_cursor_angle)
+                
+                self._ref_em.player_weapon_render_comp.weapon_model_to_pivot_transform[0][2] = -self._ref_em.player_main_weapon.origin_offset_from_center[0]
+                self._ref_em.player_weapon_render_comp.weapon_model_to_pivot_transform[1][2] = -self._ref_em.player_main_weapon.origin_offset_from_center[1]
+ 
+                self._ref_em.player_weapon_render_comp.weapon_model_rotate_transform[0][0] = cos_a
+                self._ref_em.player_weapon_render_comp.weapon_model_rotate_transform[0][1] = -sin_a
+
+                self._ref_em.player_weapon_render_comp.weapon_model_rotate_transform[1][0] = sin_a 
+                self._ref_em.player_weapon_render_comp.weapon_model_rotate_transform[1][1] = cos_a 
+
+                self._ref_em.player_weapon_render_comp.weapon_model_flip_transform[0][0] = -2 * wpn_holder_comp.weapon_flip +1
+
+                self._ref_em.player_weapon_render_comp.weapon_model_translate_transform[0][2] = player_model_interpolated_translation[0] + wpn_holder_comp.weapon_anchor_pos_offset_from_center[0]
+                self._ref_em.player_weapon_render_comp.weapon_model_translate_transform[1][2] = player_model_interpolated_translation[1] + wpn_holder_comp.weapon_anchor_pos_offset_from_center[1]
+
+                weapon_clip_transform = self._projection_matrix @ self._view_matrix @ self._ref_em.player_weapon_render_comp.weapon_model_translate_transform @ self._ref_em.player_weapon_render_comp.weapon_model_rotate_transform @ \
+                    self._ref_em.player_weapon_render_comp.weapon_model_flip_transform @ self._ref_em.player_weapon_render_comp.weapon_model_to_pivot_transform
+                
+                weapon_vertices_byte_array.extend(self._ref_em.player_weapon_render_comp.vertices_bytes)
+                weapon_texcoords_byte_array.extend(self._ref_em.player_weapon_render_comp.texcoords_bytes)
+
+                column_major_clip_transform_bytes = weapon_clip_transform.T.flatten().tobytes()
+
+                weapon_matrices_byte_array.extend(column_major_clip_transform_bytes)
+
+                """
                 if player_weapon_equipped:
                     weapon_instances += 1  
                     weapon = self._ref_hud.curr_weapon
@@ -1261,13 +1302,11 @@ class RenderSystem(esper.Processor):
                     ],dtype= np.float32)
                     
 
-                    """
                     weapon_model_translate_transform = np.array([
                         [1,0,physics_comp.position[0]],
                         [0,1,physics_comp.position[1]],
                         [0,0,1]
                     ],dtype= np.float32)
-                    """
 
                     weapon_clip_transform = self._projection_matrix @ self._view_matrix @ weapon_model_translate_transform @ weapon_model_rotate_transform @ weapon_model_flip_transform  @ weapon_model_to_pivot_transform
 
@@ -1276,9 +1315,11 @@ class RenderSystem(esper.Processor):
 
                     column_major_clip_transform_bytes = weapon_clip_transform.T.flatten().tobytes()
                     weapon_matrices_byte_array.extend(column_major_clip_transform_bytes) 
+                """
 
             else: 
                 pass
+
             entity_instances += 1
         
         # render the item entities 
@@ -1324,9 +1365,12 @@ class RenderSystem(esper.Processor):
         self._ref_rm.texture_atlasses['holding_weapons'].use()
         self._vao_entity_weapons_draw.render(instances= weapon_instances)
 
+        self._fbo_fg.use()
+
         self._ref_rm.texture_atlasses['items'].use()
         self._vao_items_draw.render(instances=item_instances)
 
+        self._render_HUD_to_fg_fbo(dt)
 
         self._update_active_static_lights(camera_offset)
         self._render_fbos_to_screen_with_lighting(self._ref_em.player_physics_comp.position,camera_offset,screen_shake,interpolation_delta)
@@ -1376,6 +1420,7 @@ class InputHandler(esper.Processor):
         
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
+                self._ref_em.shoot_bullet()
                 pass
                 self._ref_hud.cursor.pressed[0] = True 
             elif event.button==3:
@@ -1413,22 +1458,18 @@ class InputHandler(esper.Processor):
                         self._ref_hud.cursor.special_actions = True
                         player_input_comp.shift = True 
                     if event.key == pygame.K_w:
-                        pass
-                        #player_input_comp.up = True
+                        player_input_comp.up = True
                         #player_physics_comp.velocity[1] = -PLAYER_JUMP_SPEED
                     if event.key == pygame.K_a:
-                        pass
-                        #player_input_comp.left = True
+                        player_input_comp.left = True
                         #player_physics_comp.acceleration[0] = -PLAYER_ACCELERATION
                         
                     if event.key == pygame.K_d:
-                        pass
-                        #player_input_comp.right = True 
+                        player_input_comp.right = True 
                         #player_physics_comp.acceleration[0] = PLAYER_ACCELERATION
 
                     if event.key == pygame.K_s:
-                        pass
-                        #player_input_comp.down = True
+                        player_input_comp.down = True
                         # crouch maybe?
                     if event.key == pygame.K_SPACE:
                         player_input_comp.interact = True
@@ -1460,21 +1501,17 @@ class InputHandler(esper.Processor):
                         player_input_comp.shift = False
 
                     if event.key == pygame.K_w:
-                        pass
-                        #player_input_comp.up = False
+                        player_input_comp.up = False
                     if event.key == pygame.K_a:
-                        pass
-                        #player_input_comp.left = False
+                        player_input_comp.left = False
                         #player_physics_comp.acceleration[0] = 0
 
                     if event.key == pygame.K_d:
-                        pass
-                        #player_input_comp.right = False
+                        player_input_comp.right = False
                         #player_physics_comp.acceleration[0] = 0
 
                     if event.key == pygame.K_s:
-                        pass
-                        #player_input_comp.down = False
+                        player_input_comp.down = False
                     if event.key == pygame.K_SPACE:
                         player_input_comp.interact = False
 

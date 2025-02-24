@@ -1,6 +1,6 @@
 from scripts.data import ITEM_DESCRIPTIONS
 
-from numpy import uint16,uint32,int16,array
+from numpy import uint16,uint32,int16,float64,array
 
 class Item:
     def __init__(self,name,count:uint16 = uint16(1),stackable = True):
@@ -32,13 +32,15 @@ class Item:
 
 class Weapon(Item): 
     def __init__(self, size:tuple[uint16,uint16], origin_offset:tuple[int16,int16],
-                 name:str, count:uint16 = uint16(1), stackable=False):
+                 name:str, count:uint16 = uint16(1),fire_rate:array = array([0],dtype = float64),stackable=False):
         super().__init__(name, count, stackable)
+        
         self.magazine = array(0,dtype = uint32)
         self._size = size
         self._type = 'weapon'
         self.origin_offset_from_center = origin_offset 
-        
+        self.fire_rate = fire_rate
+        self.power = 1
 
     def copy(self):
         weapon = Weapon(self.name)
@@ -48,7 +50,7 @@ class Weapon(Item):
 
 class AK47(Weapon):
     def __init__(self):
-        super().__init__((uint16(18),uint16(9)),(int16(-7),int16(-2)),'ak47', uint16(1), False)
+        super().__init__((uint16(18),uint16(9)),(int16(-7),int16(-2)),'ak47', uint16(1),array([1/60],dtype= float64) , False)
 
     def copy(self)->"AK47": 
         new_ak = AK47()

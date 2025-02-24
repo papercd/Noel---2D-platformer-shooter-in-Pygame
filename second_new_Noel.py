@@ -29,9 +29,9 @@ class Noel():
     def _initialize_game_systems(self):
         
         self._resource_manager = ResourceManager.get_instance(self._ctx,self._game_context)
-        self._entities_manager = EntitiesManager.get_instance()
+        self._entities_manager = EntitiesManager.get_instance(self._game_context)
 
-        self._physics_system = PhysicsSystem()
+        self._physics_system = PhysicsSystem(self._game_context)
         self._state_system = StateSystem()  
         self._render_system = RenderSystem(self._ctx,self._game_context)
         self._input_handler = InputHandler(self._game_context)
@@ -42,6 +42,7 @@ class Noel():
         self._entities_manager.set_initial_player_position(self._tilemap.initial_player_position)
         self._entities_manager.set_item_spawning_positions(self._tilemap.item_spawners_grid)
         self._physics_system.attatch_tilemap(self._tilemap)
+        self._physics_system.attatch_hud(self._hud)
         self._input_handler.attatch_hud(self._hud)
         self._render_system.attatch_hud(self._hud)
         self._render_system.attatch_tilemap(self._tilemap)
@@ -197,7 +198,7 @@ class Noel():
             
             interpolation_delta = self._time_accumulator[0] / PHYSICS_TIMESTEP
 
-            self._entities_manager.process(self._game_context['game_timer'][0])
+            self._entities_manager.process()
             self._render_system.process(self._game_context,interpolation_delta,self._dt[0])
           
             pygame.display.flip()

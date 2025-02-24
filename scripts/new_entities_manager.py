@@ -1,4 +1,5 @@
 from scripts.new_tilemap import Tilemap
+from scripts.item import AK47
 from scripts.data import ITEM_SIZES,ITEM_TYPES,ITEM_PROBABILITIES
 from pygame.rect import Rect
 from pygame.math import Vector2 as vec2
@@ -17,13 +18,17 @@ if TYPE_CHECKING:
     from scripts.spatial_grid import ItemSpatialGrid
 
 class EntitiesManager:
+
     _instance = None
+    _game_ctx = None
     max_dynamic_entities =  uint32(1000)
     max_item_entities = uint32(300)
+    max_bullet_entities = uint32(200)
 
     @staticmethod
-    def get_instance()->"EntitiesManager":
+    def get_instance(game_ctx=None)->"EntitiesManager":
         if EntitiesManager._instance is None: 
+            EntitiesManager._game_ctx = game_ctx
             EntitiesManager._instance = EntitiesManager()
         return EntitiesManager._instance
 
@@ -31,6 +36,8 @@ class EntitiesManager:
         self._ref_rm =  ResourceManager.get_instance()
         self._ref_isp : "ItemSpatialGrid" = None
 
+    
+        self._last_bullet_shot_time = array([0],dtype= float64)
         self._last_item_drop_time = array([0],dtype = float64)
         self._last_enemey_spawn_time = array([0],dtype = float64)
 
@@ -38,17 +45,27 @@ class EntitiesManager:
         self._enemey_spawn_cooldown = array([10],dtype = float64)
 
         self._create_player_entity()
-        self._create_item_entity_pools()
+        self._create_weapon_entity()
+        self._create_item_entity_pool()
+        self._create_bullet_entity_pool()
 
     def _create_player_entity(self)->None: 
         self._player_state = StateInfoComponent(type='player',max_jump_count=uint16(1000))
         self._player_physics = PhysicsComponent(size=(uint32(16),uint32(16)),collision_rect= Rect(0,0,12,16))
         self._player_render = AnimatedRenderComponent(self._ref_rm.animation_data_collections['player'],self._ref_rm.entity_local_vertices_bytes['player'])
         self._player_input = InputComponent()
-        self._player = esper.create_entity(self._player_state,self._player_physics,self._player_render,self._player_input)
+        self._player_weapon_holder = WeaponHolderComponent()
+        self._player = esper.create_entity(self._player_state,self._player_physics,self._player_render,self._player_input,self._player_weapon_holder)
 
 
-    def _create_item_entity_pools(self)->None: 
+    def _create_weapon_entity(self)->None: 
+        self.player_main_weapon= AK47() 
+        self.player_weapon_render_comp = WeaponRenderComponent(texcoords_bytes= self._ref_rm.holding_weapon_texcoords_bytes['ak47'],vertices_bytes= self._ref_rm.holding_weapon_vertices_bytes['ak47'])
+        
+
+        
+
+    def _create_item_entity_pool(self)->None: 
         self.item_entities_index_start = uint32(2)
         self.item_entities_index_end = uint32(302)
 
@@ -59,6 +76,16 @@ class EntitiesManager:
         for i in range(self.max_item_entities):
             esper.create_entity(ItemInfoComponent(),PhysicsComponent(size = (uint32(16),uint32(16)), collision_rect= Rect(0,0,16,16)), StaticRenderComponent())
 
+    def _create_bullet_entity_pool(self)->None: 
+        self.bullet_entities_index_start =uint32(303)
+        self.bullet_entities_index_end = uint32(503)
+
+        self.active_bullets = array([0],dtype = uint32)
+        self.active_bullet_entities = []
+        self.current_bullet_pool_index = array([303],dtype =uint32)
+
+        for i in range(self.max_bullet_entities):
+            esper.create_entity(BulletPhysicsComponent(size=(uint32(16),uint32(5)),rotated_collision_rect=RotatedRect((int32(0),int32(0)),(uint32(16),uint32(5)))),StaticRenderComponent(self._ref_rm.bullet_local_vertices_bytes))
 
     def set_initial_player_position(self,pos:tuple[int32,int32])->None: 
         self._player_physics.position[0] = pos[0]
@@ -71,11 +98,34 @@ class EntitiesManager:
     def set_item_spawning_positions(self,item_spawning_positions:"ItemSpatialGrid")->None:
         self._ref_isp = item_spawning_positions
 
-    def process(self,current_game_time:float64)->None: 
+    
+    def shoot_bullet(self)->None: 
+        if self._game_ctx['game_timer'][0]- self._last_bullet_shot_time[0] >= self.player_main_weapon.fire_rate:
+            # fire the weapon
+
+            # activate a bullet entity from the pool with the fields of the rotation and velocity and direction
+            bullet_entity = self.current_bullet_pool_index[0]
+            bullet_phy_comp = esper.component_for_entity(bullet_entity,BulletPhysicsComponent)
+
+            # center the bullet to the opening position of the weapon, set the velocity and damage and angle. 
+
+            bullet_phy_comp.position = None 
+            bullet_phy_comp.velocity = None
+            bullet_phy_comp.damage = None
+            bullet_phy_comp.rotation = None 
+
+            bullet_phy_comp.rotated_collision_rect.set_rotation(0)
+
+
+
+            self._last_bullet_shot_time[0] = self._game_ctx['game_timer'][0] 
+
+    def process(self)->None: 
         #print(self._player_physics.position)
 
-        if current_game_time - self._last_item_drop_time[0] > self._item_drop_cooldown[0]:
-            self._last_item_drop_time[0] = current_game_time
+        if self._game_ctx['game_timer'][0]- self._last_item_drop_time[0] > self._item_drop_cooldown[0]:
+
+            self._last_item_drop_time[0] = self._game_ctx['game_timer'][0]
             # drop item logic 
             
             # query a spawn position for the item 
@@ -105,12 +155,15 @@ class EntitiesManager:
             self.active_items[0] += uint32(1)
 
 
-        if current_game_time - self._last_enemey_spawn_time[0] > self._enemey_spawn_cooldown[0]:
-            self._last_enemey_spawn_time[0] = current_game_time
+        if self._game_ctx['game_timer'][0]- self._last_enemey_spawn_time[0] > self._enemey_spawn_cooldown[0]:
+            self._last_enemey_spawn_time[0] = self._game_ctx['game_timer'][0]
             # spawn enemy logic
             #print("enemy spawned")
 
 
+    @property 
+    def weapon_holder_comp(self)->WeaponHolderComponent:
+        return self._player_weapon_holder
 
     @property 
     def player_physics_comp(self)->PhysicsComponent:

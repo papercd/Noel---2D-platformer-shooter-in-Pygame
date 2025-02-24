@@ -1,40 +1,31 @@
 next steps: 
 
-game should be played in a confined space, not too large. 
+1. create the ak47 firing, 
 
-items - 
-
-you can move the player around to pick up items.
-
-keep it simple; 
+input handler - gets the mouse click 
 
 
-create item spawner tile and place them down in the editor, same as the enemy spawners.
+if clicked, then prompt the entity manager to shoot out a new bullet entity, and create the bullet entity pool similar to how you did it for
 
 
-in the game, 'extract the tiles" and store their positions in a grid? list? -> some container in which its entities can be queried efficiently, 
-
-probs spatial grid again. 
+the items.  - you need to integrate the quadtree 
 
 
-then, -> create a timer in the main game loop.
+weapon is fired with a specific fire rate, and 
 
 
-when the timer ticks a certain amount, spawn enemies and items. 
+bullet collision, and effects on collision .
+
+- add dynamic lights 
 
 
-FIRST DO THE ITEMS. 
-
-ITEMS ARE first created in as a pool. When the timer ticks, get the container at the current index, and ENABLE IT. There should also then be a container containing all the enabled items. 
-
-The enabled items are then rendered and processed by the physics and render systems. 
-
-The items you should do now: 
-
-ak 47, the pistol, and rest are just power - ups ; rate of fire, damage, and ammo. 
-
-when the player collides with the items, the items are picked up.
 
 
-ENEMIES: 
 
+
+
+
+
+2. add pickups for power ups on collision 
+
+3. create enemy system. 
