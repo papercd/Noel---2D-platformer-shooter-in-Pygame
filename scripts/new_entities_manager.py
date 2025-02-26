@@ -1,16 +1,15 @@
 from scripts.new_tilemap import Tilemap
 from my_pygame_light2d.light import DynamicPointLight 
 from scripts.item import AK47
-from scripts.data import ITEM_SIZES,ITEM_TYPES,ITEM_PROBABILITIES
+from scripts.data import ITEM_SIZES,ITEM_TYPES,ITEM_PROBABILITIES,MUZZLE_PARTICLE_COLORS
 from pygame.rect import Rect
 from pygame.math import Vector2 as vec2
 from scripts.components import * 
 import esper
 
-from random import choice
+from random import choice,randint
 from numpy import uint32,uint16,float64,pi
-from numpy.random import choice as npchoice
-
+from numpy.random import choice as npchoice,uniform
 from scripts.new_resource_manager import ResourceManager
 
 from typing import TYPE_CHECKING
@@ -125,7 +124,6 @@ class EntitiesManager:
             bullet_phy_comp ,bullet_render_comp= esper.components_for_entity(bullet_entity)
 
             # center the bullet to the opening position of the weapon, set the velocity and damage and angle. 
-            print(bullet_entity)
             bullet_phy_comp.active_time[0] = float32(0)
             bullet_phy_comp.dead = False
 
@@ -175,9 +173,29 @@ class EntitiesManager:
             dynamic_lights_list.append(bullet_light)
 
             # create muzzle flash particles 
+            particle_count = randint(9,12)
+            for _ in range(particle_count):
+                basic_particle_entity = self.current_basic_particle_pool_index[0]
+                particle_phy_comp = esper.component_for_entity(basic_particle_entity,BasicParticlePhysicsComponent)
 
+                particle_phy_comp.position[0] = self._player_weapon_holder.opening_pos[0]
+                particle_phy_comp.position[1] = self._player_weapon_holder.opening_pos[1]
 
-            self.current_bullet_pool_index[0] = max(self.bullet_entities_index_start,(self.current_bullet_pool_index[0] + uint32(1)) % self.bullet_entities_index_end) 
+                particle_phy_comp.speed = randint(5,8)
+                particle_phy_comp.active_time[0] = float32(0)
+
+                particle_phy_comp.color = choice(MUZZLE_PARTICLE_COLORS['ak47'])
+                particle_phy_comp.rotation = uniform(bullet_phy_comp.rotation- pi /8 , bullet_phy_comp.rotation + pi/8)
+                
+                particle_phy_comp.dead = False
+
+                self.current_basic_particle_pool_index[0] = max(self.basic_particle_entities_index_start,(self.current_basic_particle_pool_index[0] + uint32(1)) % (self.basic_particle_entities_index_end + uint32(1)))
+
+                self.active_basic_particles[0] += uint32(1)
+
+                self.active_basic_particle_entities.append(basic_particle_entity)
+
+            self.current_bullet_pool_index[0] = max(self.bullet_entities_index_start,(self.current_bullet_pool_index[0] + uint32(1)) % (self.bullet_entities_index_end+uint32(1))) 
 
             self.active_bullets[0] += uint32(1)
 
@@ -214,7 +232,7 @@ class EntitiesManager:
             # add the item entity to the active item entities set
             self.active_item_entities.append(item_entity)
 
-            self.current_item_pool_index[0] = max(self.item_entities_index_start, (self.current_item_pool_index[0] + uint32(1) ) % self.item_entities_index_end )
+            self.current_item_pool_index[0] = max(self.item_entities_index_start, (self.current_item_pool_index[0] + uint32(1) ) % (self.item_entities_index_end+uint32(1)) )
             self.active_items[0] += uint32(1)
 
 

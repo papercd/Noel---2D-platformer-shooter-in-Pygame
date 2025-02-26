@@ -268,6 +268,8 @@ class PhysicsSystem(esper.Processor):
                     accum_step += step    
                     for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((bullet_phy_comp.position[0],bullet_phy_comp.position[1]),(bullet_phy_comp.size[0],bullet_phy_comp.size[1]),dir = bullet_phy_comp.flip):
                         if rect_tile[0].collidepoint(bullet_phy_comp.position):
+
+                            
                             return True
                 bullet_phy_comp.displacement_buffer[1] += bullet_phy_comp.velocity[1] * dt 
 
@@ -1560,6 +1562,11 @@ class RenderSystem(esper.Processor):
                 column_major_clip_transform_bytes = bullet_clip_transform.T.flatten().tobytes()
 
                 bullet_matrices_byte_array.extend(column_major_clip_transform_bytes)
+
+
+        # render the basic particles 
+
+        
 
 
         self._entity_weapons_local_vertices_vbo.write(weapon_vertices_byte_array)

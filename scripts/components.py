@@ -81,10 +81,12 @@ class BasicParticlePhysicsComponent:
     size : tuple[uint32,uint32] = (uint32(1),uint32(1))
     position : array = field(default_factory= lambda: array([0,0],dtype = int32))
     rotation : array = field(default_factory= lambda: array([0],dtype = float32))
-    speed : array = field(default_factory= lambda: array([0],dtype = float32))
     color : tuple[int,int,int,int] = (0,0,0,0)
     active_time: array = field(default_factory=lambda:array([0],dtype =float32))
     gravity_factor : float32 = float32(1.0)
+    speed : uint32 = uint32(1)
+    dead : bool = False
+    
 
 @component 
 class WeaponHolderComponent: 
