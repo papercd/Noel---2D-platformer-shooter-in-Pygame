@@ -40,7 +40,12 @@ class Weapon(Item):
         self._type = 'weapon'
         self.origin_offset_from_center = origin_offset 
         self.fire_rate = fire_rate
-        self.power = 1
+        self.power = uint16(1)
+        self.bullet_speed = uint32(1000)
+
+    @property 
+    def size(self): 
+        return self._size
 
     def copy(self):
         weapon = Weapon(self.name)
@@ -50,7 +55,7 @@ class Weapon(Item):
 
 class AK47(Weapon):
     def __init__(self):
-        super().__init__((uint16(18),uint16(9)),(int16(-7),int16(-2)),'ak47', uint16(1),array([1/60],dtype= float64) , False)
+        super().__init__((uint16(18),uint16(9)),(int16(-7),int16(-2)),'ak47', uint16(1),array([1/12],dtype= float64) , False)
 
     def copy(self)->"AK47": 
         new_ak = AK47()

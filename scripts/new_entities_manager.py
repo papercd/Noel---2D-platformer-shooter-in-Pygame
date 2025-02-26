@@ -1,4 +1,5 @@
 from scripts.new_tilemap import Tilemap
+from my_pygame_light2d.light import DynamicPointLight 
 from scripts.item import AK47
 from scripts.data import ITEM_SIZES,ITEM_TYPES,ITEM_PROBABILITIES
 from pygame.rect import Rect
@@ -7,7 +8,7 @@ from scripts.components import *
 import esper
 
 from random import choice
-from numpy import uint32,uint16,float64
+from numpy import uint32,uint16,float64,pi
 from numpy.random import choice as npchoice
 
 from scripts.new_resource_manager import ResourceManager
@@ -34,6 +35,10 @@ class EntitiesManager:
 
     def __init__(self)->None:
         self._ref_rm =  ResourceManager.get_instance()
+
+        # TODO: create the particle system. 
+
+        self._ref_ps = None
         self._ref_isp : "ItemSpatialGrid" = None
 
     
@@ -57,7 +62,6 @@ class EntitiesManager:
         self._player_weapon_holder = WeaponHolderComponent()
         self._player = esper.create_entity(self._player_state,self._player_physics,self._player_render,self._player_input,self._player_weapon_holder)
 
-
     def _create_weapon_entity(self)->None: 
         self.player_main_weapon= AK47() 
         self.player_weapon_render_comp = WeaponRenderComponent(texcoords_bytes= self._ref_rm.holding_weapon_texcoords_bytes['ak47'],vertices_bytes= self._ref_rm.holding_weapon_vertices_bytes['ak47'])
@@ -67,7 +71,7 @@ class EntitiesManager:
 
     def _create_item_entity_pool(self)->None: 
         self.item_entities_index_start = uint32(2)
-        self.item_entities_index_end = uint32(302)
+        self.item_entities_index_end = uint32(301)
 
         self.active_items = array([0],dtype = uint32)
         self.active_item_entities = []
@@ -78,14 +82,14 @@ class EntitiesManager:
 
     def _create_bullet_entity_pool(self)->None: 
         self.bullet_entities_index_start =uint32(303)
-        self.bullet_entities_index_end = uint32(503)
+        self.bullet_entities_index_end = uint32(502)
 
         self.active_bullets = array([0],dtype = uint32)
         self.active_bullet_entities = []
         self.current_bullet_pool_index = array([303],dtype =uint32)
 
         for i in range(self.max_bullet_entities):
-            esper.create_entity(BulletPhysicsComponent(size=(uint32(16),uint32(5)),rotated_collision_rect=RotatedRect((int32(0),int32(0)),(uint32(16),uint32(5)))),StaticRenderComponent(self._ref_rm.bullet_local_vertices_bytes))
+            esper.create_entity(BulletPhysicsComponent(size=(uint32(16),uint32(5))),BulletRenderComponent())
 
     def set_initial_player_position(self,pos:tuple[int32,int32])->None: 
         self._player_physics.position[0] = pos[0]
@@ -99,24 +103,62 @@ class EntitiesManager:
         self._ref_isp = item_spawning_positions
 
     
-    def shoot_bullet(self)->None: 
+    def shoot_bullet(self,dynamic_lights_list:list[DynamicPointLight])->None: 
         if self._game_ctx['game_timer'][0]- self._last_bullet_shot_time[0] >= self.player_main_weapon.fire_rate:
             # fire the weapon
 
             # activate a bullet entity from the pool with the fields of the rotation and velocity and direction
             bullet_entity = self.current_bullet_pool_index[0]
-            bullet_phy_comp = esper.component_for_entity(bullet_entity,BulletPhysicsComponent)
+            bullet_phy_comp ,bullet_render_comp= esper.components_for_entity(bullet_entity)
 
             # center the bullet to the opening position of the weapon, set the velocity and damage and angle. 
+            
+            bullet_phy_comp.active_time[0] = float32(0)
 
-            bullet_phy_comp.position = None 
-            bullet_phy_comp.velocity = None
-            bullet_phy_comp.damage = None
-            bullet_phy_comp.rotation = None 
+            bullet_phy_comp.damage = self.player_main_weapon.power
+            bullet_phy_comp.flip = self.weapon_holder_comp.weapon_flip 
+            
+            bullet_phy_comp.rotation = pi - self._player_weapon_holder.anchor_to_cursor_angle if bullet_phy_comp.flip else - self._player_weapon_holder.anchor_to_cursor_angle 
 
-            bullet_phy_comp.rotated_collision_rect.set_rotation(0)
+            bullet_phy_comp.position[0] = self._player_weapon_holder.opening_pos[0] - cos(self._player_weapon_holder.anchor_to_cursor_angle) * self.player_main_weapon.size[0] * 1 // 2
+            bullet_phy_comp.position[1] = self._player_weapon_holder.opening_pos[1] + sin(self._player_weapon_holder.anchor_to_cursor_angle) * self.player_main_weapon.size[0] * 1 // 2
 
+            sin_a = sin(bullet_phy_comp.rotation)
+            cos_a = cos(bullet_phy_comp.rotation)
 
+            bullet_phy_comp.velocity[0] = cos(self._player_weapon_holder.anchor_to_cursor_angle) * self.player_main_weapon.bullet_speed
+            bullet_phy_comp.velocity[1] = -sin(self._player_weapon_holder.anchor_to_cursor_angle) * self.player_main_weapon.bullet_speed
+
+            self._player_weapon_holder.knockback = - bullet_phy_comp.velocity / 170
+
+            bullet_render_comp.bullet_model_rotate_transform[0][0] = cos_a 
+            bullet_render_comp.bullet_model_rotate_transform[0][1] = -sin_a
+
+            bullet_render_comp.bullet_model_rotate_transform[1][0] = sin_a
+            bullet_render_comp.bullet_model_rotate_transform[1][1] = cos_a
+
+            bullet_render_comp.bullet_model_flip_transform[0][0] = -2 * bullet_phy_comp.flip + 1
+
+            self.active_bullet_entities.append(bullet_entity)
+
+            muzzle_flash_light1 = DynamicPointLight(self._player_weapon_holder.opening_pos.copy(),power=1.0,radius=8,life = 0.05)
+            muzzle_flash_light1.set_color(253,108,50)
+            muzzle_flash_light1.cast_shadows = True 
+            dynamic_lights_list.append(muzzle_flash_light1)
+
+            muzzle_flash_light2 = DynamicPointLight(self._player_weapon_holder.opening_pos.copy(),power=0.8,radius=24,life = 0.05)
+            muzzle_flash_light2.set_color(248,129,153)
+            muzzle_flash_light2.cast_shadows = True 
+            dynamic_lights_list.append(muzzle_flash_light2)
+
+            muzzle_flash_light3 = DynamicPointLight(self._player_weapon_holder.opening_pos.copy(),power=0.7,radius=50,life = 0.05)
+            muzzle_flash_light3.set_color(248,129,153)
+            muzzle_flash_light3.cast_shadows = True 
+            dynamic_lights_list.append(muzzle_flash_light3)
+
+            self.current_bullet_pool_index[0] = max(self.bullet_entities_index_start,(self.current_bullet_pool_index[0] + uint32(1)) % self.bullet_entities_index_end) 
+
+            self.active_bullets[0] += uint32(1)
 
             self._last_bullet_shot_time[0] = self._game_ctx['game_timer'][0] 
 
@@ -151,7 +193,7 @@ class EntitiesManager:
             # add the item entity to the active item entities set
             self.active_item_entities.append(item_entity)
 
-            self.current_item_pool_index[0] = max(2, (self.current_item_pool_index[0] + uint32(1) ) % self.item_entities_index_end )
+            self.current_item_pool_index[0] = max(self.item_entities_index_start, (self.current_item_pool_index[0] + uint32(1) ) % self.item_entities_index_end )
             self.active_items[0] += uint32(1)
 
 

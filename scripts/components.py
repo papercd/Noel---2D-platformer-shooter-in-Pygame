@@ -48,44 +48,39 @@ class BulletPhysicsComponent:
     
     size: tuple[uint32,uint32]
     flip : bool = False 
+    rotation : float32 = float32(0)
     position : array = field(default_factory= lambda:array([0,0],dtype=int32))
-    rotation : array = field(default_factory= lambda:array([0],dtype=float32))
     scale : array = field(default_factory= lambda : array([1.0,1.0],dtype = float32))
     origin : array = field(default_factory= lambda: array([0,0],dtype=float32))
     velocity : array = field(default_factory= lambda : array([0,0],dtype=float32))
     acceleration : array = field(default_factory= lambda: array([0,GRAVITY],dtype= float32))
+    active_time : array = field(default_factory= lambda: array([0],dtype=float32))
     damage = uint32(1)
-    rotated_collision_rect : RotatedRect = field(default_factory= lambda: RotatedRect((int32(0),int32(0)),(int32(1),int32(1)),float32(0)))
-
     displacement_buffer : array = field(default_factory= lambda: array([0,0],dtype= float32))
     
-    prev_transform : array = field(default_factory= lambda: array([
-        [1,0,0],                        
+    prev_translate_transform :  array = field(default_factory= lambda: array([
+        [1,0,0],
         [0,1,0],
         [0,0,1]
-    ],dtype=float32)) # previous transform matrix to integrate interpolation for rendering.
-
+    ],dtype = float32))
 
     @property 
-    def transform(self)->array: 
-        cos_a = cos(self.rotation[0])
-        sin_a = sin(self.rotation[0])
-
-        tx = self.position[0] - self.origin[0] * self.scale[0] 
-        ty = self.position[1] - self.origin[1] * self.scale[1] 
-        
+    def translate_transform(self)->array: 
+        tx = self.position[0] - self.origin[0] * self.scale[0]
+        ty = self.position[1] - self.origin[1] * self.scale[1]
         return array([
-            [(-2*self.flip +1) *cos_a * self.scale[0], -sin_a * self.scale[1], tx],
-            [sin_a * self.scale[0], cos_a  * self.scale[1], ty],
+            [1,0,tx],
+            [0,1,ty],
             [0,0,1]
         ],dtype= float32)
-
+        
 
 @component 
 class WeaponHolderComponent: 
     weapon_flip : bool = False
     weapon_anchor_pos_offset_from_center : array = field(default_factory= lambda: array([0,0],dtype = int32))
-    knockback : array = field(default_factory= lambda: array([0,0],dtype = int32))
+    opening_pos : array = field(default_factory = lambda: array([0,0],dtype = int32))
+    knockback : array = field(default_factory= lambda: array([0,0],dtype = float32))
     anchor_to_cursor_angle: float = 0
 
 
@@ -134,6 +129,21 @@ class AnimatedRenderComponent:
 @component
 class StaticRenderComponent: 
     vertices_bytes : bytes = field(default_factory= lambda: zeros(6).tobytes())
+
+
+@component 
+class BulletRenderComponent: 
+    bullet_model_rotate_transform : array = field(default_factory= lambda:array([
+        [1,0,0],
+        [0,1,0],
+        [0,0,1]]
+    ,dtype = float32))
+
+    bullet_model_flip_transform : array = field(default_factory= lambda:array([
+        [1,0,0],
+        [0,1,0],
+        [0,0,1]]
+    ,dtype = float32))
 
 
 @component 

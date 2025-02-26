@@ -3,12 +3,12 @@ from scripts.mandelae_hud import HUD
 from scripts.game_state import GameState
 from scripts.game_state import GameState
 from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR,ITEM_SIZES,\
-                        PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS,BYTES_PER_TEXTURE_QUAD
+                        PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS,BULLET_MAX_STEP
 from pygame.rect import Rect
 from pygame.mouse import get_pos
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
-from scripts.components import PhysicsComponent,AnimatedRenderComponent, StateInfoComponent,InputComponent,WeaponHolderComponent
+from scripts.components import PhysicsComponent,AnimatedRenderComponent, StateInfoComponent,InputComponent,WeaponHolderComponent,BulletPhysicsComponent,StaticRenderComponent
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
 from scripts.layer import Layer_
@@ -22,13 +22,13 @@ from random import choice
 
 import numpy as np
 
-from numpy import float32,uint16,uint32,int32,uint8,array
+from numpy import float32,uint16,uint32,int32,uint8,array, cos,sin
 
 from typing import TYPE_CHECKING 
 
 
 if TYPE_CHECKING: 
-    from my_pygame_light2d.light import PointLight
+    from my_pygame_light2d.light import DynamicPointLight,PointLight
     from my_pygame_light2d.hull import Hull
     from scripts.background import Background
     from scripts.data import TileInfo, TileInfoDataClass
@@ -228,12 +228,60 @@ class PhysicsSystem(esper.Processor):
         weapon_holder_comp.weapon_anchor_pos_offset_from_center = PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS[physics_comp.flip][state_info_comp.curr_state][weapon_holder_comp.weapon_flip]
         weapon_holder_comp.anchor_to_cursor_angle = self._ref_hud.cursor.get_angle_from_point((physics_comp.position[0] - camera_offset[0] + weapon_holder_comp.weapon_anchor_pos_offset_from_center[0],
                                                                                                physics_comp.position[1] - camera_offset[1] + weapon_holder_comp.weapon_anchor_pos_offset_from_center[1]))
+        weapon_holder_comp.opening_pos[0] = physics_comp.position[0] + weapon_holder_comp.weapon_anchor_pos_offset_from_center[0] + cos(weapon_holder_comp.anchor_to_cursor_angle) * self._ref_em.player_main_weapon.size[0] 
+        weapon_holder_comp.opening_pos[1] = physics_comp.position[1] + weapon_holder_comp.weapon_anchor_pos_offset_from_center[1] - sin(weapon_holder_comp.anchor_to_cursor_angle) * self._ref_em.player_main_weapon.size[0] 
 
+        if weapon_holder_comp.knockback[0] < float32(0):
+            weapon_holder_comp.knockback[0] = min(weapon_holder_comp.knockback[0] + float32(100) * dt, float32(0))
+        elif weapon_holder_comp.knockback[0] > float32(0): 
+            weapon_holder_comp.knockback[0] = max(weapon_holder_comp.knockback[0] - float32(100) * dt, float32(0))
+
+        if weapon_holder_comp.knockback[1] < float32(0):
+            weapon_holder_comp.knockback[1] = min(weapon_holder_comp.knockback[1] + float32(100) * dt, float32(0))
+        elif weapon_holder_comp.knockback[1] > float32(0): 
+            weapon_holder_comp.knockback[1] = max(weapon_holder_comp.knockback[1] - float32(100) * dt, float32(0))
+
+        #print(weapon_holder_comp.opening_pos, physics_comp.position)
+
+        
 
     def _process_non_player_physics_updates(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,dt:float)->None:
         physics_comp.flip = physics_comp.velocity[0] < 0
         self._process_common_physics_updates(physics_comp,state_info_comp,dt)
 
+ 
+    def _process_physics_for_bullet(self,bullet_phy_comp:BulletPhysicsComponent,dt:float32)->None: 
+
+
+        if bullet_phy_comp.active_time[0] >0:
+
+                bullet_phy_comp.prev_translate_transform = bullet_phy_comp.translate_transform
+
+                bullet_phy_comp.displacement_buffer[0] += bullet_phy_comp.velocity[0] * dt 
+              
+                accum_step = 0
+
+                while abs(bullet_phy_comp.displacement_buffer[0]) >= BULLET_MAX_STEP:
+                    step = int32(BULLET_MAX_STEP if bullet_phy_comp.displacement_buffer[0] > 0 else -BULLET_MAX_STEP)
+                    bullet_phy_comp.position[0] += step 
+                    bullet_phy_comp.displacement_buffer[0] -= step 
+                    accum_step += step    
+                    for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((bullet_phy_comp.position[0],bullet_phy_comp.position[1]),(bullet_phy_comp.size[0],bullet_phy_comp.size[1]),dir = bullet_phy_comp.flip):
+                        if rect_tile[0].collidepoint(bullet_phy_comp.position):
+                            return True
+                bullet_phy_comp.displacement_buffer[1] += bullet_phy_comp.velocity[1] * dt 
+
+                accum_step = 0
+
+                while abs(bullet_phy_comp.displacement_buffer[1]) >= BULLET_MAX_STEP: 
+                    step = int32(BULLET_MAX_STEP if bullet_phy_comp.displacement_buffer[1] > 0 else -BULLET_MAX_STEP)
+                    bullet_phy_comp.position[1] += step 
+                    bullet_phy_comp.displacement_buffer[1] -= step 
+                    accum_step += step
+                    for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((bullet_phy_comp.position[0],bullet_phy_comp.position[1]),(bullet_phy_comp.size[0],bullet_phy_comp.size[1]),dir = bullet_phy_comp.flip) :
+                        if rect_tile[0].collidepoint(bullet_phy_comp.position):
+                            return True
+        return False
 
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
@@ -252,6 +300,8 @@ class PhysicsSystem(esper.Processor):
             else: 
                 self._process_non_player_physics_updates(physics_comp,state_info_comp,dt)
 
+        # update items 
+
         for i in range(self._ref_em.active_items[0] -1,-1,-1):
             entity = self._ref_em.active_item_entities[i]
             item_info_comp,item_phy_comp,static_render_comp = esper.components_for_entity(entity)
@@ -260,14 +310,34 @@ class PhysicsSystem(esper.Processor):
                 self._process_non_player_physics_updates(item_phy_comp,item_info_comp,dt)
                 item_info_comp.active_time[0] += dt
             else: 
+                item_info_comp.active_time[0] = float32(0)
                 self._ref_em.active_items[0] -= uint32(1)
-                self._ref_em.active_item_entities.pop()
+                self._ref_em.active_item_entities.pop(i)
 
-            print(item_phy_comp.position,item_phy_comp.collision_rect)
+        # update bullets 
+        
+        for i in range(self._ref_em.active_bullets[0] -1 ,-1,-1):
+            bullet_entity = self._ref_em.active_bullet_entities[i]
+            
+            bullet_phy_comp = esper.component_for_entity(bullet_entity,BulletPhysicsComponent)
+            
+            collided = False
+
+            if bullet_phy_comp.active_time[0] < float32(1.6):
+                collided = self._process_physics_for_bullet(bullet_phy_comp,dt)
+                bullet_phy_comp.active_time[0] += dt 
+            else: 
+                bullet_phy_comp.active_time[0] = float32(0)
+                self._ref_em.active_bullets[0] -=uint32(1) 
+                self._ref_em.active_bullet_entities.pop(i)
+
+            if collided:
+                bullet_phy_comp.active_time[0] = float32(0)
+                self._ref_em.active_bullets[0] -=uint32(1) 
+                self._ref_em.active_bullet_entities.pop(i)
+
 
             
-        
-
 
 
 
@@ -276,6 +346,7 @@ class ParticleSystem(esper.Processor):
 
 
 class RenderSystem(esper.Processor):
+
 
     def __init__(self,gl_ctx:"Context",game_context)->None: 
         self._gl_ctx = gl_ctx
@@ -296,7 +367,7 @@ class RenderSystem(esper.Processor):
         self._ambient_light_RGBA = array([.25,.25,.25,.25],dtype= float32)
 
         self._active_static_lights : list["PointLight"] = []
-        self.dynamic_lights:list["PointLight"] = []
+        self.dynamic_lights:list["DynamicPointLight"] = []
         self.hulls:list["Hull"] = []
 
         self._prev_hull_query_player_pos = array([0,0],dtype = int32) 
@@ -327,6 +398,7 @@ class RenderSystem(esper.Processor):
         self._create_screen_vertex_buffers()
         self._create_entity_vertex_buffers()
         self._create_weapon_vertex_buffers()
+        self._create_bullet_vertex_buffers()
         self._create_item_vertex_buffers()
 
     def _load_shader_srcs(self,vertex_src_path:str,fragment_src_path:str)->tuple[str,str]:
@@ -533,6 +605,31 @@ class RenderSystem(esper.Processor):
         )
 
 
+    def _create_bullet_vertex_buffers(self)->None: 
+        local_space_vertex_size = 2* 4 
+        local_space_vertices_buffer_size = local_space_vertex_size * 6 * EntitiesManager.max_bullet_entities
+
+        texcoords_vertex_size = 2 * 4 
+        texcoords_buffer_size = texcoords_vertex_size * 6 * EntitiesManager.max_bullet_entities
+
+        transform_matrix_col_size = 3 * 4 
+        transform_column_buffer_size = transform_matrix_col_size * 3 * EntitiesManager.max_bullet_entities
+
+        self._bullets_local_vertices_buffer = self._gl_ctx.buffer(reserve=local_space_vertices_buffer_size,dynamic=True)
+        self._bullets_texcoords_vbo = self._gl_ctx.buffer(reserve=texcoords_buffer_size , dynamic= True)
+
+        self._bullets_transform_matrices_vbo = self._gl_ctx.buffer(reserve= transform_column_buffer_size , dynamic= True)
+        
+        self._vao_bullets_draw = self._gl_ctx.vertex_array(
+            self._entity_draw_prog,
+            [
+                (self._bullets_local_vertices_buffer, '2f', 'in_position'),
+                (self._bullets_texcoords_vbo, '2f', 'texcoord'),
+                (self._bullets_transform_matrices_vbo, '3f 3f 3f/i', 'col1', 'col2', 'col3')
+            ]
+        )
+       
+
     def _create_item_vertex_buffers(self)->None: 
         local_space_vertex_size = 2 * 4 
         local_space_vertices_buffer_size = local_space_vertex_size * 6 * EntitiesManager.max_item_entities 
@@ -732,6 +829,44 @@ class RenderSystem(esper.Processor):
         data_ind = np.array(indices, dtype=np.int32).flatten().tobytes()
         self._ssbo_ind.write(data_ind)
 
+    def _render_dynamic_lights_to_light_buffer(self,render_offset:tuple[int,int])->None: 
+        # render static lightmap buffer onto dynamic light buffer
+        
+        # render dynamic lights onto dynamic light buffer 
+
+        self._gl_ctx.disable(BLEND)
+
+        for i in range(len(self.dynamic_lights)-1,-1,-1):
+            dynamic_light = self.dynamic_lights[i]
+            self._buf_dyn_lt.tex.use()
+            self._buf_dyn_lt.fbo.use()
+            
+            #self._prog_light['lightPos'] = self._pos_to_lightmap_uv((dynamic_light.position[0]+self._lightmap_buffer_slack- render_offset[0],
+            #                                                  dynamic_light.position[1]+self._lightmap_buffer_slack-render_offset[1]))
+            self._prog_light['lightPos'] = self._dynamic_light_pos_to_lightmap_uv((dynamic_light.position[0] + self._lightmap_buffer_slack - self._prev_hull_query_camera_scroll[0] ,
+                                                                                   dynamic_light.position[1]  + self._lightmap_buffer_slack - self._prev_hull_query_camera_scroll[1] ))
+
+
+            self._prog_light['lightCol'] = dynamic_light._color
+            self._prog_light['lightPower'] = dynamic_light.cur_power
+            self._prog_light['radius'] = dynamic_light.radius
+            self._prog_light['castShadows'] = dynamic_light.cast_shadows
+            self._prog_light['lightmapWidth'] = self._lightmap_res[0]
+            self._prog_light['lightmapHeight'] = self._lightmap_res[1]
+
+            # Send number of hulls
+            self._prog_light['numHulls'] = len(self.hulls)
+
+            # Render onto lightmap
+            self._vao_light.render()
+
+            # Flip double buffer
+            self._buf_dyn_lt.flip()
+
+        self._gl_ctx.enable(BLEND)
+
+            # send dynamic lights uniform 
+
 
     def _render_static_lights_to_light_buffer(self,render_offset:tuple[int,int])->None:
 
@@ -762,14 +897,17 @@ class RenderSystem(esper.Processor):
 
         self._gl_ctx.enable(BLEND)
 
+    def _dynamic_light_pos_to_lightmap_uv(self,pos): 
+        return (pos[0] / self._lightmap_res[0], 1 - (pos[1] / self._lightmap_res[1]))
+
     def _pos_to_lightmap_uv(self,world_coords)->tuple[int,int]:
         return (world_coords[0] / self._lightmap_res[0], 1 - (world_coords[1] / self._lightmap_res[1]))
         
 
     def _render_aomap(self,camera_scroll:tuple[int,int])->None:
+        self._buf_dyn_lt.tex.use()
         self._fbo_ao.use()
-        self._buf_lt.tex.use()
-        
+
         # render offset of the lastly rendered lightmap to the current camera position 
         self._prog_blur['renderOffset'] = (self._prev_hull_query_camera_scroll[0] - camera_scroll[0],
                                            -self._prev_hull_query_camera_scroll[1] + camera_scroll[1])
@@ -971,6 +1109,18 @@ class RenderSystem(esper.Processor):
             self._send_hull_data_to_lighting_program(render_offset)
             self._render_static_lights_to_light_buffer(render_offset)
 
+        self._buf_dyn_lt.fbo.use()
+        self._gl_ctx.clear(0.,0.,0.,1.0)
+
+        self._buf_lt.tex.use(0)
+
+        self._vao_to_screen_draw.render()
+        
+        self._buf_dyn_lt.flip()
+
+        if self.dynamic_lights: 
+            self._render_dynamic_lights_to_light_buffer(render_offset)
+        
         self._render_aomap(camera_scroll)
 
         self._render_background_layer()
@@ -1026,6 +1176,24 @@ class RenderSystem(esper.Processor):
                 continue 
             else: 
                 light.cur_power = light.power
+
+
+    def _update_dynamic_lights(self,dt:float32)->None:
+        for i in range(len(self.dynamic_lights)-1,-1,-1):
+            dynamic_light = self.dynamic_lights[i]
+            
+            if dynamic_light.life > 0 : 
+                if dynamic_light.radius_decay:
+                    dynamic_light.radius = dynamic_light.radius * dynamic_light.life / dynamic_light.maxlife
+                
+                
+                #dynamic_light.position[0] += dynamic_light.velocity[0] * dt 
+                #dynamic_light.position[1] += dynamic_light.velocity[1] * dt
+
+                dynamic_light.life -= dt
+            else: 
+                self.dynamic_lights.pop(i)
+     
 
     def attatch_hud(self,hud:"HUD")->None:
         self._ref_hud = hud
@@ -1102,9 +1270,10 @@ class RenderSystem(esper.Processor):
         # Double buffer for lights
         self._buf_lt = DoubleBuffer(self._gl_ctx, self._lightmap_res)
 
+        # Final double buffer to add dynamic lights ontop of static lights 
+        self._buf_dyn_lt = DoubleBuffer(self._gl_ctx,self._lightmap_res)
+
         self._prog_blur['iResolution'] = self._lightmap_res
-
-
         self._prog_mask['nativeRes'] = self._game_ctx['true_res']
         self._prog_mask['lightmapRes'] = self._lightmap_res
 
@@ -1119,6 +1288,11 @@ class RenderSystem(esper.Processor):
         self._buf_lt._tex1.repeat_y = False
         self._buf_lt._tex2.repeat_x = False
         self._buf_lt._tex2.repeat_y = False
+
+        self._buf_dyn_lt._tex1.repeat_x = False
+        self._buf_dyn_lt._tex1.repeat_y = False
+        self._buf_dyn_lt._tex2.repeat_x = False
+        self._buf_dyn_lt._tex2.repeat_y = False
 
         self._tex_ao.repeat_x = False
         self._tex_ao.repeat_y = False
@@ -1186,6 +1360,10 @@ class RenderSystem(esper.Processor):
         item_texcoords_byte_array = bytearray()
         item_matrices_byte_array = bytearray()
 
+        bullet_vertices_byte_array = bytearray()
+        bullet_texcoords_byte_array = bytearray()
+        bullet_matrices_byte_array = bytearray()
+
         self._view_matrix[0][2] = -camera_offset[0]
         self._view_matrix[1][2] = -camera_offset[1]
 
@@ -1197,6 +1375,8 @@ class RenderSystem(esper.Processor):
 
         for entity, (state_info_comp,physics_comp,render_comp) in esper.get_components(StateInfoComponent,PhysicsComponent,AnimatedRenderComponent):
             if state_info_comp.type == 'player':
+
+                wpn_holder_comp = self._ref_em.weapon_holder_comp
 
                 self._ref_tilemap.update_tilemap_vbos(physics_comp.position)
                 self._ref_tilemap.update_ambient_node_ref(physics_comp.position,self._on_ambient_node_change_callback,camera_offset,screen_shake)
@@ -1215,6 +1395,9 @@ class RenderSystem(esper.Processor):
                 entity_local_vertices_bytes = render_comp.vertices_bytes
           
                 interpolated_model_transform = physics_comp.prev_transform * (1.0 - interpolation_delta) + physics_comp.transform * interpolation_delta
+                interpolated_model_transform[0][2] += wpn_holder_comp.knockback[0] / 4
+                interpolated_model_transform[1][2] += wpn_holder_comp.knockback[1] / 4 
+
                 player_model_interpolated_translation = (interpolated_model_transform[0][2], interpolated_model_transform[1][2]) 
 
                 clip_transform = self._projection_matrix @ self._view_matrix @ interpolated_model_transform 
@@ -1226,7 +1409,6 @@ class RenderSystem(esper.Processor):
                 entity_matrices_byte_array.extend(column_major_clip_transform_bytes)
 
                 # write to weapon vertex buffer (ak47) 
-                wpn_holder_comp = self._ref_em.weapon_holder_comp
 
                 weapon_instances += 1
 
@@ -1244,8 +1426,9 @@ class RenderSystem(esper.Processor):
 
                 self._ref_em.player_weapon_render_comp.weapon_model_flip_transform[0][0] = -2 * wpn_holder_comp.weapon_flip +1
 
-                self._ref_em.player_weapon_render_comp.weapon_model_translate_transform[0][2] = player_model_interpolated_translation[0] + wpn_holder_comp.weapon_anchor_pos_offset_from_center[0]
-                self._ref_em.player_weapon_render_comp.weapon_model_translate_transform[1][2] = player_model_interpolated_translation[1] + wpn_holder_comp.weapon_anchor_pos_offset_from_center[1]
+
+                self._ref_em.player_weapon_render_comp.weapon_model_translate_transform[0][2] = player_model_interpolated_translation[0] + wpn_holder_comp.weapon_anchor_pos_offset_from_center[0] + wpn_holder_comp.knockback[0]
+                self._ref_em.player_weapon_render_comp.weapon_model_translate_transform[1][2] = player_model_interpolated_translation[1] + wpn_holder_comp.weapon_anchor_pos_offset_from_center[1] + wpn_holder_comp.knockback[1]
 
                 weapon_clip_transform = self._projection_matrix @ self._view_matrix @ self._ref_em.player_weapon_render_comp.weapon_model_translate_transform @ self._ref_em.player_weapon_render_comp.weapon_model_rotate_transform @ \
                     self._ref_em.player_weapon_render_comp.weapon_model_flip_transform @ self._ref_em.player_weapon_render_comp.weapon_model_to_pivot_transform
@@ -1326,11 +1509,10 @@ class RenderSystem(esper.Processor):
 
         item_instances = 0
 
-        for i in range(self._ref_em.active_items[0]-1,-1,-1):
-            item_entity = self._ref_em.active_item_entities[i] 
+        for item_entity in self._ref_em.active_item_entities:
             item_info_comp,item_phy_comp,static_render_comp = esper.components_for_entity(item_entity)
 
-            if item_info_comp.active_time[0] > float32(0.12):
+            if item_info_comp.active_time[0] > float32(0.05):
                 item_instances += 1
                 texcoords_bytes = self._ref_rm.item_texcoords_bytes[item_info_comp.type] 
                 item_local_vertices_bytes = static_render_comp.vertices_bytes
@@ -1345,6 +1527,32 @@ class RenderSystem(esper.Processor):
                 column_major_clip_transform_bytes = clip_transform.T.flatten().tobytes()
                 item_matrices_byte_array.extend(column_major_clip_transform_bytes)
 
+        # render the bullets 
+
+        bullet_instances = 0
+
+        for bullet_entity in self._ref_em.active_bullet_entities:
+            bullet_phys_comp, bullet_render_comp = esper.components_for_entity(bullet_entity)
+            
+            if bullet_phys_comp.active_time[0] > float32(0.05):
+                bullet_instances += 1 
+
+                texcoords_bytes = self._ref_rm.bullet_texcoords_bytes
+                bullet_local_vertices_bytes = self._ref_rm.bullet_local_vertices_bytes
+
+                interpolated_model_translate_transform = bullet_phys_comp.prev_translate_transform * (1.0 - interpolation_delta) + bullet_phys_comp.translate_transform * interpolation_delta
+
+                bullet_clip_transform = self._projection_matrix @ self._view_matrix @ interpolated_model_translate_transform @ bullet_render_comp.bullet_model_rotate_transform @ \
+                                        bullet_render_comp.bullet_model_flip_transform 
+                
+                bullet_vertices_byte_array.extend(bullet_local_vertices_bytes)
+                bullet_texcoords_byte_array.extend(texcoords_bytes)
+
+                column_major_clip_transform_bytes = bullet_clip_transform.T.flatten().tobytes()
+
+                bullet_matrices_byte_array.extend(column_major_clip_transform_bytes)
+
+
         self._entity_weapons_local_vertices_vbo.write(weapon_vertices_byte_array)
         self._entity_weapons_texcoords_vbo.write(weapon_texcoords_byte_array)
         self._entity_weapons_transform_matrices_vbo.write(weapon_matrices_byte_array)
@@ -1356,6 +1564,11 @@ class RenderSystem(esper.Processor):
         self._items_local_vertices_vbo.write(item_vertices_byte_array)
         self._item_texcoords_vbo.write(item_texcoords_byte_array)
         self._items_transform_matrices_vbo.write(item_matrices_byte_array)
+
+
+        self._bullets_local_vertices_buffer.write(bullet_vertices_byte_array)
+        self._bullets_texcoords_vbo.write(bullet_texcoords_byte_array)
+        self._bullets_transform_matrices_vbo.write(bullet_matrices_byte_array)
 
         self._fbo_bg.use()
 
@@ -1369,10 +1582,14 @@ class RenderSystem(esper.Processor):
 
         self._ref_rm.texture_atlasses['items'].use()
         self._vao_items_draw.render(instances=item_instances)
+         
+        self._ref_rm.texture_atlasses['bullet'].use()
+        self._vao_bullets_draw.render(instances= bullet_instances)
 
         self._render_HUD_to_fg_fbo(dt)
 
         self._update_active_static_lights(camera_offset)
+        self._update_dynamic_lights(dt)
         self._render_fbos_to_screen_with_lighting(self._ref_em.player_physics_comp.position,camera_offset,screen_shake,interpolation_delta)
 
 
@@ -1393,11 +1610,13 @@ class StateSystem(esper.Processor):
 
 class InputHandler(esper.Processor):
 
-    def __init__(self,game_context)->None: 
+    def __init__(self,game_context,render_system)->None: 
         
         self._ref_em : EntitiesManager = EntitiesManager.get_instance()
         self._ref_game_context = game_context
         self._ref_hud: "HUD" = None
+        self._ref_rs :RenderSystem = render_system
+        self._mouse_left_held :bool = False
         
 
 
@@ -1417,10 +1636,16 @@ class InputHandler(esper.Processor):
                 quit()
             if event.key == pygame.K_F12:
                 pygame.display.toggle_fullscreen()
-        
+        elif event.type == pygame.QUIT:
+            pygame.quit()
+            quit()
+
+
+        """
+
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
-                self._ref_em.shoot_bullet()
+                self._ref_em.shoot_bullet(self._ref_rs.dynamic_lights)
                 pass
                 self._ref_hud.cursor.pressed[0] = True 
             elif event.button==3:
@@ -1434,20 +1659,19 @@ class InputHandler(esper.Processor):
             elif event.button==3:
                 self._ref_hud.cursor.pressed[1] = False 
                 pass
-
-        elif event.type == pygame.QUIT:
-            pygame.quit()
-            quit()
+        """
 
     def attatch_hud(self,hud:"HUD")->None:
         self._ref_hud = hud
 
 
     def process(self,on_hot_reload_callback:"function")->None: 
-  
         player_input_comp = self._ref_em.player_input_comp
 
         if self._ref_game_context['gamestate'] == GameState.GameLoop: 
+            self._ref_hud.cursor.pressed[0] = pygame.mouse.get_pressed()[0]
+            if self._ref_hud.cursor.pressed[0] and self._ref_hud.cursor.state != 'grab':
+                self._ref_em.shoot_bullet(self._ref_rs.dynamic_lights)
             for event in pygame.event.get():
                 self._handle_common_events(event)
 

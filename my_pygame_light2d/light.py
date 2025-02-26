@@ -1,6 +1,6 @@
 #from pygame_light2d.color import normalize_color_arguments, denormalize_color
 from my_pygame_light2d.color import normalize_color_arguments, denormalize_color
-
+from numpy import array,float32
 class PointLight:
     """
     Represents a point light source within the lighting engine.
@@ -12,7 +12,7 @@ class PointLight:
         enabled (bool, optional): Whether the light source is enabled. Default is True.
     """
 
-    def __init__(self, position, power=1., radius=10., enabled=True, illuminator = None,life = -1,radius_decay = False ) -> None:
+    def __init__(self, position, power=1., radius=10., enabled=True,life = -1,radius_decay = False ) -> None:
         """
         Initialize a point light source.
 
@@ -26,7 +26,6 @@ class PointLight:
         self.radius_decay = radius_decay
         self.maxlife = life 
         self.life = life
-        self.illuminator = illuminator
         self.position = list(position)
         self.power = power
         self.cur_power = power
@@ -56,3 +55,12 @@ class PointLight:
             tuple[int]: Denormalized color values (R, G, B, A) in the range of 0 to 255.
         """
         return denormalize_color(self._color)
+
+
+class DynamicPointLight(PointLight):
+
+    def __init__(self, position, velocity:array = array([0,0],dtype = float32),power=1, radius=10, enabled=True, life=-1, radius_decay=False):
+        super().__init__(position, power, radius, enabled, life, radius_decay)
+        self.velocity = velocity
+
+

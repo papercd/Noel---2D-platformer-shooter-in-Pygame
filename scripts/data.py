@@ -215,7 +215,8 @@ ENTITIES_MAX_HORIZONTAL_SPEED = {
     'rof': int32(240),
     'ak47' : int32(240),
     'damage' : int32(240),
-    'ammo' : int32(240)
+    'ammo' : int32(240),
+    'bullet' : int32(500)
 }
 
 
@@ -589,3 +590,5 @@ CURSOR_ENERGY_RECHARGE_RATE = float32(10)
 
 ITEM_TYPES = array(['rof','damage','ammo'])
 ITEM_PROBABILITIES = array([0.3,0.3,0.4])
+
+BULLET_MAX_STEP = float32(2.0)

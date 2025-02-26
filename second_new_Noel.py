@@ -34,7 +34,7 @@ class Noel():
         self._physics_system = PhysicsSystem(self._game_context)
         self._state_system = StateSystem()  
         self._render_system = RenderSystem(self._ctx,self._game_context)
-        self._input_handler = InputHandler(self._game_context)
+        self._input_handler = InputHandler(self._game_context,self._render_system)
 
         self._tilemap = Tilemap(self._game_context,self._resource_manager.get_tilemap_json('mandelae.json'))
         self._hud = HUD(self._game_context)
@@ -91,7 +91,7 @@ class Noel():
             "holding_player": False,
         }
 
-        # private members 
+        # dprivate members 
         self._float_camera_offset_buffer = array([0,0],dtype = float64)
         self._frame_count = array([0],dtype = uint16) 
         self._dt = array([0],dtype = float32) 
