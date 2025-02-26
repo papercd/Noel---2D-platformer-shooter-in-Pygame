@@ -304,7 +304,7 @@ class PhysicsSystem(esper.Processor):
 
         for i in range(self._ref_em.active_items[0] -1,-1,-1):
             entity = self._ref_em.active_item_entities[i]
-            item_info_comp,item_phy_comp,static_render_comp = esper.components_for_entity(entity)
+            item_phy_comp,item_info_comp,static_render_comp = esper.components_for_entity(entity)
 
             if item_info_comp.active_time[0] < float32(9):
                 self._process_non_player_physics_updates(item_phy_comp,item_info_comp,dt)
@@ -328,11 +328,13 @@ class PhysicsSystem(esper.Processor):
                 bullet_phy_comp.active_time[0] += dt 
             else: 
                 bullet_phy_comp.active_time[0] = float32(0)
+                bullet_phy_comp.dead = True 
                 self._ref_em.active_bullets[0] -=uint32(1) 
                 self._ref_em.active_bullet_entities.pop(i)
 
             if collided:
                 bullet_phy_comp.active_time[0] = float32(0)
+                bullet_phy_comp.dead = True
                 self._ref_em.active_bullets[0] -=uint32(1) 
                 self._ref_em.active_bullet_entities.pop(i)
 
@@ -1181,19 +1183,26 @@ class RenderSystem(esper.Processor):
     def _update_dynamic_lights(self,dt:float32)->None:
         for i in range(len(self.dynamic_lights)-1,-1,-1):
             dynamic_light = self.dynamic_lights[i]
-            
-            if dynamic_light.life > 0 : 
-                if dynamic_light.radius_decay:
-                    dynamic_light.radius = dynamic_light.radius * dynamic_light.life / dynamic_light.maxlife
-                
-                
-                #dynamic_light.position[0] += dynamic_light.velocity[0] * dt 
-                #dynamic_light.position[1] += dynamic_light.velocity[1] * dt
 
-                dynamic_light.life -= dt
+            if dynamic_light.illuminator: 
+                illuminator_phy_comp = esper.components_for_entity(dynamic_light.illuminator)[0]
+                if not illuminator_phy_comp.dead: 
+                    dynamic_light.position[0] = illuminator_phy_comp.position[0]
+                    dynamic_light.position[1] = illuminator_phy_comp.position[1]
+                else: 
+                    self.dynamic_lights.pop(i)
             else: 
-                self.dynamic_lights.pop(i)
-     
+                if dynamic_light.life > 0 : 
+                    if dynamic_light.radius_decay:
+                        dynamic_light.radius = dynamic_light.radius * dynamic_light.life / dynamic_light.maxlife
+                    
+                        dynamic_light.position[0] += dynamic_light.velocity[0] * dt 
+                        dynamic_light.position[1] += dynamic_light.velocity[1] * dt
+
+                    dynamic_light.life -= dt
+                else: 
+                    self.dynamic_lights.pop(i)
+                
 
     def attatch_hud(self,hud:"HUD")->None:
         self._ref_hud = hud
@@ -1510,7 +1519,7 @@ class RenderSystem(esper.Processor):
         item_instances = 0
 
         for item_entity in self._ref_em.active_item_entities:
-            item_info_comp,item_phy_comp,static_render_comp = esper.components_for_entity(item_entity)
+            item_phy_comp, item_info_comp,static_render_comp = esper.components_for_entity(item_entity)
 
             if item_info_comp.active_time[0] > float32(0.05):
                 item_instances += 1

@@ -7,6 +7,7 @@ from scripts.data import GRAVITY, AnimationDataCollection
  
 from numpy import cos,sin, float32,uint16,uint32,int32,array,zeros
 
+
 @component 
 class PhysicsComponent: 
     size :     tuple[uint32,uint32] 
@@ -55,6 +56,7 @@ class BulletPhysicsComponent:
     velocity : array = field(default_factory= lambda : array([0,0],dtype=float32))
     acceleration : array = field(default_factory= lambda: array([0,GRAVITY],dtype= float32))
     active_time : array = field(default_factory= lambda: array([0],dtype=float32))
+    dead : bool = False
     damage = uint32(1)
     displacement_buffer : array = field(default_factory= lambda: array([0,0],dtype= float32))
     
@@ -73,7 +75,16 @@ class BulletPhysicsComponent:
             [0,1,ty],
             [0,0,1]
         ],dtype= float32)
-        
+
+@component 
+class BasicParticlePhysicsComponent:
+    size : tuple[uint32,uint32] = (uint32(1),uint32(1))
+    position : array = field(default_factory= lambda: array([0,0],dtype = int32))
+    rotation : array = field(default_factory= lambda: array([0],dtype = float32))
+    speed : array = field(default_factory= lambda: array([0],dtype = float32))
+    color : tuple[int,int,int,int] = (0,0,0,0)
+    active_time: array = field(default_factory=lambda:array([0],dtype =float32))
+    gravity_factor : float32 = float32(1.0)
 
 @component 
 class WeaponHolderComponent: 

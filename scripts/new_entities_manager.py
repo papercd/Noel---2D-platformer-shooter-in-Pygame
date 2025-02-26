@@ -25,6 +25,7 @@ class EntitiesManager:
     max_dynamic_entities =  uint32(1000)
     max_item_entities = uint32(300)
     max_bullet_entities = uint32(200)
+    max_basic_particles = uint32(300)
 
     @staticmethod
     def get_instance(game_ctx=None)->"EntitiesManager":
@@ -53,6 +54,7 @@ class EntitiesManager:
         self._create_weapon_entity()
         self._create_item_entity_pool()
         self._create_bullet_entity_pool()
+        self._create_basic_particle_pool()
 
     def _create_player_entity(self)->None: 
         self._player_state = StateInfoComponent(type='player',max_jump_count=uint16(1000))
@@ -60,7 +62,7 @@ class EntitiesManager:
         self._player_render = AnimatedRenderComponent(self._ref_rm.animation_data_collections['player'],self._ref_rm.entity_local_vertices_bytes['player'])
         self._player_input = InputComponent()
         self._player_weapon_holder = WeaponHolderComponent()
-        self._player = esper.create_entity(self._player_state,self._player_physics,self._player_render,self._player_input,self._player_weapon_holder)
+        self._player = esper.create_entity(self._player_physics,self._player_state,self._player_render,self._player_input,self._player_weapon_holder)
 
     def _create_weapon_entity(self)->None: 
         self.player_main_weapon= AK47() 
@@ -78,18 +80,29 @@ class EntitiesManager:
         self.current_item_pool_index= array([2],dtype = uint32)
 
         for i in range(self.max_item_entities):
-            esper.create_entity(ItemInfoComponent(),PhysicsComponent(size = (uint32(16),uint32(16)), collision_rect= Rect(0,0,16,16)), StaticRenderComponent())
+            esper.create_entity(PhysicsComponent(size = (uint32(16),uint32(16)), collision_rect= Rect(0,0,16,16)),ItemInfoComponent(),StaticRenderComponent())
 
     def _create_bullet_entity_pool(self)->None: 
-        self.bullet_entities_index_start =uint32(303)
-        self.bullet_entities_index_end = uint32(502)
+        self.bullet_entities_index_start =uint32(302)
+        self.bullet_entities_index_end = uint32(501)
 
         self.active_bullets = array([0],dtype = uint32)
         self.active_bullet_entities = []
-        self.current_bullet_pool_index = array([303],dtype =uint32)
+        self.current_bullet_pool_index = array([302],dtype =uint32)
 
         for i in range(self.max_bullet_entities):
             esper.create_entity(BulletPhysicsComponent(size=(uint32(16),uint32(5))),BulletRenderComponent())
+
+    def _create_basic_particle_pool(self)->None: 
+        self.basic_particle_entities_index_start = uint32(502)
+        self.basic_particle_entities_index_end = uint32(801)
+
+        self.active_basic_particles = array([0],dtype = uint32)
+        self.active_basic_particle_entities = []
+        self.current_basic_particle_pool_index = array([502],dtype= uint32)
+
+        for i in range(self.max_basic_particles):
+            esper.create_entity(BasicParticlePhysicsComponent())
 
     def set_initial_player_position(self,pos:tuple[int32,int32])->None: 
         self._player_physics.position[0] = pos[0]
@@ -112,8 +125,9 @@ class EntitiesManager:
             bullet_phy_comp ,bullet_render_comp= esper.components_for_entity(bullet_entity)
 
             # center the bullet to the opening position of the weapon, set the velocity and damage and angle. 
-            
+            print(bullet_entity)
             bullet_phy_comp.active_time[0] = float32(0)
+            bullet_phy_comp.dead = False
 
             bullet_phy_comp.damage = self.player_main_weapon.power
             bullet_phy_comp.flip = self.weapon_holder_comp.weapon_flip 
@@ -156,6 +170,13 @@ class EntitiesManager:
             muzzle_flash_light3.cast_shadows = True 
             dynamic_lights_list.append(muzzle_flash_light3)
 
+            bullet_light = DynamicPointLight(bullet_phy_comp.position,power= 1, radius = 23,illuminator = bullet_entity)
+            bullet_light.set_color(245,110,150)
+            dynamic_lights_list.append(bullet_light)
+
+            # create muzzle flash particles 
+
+
             self.current_bullet_pool_index[0] = max(self.bullet_entities_index_start,(self.current_bullet_pool_index[0] + uint32(1)) % self.bullet_entities_index_end) 
 
             self.active_bullets[0] += uint32(1)
@@ -177,7 +198,7 @@ class EntitiesManager:
 
             # activate an item entity from the pool with the fields of the chosen item data 
             item_entity = self.current_item_pool_index[0]
-            item_info_comp,item_phy_comp,item_render_comp= esper.components_for_entity(item_entity)
+            item_phy_comp,item_info_comp,item_render_comp= esper.components_for_entity(item_entity)
 
             item_type = npchoice(ITEM_TYPES,p=ITEM_PROBABILITIES) 
             item_info_comp.type = item_type

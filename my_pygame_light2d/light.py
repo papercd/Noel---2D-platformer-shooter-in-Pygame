@@ -59,8 +59,9 @@ class PointLight:
 
 class DynamicPointLight(PointLight):
 
-    def __init__(self, position, velocity:array = array([0,0],dtype = float32),power=1, radius=10, enabled=True, life=-1, radius_decay=False):
+    def __init__(self, position, velocity:array = array([0,0],dtype = float32),illuminator = None,power=1, radius=10, enabled=True, life=-1, radius_decay=False):
         super().__init__(position, power, radius, enabled, life, radius_decay)
         self.velocity = velocity
+        self.illuminator =  illuminator
 
 
