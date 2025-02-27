@@ -1,6 +1,6 @@
 from pygame import Rect
 from pygame.mouse import get_pos
-from scripts.data import PHYSICS_TIMESTEP,CURSOR_ENERGY_INITIAL_EXPENDITURE_RATE,CURSOR_ENERGY_RECHARGE_RATE
+from scripts.data import PHYSICS_TIMESTEP,CURSOR_ENERGY_INITIAL_EXPENDITURE_RATE,CURSOR_ENERGY_RECHARGE_RATE,GRAVITY
 from scripts.new_resource_manager import ResourceManager
 from math import atan2
 
@@ -31,8 +31,8 @@ class Cursor:
         self.special_actions = False 
         self.pressed = [False,False]
 
-        self.max_energy = float32(100)
-        self.energy = array([100],dtype = float32)
+        self.max_energy = float32(10000)
+        self.energy = array([10000],dtype = float32)
         self.energy_recharge = False 
 
     def set_cooldown(self) -> None:
@@ -75,16 +75,15 @@ class Cursor:
 
                     if self.pressed[0]: 
                         if self.energy[0] > cursor_energy_expenditure:
-                            if not self.energy_recharge:
-
-                                player_state_info_comp.mouse_hold = True
+                            if not self.energy_recharge :
                                 player_physics_comp.position[0] = self.topleft[0] + camera_offset[0]
                                 player_physics_comp.position[1] = self.topleft[1] + camera_offset[1]
+                                player_physics_comp.velocity[1] = float32(0)
                                 player_physics_comp.collision_rect.left = self.topleft[0] + camera_offset[0] - 6
                                 player_physics_comp.collision_rect.top = self.topleft[1] + camera_offset[1] - 8
+                                player_state_info_comp.mouse_hold = True
 
                                 self.energy[0] -= cursor_energy_expenditure
- 
                         else: 
                             self.energy_recharge = True
 

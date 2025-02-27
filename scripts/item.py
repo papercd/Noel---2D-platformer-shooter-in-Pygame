@@ -35,7 +35,7 @@ class Weapon(Item):
                  name:str, count:uint16 = uint16(1),fire_rate:array = array([0],dtype = float64),stackable=False):
         super().__init__(name, count, stackable)
         
-        self.magazine = array(0,dtype = uint32)
+        self.magazine = array([100],dtype = uint32)
         self._size = size
         self._type = 'weapon'
         self.origin_offset_from_center = origin_offset 

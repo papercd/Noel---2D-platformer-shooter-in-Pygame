@@ -79,7 +79,7 @@ class EntitiesManager:
         self.current_item_pool_index= array([2],dtype = uint32)
 
         for i in range(self.max_item_entities):
-            esper.create_entity(PhysicsComponent(size = (uint32(16),uint32(16)), collision_rect= Rect(0,0,16,16)),ItemInfoComponent(),StaticRenderComponent())
+            esper.create_entity(PhysicsComponent(size = (uint32(16),uint32(16)), collision_rect= Rect(0,0,16,16)),ItemInfoComponent(),StaticRenderComponent(),BasicParticleEmiiterComponent())
 
     def _create_bullet_entity_pool(self)->None: 
         self.bullet_entities_index_start =uint32(302)
@@ -103,6 +103,7 @@ class EntitiesManager:
         for i in range(self.max_basic_particles):
             esper.create_entity(BasicParticlePhysicsComponent())
 
+
     def set_initial_player_position(self,pos:tuple[int32,int32])->None: 
         self._player_physics.position[0] = pos[0]
         self._player_physics.position[1] = pos[1]
@@ -116,7 +117,7 @@ class EntitiesManager:
 
     
     def shoot_bullet(self,dynamic_lights_list:list[DynamicPointLight])->None: 
-        if self._game_ctx['game_timer'][0]- self._last_bullet_shot_time[0] >= self.player_main_weapon.fire_rate:
+        if self._game_ctx['game_timer'][0]- self._last_bullet_shot_time[0] >= self.player_main_weapon.fire_rate and self.player_main_weapon.magazine[0] > uint32(0):
             # fire the weapon
 
             # activate a bullet entity from the pool with the fields of the rotation and velocity and direction
@@ -173,7 +174,7 @@ class EntitiesManager:
             dynamic_lights_list.append(bullet_light)
 
             # create muzzle flash particles 
-            particle_count = randint(9,12)
+            particle_count = randint(11,14)
             for _ in range(particle_count):
                 basic_particle_entity = self.current_basic_particle_pool_index[0]
                 particle_phy_comp = esper.component_for_entity(basic_particle_entity,BasicParticlePhysicsComponent)
@@ -181,11 +182,12 @@ class EntitiesManager:
                 particle_phy_comp.position[0] = self._player_weapon_holder.opening_pos[0]
                 particle_phy_comp.position[1] = self._player_weapon_holder.opening_pos[1]
 
-                particle_phy_comp.speed = randint(5,8)
+                particle_phy_comp.speed = randint(100,340)
                 particle_phy_comp.active_time[0] = float32(0)
 
                 particle_phy_comp.color = choice(MUZZLE_PARTICLE_COLORS['ak47'])
-                particle_phy_comp.rotation = uniform(bullet_phy_comp.rotation- pi /8 , bullet_phy_comp.rotation + pi/8)
+                
+                particle_phy_comp.rotation = uniform(bullet_phy_comp.rotation- pi /6 + (pi if bullet_phy_comp.flip else 0), bullet_phy_comp.rotation + pi/6 + (pi if bullet_phy_comp.flip else 0 ))
                 
                 particle_phy_comp.dead = False
 
@@ -199,9 +201,10 @@ class EntitiesManager:
 
             self.active_bullets[0] += uint32(1)
 
+            self.player_main_weapon.magazine[0] -= uint32(1)
             self._last_bullet_shot_time[0] = self._game_ctx['game_timer'][0] 
 
-    def process(self)->None: 
+    def process(self,dynamic_lights_list:list[DynamicPointLight])->None: 
         #print(self._player_physics.position)
 
         if self._game_ctx['game_timer'][0]- self._last_item_drop_time[0] > self._item_drop_cooldown[0]:
@@ -216,10 +219,12 @@ class EntitiesManager:
 
             # activate an item entity from the pool with the fields of the chosen item data 
             item_entity = self.current_item_pool_index[0]
-            item_phy_comp,item_info_comp,item_render_comp= esper.components_for_entity(item_entity)
+            item_phy_comp,item_info_comp,item_render_comp,basic_particle_emission_comp = esper.components_for_entity(item_entity)
 
             item_type = npchoice(ITEM_TYPES,p=ITEM_PROBABILITIES) 
             item_info_comp.type = item_type
+
+            item_phy_comp.dead = False
 
             item_phy_comp.position[0] = spawn_position[0] * self._ref_isp.cell_size
             item_phy_comp.position[1] = spawn_position[1] * self._ref_isp.cell_size
@@ -231,6 +236,10 @@ class EntitiesManager:
 
             # add the item entity to the active item entities set
             self.active_item_entities.append(item_entity)
+
+            item_shine_light = DynamicPointLight(item_phy_comp.position,power= 1 ,radius_decay= True,radius = 32, illuminator= item_entity)
+            item_shine_light.set_color(255,255,255)
+            dynamic_lights_list.append(item_shine_light)
 
             self.current_item_pool_index[0] = max(self.item_entities_index_start, (self.current_item_pool_index[0] + uint32(1) ) % (self.item_entities_index_end+uint32(1)) )
             self.active_items[0] += uint32(1)

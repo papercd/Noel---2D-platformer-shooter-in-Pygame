@@ -386,6 +386,13 @@ class ResourceManager:
         return array([(x, y), (x + w, y), (x, y - h),
                 (x, y - h), (x + w, y), (x + w, y - h)],dtype=float32)
     
+    def get_basic_particle_vertices_and_color(self,particles)->'Context.buffer':
+        particle_vertices_size = 2 * 4 
+        particle_colors_size = 3 * 4 
+
+        particle_vertices_and_color_buffer = self._gl_ctx.buffer(reserve= (particle_vertices_size + particle_colors_size) * particles, dynamic= True)
+
+        return particle_vertices_and_color_buffer
 
     def get_hud_diplay_vertices_and_texcoords(self,quads:int) -> tuple['Context.buffer','Context.buffer']:
          

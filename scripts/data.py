@@ -591,4 +591,4 @@ CURSOR_ENERGY_RECHARGE_RATE = float32(10)
 ITEM_TYPES = array(['rof','damage','ammo'])
 ITEM_PROBABILITIES = array([0.3,0.3,0.4])
 
-BULLET_MAX_STEP = float32(2.0)
+DISPLACEMENT_MAX_STEP = float32(2.0)

@@ -1,31 +1,31 @@
 next steps: 
 
-1. create the ak47 firing, 
-
-input handler - gets the mouse click 
-
-
-if clicked, then prompt the entity manager to shoot out a new bullet entity, and create the bullet entity pool similar to how you did it for
-
-
-the items.  - you need to integrate the quadtree 
-
-
-weapon is fired with a specific fire rate, and 
-
-
-bullet collision, and effects on collision .
-
-- add dynamic lights 
 
 
 
 
-
-
+1. on collision with tile when holding, drop player. 
+ 	1. before moving the player to the mouse position, check whether moving the player there 
+		is gonna cause a collision, and if it does, release the player. 
+		if not, move the player. 
 
 
 
 2. add pickups for power ups on collision 
+1. check for collision between player and item 
+ 	- if it does collide, 
+		- depending on the type of item picked up,
+ 			refill ammo, 
+			increment weapon damage, 
+			increase weapon fire rate. 
+			- with a cap, maybe. 
+
 
 3. create enemy system. 
+
+
+4. polish map 
+
+5. add background music 
+
+you need to integrate the quadtree 

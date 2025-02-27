@@ -5,7 +5,7 @@ from scripts.rotated_rect import RotatedRect
 from pygame.math import Vector2 as vec2
 from scripts.data import GRAVITY, AnimationDataCollection
  
-from numpy import cos,sin, float32,uint16,uint32,int32,array,zeros
+from numpy import cos,sin, float32,uint16,uint32,int32,array,zeros,pi
 
 
 @component 
@@ -22,13 +22,15 @@ class PhysicsComponent:
     collision_rect : Rect = field(default_factory= lambda: Rect(0,0,1,1))
     displacement_buffer : array = field(default_factory= lambda: array([0,0],dtype= float32))
     
+    
     prev_transform : array = field(default_factory= lambda: array([
         [1,0,0],                        
         [0,1,0],
         [0,0,1]
     ],dtype=float32)) # previous transform matrix to integrate interpolation for rendering.
 
-
+    dead: bool = False
+    
     @property 
     def transform(self)->array: 
         cos_a = cos(self.rotation[0])
@@ -80,12 +82,17 @@ class BulletPhysicsComponent:
 class BasicParticlePhysicsComponent:
     size : tuple[uint32,uint32] = (uint32(1),uint32(1))
     position : array = field(default_factory= lambda: array([0,0],dtype = int32))
+    y_velocity : array = field(default_factory= lambda: array([0],dtype = float32))
+    prev_position: array = field(default_factory= lambda: array([0,0],dtype = int32))
     rotation : array = field(default_factory= lambda: array([0],dtype = float32))
-    color : tuple[int,int,int,int] = (0,0,0,0)
     active_time: array = field(default_factory=lambda:array([0],dtype =float32))
+    displacement_buffer : array = field(default_factory= lambda: array([0,0],dtype = float32))
     gravity_factor : float32 = float32(1.0)
-    speed : uint32 = uint32(1)
+    color : tuple[int,int,int,int] = (0,0,0,0)
+    speed : float32 = float32(1)
     dead : bool = False
+    gravity_applied : bool = True
+
     
 
 @component 
@@ -189,6 +196,9 @@ class WeaponRenderComponent:
     ,dtype=float32))
 
 @component 
-class ParticleEmiiterComponent: 
-    pass 
+class BasicParticleEmiiterComponent: 
+    emission_rate : float32 = float32(1/40)
+    emission_count_range : tuple[int,int] = (3,5)
+    emission_angle_range : tuple[float32,float32] = (0,2*pi)
+    last_emission_time : array = field(default_factory=lambda: array([0],dtype=float32))
 

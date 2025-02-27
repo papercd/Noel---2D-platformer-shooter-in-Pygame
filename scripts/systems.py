@@ -3,26 +3,26 @@ from scripts.mandelae_hud import HUD
 from scripts.game_state import GameState
 from scripts.game_state import GameState
 from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR,ITEM_SIZES,\
-                        PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS,BULLET_MAX_STEP
+                        PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS,DISPLACEMENT_MAX_STEP,MUZZLE_PARTICLE_COLORS
 from pygame.rect import Rect
 from pygame.mouse import get_pos
 from scripts.new_resource_manager import ResourceManager
 from scripts.new_entities_manager import EntitiesManager 
-from scripts.components import PhysicsComponent,AnimatedRenderComponent, StateInfoComponent,InputComponent,WeaponHolderComponent,BulletPhysicsComponent,StaticRenderComponent
+from scripts.components import PhysicsComponent,AnimatedRenderComponent, StateInfoComponent,InputComponent,WeaponHolderComponent,BulletPhysicsComponent,StaticRenderComponent,BasicParticlePhysicsComponent,ItemInfoComponent
 from my_pygame_light2d.double_buffer import DoubleBuffer
 from my_pygame_light2d.color import normalize_color_arguments
 from scripts.layer import Layer_
 from scripts.item import Item,AK47,FlameThrower
 from scripts.lists import interpolatedLightNode
 import pygame
-from moderngl import NEAREST,LINEAR,BLEND,Texture,Framebuffer
+from moderngl import POINTS,NEAREST,LINEAR,BLEND,Texture,Framebuffer
 from OpenGL.GL import glUniformBlockBinding,glGetUniformBlockIndex,glViewport
 from math import sqrt,dist,degrees,pi
-from random import choice
+from random import choice,randint,uniform
 
 import numpy as np
 
-from numpy import float32,uint16,uint32,int32,uint8,array, cos,sin
+from numpy import float32,float64,uint16,uint32,int32,uint8,array, cos,sin
 
 from typing import TYPE_CHECKING 
 
@@ -48,20 +48,35 @@ class PhysicsSystem(esper.Processor):
 
     def _process_regular_tile_y_collision(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,
                                           rect_tile:tuple["Rect","TileInfoDataClass"],dt:float32)->None: 
-        if physics_comp.velocity[1] > float32(0):
-            state_info_comp.collide_bottom = True
-            physics_comp.position[1] = rect_tile[0].top + int32(physics_comp.size[1]) // -2
-            physics_comp.collision_rect.bottom = rect_tile[0].top 
-            physics_comp.velocity[1] =GRAVITY * dt 
+                if physics_comp.velocity[1] > float32(0):
+                    state_info_comp.collide_bottom = True
+                    physics_comp.collision_rect.bottom = rect_tile[0].top
+                    physics_comp.position[1] = int32(physics_comp.collision_rect.centery)
+                    #physics_comp.position[1] = rect_tile[0].top + int32(physics_comp.size[1]) // -2
+                    physics_comp.velocity[1] =GRAVITY * dt 
 
-            if state_info_comp.dynamic : state_info_comp.jump_count[0] = uint16(0)
+                    if state_info_comp.dynamic : state_info_comp.jump_count[0] = uint16(0)
 
-        elif physics_comp.velocity[1] < float32(0):
-            state_info_comp.collide_top = True
-            physics_comp.position[1] = rect_tile[0].bottom + int32(physics_comp.size[1]) // 2
-            physics_comp.collision_rect.top = rect_tile[0].bottom
-            physics_comp.velocity[1] = float32(0)
-        physics_comp.displacement_buffer[1] = float32(0)
+                elif physics_comp.velocity[1] < float32(0):
+                    state_info_comp.collide_top = True
+                    physics_comp.collision_rect.top = rect_tile[0].bottom
+                    physics_comp.position[1] = int32(physics_comp.collision_rect.centery)
+                    #physics_comp.position[1] = rect_tile[0].bottom + int32(physics_comp.size[1]) // 2
+                    physics_comp.velocity[1] = float32(0)
+                else: 
+                    if physics_comp.position[1] > int32(rect_tile[0].centery):
+                        state_info_comp.collide_top = True 
+                        physics_comp.collision_rect.top = rect_tile[0].bottom
+                        #physics_comp.position[1] = rect_tile[0].bottom + int32(physics_comp.size[1]) // 2
+                        physics_comp.position[1] = int32(physics_comp.collision_rect.centery)
+                    else: 
+                        state_info_comp.collide_bottom = True
+                        physics_comp.collision_rect.bottom = rect_tile[0].top 
+                        #physics_comp.position[1] = rect_tile[0].top + int32(physics_comp.size[1]) // -2
+                        physics_comp.position[1] = int32(physics_comp.collision_rect.centery)
+
+
+                physics_comp.displacement_buffer[1] = float32(0)
 
 
     def _process_regular_tile_x_collision(self,state_info_comp:StateInfoComponent,physics_comp:PhysicsComponent,
@@ -216,7 +231,10 @@ class PhysicsSystem(esper.Processor):
             input_comp.up = False
             state_info_comp.jump_count[0] += uint16(1)
 
-        self._process_common_physics_updates(physics_comp, state_info_comp,dt,sprinting = input_comp.shift)
+        if state_info_comp.mouse_hold:
+            pass
+        else: 
+            self._process_common_physics_updates(physics_comp, state_info_comp,dt,sprinting = input_comp.shift)
 
         if (state_info_comp.collide_left or state_info_comp.collide_right) and not state_info_comp.collide_bottom:
             physics_comp.velocity[1] = min(physics_comp.velocity[1] , WALL_SLIDE_CAP_VELOCITY)
@@ -259,13 +277,11 @@ class PhysicsSystem(esper.Processor):
 
                 bullet_phy_comp.displacement_buffer[0] += bullet_phy_comp.velocity[0] * dt 
               
-                accum_step = 0
 
-                while abs(bullet_phy_comp.displacement_buffer[0]) >= BULLET_MAX_STEP:
-                    step = int32(BULLET_MAX_STEP if bullet_phy_comp.displacement_buffer[0] > 0 else -BULLET_MAX_STEP)
+                while abs(bullet_phy_comp.displacement_buffer[0]) >= DISPLACEMENT_MAX_STEP:
+                    step = int32(DISPLACEMENT_MAX_STEP if bullet_phy_comp.displacement_buffer[0] > 0 else -DISPLACEMENT_MAX_STEP)
                     bullet_phy_comp.position[0] += step 
                     bullet_phy_comp.displacement_buffer[0] -= step 
-                    accum_step += step    
                     for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((bullet_phy_comp.position[0],bullet_phy_comp.position[1]),(bullet_phy_comp.size[0],bullet_phy_comp.size[1]),dir = bullet_phy_comp.flip):
                         if rect_tile[0].collidepoint(bullet_phy_comp.position):
 
@@ -273,18 +289,59 @@ class PhysicsSystem(esper.Processor):
                             return True
                 bullet_phy_comp.displacement_buffer[1] += bullet_phy_comp.velocity[1] * dt 
 
-                accum_step = 0
 
-                while abs(bullet_phy_comp.displacement_buffer[1]) >= BULLET_MAX_STEP: 
-                    step = int32(BULLET_MAX_STEP if bullet_phy_comp.displacement_buffer[1] > 0 else -BULLET_MAX_STEP)
+                while abs(bullet_phy_comp.displacement_buffer[1]) >= DISPLACEMENT_MAX_STEP: 
+                    step = int32(DISPLACEMENT_MAX_STEP if bullet_phy_comp.displacement_buffer[1] > 0 else -DISPLACEMENT_MAX_STEP)
                     bullet_phy_comp.position[1] += step 
                     bullet_phy_comp.displacement_buffer[1] -= step 
-                    accum_step += step
                     for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((bullet_phy_comp.position[0],bullet_phy_comp.position[1]),(bullet_phy_comp.size[0],bullet_phy_comp.size[1]),dir = bullet_phy_comp.flip) :
                         if rect_tile[0].collidepoint(bullet_phy_comp.position):
                             return True
         return False
 
+    
+    def _process_physics_for_basic_particle(self,particle_phy_comp:BasicParticlePhysicsComponent,dt:float32)->None: 
+        if particle_phy_comp.active_time[0] > 0:
+
+            particle_phy_comp.prev_position[0] = particle_phy_comp.position[0]
+            particle_phy_comp.prev_position[1] = particle_phy_comp.position[1]
+
+            particle_phy_comp.y_velocity = min(TERMINAL_VELOCITY,particle_phy_comp.y_velocity + GRAVITY * particle_phy_comp.gravity_factor * dt)
+            particle_phy_comp.speed = max(0,particle_phy_comp.speed - dt)
+            x_movement = cos(particle_phy_comp.rotation) * particle_phy_comp.speed * dt
+
+            particle_phy_comp.displacement_buffer[0] +=  x_movement
+
+            while abs(particle_phy_comp.displacement_buffer[0]) >= DISPLACEMENT_MAX_STEP:
+                step = int32(DISPLACEMENT_MAX_STEP if particle_phy_comp.displacement_buffer[0] > 0 else -DISPLACEMENT_MAX_STEP)
+                particle_phy_comp.position[0] += step 
+                particle_phy_comp.displacement_buffer[0] -= step 
+                for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((particle_phy_comp.position[0],particle_phy_comp.position[1]),(particle_phy_comp.size[0],particle_phy_comp.size[1]),dir = x_movement < 0):
+                    if rect_tile[0].collidepoint(particle_phy_comp.position):
+                        return True
+
+            particle_phy_comp.displacement_buffer[1] += (sin(particle_phy_comp.rotation) * particle_phy_comp.speed) * dt + (particle_phy_comp.y_velocity / 4 * dt if particle_phy_comp.gravity_applied else 0)
+
+            while abs(particle_phy_comp.displacement_buffer[1]) >= DISPLACEMENT_MAX_STEP: 
+                step = int32(DISPLACEMENT_MAX_STEP if particle_phy_comp.displacement_buffer[1] > 0 else -DISPLACEMENT_MAX_STEP)
+                particle_phy_comp.position[1] += step 
+                particle_phy_comp.displacement_buffer[1] -= step 
+                for rect_tile in self._ref_tilemap.query_rect_tile_pair_around_ent((particle_phy_comp.position[0],particle_phy_comp.position[1]),(particle_phy_comp.size[0],particle_phy_comp.size[1]),dir = x_movement < 0):
+                    if rect_tile[0].collidepoint(particle_phy_comp.position):
+                        return True
+        return False
+    
+    def _process_item_pickup(self,item_info_comp:ItemInfoComponent):
+        print(self._ref_em.player_main_weapon.power)
+        if item_info_comp.type == 'rof':
+            # increase the rate of fire of the weapon item. 
+            self._ref_em.player_main_weapon.fire_rate[0] = max(float64(1/40),self._ref_em.player_main_weapon.fire_rate[0] * 19/20)
+        elif item_info_comp.type == 'damage':
+            self._ref_em.player_main_weapon.power = uint16(1) + self._ref_em.player_main_weapon.power
+        else: 
+            self._ref_em.player_main_weapon.magazine[0] = min(uint32(1000),self._ref_em.player_main_weapon.magazine[0] + uint32(100))
+            pass
+            
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
         self._ref_tilemap =tilemap
@@ -306,13 +363,63 @@ class PhysicsSystem(esper.Processor):
 
         for i in range(self._ref_em.active_items[0] -1,-1,-1):
             entity = self._ref_em.active_item_entities[i]
-            item_phy_comp,item_info_comp,static_render_comp = esper.components_for_entity(entity)
+            item_phy_comp,item_info_comp,static_render_comp,basic_particle_emit_comp = esper.components_for_entity(entity)
+
+            # check for collision with player 
+            if item_phy_comp.collision_rect.colliderect(self._ref_em.player_physics_comp.collision_rect) and not self._ref_em.player_state_info_comp.mouse_hold:
+                # pick up the item: get rid of the item, and increase player stats depending on the item type. 
+                self._process_item_pickup(item_info_comp)
+                item_info_comp.active_time[0] = float32(0)
+                item_phy_comp.dead = True
+                self._ref_em.active_items[0] -= uint32(1)
+                self._ref_em.active_item_entities.pop(i)
+
+                
+
+            # emit basic particles here 
+
+            if self._ref_game_ctx['game_timer'][0] - basic_particle_emit_comp.last_emission_time[0] > basic_particle_emit_comp.emission_rate:
+                # emit particle 
+                #particle_count = randint(*basic_particle_emit_comp.emission_count_range)
+                #for _ in range(particle_count):
+                    """
+                    basic_particle_entity = self._ref_em.current_basic_particle_pool_index[0]
+                    particle_phy_comp = esper.component_for_entity(basic_particle_entity,BasicParticlePhysicsComponent)
+
+                    particle_phy_comp.gravity_applied = False
+
+                    particle_phy_comp.position[0] = item_phy_comp.position[0] - 1
+                    particle_phy_comp.position[1] = item_phy_comp.position[1]
+
+                    particle_phy_comp.position[0] += 12 * cos(particle_phy_comp.rotation)
+                    particle_phy_comp.position[1] += 12 * sin(particle_phy_comp.rotation)
+
+
+                    particle_phy_comp.speed = randint(200,300)
+                    particle_phy_comp.active_time[0] = float32(0)
+
+                    particle_phy_comp.color = choice(MUZZLE_PARTICLE_COLORS['ak47'])
+
+                    particle_phy_comp.rotation = uniform(*basic_particle_emit_comp.emission_angle_range)
+
+                    particle_phy_comp.dead = False 
+
+                    self._ref_em.current_basic_particle_pool_index[0] = max(self._ref_em.basic_particle_entities_index_start,(self._ref_em.current_basic_particle_pool_index[0] + uint32(1)) % (self._ref_em.basic_particle_entities_index_end + uint32(1)))
+
+                    self._ref_em.active_basic_particles[0] += uint32(1)
+
+                    self._ref_em.active_basic_particle_entities.append(basic_particle_entity)
+                    """
+                
+                #basic_particle_emit_comp.last_emission_time[0] = self._ref_game_ctx['game_timer'][0]
+
 
             if item_info_comp.active_time[0] < float32(9):
                 self._process_non_player_physics_updates(item_phy_comp,item_info_comp,dt)
                 item_info_comp.active_time[0] += dt
             else: 
                 item_info_comp.active_time[0] = float32(0)
+                item_phy_comp.dead = True
                 self._ref_em.active_items[0] -= uint32(1)
                 self._ref_em.active_item_entities.pop(i)
 
@@ -340,6 +447,34 @@ class PhysicsSystem(esper.Processor):
                 self._ref_em.active_bullets[0] -=uint32(1) 
                 self._ref_em.active_bullet_entities.pop(i)
 
+
+        # update basic particles
+
+        for i in range(self._ref_em.active_basic_particles[0] - 1,-1,-1):
+            particle_entity = self._ref_em.active_basic_particle_entities[i]
+
+            particle_phy_comp = esper.component_for_entity(particle_entity,BasicParticlePhysicsComponent)
+
+            collided = False 
+
+            if particle_phy_comp.active_time[0] < float32(0.07):
+                collided = self._process_physics_for_basic_particle(particle_phy_comp,dt)
+                particle_phy_comp.active_time[0] += dt 
+            else: 
+                particle_phy_comp.active_time[0] = float32(0)
+                particle_phy_comp.dead = True 
+                self._ref_em.active_basic_particles[0] -= uint32(1)
+                self._ref_em.active_basic_particle_entities.pop(i)
+            if collided: 
+                particle_phy_comp.active_time[0] = float32(0)
+                particle_phy_comp.dead = True 
+                self._ref_em.active_basic_particles[0] -= uint32(1)
+                self._ref_em.active_basic_particle_entities.pop(i)
+
+
+            
+
+            
 
             
 
@@ -379,6 +514,7 @@ class RenderSystem(esper.Processor):
         self._prev_hull_query_camera_scroll = array([0,0],dtype = int32)
 
         self._prev_lights_query_camera_scroll = array([0,0],dtype = int32)
+        self._basic_particle_buffer_surf = pygame.Surface((1,1))
 
         self._shadow_blur_radius = uint8(5)
         self._max_hull_count = uint16(512) 
@@ -444,6 +580,8 @@ class RenderSystem(esper.Processor):
         
         bar_draw_vert_src,bar_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/vertex_bar.glsl',
                                                                      'my_pygame_light2d/fragment_bar.glsl')
+        dot_draw_vert_src,dot_draw_frag_src = self._load_shader_srcs('my_pygame_light2d/vertex_dot.glsl',
+                                                                     'my_pygame_light2d/fragment_dot.glsl')
 
         light_frag_src = self._load_shader_src('my_pygame_light2d/fragment_light.glsl')
 
@@ -481,6 +619,8 @@ class RenderSystem(esper.Processor):
         
         self._prog_blur = self._gl_ctx.program(vertex_shader= vertex_src,
                                             fragment_shader= blur_frag_src)
+        self._prog_dot = self._gl_ctx.program(vertex_shader=dot_draw_vert_src,
+                                              fragment_shader=dot_draw_frag_src)
         
     
     def _create_ssbos(self)->None: 
@@ -992,7 +1132,8 @@ class RenderSystem(esper.Processor):
         """
 
         # Render texture onto Layer_ with the draw shader
-        fbo = self._get_fbo(layer)
+        #fbo = self._get_fbo(layer)
+        fbo = self._fbo_bg
         self._render_tex_to_fbo(tex, fbo, dest, source )
 
 
@@ -1188,6 +1329,8 @@ class RenderSystem(esper.Processor):
 
             if dynamic_light.illuminator: 
                 illuminator_phy_comp = esper.components_for_entity(dynamic_light.illuminator)[0]
+                if dynamic_light.radius_decay:
+                    pass
                 if not illuminator_phy_comp.dead: 
                     dynamic_light.position[0] = illuminator_phy_comp.position[0]
                     dynamic_light.position[1] = illuminator_phy_comp.position[1]
@@ -1205,6 +1348,11 @@ class RenderSystem(esper.Processor):
                 else: 
                     self.dynamic_lights.pop(i)
                 
+
+    def _particle_pos_to_ndc(self,pos,camera_offset)->None: 
+        return ( 2. * pos[0] / self._game_ctx['true_res'][0] -1,
+                 1. - 2 *pos[1] / self._game_ctx['true_res'][1])
+
 
     def attatch_hud(self,hud:"HUD")->None:
         self._ref_hud = hud
@@ -1375,6 +1523,9 @@ class RenderSystem(esper.Processor):
         bullet_texcoords_byte_array = bytearray()
         bullet_matrices_byte_array = bytearray()
 
+        basic_particle_positions = []
+        basic_particle_colors = []
+
         self._view_matrix[0][2] = -camera_offset[0]
         self._view_matrix[1][2] = -camera_offset[1]
 
@@ -1450,67 +1601,6 @@ class RenderSystem(esper.Processor):
                 column_major_clip_transform_bytes = weapon_clip_transform.T.flatten().tobytes()
 
                 weapon_matrices_byte_array.extend(column_major_clip_transform_bytes)
-
-                """
-                if player_weapon_equipped:
-                    weapon_instances += 1  
-                    weapon = self._ref_hud.curr_weapon
-                    
-                    weapon_texcoords_bytes = self._ref_rm.holding_weapon_texcoords_bytes[weapon.name] 
-                    weapon_local_vertices_bytes = self._ref_rm.holding_weapon_vertices_bytes[weapon.name] 
-
-                    weapon_flip = physics_comp.position[0] - camera_offset[0] > self._ref_hud.cursor.topleft[0]
-
-
-                    anchor_position_offset_from_center = PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS[physics_comp.flip][state_info_comp.curr_state][weapon_flip]
-
-                    anchor_to_cursor_angle = self._ref_hud.cursor.get_angle_from_point((physics_comp.position[0]-camera_offset[0] + anchor_position_offset_from_center[0],
-                                                                                        physics_comp.position[1]-camera_offset[1] + anchor_position_offset_from_center[1]))
-
-                    sin_a = np.sin(pi - anchor_to_cursor_angle if weapon_flip else - anchor_to_cursor_angle) 
-                    cos_a = np.cos(pi - anchor_to_cursor_angle if weapon_flip else  - anchor_to_cursor_angle)
-
-                    weapon_model_to_pivot_transform = np.array([
-                        [1,0,-weapon.origin_offset_from_center[0]],
-                        [0,1,-weapon.origin_offset_from_center[1]],
-                        [0,0,1]
-                    ],dtype = np.float32)
-
-                    weapon_model_rotate_transform = np.array([
-                        [cos_a,-sin_a,0],
-                        [sin_a,cos_a,0],
-                        [0,0,1]
-                    ],dtype = np.float32)
-
-                    weapon_model_flip_transform = np.array([
-                        [(-2*weapon_flip +1),0,0],
-                        [0,1,0],
-                        [0,0,1]
-                    ],dtype = np.float32)
-
-
-                    weapon_model_translate_transform = np.array([
-                        [1,0,player_model_interpolated_translation[0]+anchor_position_offset_from_center[0]],
-                        [0,1,player_model_interpolated_translation[1]+anchor_position_offset_from_center[1]],
-                        [0,0,1]
-                    ],dtype= np.float32)
-                    
-
-                    weapon_model_translate_transform = np.array([
-                        [1,0,physics_comp.position[0]],
-                        [0,1,physics_comp.position[1]],
-                        [0,0,1]
-                    ],dtype= np.float32)
-
-                    weapon_clip_transform = self._projection_matrix @ self._view_matrix @ weapon_model_translate_transform @ weapon_model_rotate_transform @ weapon_model_flip_transform  @ weapon_model_to_pivot_transform
-
-                    weapon_vertices_byte_array.extend(weapon_local_vertices_bytes)
-                    weapon_texcoords_byte_array.extend(weapon_texcoords_bytes)
-
-                    column_major_clip_transform_bytes = weapon_clip_transform.T.flatten().tobytes()
-                    weapon_matrices_byte_array.extend(column_major_clip_transform_bytes) 
-                """
-
             else: 
                 pass
 
@@ -1521,7 +1611,7 @@ class RenderSystem(esper.Processor):
         item_instances = 0
 
         for item_entity in self._ref_em.active_item_entities:
-            item_phy_comp, item_info_comp,static_render_comp = esper.components_for_entity(item_entity)
+            item_phy_comp, item_info_comp,static_render_comp,emission_comp = esper.components_for_entity(item_entity)
 
             if item_info_comp.active_time[0] > float32(0.05):
                 item_instances += 1
@@ -1566,7 +1656,18 @@ class RenderSystem(esper.Processor):
 
         # render the basic particles 
 
-        
+        for basic_particle_entity in self._ref_em.active_basic_particle_entities:
+
+            basic_particle_entity_phy_comp = esper.component_for_entity(basic_particle_entity,BasicParticlePhysicsComponent)
+            self._basic_particle_buffer_surf.fill(basic_particle_entity_phy_comp.color)
+            tex = self.surface_to_texture(self._basic_particle_buffer_surf)
+
+            self.render_texture(tex,'back',
+                                dest = pygame.Rect(basic_particle_entity_phy_comp.position[0] - camera_offset[0],\
+                                                   basic_particle_entity_phy_comp.position[1] - camera_offset[1],1,1),
+                                source = pygame.Rect(0,0,1,1))
+            
+            tex.release()
 
 
         self._entity_weapons_local_vertices_vbo.write(weapon_vertices_byte_array)
