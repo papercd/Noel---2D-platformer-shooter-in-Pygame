@@ -1,9 +1,12 @@
 import esper
+from scripts.rectangle import Rectangle
+from scripts.quadtree import QuadTree
 from scripts.mandelae_hud import HUD
 from scripts.game_state import GameState
 from scripts.game_state import GameState
 from scripts.data import TERMINAL_VELOCITY,GRAVITY,ENTITIES_ACCELERATION,ENTITIES_JUMP_SPEED,ENTITIES_MAX_HORIZONTAL_SPEED,HORIZONTAL_DECELERATION,WALL_SLIDE_CAP_VELOCITY,SPRINT_FACTOR,ITEM_SIZES,\
                         PLAYER_LEFT_AND_RIGHT_ANCHOR_OFFSETS,DISPLACEMENT_MAX_STEP,MUZZLE_PARTICLE_COLORS
+from pygame.math import Vector2 as vec2
 from pygame.rect import Rect
 from pygame.mouse import get_pos
 from scripts.new_resource_manager import ResourceManager
@@ -44,6 +47,9 @@ class PhysicsSystem(esper.Processor):
         self._ref_tilemap:"Tilemap" = None
         self._ref_em : EntitiesManager = EntitiesManager.get_instance()
         self._collision_rect_buffer = Rect(0,0,1,1)
+        self._quadtree_node_capacity = 16
+        self._qtree_x_slack = 300
+        self._qtree_y_slack = 300
 
 
     def _process_regular_tile_y_collision(self,physics_comp:PhysicsComponent,state_info_comp:StateInfoComponent,
@@ -332,15 +338,12 @@ class PhysicsSystem(esper.Processor):
         return False
     
     def _process_item_pickup(self,item_info_comp:ItemInfoComponent):
-        print(self._ref_em.player_main_weapon.power)
         if item_info_comp.type == 'rof':
-            # increase the rate of fire of the weapon item. 
             self._ref_em.player_main_weapon.fire_rate[0] = max(float64(1/40),self._ref_em.player_main_weapon.fire_rate[0] * 19/20)
         elif item_info_comp.type == 'damage':
             self._ref_em.player_main_weapon.power = uint16(1) + self._ref_em.player_main_weapon.power
         else: 
             self._ref_em.player_main_weapon.magazine[0] = min(uint32(1000),self._ref_em.player_main_weapon.magazine[0] + uint32(100))
-            pass
             
 
     def attatch_tilemap(self,tilemap:"Tilemap")->None: 
@@ -350,8 +353,12 @@ class PhysicsSystem(esper.Processor):
         self._ref_hud = hud
     
     def process(self,dt:float32)->None: 
-        # process physics for player entity, which has an input component while the rest of the entities don't.
-        #player,(player_input_comp,player_state_info_comp,player_physics_comp) = esper.get_components(InputComponent,StateInfoComponent,PhysicsComponent)[0]
+
+        # create quadtree 
+        camera_scroll = tuple(self._ref_game_ctx['camera_offset'])
+        boundary = Rectangle(camera_scroll[0] - self._qtree_x_slack,camera_scroll[1] - self._qtree_y_slack,\
+                             self._ref_game_ctx['true_res'][0]+self._qtree_x_slack*2,self._ref_game_ctx['true_res'][1]+self._qtree_y_slack*2)
+        quadtree = QuadTree(self._quadtree_node_capacity,boundary)
 
         for entity, (state_info_comp,physics_comp) in esper.get_components(StateInfoComponent,PhysicsComponent):
             if state_info_comp.type == "player":
